@@ -1,0 +1,278 @@
+# Taskfile.yml for Clash Royale API project
+# Requires: https://taskfile.dev/installation/
+
+version: '3'
+
+vars:
+  PYTHON_VERSION: '3.11'
+  PROJECT_NAME: clash-royale-api
+  DATA_DIR: data
+  TEST_PLAYER_TAG: '#R8QGUQRCV'
+
+env:
+  PYTHONPATH: './src'
+
+tasks:
+  default:
+    desc: Show available tasks
+    cmds:
+      - task --list
+
+  setup:
+    desc: Set up the development environment
+    cmds:
+      - echo "Setting up development environment..."
+      - uv sync
+      - echo "Creating data directories..."
+      - mkdir -p {{.DATA_DIR}}/{players,clans,analysis,static,reference}
+      - mkdir -p scripts
+      - echo "Copying example .env file..."
+      - test -f .env || cp config/.env.example .env 2>/dev/null || echo "No .env.example found, creating basic .env"
+      - test -f .env || echo -e "CLASH_ROYALE_API_TOKEN=your_api_token_here\nDATA_DIR={{.DATA_DIR}}" > .env
+      - echo "✅ Setup complete!"
+      - echo "Please edit .env file with your API token"
+
+  install:
+    desc: Install dependencies
+    cmds:
+      - uv sync
+
+  run:
+    desc: Run the CLI with player analysis
+    summary: |
+      Analyze a player's card collection and display upgrade needs
+
+      Args:
+        player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -n "$PLAYER_TAG" ]; then
+          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG"
+        else
+          echo "Using DEFAULT_PLAYER_TAG from .env..."
+          uv run python src/clash_royale_api/cli.py
+        fi
+
+  run-with-save:
+    desc: Run CLI and save results to JSON files
+    summary: |
+      Analyze a player and save the results to JSON files
+
+      Args:
+        player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -n "$PLAYER_TAG" ]; then
+          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --save
+        else
+          echo "Using DEFAULT_PLAYER_TAG from .env..."
+          uv run python src/clash_royale_api/cli.py --save
+        fi
+
+  export-csv:
+    desc: Export player data to CSV format
+    summary: |
+      Export player's card collection and other data to CSV
+
+      Args:
+        player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -n "$PLAYER_TAG" ]; then
+          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --export-csv
+        else
+          echo "Using DEFAULT_PLAYER_TAG from .env..."
+          uv run python src/clash_royale_api/cli.py --export-csv
+        fi
+
+  export-all:
+    desc: Export all data types for a player
+    summary: |
+      Export player, cards, battles, chests, and event decks data to CSV
+
+      Args:
+        player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -n "$PLAYER_TAG" ]; then
+          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --export-csv --csv-types all
+        else
+          echo "Using DEFAULT_PLAYER_TAG from .env..."
+          uv run python src/clash_royale_api/cli.py --export-csv --csv-types all
+        fi
+
+  # Event Deck Tasks
+  scan-events:
+    desc: Scan battle logs for event decks
+    summary: |
+      Automatically scan and import event decks from battle logs
+
+      Args:
+        player: Player tag to scan (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+        days: Number of days to scan back (default: 7)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        # Extract days from end of args if present, otherwise use default
+        DAYS="{{.DAYS_BACK}}"
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Scanning event decks for DEFAULT_PLAYER_TAG from .env (last $DAYS days)..."
+          uv run python src/clash_royale_api/cli.py --scan-event-decks --days-back $DAYS
+        else
+          echo "Scanning event decks for $PLAYER_TAG (last $DAYS days)..."
+          # Remove any surrounding quotes from PLAYER_TAG
+          CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+          uv run python src/clash_royale_api/cli.py --player "$CLEAN_TAG" --scan-event-decks --days-back $DAYS
+        fi
+    vars:
+      DAYS_BACK:
+        sh: "echo '{{.ARGS}}' | grep -oE '[0-9]+$' || echo '7'"
+
+  export-events:
+    desc: Export event decks to CSV
+    summary: |
+      Export event decks with performance data to CSV
+
+      Args:
+        player: Player tag to export (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Exporting event decks for DEFAULT_PLAYER_TAG from .env..."
+          uv run python src/clash_royale_api/cli.py --export-event-decks
+        else
+          echo "Exporting event decks for $PLAYER_TAG..."
+          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --export-event-decks
+        fi
+
+  export-decks:
+    desc: Export event decks in deck builder format
+    summary: |
+      Export event decks for sharing on deck builder sites
+
+      Args:
+        player: Player tag to export (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Exporting decks for DEFAULT_PLAYER_TAG from .env in deck builder format..."
+          uv run python src/clash_royale_api/cli.py --export-deck-builder
+        else
+          echo "Exporting decks for $PLAYER_TAG in deck builder format..."
+          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --export-deck-builder
+        fi
+
+  analyze-events:
+    desc: Analyze event deck performance
+    summary: |
+      Analyze event deck performance with detailed insights
+
+      Args:
+        player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Analyzing event performance for DEFAULT_PLAYER_TAG from .env..."
+          uv run python src/clash_royale_api/cli.py --analyze-events
+        else
+          echo "Analyzing event performance for $PLAYER_TAG..."
+          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --analyze-events
+        fi
+
+  sync-events:
+    desc: Sync recent event activity
+    summary: |
+      Sync and analyze recent event activity from battle logs
+
+      Args:
+        player: Player tag to sync (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Syncing recent events for DEFAULT_PLAYER_TAG from .env..."
+          uv run python src/clash_royale_api/cli.py --sync-recent-events
+        else
+          echo "Syncing recent events for $PLAYER_TAG..."
+          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --sync-recent-events
+        fi
+
+  test:
+    desc: Run tests
+    cmds:
+      - echo "Running tests..."
+      - uv run pytest || true
+
+  lint:
+    desc: Run linting on the code
+    cmds:
+      - echo "Running linter..."
+      - uv run ruff check src/ || true
+
+  format:
+    desc: Format the code
+    cmds:
+      - echo "Formatting code..."
+      - uv run black src/
+      - uv run ruff check --fix src/
+
+  clean:
+    desc: Clean up generated files
+    cmds:
+      - echo "Cleaning up..."
+      - rm -rf {{.DATA_DIR}}/
+      - rm -rf __pycache__/
+      - rm -rf src/__pycache__/
+      - rm -rf src/*/__pycache__/
+      - find . -name '*.pyc' -delete
+      - echo "✅ Clean complete!"
+
+  status:
+    desc: Show project status
+    cmds:
+      - 'echo "=== Project Status ==="'
+      - 'echo "Python version: {{.PYTHON_VERSION}}"'
+      - 'echo "Project name: {{.PROJECT_NAME}}"'
+      - 'echo "Data directory: {{.DATA_DIR}}"'
+      - echo ''
+      - 'echo "=== Environment ==="'
+      - 'test -f .env && echo "✅ .env file exists" || echo "❌ .env file missing"'
+      - 'test -f .env && grep -q "CLASH_ROYALE_API_TOKEN=" .env && echo "✅ API token configured" || echo "❌ API token not configured"'
+
+  dev:
+    desc: Start development mode with watch
+    summary: |
+      Watch for file changes and auto-format on save
+      Requires: watchdog (installed with dev dependencies)
+    cmds:
+      - echo "Starting development mode..."
+      - uv run python scripts/watch_dev.py
+
+  help-api:
+    desc: Show API usage examples
+    cmds:
+      - echo "API Usage Examples:"
+      - echo ''
+      - echo "Basic Player Operations:"
+      - 'echo "1. Basic player analysis: task run -- #PLAYER_TAG"'
+      - 'echo "2. Save results: task run-with-save -- #PLAYER_TAG"'
+      - 'echo "3. Export to CSV: task export-csv -- #PLAYER_TAG"'
+      - 'echo "4. Export all data: task export-all -- #PLAYER_TAG"'
+      - echo ''
+      - echo "Event Deck Operations:"
+      - 'echo "5. Scan for event decks: task scan-events -- #PLAYER_TAG"'
+      - 'echo "6. Export event decks: task export-events -- #PLAYER_TAG"'
+      - 'echo "7. Export deck builder format: task export-decks -- #PLAYER_TAG"'
+      - 'echo "8. Analyze events: task analyze-events -- #PLAYER_TAG"'
+      - 'echo "9. Sync events: task sync-events -- #PLAYER_TAG"'
+      - echo ''
+      - 'echo "Replace #PLAYER_TAG with actual tag (e.g., '#R8QGUQRCV')"'
+      - 'echo "Note: Use single quotes around player tags to avoid shell issues"'
