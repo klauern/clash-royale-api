@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/klauer/clash-royale-api/go/internal/exporter/csv"
+	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/urfave/cli/v3"
 )
@@ -83,6 +84,54 @@ func main() {
 					},
 				},
 				Action: cardsCommand,
+			},
+			{
+				Name:  "analyze",
+				Usage: "Analyze player card collection and upgrade priorities",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #)",
+						Required: true,
+					},
+					&cli.BoolFlag{
+						Name:    "include-max-level",
+						Usage:   "Include max level cards in analysis",
+					},
+					&cli.Float64Flag{
+						Name:    "min-priority-score",
+						Value:   30.0,
+						Usage:   "Minimum priority score for upgrade recommendations",
+					},
+					&cli.StringSliceFlag{
+						Name:    "focus-rarities",
+						Usage:   "Focus on specific rarities (Common, Rare, Epic, Legendary, Champion)",
+					},
+					&cli.StringSliceFlag{
+						Name:    "exclude-cards",
+						Usage:   "Exclude specific cards from recommendations",
+					},
+					&cli.BoolFlag{
+						Name:    "prioritize-win-cons",
+						Value:   true,
+						Usage:   "Boost priority for win condition cards",
+					},
+					&cli.IntFlag{
+						Name:    "top-n",
+						Value:   15,
+						Usage:   "Show top N upgrade priorities",
+					},
+					&cli.BoolFlag{
+						Name:    "save",
+						Usage:   "Save analysis to JSON file",
+					},
+					&cli.BoolFlag{
+						Name:    "export-csv",
+						Usage:   "Export analysis to CSV",
+					},
+				},
+				Action: analyzeCommand,
 			},
 		},
 	}
@@ -294,4 +343,177 @@ func displayCards(cards []clashroyale.Card) {
 	}
 
 	w.Flush()
+}
+
+func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
+	tag := cmd.String("tag")
+	apiToken := cmd.String("api-token")
+	verbose := cmd.Bool("verbose")
+	saveData := cmd.Bool("save")
+	exportCSV := cmd.Bool("export-csv")
+
+	if apiToken == "" {
+		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	}
+
+	// Build analysis options from CLI flags
+	options := analysis.AnalysisOptions{
+		IncludeMaxLevel:     cmd.Bool("include-max-level"),
+		MinPriorityScore:    cmd.Float64("min-priority-score"),
+		FocusRarities:       cmd.StringSlice("focus-rarities"),
+		ExcludeCards:        cmd.StringSlice("exclude-cards"),
+		PrioritizeWinCons:   cmd.Bool("prioritize-win-cons"),
+		TopN:                cmd.Int("top-n"),
+	}
+
+	client := clashroyale.NewClient(apiToken)
+
+	if verbose {
+		fmt.Printf("Analyzing card collection for tag: %s\n", tag)
+	}
+
+	// Get player information
+	player, err := client.GetPlayer(tag)
+	if err != nil {
+		return fmt.Errorf("failed to get player: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+		fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+	}
+
+	// Perform analysis
+	cardAnalysis, err := analysis.AnalyzeCardCollection(player, options)
+	if err != nil {
+		return fmt.Errorf("failed to analyze card collection: %w", err)
+	}
+
+	// Display analysis results
+	displayAnalysis(cardAnalysis)
+
+	// Save analysis if requested
+	if saveData {
+		dataDir := cmd.String("data-dir")
+		if verbose {
+			fmt.Printf("\nSaving analysis to: %s\n", dataDir)
+		}
+		if err := saveAnalysisData(dataDir, cardAnalysis); err != nil {
+			fmt.Printf("Warning: Failed to save analysis: %v\n", err)
+		} else {
+			fmt.Printf("Analysis saved to: %s/analysis/%s.json\n", dataDir, cardAnalysis.PlayerTag)
+		}
+	}
+
+	// Export to CSV if requested
+	if exportCSV {
+		// TODO: Implement analysis CSV exporter
+		fmt.Printf("Note: CSV export for analysis not yet implemented\n")
+	}
+
+	return nil
+}
+
+func displayAnalysis(a *analysis.CardAnalysis) {
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║                   CARD COLLECTION ANALYSIS                         ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	fmt.Printf("Player: %s (%s)\n", a.PlayerName, a.PlayerTag)
+	fmt.Printf("Analysis Time: %s\n\n", a.AnalysisTime.Format("2006-01-02 15:04:05"))
+
+	// Display summary
+	fmt.Printf("Summary:\n")
+	fmt.Printf("════════\n")
+	fmt.Printf("Total Cards:        %d\n", a.Summary.TotalCards)
+	fmt.Printf("Max Level Cards:    %d (%.1f%%)\n", a.Summary.MaxLevelCards, a.Summary.CompletionPercent)
+	fmt.Printf("Average Level:      %.2f\n", a.Summary.AvgCardLevel)
+	fmt.Printf("Ready to Upgrade:   %d\n", a.Summary.UpgradableCards)
+
+	// Calculate cards near max from rarity breakdown
+	cardsNearMax := 0
+	for _, stats := range a.RarityBreakdown {
+		cardsNearMax += stats.CardsNearMax
+	}
+	fmt.Printf("Near Max (1-2 lvl): %d\n", cardsNearMax)
+	fmt.Printf("\n")
+
+	// Display rarity breakdown
+	if len(a.RarityBreakdown) > 0 {
+		fmt.Printf("Rarity Breakdown:\n")
+		fmt.Printf("═════════════════\n")
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintf(w, "Rarity\tTotal\tMax Lvl\tAvg Lvl\tReady\tNear Max\n")
+		fmt.Fprintf(w, "──────\t─────\t───────\t───────\t─────\t────────\n")
+
+		// Display in order: Common, Rare, Epic, Legendary, Champion
+		order := []string{"Common", "Rare", "Epic", "Legendary", "Champion"}
+		for _, rarity := range order {
+			if stats, ok := a.RarityBreakdown[rarity]; ok {
+				fmt.Fprintf(w, "%s\t%d\t%d\t%.1f\t%d\t%d\n",
+					rarity,
+					stats.TotalCards,
+					stats.MaxLevelCards,
+					stats.AvgLevel,
+					stats.CardsReadyUpgrade,
+					stats.CardsNearMax)
+			}
+		}
+		w.Flush()
+		fmt.Printf("\n")
+	}
+
+	// Display upgrade priorities
+	if len(a.UpgradePriority) > 0 {
+		fmt.Printf("Upgrade Priorities:\n")
+		fmt.Printf("═══════════════════\n")
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintf(w, "Card\tRarity\tLevel\tOwned\tNeeded\tScore\tPriority\tReasons\n")
+		fmt.Fprintf(w, "────\t──────\t─────\t─────\t──────\t─────\t────────\t───────\n")
+
+		for _, priority := range a.UpgradePriority {
+			reasons := ""
+			if len(priority.Reasons) > 0 {
+				reasons = priority.Reasons[0]
+				if len(priority.Reasons) > 1 {
+					reasons += fmt.Sprintf(" +%d", len(priority.Reasons)-1)
+				}
+			}
+
+			fmt.Fprintf(w, "%s\t%s\t%d/%d\t%d\t%d\t%.1f\t%s\t%s\n",
+				priority.CardName,
+				priority.Rarity,
+				priority.CurrentLevel,
+				priority.MaxLevel,
+				priority.CardsOwned,
+				priority.CardsNeeded,
+				priority.PriorityScore,
+				priority.Priority,
+				reasons)
+		}
+		w.Flush()
+	} else {
+		fmt.Printf("No upgrade priorities found.\n")
+	}
+}
+
+func saveAnalysisData(dataDir string, a *analysis.CardAnalysis) error {
+	// Create analysis directory if it doesn't exist
+	analysisDir := filepath.Join(dataDir, "analysis")
+	if err := os.MkdirAll(analysisDir, 0755); err != nil {
+		return fmt.Errorf("failed to create analysis directory: %w", err)
+	}
+
+	// Save as JSON
+	filename := filepath.Join(analysisDir, fmt.Sprintf("%s.json", a.PlayerTag))
+	data, err := json.MarshalIndent(a, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal analysis data: %w", err)
+	}
+
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return fmt.Errorf("failed to write analysis file: %w", err)
+	}
+
+	return nil
 }
