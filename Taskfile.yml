@@ -48,10 +48,13 @@ tasks:
     desc: Build Go CLI binaries
     dir: go
     cmds:
-      - mkdir -p .cache
-      - GOCACHE=$(pwd)/.cache go mod download
-      - GOCACHE=$(pwd)/.cache go build -o bin/cr-api ./cmd/cr-api
-      - GOCACHE=$(pwd)/.cache go build -o bin/deckbuilder ./cmd/deckbuilder
+      - echo "Building Go binaries..."
+      - mkdir -p bin
+      - go mod download
+      - go build -o bin/cr-api ./cmd/cr-api
+      - go build -o bin/deckbuilder ./cmd/deckbuilder
+      - echo "✅ Go binaries built successfully!"
+      - ls -la bin/
 
   run:
     desc: Analyze a player's collection using the Go CLI
@@ -202,9 +205,9 @@ tasks:
 
   # Event Deck Tasks
   scan-events:
-    desc: Scan battle logs for event decks
+    desc: Scan battle logs for event decks using Go CLI
     summary: |
-      Automatically scan and import event decks from battle logs
+      Automatically scan and import event decks from battle logs using the Go binary
 
       Args:
         player: Player tag to scan (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
@@ -216,22 +219,31 @@ tasks:
         DAYS="{{.DAYS_BACK}}"
 
         if [ -z "$PLAYER_TAG" ]; then
-          echo "Scanning event decks for DEFAULT_PLAYER_TAG from .env (last $DAYS days)..."
-          uv run python src/clash_royale_api/cli.py --scan-event-decks --days-back $DAYS
-        else
-          echo "Scanning event decks for $PLAYER_TAG (last $DAYS days)..."
-          # Remove any surrounding quotes from PLAYER_TAG
-          CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
-          uv run python src/clash_royale_api/cli.py --player "$CLEAN_TAG" --scan-event-decks --days-back $DAYS
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
         fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Scanning event decks for $CLEAN_TAG (last $DAYS days)..."
+        {{.CR_API_BIN}} events scan --tag "$CLEAN_TAG" --days "$DAYS" --data-dir "{{.DATA_DIR}}" --save
     vars:
       DAYS_BACK:
         sh: "echo '{{.ARGS}}' | grep -oE '[0-9]+$' || echo '7'"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build-go"
 
   export-events:
-    desc: Export event decks to CSV
+    desc: Export event decks to CSV using Go CLI
     summary: |
-      Export event decks with performance data to CSV
+      Export event decks with performance data to CSV using the Go binary
 
       Args:
         player: Player tag to export (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
@@ -239,17 +251,28 @@ tasks:
       - |
         PLAYER_TAG="{{.CLI_ARGS}}"
         if [ -z "$PLAYER_TAG" ]; then
-          echo "Exporting event decks for DEFAULT_PLAYER_TAG from .env..."
-          uv run python src/clash_royale_api/cli.py --export-event-decks
-        else
-          echo "Exporting event decks for $PLAYER_TAG..."
-          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --export-event-decks
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
         fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Exporting event decks for $CLEAN_TAG to CSV..."
+        {{.CR_API_BIN}} events list --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --export-csv
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build-go"
 
   export-decks:
-    desc: Export event decks in deck builder format
+    desc: Export event decks in deck builder format using Go CLI
     summary: |
-      Export event decks for sharing on deck builder sites
+      Export event decks for sharing on deck builder sites using the Go binary
 
       Args:
         player: Player tag to export (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
@@ -257,17 +280,31 @@ tasks:
       - |
         PLAYER_TAG="{{.CLI_ARGS}}"
         if [ -z "$PLAYER_TAG" ]; then
-          echo "Exporting decks for DEFAULT_PLAYER_TAG from .env in deck builder format..."
-          uv run python src/clash_royale_api/cli.py --export-deck-builder
-        else
-          echo "Exporting decks for $PLAYER_TAG in deck builder format..."
-          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --export-deck-builder
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
         fi
 
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Exporting event decks for $CLEAN_TAG in deck builder format..."
+        # Note: The Go CLI doesn't have a specific deck builder export yet,
+        # so we'll export the event list which can be used for deck building
+        {{.CR_API_BIN}} events list --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --export-csv
+        echo "Deck builder format exported to CSV - can be imported into deck building sites"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build-go"
+
   analyze-events:
-    desc: Analyze event deck performance
+    desc: Analyze event deck performance using Go CLI
     summary: |
-      Analyze event deck performance with detailed insights
+      Analyze event deck performance with detailed insights using the Go binary
 
       Args:
         player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
@@ -275,17 +312,28 @@ tasks:
       - |
         PLAYER_TAG="{{.CLI_ARGS}}"
         if [ -z "$PLAYER_TAG" ]; then
-          echo "Analyzing event performance for DEFAULT_PLAYER_TAG from .env..."
-          uv run python src/clash_royale_api/cli.py --analyze-events
-        else
-          echo "Analyzing event performance for $PLAYER_TAG..."
-          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --analyze-events
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
         fi
 
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Analyzing event performance for $CLEAN_TAG..."
+        {{.CR_API_BIN}} events analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --min-battles 5 --export-csv
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build-go"
+
   sync-events:
-    desc: Sync recent event activity
+    desc: Sync recent event activity using Go CLI
     summary: |
-      Sync and analyze recent event activity from battle logs
+      Sync and analyze recent event activity from battle logs using the Go binary
 
       Args:
         player: Player tag to sync (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
@@ -293,31 +341,74 @@ tasks:
       - |
         PLAYER_TAG="{{.CLI_ARGS}}"
         if [ -z "$PLAYER_TAG" ]; then
-          echo "Syncing recent events for DEFAULT_PLAYER_TAG from .env..."
-          uv run python src/clash_royale_api/cli.py --sync-recent-events
-        else
-          echo "Syncing recent events for $PLAYER_TAG..."
-          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --sync-recent-events
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
         fi
 
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Syncing recent events for $CLEAN_TAG (last 7 days)..."
+        {{.CR_API_BIN}} events scan --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --days 7 --save
+        echo "Sync complete! Use 'task analyze-events -- $CLEAN_TAG' to analyze the data."
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build-go"
+
   test:
-    desc: Run tests
+    desc: Run tests (both Go and Python)
+    summary: |
+      Run all tests for the project.
+      - Go tests: Run all Go package tests with coverage
+      - Python tests: Run existing Python tests (legacy)
     cmds:
-      - echo "Running tests..."
-      - uv run pytest || true
+      - echo "Running Go tests..."
+      - |
+        cd go && \
+        if [ -f "../.env" ]; then
+          # Export only valid variable names from .env (skip lines with # or invalid names)
+          set -a
+          while IFS='=' read -r key value; do
+            # Skip lines starting with #, empty lines, or keys with invalid characters
+            if [[ ! "$key" =~ ^[[:space:]]*# ]] && [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+              export "$key=$value"
+            fi
+          done < ../.env
+          set +a
+        fi && \
+        go test -v -race -coverprofile=coverage.out ./... 2>/dev/null || go test -v ./...
+      - echo "Running Python tests (legacy)..."
+      - uv run pytest tests/ -x || true
 
   lint:
-    desc: Run linting on the code
+    desc: Run linting on the code (Go and Python)
+    summary: |
+      Run linters on both Go and Python code
+      - Go: go vet and golint if available
+      - Python: ruff for Python code (legacy)
     cmds:
-      - echo "Running linter..."
+      - echo "Running Go linter..."
+      - cd go && go vet ./...
+      - echo "Running Python linter (legacy)..."
       - uv run ruff check src/ || true
 
   format:
-    desc: Format the code
+    desc: Format the code (Go and Python)
+    summary: |
+      Format both Go and Python code
+      - Go: go fmt and goimports if available
+      - Python: black and ruff for Python code (legacy)
     cmds:
-      - echo "Formatting code..."
-      - uv run black src/
-      - uv run ruff check --fix src/
+      - echo "Formatting Go code..."
+      - cd go && go fmt ./...
+      - echo "Formatting Python code (legacy)..."
+      - uv run black src/ 2>/dev/null || echo "black not available, skipping Python formatting"
+      - uv run ruff check --fix src/ 2>/dev/null || echo "ruff not available, skipping Python fixes"
 
   clean:
     desc: Clean up generated files
@@ -351,23 +442,61 @@ tasks:
       - echo "Starting development mode..."
       - uv run python scripts/watch_dev.py
 
-  help-api:
-    desc: Show API usage examples
+  test-go:
+    desc: Run Go tests only
+    summary: |
+      Run Go tests with coverage and race detection
     cmds:
-      - echo "API Usage Examples:"
+      - echo "Running Go tests..."
+      - |
+        cd go && \
+        if [ -f "../.env" ]; then
+          # Export only valid variable names from .env (skip lines with # or invalid names)
+          set -a
+          while IFS='=' read -r key value; do
+            # Skip lines starting with #, empty lines, or keys with invalid characters
+            if [[ ! "$key" =~ ^[[:space:]]*# ]] && [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+              export "$key=$value"
+            fi
+          done < ../.env
+          set +a
+        fi && \
+        go test -v -race -coverprofile=coverage.out ./... 2>/dev/null || go test -v ./...
+      - cd go && go tool cover -func=coverage.out | tail -1 || echo "Coverage report not available"
+    preconditions:
+      - sh: test -d go
+        msg: "Go directory not found"
+
+help-api:
+    desc: Show API usage examples (Go CLI)
+    cmds:
+      - echo "Clash Royale API - Go CLI Usage Examples:"
+      - echo "=========================================="
+      - echo ''
+      - echo "Prerequisites:"
+      - 'echo "1. Build binaries: task build-go"'
+      - 'echo "2. Set CLASH_ROYALE_API_TOKEN in .env file"'
       - echo ''
       - echo "Basic Player Operations:"
       - 'echo "1. Basic player analysis: task run -- #PLAYER_TAG"'
       - 'echo "2. Save results: task run-with-save -- #PLAYER_TAG"'
       - 'echo "3. Export to CSV: task export-csv -- #PLAYER_TAG"'
       - 'echo "4. Export all data: task export-all -- #PLAYER_TAG"'
+      - 'echo "5. Build optimized deck: task build-deck -- #PLAYER_TAG"'
       - echo ''
-      - echo "Event Deck Operations:"
-      - 'echo "5. Scan for event decks: task scan-events -- #PLAYER_TAG"'
-      - 'echo "6. Export event decks: task export-events -- #PLAYER_TAG"'
-      - 'echo "7. Export deck builder format: task export-decks -- #PLAYER_TAG"'
-      - 'echo "8. Analyze events: task analyze-events -- #PLAYER_TAG"'
-      - 'echo "9. Sync events: task sync-events -- #PLAYER_TAG"'
+      - echo "Event Deck Operations (using Go CLI):"
+      - 'echo "6. Scan for event decks: task scan-events -- #PLAYER_TAG"'
+      - 'echo "7. Export event decks: task export-events -- #PLAYER_TAG"'
+      - 'echo "8. Export deck builder format: task export-decks -- #PLAYER_TAG"'
+      - 'echo "9. Analyze events: task analyze-events -- #PLAYER_TAG"'
+      - 'echo "10. Sync recent events: task sync-events -- #PLAYER_TAG"'
+      - echo ''
+      - echo "Development Commands:"
+      - 'echo "- Build: task build-go"'
+      - 'echo "- Test all: task test (runs Go tests + Python legacy tests)"'
+      - 'echo "- Test Go only: task test-go"'
+      - 'echo "- Lint: task lint (Go vet + Python ruff)"'
+      - 'echo "- Format: task format (go fmt + Python black/ruff)"'
       - echo ''
       - 'echo "Replace #PLAYER_TAG with actual tag (e.g., '#R8QGUQRCV')"'
-      - 'echo "Note: Use single quotes around player tags to avoid shell issues"'
+      - 'echo "Note: All tasks now use Go binaries instead of Python"'

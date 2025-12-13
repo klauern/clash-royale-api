@@ -24,29 +24,29 @@ type Parser struct {
 func NewParser() *Parser {
 	return &Parser{
 		eventBattleModes: map[string]EventType{
-			"challenge":           EventTypeChallenge,
-			"grand challenge":     EventTypeGrandChallenge,
-			"classic challenge":   EventTypeClassicChallenge,
-			"draft challenge":     EventTypeDraftChallenge,
-			"tournament":          EventTypeTournament,
-			"special event":       EventTypeSpecialEvent,
-			"sudden death":        EventTypeSuddenDeath,
-			"double elimination":  EventTypeDoubleElimination,
+			"challenge":          EventTypeChallenge,
+			"grand challenge":    EventTypeGrandChallenge,
+			"classic challenge":  EventTypeClassicChallenge,
+			"draft challenge":    EventTypeDraftChallenge,
+			"tournament":         EventTypeTournament,
+			"special event":      EventTypeSpecialEvent,
+			"sudden death":       EventTypeSuddenDeath,
+			"double elimination": EventTypeDoubleElimination,
 		},
 		eventPatterns: map[string]string{
-			"lava":          "Lava Hound Challenge",
-			"hog":           "Hog Rider Challenge",
-			"mortar":        "Mortar Challenge",
-			"graveyard":     "Graveyard Challenge",
-			"ram rage":      "Ram Rage Challenge",
-			"sparky":        "Sparky Challenge",
-			"electro":       "Electro Challenge",
-			"skeleton":      "Skeleton Army Challenge",
-			"bandit":        "Bandit Challenge",
-			"night witch":   "Night Witch Challenge",
-			"royale":        "Clash Royale Championship",
-			"worlds":        "World Championship",
-			"ccgs":          "Clash Championship Series",
+			"lava":        "Lava Hound Challenge",
+			"hog":         "Hog Rider Challenge",
+			"mortar":      "Mortar Challenge",
+			"graveyard":   "Graveyard Challenge",
+			"ram rage":    "Ram Rage Challenge",
+			"sparky":      "Sparky Challenge",
+			"electro":     "Electro Challenge",
+			"skeleton":    "Skeleton Army Challenge",
+			"bandit":      "Bandit Challenge",
+			"night witch": "Night Witch Challenge",
+			"royale":      "Clash Royale Championship",
+			"worlds":      "World Championship",
+			"ccgs":        "Clash Championship Series",
 		},
 	}
 }
@@ -74,12 +74,12 @@ func (p *Parser) ParseBattleLogs(battleLogs []clashroyale.Battle, playerTag stri
 
 // eventGroup represents a group of battles that belong to the same event
 type eventGroup struct {
-	eventType   EventType
-	eventName   string
-	battleMode  string
-	deckCards   []string
-	battles     []clashroyale.Battle
-	startTime   time.Time
+	eventType  EventType
+	eventName  string
+	battleMode string
+	deckCards  []string
+	battles    []clashroyale.Battle
+	startTime  time.Time
 }
 
 // groupBattlesByEvent groups battles into events based on timing and mode

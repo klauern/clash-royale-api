@@ -384,13 +384,13 @@ func TestClient_RateLimiting(t *testing.T) {
 
 // Mock player data for testing
 var mockPlayer = Player{
-	Tag:       "#ABC123",
-	Name:      "Test Player",
-	ExpLevel:  50,
-	Trophies:  4000,
+	Tag:          "#ABC123",
+	Name:         "Test Player",
+	ExpLevel:     50,
+	Trophies:     4000,
 	BestTrophies: 4500,
-	Wins:      2000,
-	Losses:    1500,
+	Wins:         2000,
+	Losses:       1500,
 }
 
 func TestGetPlayer_Success(t *testing.T) {
@@ -550,19 +550,19 @@ func TestGetPlayerUpcomingChests_Success(t *testing.T) {
 func TestGetPlayerBattleLog_Success(t *testing.T) {
 	mockBattleLog := BattleLogResponse{
 		{
-			Type: "PvP",
-			UTCDate: time.Now(),
+			Type:               "PvP",
+			UTCDate:            time.Now(),
 			IsLadderTournament: true,
 			GameMode: GameMode{
-				ID: 72000000,
+				ID:   72000000,
 				Name: "Ladder",
 			},
 			Team: []BattleTeam{
 				{
-					Tag: "#ABC123",
-					Name: "Test Player",
+					Tag:              "#ABC123",
+					Name:             "Test Player",
 					StartingTrophies: 4000,
-					TrophyChange: 30,
+					TrophyChange:     30,
 				},
 			},
 		},

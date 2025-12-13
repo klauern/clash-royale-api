@@ -378,7 +378,7 @@ func createTestCommand(dataDir string) *cli.Command {
 				Sources: cli.EnvVars("DATA_DIR"),
 			},
 			&cli.BoolFlag{
-				Name:  "verbose",
+				Name:    "verbose",
 				Aliases: []string{"v"},
 			},
 		},
@@ -389,6 +389,26 @@ func createTestCommand(dataDir string) *cli.Command {
 			{
 				Name:  "player",
 				Usage: "Get player information",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #)",
+						Required: true,
+					},
+					&cli.BoolFlag{
+						Name:  "chests",
+						Usage: "Show upcoming chests",
+					},
+					&cli.BoolFlag{
+						Name:  "save",
+						Usage: "Save player data to file",
+					},
+					&cli.BoolFlag{
+						Name:  "export-csv",
+						Usage: "Export player data to CSV",
+					},
+				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					// Mock implementation for testing
 					return mockPlayerCommand(cmd)
@@ -397,6 +417,12 @@ func createTestCommand(dataDir string) *cli.Command {
 			{
 				Name:  "cards",
 				Usage: "Get card database",
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:  "export-csv",
+						Usage: "Export card database to CSV",
+					},
+				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					// Mock implementation for testing
 					return mockCardsCommand(cmd)
@@ -404,7 +430,50 @@ func createTestCommand(dataDir string) *cli.Command {
 			},
 			{
 				Name:  "analyze",
-				Usage: "Analyze player card collection",
+				Usage: "Analyze player card collection and upgrade priorities",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #)",
+						Required: true,
+					},
+					&cli.BoolFlag{
+						Name:  "include-max-level",
+						Usage: "Include max level cards in analysis",
+					},
+					&cli.Float64Flag{
+						Name:  "min-priority-score",
+						Value: 30.0,
+						Usage: "Minimum priority score for upgrade recommendations",
+					},
+					&cli.StringSliceFlag{
+						Name:  "focus-rarities",
+						Usage: "Focus on specific rarities (Common, Rare, Epic, Legendary, Champion)",
+					},
+					&cli.StringSliceFlag{
+						Name:  "exclude-cards",
+						Usage: "Exclude specific cards from recommendations",
+					},
+					&cli.BoolFlag{
+						Name:  "prioritize-win-cons",
+						Value: true,
+						Usage: "Boost priority for win condition cards",
+					},
+					&cli.IntFlag{
+						Name:  "top-n",
+						Value: 15,
+						Usage: "Show top N upgrade priorities",
+					},
+					&cli.BoolFlag{
+						Name:  "save",
+						Usage: "Save analysis to JSON file",
+					},
+					&cli.BoolFlag{
+						Name:  "export-csv",
+						Usage: "Export analysis to CSV",
+					},
+				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					// Mock implementation for testing
 					return mockAnalyzeCommand(cmd)

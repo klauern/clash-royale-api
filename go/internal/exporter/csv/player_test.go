@@ -29,16 +29,16 @@ func TestPlayerExport(t *testing.T) {
 
 	// Create mock player data
 	mockPlayer := &clashroyale.Player{
-		Tag:        "#ABC123",
-		Name:       "Test Player",
-		ExpLevel:   50,
-		Trophies:   4000,
-		BestTrophies: 4500,
-		Wins:       2000,
-		Losses:     1500,
-		BattleCount: 3500,
+		Tag:            "#ABC123",
+		Name:           "Test Player",
+		ExpLevel:       50,
+		Trophies:       4000,
+		BestTrophies:   4500,
+		Wins:           2000,
+		Losses:         1500,
+		BattleCount:    3500,
 		ThreeCrownWins: 800,
-		ChallengeWins: 50,
+		ChallengeWins:  50,
 		TournamentWins: 10,
 		Clan: &clashroyale.Clan{
 			Tag:  "#CLAN123",
@@ -52,10 +52,10 @@ func TestPlayerExport(t *testing.T) {
 			ID:   29000022,
 			Name: "Legendary League",
 		},
-		StarPoints:    5000,
-		Donations:     1000,
+		StarPoints:     5000,
+		Donations:      1000,
 		TotalDonations: 5000,
-		CreatedAt:     time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
+		CreatedAt:      time.Date(2020, 1, 1, 0, 0, 0, 0, time.UTC),
 	}
 
 	exporter := NewPlayerExporter()
@@ -105,14 +105,14 @@ func TestPlayerExport_NoClan(t *testing.T) {
 
 	// Create player without clan
 	mockPlayer := &clashroyale.Player{
-		Tag:        "#NOCLAN",
-		Name:       "Lonely Player",
-		ExpLevel:   30,
-		Trophies:   3000,
+		Tag:          "#NOCLAN",
+		Name:         "Lonely Player",
+		ExpLevel:     30,
+		Trophies:     3000,
 		BestTrophies: 3200,
-		Wins:       500,
-		Losses:     400,
-		BattleCount: 900,
+		Wins:         500,
+		Losses:       400,
+		BattleCount:  900,
 		// No clan data
 		Arena: clashroyale.Arena{
 			ID:   54000000,

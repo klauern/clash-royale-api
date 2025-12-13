@@ -6,8 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"text/tabwriter"
+	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/exporter/csv"
+	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/events"
 	"github.com/urfave/cli/v3"
 )
@@ -192,6 +194,9 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 	eventTypes := cmd.StringSlice("event-types")
 	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
+	saveFlag := cmd.Bool("save")
+	exportCSV := cmd.Bool("export-csv")
+	dataDir := cmd.String("data-dir")
 
 	if apiToken == "" {
 		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
@@ -199,17 +204,86 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 
 	if verbose {
 		fmt.Printf("Scanning battle log for player %s (last %d days)\n", tag, days)
-		fmt.Printf("Event types to scan: %v\n", eventTypes)
-		fmt.Println("Note: Event scanning not yet implemented")
+		if len(eventTypes) > 0 {
+			fmt.Printf("Event types to scan: %v\n", eventTypes)
+		}
+	}
 
-		// Create a mock collection for testing
+	// Create API client
+	client := clashroyale.NewClient(apiToken)
+
+	// Get battle logs
+	battleLog, err := client.GetPlayerBattleLog(tag)
+	if err != nil {
+		return fmt.Errorf("failed to get battle logs: %w", err)
+	}
+	battles := []clashroyale.Battle(*battleLog)
+
+	// Filter battles by days
+	if days > 0 {
+		cutoff := time.Now().AddDate(0, 0, -days)
+		filtered := make([]clashroyale.Battle, 0, len(battles))
+		for _, battle := range battles {
+			if !battle.UTCDate.Before(cutoff) {
+				filtered = append(filtered, battle)
+			}
+		}
+		battles = filtered
+	}
+
+	if verbose {
+		fmt.Printf("Found %d recent battles to scan\n", len(battles))
+	}
+
+	// Create manager and parse event decks
+	manager := events.NewManager(dataDir)
+	importedDecks, err := manager.ImportFromBattleLogs(battles, tag)
+	if err != nil {
+		return fmt.Errorf("failed to import event decks: %w", err)
+	}
+
+	// Filter by event types if specified
+	filteredDecks := importedDecks
+	if len(eventTypes) > 0 {
+		allowedTypes := make(map[events.EventType]bool)
+		for _, et := range eventTypes {
+			allowedTypes[events.EventType(et)] = true
+		}
+		filtered := make([]events.EventDeck, 0, len(importedDecks))
+		for _, deck := range importedDecks {
+			if allowedTypes[deck.EventType] {
+				filtered = append(filtered, deck)
+			}
+		}
+		filteredDecks = filtered
+	}
+
+	if verbose {
+		fmt.Printf("Successfully imported %d event decks (after filtering: %d)\n", len(importedDecks), len(filteredDecks))
+		if len(filteredDecks) > 0 {
+			collection := &events.EventDeckCollection{
+				PlayerTag: tag,
+				Decks:     filteredDecks,
+			}
+			displayEventSummary(collection)
+		} else {
+			fmt.Println("No event decks matched the criteria")
+		}
+	}
+
+	// Export to CSV if requested
+	if exportCSV && len(filteredDecks) > 0 {
 		collection := &events.EventDeckCollection{
 			PlayerTag: tag,
-			Decks:     []events.EventDeck{},
+			Decks:     filteredDecks,
 		}
-
-		// Display summary
-		displayEventSummary(collection)
+		exporter := csv.NewEventDeckExporter()
+		if err := exporter.Export(dataDir, collection); err != nil {
+			return fmt.Errorf("failed to export event decks to CSV: %w", err)
+		}
+		if verbose {
+			fmt.Println("Event decks exported to CSV")
+		}
 	}
 
 	return nil
@@ -488,4 +562,3 @@ func sortEventDecks(decks []events.EventDeck, sortBy string) {
 	// In a real implementation, sort decks based on sortBy criteria
 	// For now, decks are already in chronological order
 }
-

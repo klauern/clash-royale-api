@@ -41,14 +41,14 @@ func TestWriteJSON(t *testing.T) {
 		{
 			name:     "Write array",
 			filePath: "/tmp/test_array.json",
-			data: []string{"item1", "item2", "item3"},
-			wantErr: false,
+			data:     []string{"item1", "item2", "item3"},
+			wantErr:  false,
 		},
 		{
 			name:     "Write nil data",
 			filePath: "/tmp/test_nil.json",
 			data:     nil,
-			wantErr: false,
+			wantErr:  false,
 		},
 		{
 			name:     "Write to nested directory",
@@ -427,10 +427,10 @@ func TestCopyFile(t *testing.T) {
 	_ = os.WriteFile(srcFile, content, 0644)
 
 	tests := []struct {
-		name     string
-		src      string
-		dst      string
-		wantErr  bool
+		name    string
+		src     string
+		dst     string
+		wantErr bool
 	}{
 		{
 			name:    "Copy existing file",
@@ -550,14 +550,14 @@ func TestWriteReadRoundTrip(t *testing.T) {
 
 	// Original data
 	original := &clashroyale.Player{
-		Tag:        "#ROUNDTRIP",
-		Name:       "Round Trip Test",
-		ExpLevel:   75,
-		Trophies:   5000,
+		Tag:          "#ROUNDTRIP",
+		Name:         "Round Trip Test",
+		ExpLevel:     75,
+		Trophies:     5000,
 		BestTrophies: 5500,
-		Wins:       3000,
-		Losses:     2000,
-		CreatedAt:  time.Date(2022, 1, 1, 12, 0, 0, 0, time.UTC),
+		Wins:         3000,
+		Losses:       2000,
+		CreatedAt:    time.Date(2022, 1, 1, 12, 0, 0, 0, time.UTC),
 	}
 
 	// Write to JSON

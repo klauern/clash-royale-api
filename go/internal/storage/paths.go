@@ -11,17 +11,17 @@ import (
 
 // Default data directory structure
 const (
-	DefaultDataDir      = "./data"
-	StaticDir           = "static"
-	PlayersDir          = "players"
-	AnalysisDir         = "analysis"
-	DecksDir            = "decks"
-	EventDecksDir       = "event_decks"
-	CSVDir              = "csv"
-	CSVPlayersSubdir    = "players"
-	CSVReferenceSubdir  = "reference"
-	CSVEventsSubdir     = "events"
-	CSVAnalysisSubdir   = "analysis"
+	DefaultDataDir     = "./data"
+	StaticDir          = "static"
+	PlayersDir         = "players"
+	AnalysisDir        = "analysis"
+	DecksDir           = "decks"
+	EventDecksDir      = "event_decks"
+	CSVDir             = "csv"
+	CSVPlayersSubdir   = "players"
+	CSVReferenceSubdir = "reference"
+	CSVEventsSubdir    = "events"
+	CSVAnalysisSubdir  = "analysis"
 )
 
 // PathBuilder constructs standardized file paths for data storage

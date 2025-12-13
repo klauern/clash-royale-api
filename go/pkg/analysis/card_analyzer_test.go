@@ -1,9 +1,9 @@
 package analysis
 
 import (
-	"testing"
-	"strings"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
+	"strings"
+	"testing"
 )
 
 // TestAnalyzeCardCollection_Basic tests basic card collection analysis

@@ -14,10 +14,10 @@ import (
 // Builder handles the construction of balanced Clash Royale decks
 // from player card analysis data.
 type Builder struct {
-	dataDir       string
-	roleGroups    map[CardRole][]string
+	dataDir        string
+	roleGroups     map[CardRole][]string
 	fallbackElixir map[string]int
-	rarityWeights map[string]float64
+	rarityWeights  map[string]float64
 }
 
 // NewBuilder creates a new deck builder instance
@@ -67,9 +67,9 @@ func NewBuilder(dataDir string) *Builder {
 			"Bats": 2, "Spear Goblins": 2, "Goblin Gang": 3, "Minions": 3,
 		},
 		rarityWeights: map[string]float64{
-			"Common":   1.0,
-			"Rare":     1.05,
-			"Epic":     1.1,
+			"Common":    1.0,
+			"Rare":      1.05,
+			"Epic":      1.1,
 			"Legendary": 1.15,
 			"Champion":  1.2,
 		},
@@ -339,7 +339,7 @@ func (b *Builder) scoreCard(level, maxLevel int, rarity string, elixir int, role
 		roleBonus = 0
 	}
 
-	return (levelRatio*1.2*rarityBoost) + (elixirWeight*0.15) + roleBonus
+	return (levelRatio * 1.2 * rarityBoost) + (elixirWeight * 0.15) + roleBonus
 }
 
 func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[string]bool) *CardCandidate {

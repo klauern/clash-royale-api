@@ -327,10 +327,10 @@ func TestCalculateRarityStats(t *testing.T) {
 // TestCalculatePriorityScore tests priority scoring algorithm
 func TestCalculatePriorityScore(t *testing.T) {
 	tests := []struct {
-		name     string
-		info     UpgradeInfo
-		wantMin  float64
-		wantMax  float64
+		name    string
+		info    UpgradeInfo
+		wantMin float64
+		wantMax float64
 	}{
 		{
 			name: "Max level card",
@@ -354,7 +354,7 @@ func TestCalculatePriorityScore(t *testing.T) {
 				CanUpgradeNow:   true,
 				ProgressPercent: 100.0,
 			},
-			wantMin: 60.0,  // High score, boosted by ready status
+			wantMin: 60.0, // High score, boosted by ready status
 			wantMax: 100.0,
 		},
 		{
@@ -367,7 +367,7 @@ func TestCalculatePriorityScore(t *testing.T) {
 				CanUpgradeNow:   false,
 				ProgressPercent: 80.0,
 			},
-			wantMin: 70.0,  // High priority: high level, rare, nearly ready
+			wantMin: 70.0, // High priority: high level, rare, nearly ready
 			wantMax: 100.0,
 		},
 		{
@@ -381,7 +381,7 @@ func TestCalculatePriorityScore(t *testing.T) {
 				ProgressPercent: 10.0,
 			},
 			wantMin: 0.0,
-			wantMax: 30.0,  // Low priority: low level, low progress
+			wantMax: 30.0, // Low priority: low level, low progress
 		},
 	}
 

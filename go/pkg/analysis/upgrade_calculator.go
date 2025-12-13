@@ -202,14 +202,14 @@ func CalculateUpgradeInfo(cardName string, rarity string, elixirCost int, curren
 
 // RarityUpgradeStats contains aggregate statistics for a rarity
 type RarityUpgradeStats struct {
-	Rarity              string  `json:"rarity"`
-	TotalCards          int     `json:"total_cards"`
-	MaxLevelCards       int     `json:"max_level_cards"`
-	UpgradableCards     int     `json:"upgradable_cards"`
-	AvgLevel            float64 `json:"avg_level"`
-	AvgProgressPercent  float64 `json:"avg_progress_percent"`
-	TotalCardsNeeded    int     `json:"total_cards_needed"`     // Total cards needed for all upgrades
-	CompletionPercent   float64 `json:"completion_percent"`     // % of cards at max level
+	Rarity             string  `json:"rarity"`
+	TotalCards         int     `json:"total_cards"`
+	MaxLevelCards      int     `json:"max_level_cards"`
+	UpgradableCards    int     `json:"upgradable_cards"`
+	AvgLevel           float64 `json:"avg_level"`
+	AvgProgressPercent float64 `json:"avg_progress_percent"`
+	TotalCardsNeeded   int     `json:"total_cards_needed"` // Total cards needed for all upgrades
+	CompletionPercent  float64 `json:"completion_percent"` // % of cards at max level
 }
 
 // CalculateRarityStats computes aggregate statistics for cards of a specific rarity

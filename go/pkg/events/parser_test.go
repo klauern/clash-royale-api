@@ -243,8 +243,8 @@ func TestParser_IsNewEvent(t *testing.T) {
 		{
 			name: "No current group",
 			battle: clashroyale.Battle{
-				UTCDate: baseTime,
-				GameMode:   clashroyale.GameMode{Name: "Grand Challenge"},
+				UTCDate:  baseTime,
+				GameMode: clashroyale.GameMode{Name: "Grand Challenge"},
 			},
 			currentGroup: nil,
 			expected:     true,
@@ -252,65 +252,65 @@ func TestParser_IsNewEvent(t *testing.T) {
 		{
 			name: "Time gap > 1 hour",
 			battle: clashroyale.Battle{
-				UTCDate: baseTime.Add(2 * time.Hour),
-				GameMode:   clashroyale.GameMode{Name: "Grand Challenge"},
+				UTCDate:  baseTime.Add(2 * time.Hour),
+				GameMode: clashroyale.GameMode{Name: "Grand Challenge"},
 			},
 			currentGroup: &eventGroup{
-				eventType:  EventTypeGrandChallenge,
-				startTime:  baseTime,
-				deckCards:  []string{"Knight", "Archers"},
-				battles:    []clashroyale.Battle{{UTCDate: baseTime}},
+				eventType: EventTypeGrandChallenge,
+				startTime: baseTime,
+				deckCards: []string{"Knight", "Archers"},
+				battles:   []clashroyale.Battle{{UTCDate: baseTime}},
 			},
 			expected: true,
 		},
 		{
 			name: "Different event type",
 			battle: clashroyale.Battle{
-				UTCDate: baseTime.Add(10 * time.Minute),
-				GameMode:   clashroyale.GameMode{Name: "Classic Challenge"},
+				UTCDate:  baseTime.Add(10 * time.Minute),
+				GameMode: clashroyale.GameMode{Name: "Classic Challenge"},
 				Team: []clashroyale.BattleTeam{
 					{Cards: []clashroyale.Card{{Name: "Knight"}, {Name: "Archers"}}},
 				},
 			},
 			currentGroup: &eventGroup{
-				eventType:  EventTypeGrandChallenge,
-				startTime:  baseTime,
-				deckCards:  []string{"Archers", "Knight"},
-				battles:    []clashroyale.Battle{{UTCDate: baseTime}},
+				eventType: EventTypeGrandChallenge,
+				startTime: baseTime,
+				deckCards: []string{"Archers", "Knight"},
+				battles:   []clashroyale.Battle{{UTCDate: baseTime}},
 			},
 			expected: true,
 		},
 		{
 			name: "Different deck",
 			battle: clashroyale.Battle{
-				UTCDate: baseTime.Add(10 * time.Minute),
-				GameMode:   clashroyale.GameMode{Name: "Grand Challenge"},
+				UTCDate:  baseTime.Add(10 * time.Minute),
+				GameMode: clashroyale.GameMode{Name: "Grand Challenge"},
 				Team: []clashroyale.BattleTeam{
 					{Cards: []clashroyale.Card{{Name: "Giant"}, {Name: "Wizard"}}},
 				},
 			},
 			currentGroup: &eventGroup{
-				eventType:  EventTypeGrandChallenge,
-				startTime:  baseTime,
-				deckCards:  []string{"Archers", "Knight"},
-				battles:    []clashroyale.Battle{{UTCDate: baseTime}},
+				eventType: EventTypeGrandChallenge,
+				startTime: baseTime,
+				deckCards: []string{"Archers", "Knight"},
+				battles:   []clashroyale.Battle{{UTCDate: baseTime}},
 			},
 			expected: true,
 		},
 		{
 			name: "Same event continues",
 			battle: clashroyale.Battle{
-				UTCDate: baseTime.Add(10 * time.Minute),
-				GameMode:   clashroyale.GameMode{Name: "Grand Challenge"},
+				UTCDate:  baseTime.Add(10 * time.Minute),
+				GameMode: clashroyale.GameMode{Name: "Grand Challenge"},
 				Team: []clashroyale.BattleTeam{
 					{Cards: []clashroyale.Card{{Name: "Archers"}, {Name: "Knight"}}},
 				},
 			},
 			currentGroup: &eventGroup{
-				eventType:  EventTypeGrandChallenge,
-				startTime:  baseTime,
-				deckCards:  []string{"Archers", "Knight"},
-				battles:    []clashroyale.Battle{{UTCDate: baseTime}},
+				eventType: EventTypeGrandChallenge,
+				startTime: baseTime,
+				deckCards: []string{"Archers", "Knight"},
+				battles:   []clashroyale.Battle{{UTCDate: baseTime}},
 			},
 			expected: false,
 		},
@@ -332,15 +332,15 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 	trophyChange := 10
 
 	tests := []struct {
-		name     string
-		battle   clashroyale.Battle
-		wantNil  bool
+		name    string
+		battle  clashroyale.Battle
+		wantNil bool
 	}{
 		{
 			name: "Valid win battle",
 			battle: clashroyale.Battle{
-				UTCDate: battleTime,
-				GameMode:   clashroyale.GameMode{Name: "Grand Challenge"},
+				UTCDate:  battleTime,
+				GameMode: clashroyale.GameMode{Name: "Grand Challenge"},
 				Team: []clashroyale.BattleTeam{
 					{
 						Tag:          "#PLAYER",
@@ -362,8 +362,8 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 		{
 			name: "Valid loss battle",
 			battle: clashroyale.Battle{
-				UTCDate: battleTime,
-				GameMode:   clashroyale.GameMode{Name: "Grand Challenge"},
+				UTCDate:  battleTime,
+				GameMode: clashroyale.GameMode{Name: "Grand Challenge"},
 				Team: []clashroyale.BattleTeam{
 					{
 						Tag:    "#PLAYER",
@@ -384,9 +384,9 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 		{
 			name: "No team data",
 			battle: clashroyale.Battle{
-				UTCDate: battleTime,
-				GameMode:   clashroyale.GameMode{Name: "Grand Challenge"},
-				Team:       []clashroyale.BattleTeam{},
+				UTCDate:  battleTime,
+				GameMode: clashroyale.GameMode{Name: "Grand Challenge"},
+				Team:     []clashroyale.BattleTeam{},
 				Opponent: []clashroyale.BattleTeam{
 					{Tag: "#OPPONENT", Name: "Opponent", Crowns: 1},
 				},
@@ -396,8 +396,8 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 		{
 			name: "No opponent data",
 			battle: clashroyale.Battle{
-				UTCDate: battleTime,
-				GameMode:   clashroyale.GameMode{Name: "Grand Challenge"},
+				UTCDate:  battleTime,
+				GameMode: clashroyale.GameMode{Name: "Grand Challenge"},
 				Team: []clashroyale.BattleTeam{
 					{Tag: "#PLAYER", Name: "Player", Crowns: 3},
 				},
@@ -506,24 +506,24 @@ func TestParser_GroupBattlesByEvent(t *testing.T) {
 	battles := []clashroyale.Battle{
 		// Event 1: Grand Challenge (3 battles)
 		{
-			UTCDate:     baseTime,
-			GameMode:       clashroyale.GameMode{Name: "Grand Challenge"},
+			UTCDate:            baseTime,
+			GameMode:           clashroyale.GameMode{Name: "Grand Challenge"},
 			IsLadderTournament: false,
 			Team: []clashroyale.BattleTeam{
 				{Cards: []clashroyale.Card{{Name: "Knight"}, {Name: "Archers"}, {Name: "Fireball"}, {Name: "Zap"}, {Name: "Giant"}, {Name: "Musketeer"}, {Name: "Valkyrie"}, {Name: "Mini P.E.K.K.A"}}},
 			},
 		},
 		{
-			UTCDate:     baseTime.Add(5 * time.Minute),
-			GameMode:       clashroyale.GameMode{Name: "Grand Challenge"},
+			UTCDate:            baseTime.Add(5 * time.Minute),
+			GameMode:           clashroyale.GameMode{Name: "Grand Challenge"},
 			IsLadderTournament: false,
 			Team: []clashroyale.BattleTeam{
 				{Cards: []clashroyale.Card{{Name: "Knight"}, {Name: "Archers"}, {Name: "Fireball"}, {Name: "Zap"}, {Name: "Giant"}, {Name: "Musketeer"}, {Name: "Valkyrie"}, {Name: "Mini P.E.K.K.A"}}},
 			},
 		},
 		{
-			UTCDate:     baseTime.Add(10 * time.Minute),
-			GameMode:       clashroyale.GameMode{Name: "Grand Challenge"},
+			UTCDate:            baseTime.Add(10 * time.Minute),
+			GameMode:           clashroyale.GameMode{Name: "Grand Challenge"},
 			IsLadderTournament: false,
 			Team: []clashroyale.BattleTeam{
 				{Cards: []clashroyale.Card{{Name: "Knight"}, {Name: "Archers"}, {Name: "Fireball"}, {Name: "Zap"}, {Name: "Giant"}, {Name: "Musketeer"}, {Name: "Valkyrie"}, {Name: "Mini P.E.K.K.A"}}},
@@ -531,22 +531,22 @@ func TestParser_GroupBattlesByEvent(t *testing.T) {
 		},
 		// Ladder battle (should be filtered out)
 		{
-			UTCDate:     baseTime.Add(15 * time.Minute),
-			GameMode:       clashroyale.GameMode{Name: "Ladder"},
+			UTCDate:            baseTime.Add(15 * time.Minute),
+			GameMode:           clashroyale.GameMode{Name: "Ladder"},
 			IsLadderTournament: false,
 		},
 		// Event 2: Classic Challenge with different deck (2 battles)
 		{
-			UTCDate:     baseTime.Add(2 * time.Hour),
-			GameMode:       clashroyale.GameMode{Name: "Classic Challenge"},
+			UTCDate:            baseTime.Add(2 * time.Hour),
+			GameMode:           clashroyale.GameMode{Name: "Classic Challenge"},
 			IsLadderTournament: false,
 			Team: []clashroyale.BattleTeam{
 				{Cards: []clashroyale.Card{{Name: "Hog Rider"}, {Name: "Goblins"}, {Name: "Rocket"}, {Name: "Log"}, {Name: "Ice Spirit"}, {Name: "Cannon"}, {Name: "Fireball"}, {Name: "Skeletons"}}},
 			},
 		},
 		{
-			UTCDate:     baseTime.Add(2*time.Hour + 5*time.Minute),
-			GameMode:       clashroyale.GameMode{Name: "Classic Challenge"},
+			UTCDate:            baseTime.Add(2*time.Hour + 5*time.Minute),
+			GameMode:           clashroyale.GameMode{Name: "Classic Challenge"},
 			IsLadderTournament: false,
 			Team: []clashroyale.BattleTeam{
 				{Cards: []clashroyale.Card{{Name: "Hog Rider"}, {Name: "Goblins"}, {Name: "Rocket"}, {Name: "Log"}, {Name: "Ice Spirit"}, {Name: "Cannon"}, {Name: "Fireball"}, {Name: "Skeletons"}}},

@@ -11,10 +11,10 @@ import (
 
 // Client represents a Clash Royale API client
 type Client struct {
-	httpClient *http.Client
-	apiToken   string
+	httpClient  *http.Client
+	apiToken    string
 	rateLimiter ratelimit.Limiter
-	baseURL    string
+	baseURL     string
 }
 
 // NewClient creates a new Clash Royale API client

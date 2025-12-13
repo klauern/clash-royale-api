@@ -285,18 +285,18 @@ func TestBuilder_ResolveElixir(t *testing.T) {
 		expected int
 	}{
 		{
-			name: "Elixir in data",
-			data: CardLevelData{Elixir: 5},
+			name:     "Elixir in data",
+			data:     CardLevelData{Elixir: 5},
 			expected: 5,
 		},
 		{
-			name: "Fallback elixir",
-			data: CardLevelData{},
+			name:     "Fallback elixir",
+			data:     CardLevelData{},
 			expected: 4, // Default fallback
 		},
 		{
-			name: "Known card fallback",
-			data: CardLevelData{},
+			name:     "Known card fallback",
+			data:     CardLevelData{},
 			expected: 4, // Hog Rider fallback
 		},
 	}

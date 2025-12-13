@@ -14,9 +14,9 @@ import (
 
 // Manager manages event deck storage, retrieval, and analysis
 type Manager struct {
-	dataDir        string
-	eventDecksDir  string
-	parser         *Parser
+	dataDir       string
+	eventDecksDir string
+	parser        *Parser
 }
 
 // NewManager creates a new event deck manager

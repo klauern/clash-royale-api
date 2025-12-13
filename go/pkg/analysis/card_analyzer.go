@@ -126,14 +126,14 @@ func calculateRarityBreakdown(infos []UpgradeInfo) map[string]RarityStats {
 
 		cardCount := len(cards)
 		breakdown[rarity] = RarityStats{
-			Rarity:              rarity,
-			TotalCards:          cardCount,
-			TotalPossible:       totalCardsPerRarity[rarity],
-			MaxLevelCards:       maxLevelCount,
-			AvgLevel:            float64(totalLevel) / float64(cardCount),
-			AvgLevelRatio:       totalLevelRatio / float64(cardCount),
-			CardsNearMax:        cardsNearMax,
-			CardsReadyUpgrade:   cardsReadyUpgrade,
+			Rarity:            rarity,
+			TotalCards:        cardCount,
+			TotalPossible:     totalCardsPerRarity[rarity],
+			MaxLevelCards:     maxLevelCount,
+			AvgLevel:          float64(totalLevel) / float64(cardCount),
+			AvgLevelRatio:     totalLevelRatio / float64(cardCount),
+			CardsNearMax:      cardsNearMax,
+			CardsReadyUpgrade: cardsReadyUpgrade,
 		}
 	}
 

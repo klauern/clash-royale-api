@@ -54,26 +54,26 @@ func (cli *CardLevelInfo) ProgressToNext() float64 {
 
 // RarityStats provides aggregate statistics for cards of a specific rarity
 type RarityStats struct {
-	Rarity           string  `json:"rarity"`
-	TotalCards       int     `json:"total_cards"`
-	TotalPossible    int     `json:"total_possible,omitempty"`
-	MaxLevelCards    int     `json:"max_level_cards"`
-	AvgLevel         float64 `json:"avg_level"`
-	AvgLevelRatio    float64 `json:"avg_level_ratio"`
-	CardsNearMax     int     `json:"cards_near_max"`      // Within 1-2 levels of max
-	CardsReadyUpgrade int    `json:"cards_ready_upgrade"` // Have enough cards to upgrade
+	Rarity            string  `json:"rarity"`
+	TotalCards        int     `json:"total_cards"`
+	TotalPossible     int     `json:"total_possible,omitempty"`
+	MaxLevelCards     int     `json:"max_level_cards"`
+	AvgLevel          float64 `json:"avg_level"`
+	AvgLevelRatio     float64 `json:"avg_level_ratio"`
+	CardsNearMax      int     `json:"cards_near_max"`      // Within 1-2 levels of max
+	CardsReadyUpgrade int     `json:"cards_ready_upgrade"` // Have enough cards to upgrade
 }
 
 // UpgradePriority represents a card recommended for upgrade with scoring
 type UpgradePriority struct {
-	CardName      string  `json:"card_name"`
-	Rarity        string  `json:"rarity"`
-	CurrentLevel  int     `json:"current_level"`
-	MaxLevel      int     `json:"max_level"`
-	CardsOwned    int     `json:"cards_owned"`
-	CardsNeeded   int     `json:"cards_needed"`
-	Priority      string  `json:"priority"`       // "high", "medium", "low"
-	PriorityScore float64 `json:"priority_score"` // 0-100
+	CardName      string   `json:"card_name"`
+	Rarity        string   `json:"rarity"`
+	CurrentLevel  int      `json:"current_level"`
+	MaxLevel      int      `json:"max_level"`
+	CardsOwned    int      `json:"cards_owned"`
+	CardsNeeded   int      `json:"cards_needed"`
+	Priority      string   `json:"priority"`       // "high", "medium", "low"
+	PriorityScore float64  `json:"priority_score"` // 0-100
 	Reasons       []string `json:"reasons"`
 }
 
@@ -92,33 +92,33 @@ func (up *UpgradePriority) PercentageComplete() float64 {
 
 // CollectionSummary provides high-level overview statistics
 type CollectionSummary struct {
-	TotalCards       int     `json:"total_cards"`
-	MaxLevelCards    int     `json:"max_level_cards"`
-	UpgradableCards  int     `json:"upgradable_cards"`    // Ready to upgrade now
-	AvgCardLevel     float64 `json:"avg_card_level"`
-	AvgLevelRatio    float64 `json:"avg_level_ratio"`     // Overall progress (0-1)
+	TotalCards        int     `json:"total_cards"`
+	MaxLevelCards     int     `json:"max_level_cards"`
+	UpgradableCards   int     `json:"upgradable_cards"` // Ready to upgrade now
+	AvgCardLevel      float64 `json:"avg_card_level"`
+	AvgLevelRatio     float64 `json:"avg_level_ratio"`    // Overall progress (0-1)
 	CompletionPercent float64 `json:"completion_percent"` // Max level cards / total
 }
 
 // AnalysisOptions configures card collection analysis behavior
 type AnalysisOptions struct {
-	IncludeMaxLevel     bool     `json:"include_max_level"`      // Include max level cards in analysis
-	MinPriorityScore    float64  `json:"min_priority_score"`     // Minimum score for upgrade priority list
-	FocusRarities       []string `json:"focus_rarities"`         // Filter to specific rarities
-	ExcludeCards        []string `json:"exclude_cards"`          // Cards to exclude from recommendations
-	PrioritizeWinCons   bool     `json:"prioritize_win_cons"`    // Boost priority for win condition cards
-	TopN                int      `json:"top_n"`                  // Return only top N upgrade priorities
+	IncludeMaxLevel   bool     `json:"include_max_level"`   // Include max level cards in analysis
+	MinPriorityScore  float64  `json:"min_priority_score"`  // Minimum score for upgrade priority list
+	FocusRarities     []string `json:"focus_rarities"`      // Filter to specific rarities
+	ExcludeCards      []string `json:"exclude_cards"`       // Cards to exclude from recommendations
+	PrioritizeWinCons bool     `json:"prioritize_win_cons"` // Boost priority for win condition cards
+	TopN              int      `json:"top_n"`               // Return only top N upgrade priorities
 }
 
 // DefaultAnalysisOptions returns sensible defaults for card analysis
 func DefaultAnalysisOptions() AnalysisOptions {
 	return AnalysisOptions{
-		IncludeMaxLevel:  false,
-		MinPriorityScore: 30.0,
-		FocusRarities:    []string{},
-		ExcludeCards:     []string{},
+		IncludeMaxLevel:   false,
+		MinPriorityScore:  30.0,
+		FocusRarities:     []string{},
+		ExcludeCards:      []string{},
 		PrioritizeWinCons: true,
-		TopN:             15,
+		TopN:              15,
 	}
 }
 
@@ -213,10 +213,10 @@ func (ca *CardAnalysis) UnmarshalJSON(data []byte) error {
 
 // Error types for analysis operations
 var (
-	ErrMissingPlayerTag   = &AnalysisError{Code: "MISSING_PLAYER_TAG", Message: "player tag is required"}
-	ErrInvalidCardCount   = &AnalysisError{Code: "INVALID_CARD_COUNT", Message: "card count cannot be negative"}
-	ErrCardCountMismatch  = &AnalysisError{Code: "CARD_COUNT_MISMATCH", Message: "card levels count does not match total cards"}
-	ErrNoUpgradePriorities = &AnalysisError{Code: "NO_UPGRADE_PRIORITIES", Message: "no upgrade priorities found"}
+	ErrMissingPlayerTag     = &AnalysisError{Code: "MISSING_PLAYER_TAG", Message: "player tag is required"}
+	ErrInvalidCardCount     = &AnalysisError{Code: "INVALID_CARD_COUNT", Message: "card count cannot be negative"}
+	ErrCardCountMismatch    = &AnalysisError{Code: "CARD_COUNT_MISMATCH", Message: "card levels count does not match total cards"}
+	ErrNoUpgradePriorities  = &AnalysisError{Code: "NO_UPGRADE_PRIORITIES", Message: "no upgrade priorities found"}
 	ErrInvalidPriorityScore = &AnalysisError{Code: "INVALID_PRIORITY_SCORE", Message: "priority score must be between 0 and 100"}
 )
 

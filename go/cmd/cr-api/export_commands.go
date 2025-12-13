@@ -185,11 +185,17 @@ func addExportCommands() *cli.Command {
 						Usage:    "Player tag (without #)",
 						Required: true,
 					},
+					&cli.IntFlag{
+						Name:  "limit",
+						Value: 0,
+						Usage: "Maximum number of battles to export (0 for all)",
+					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					tag := cmd.String("tag")
 					apiToken := cmd.String("api-token")
 					dataDir := cmd.String("data-dir")
+					limit := cmd.Int("limit")
 
 					if apiToken == "" {
 						return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
@@ -203,6 +209,9 @@ func addExportCommands() *cli.Command {
 						return fmt.Errorf("failed to get battle log: %w", err)
 					}
 					battles := []clashroyale.Battle(*battleLog)
+					if limit > 0 && limit < len(battles) {
+						battles = battles[:limit]
+					}
 
 					// Create export directory
 					exportDir := filepath.Join(dataDir, "csv", "battles")
@@ -254,7 +263,7 @@ func addExportCommands() *cli.Command {
 					for _, battle := range battles {
 						// Consider any battle from special events as an event battle
 						if battle.GameMode.Name != "Ladder" && battle.GameMode.Name != "Training Camp" &&
-						   battle.GameMode.Name != "1v1" && battle.GameMode.Name != "2v2" {
+							battle.GameMode.Name != "1v1" && battle.GameMode.Name != "2v2" {
 							eventBattles = append(eventBattles, battle)
 						}
 					}
@@ -284,6 +293,10 @@ func addExportCommands() *cli.Command {
 						Aliases:  []string{"p"},
 						Usage:    "Player tag (without #)",
 						Required: true,
+					},
+					&cli.BoolFlag{
+						Name:  "timestamp",
+						Usage: "Include timestamp in exported filenames",
 					},
 				},
 				Action: func(ctx context.Context, cmd *cli.Command) error {
@@ -378,7 +391,7 @@ func addExportCommands() *cli.Command {
 					for _, battle := range battles {
 						// Consider any battle from special events as an event battle
 						if battle.GameMode.Name != "Ladder" && battle.GameMode.Name != "Training Camp" &&
-						   battle.GameMode.Name != "1v1" && battle.GameMode.Name != "2v2" {
+							battle.GameMode.Name != "1v1" && battle.GameMode.Name != "2v2" {
 							eventBattles = append(eventBattles, battle)
 						}
 					}

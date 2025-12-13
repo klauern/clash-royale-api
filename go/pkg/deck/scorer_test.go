@@ -8,12 +8,12 @@ import (
 // TestScoreCard validates the scoring algorithm matches expected Python behavior
 func TestScoreCard(t *testing.T) {
 	tests := []struct {
-		name       string
-		level      int
-		maxLevel   int
-		rarity     string
-		elixir     int
-		role       *CardRole
+		name         string
+		level        int
+		maxLevel     int
+		rarity       string
+		elixir       int
+		role         *CardRole
 		wantScoreMin float64
 		wantScoreMax float64
 	}{
