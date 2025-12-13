@@ -5,10 +5,11 @@ Utilities for building Clash Royale decks from saved card analysis data.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Optional
 
 
 @dataclass
@@ -250,7 +251,7 @@ class DeckBuilder:
             if strict:
                 raise FileNotFoundError(f"Analysis file not found: {path}")
             return {}
-        with open(path, "r") as f:
+        with open(path) as f:
             return json.load(f)
 
     def load_latest_analysis(
