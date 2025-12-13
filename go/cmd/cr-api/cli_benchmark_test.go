@@ -5,8 +5,6 @@ import (
 	"os"
 	"testing"
 	"time"
-
-	"github.com/urfave/cli/v3"
 )
 
 // BenchmarkCLICommands benchmarks CLI command performance

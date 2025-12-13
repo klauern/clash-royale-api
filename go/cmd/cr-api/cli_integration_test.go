@@ -15,12 +15,6 @@ func TestCLIIntegration(t *testing.T) {
 	// Set test environment
 	os.Setenv("CLASH_ROYALE_API_TOKEN", "test_token")
 
-	// Create temporary test directory
-	tempDir := t.TempDir()
-
-	// Create test command
-	cmd := createTestCommand(tempDir)
-
 	tests := []struct {
 		name     string
 		args     []string
@@ -431,13 +425,13 @@ func mockPlayerCommand(cmd *cli.Command) error {
 
 		// Create mock CSV file
 		csvFile := filepath.Join(playersDir, "players.csv")
-		os.WriteFile(csvFile, []mockPlayerCSV, 0644)
+		os.WriteFile(csvFile, []byte(mockPlayerCSV), 0644)
 
 		// Create mock JSON file
 		if cmd.Bool("save") {
 			jsonFile := filepath.Join(dataDir, "players", "TEST12345.json")
 			os.MkdirAll(filepath.Dir(jsonFile), 0755)
-			os.WriteFile(jsonFile, []mockPlayerJSON, 0644)
+			os.WriteFile(jsonFile, []byte(mockPlayerJSON), 0644)
 		}
 	}
 
@@ -451,7 +445,7 @@ func mockCardsCommand(cmd *cli.Command) error {
 		os.MkdirAll(refDir, 0755)
 
 		csvFile := filepath.Join(refDir, "cards.csv")
-		os.WriteFile(csvFile, []mockCardsCSV, 0644)
+		os.WriteFile(csvFile, []byte(mockCardsCSV), 0644)
 	}
 
 	return nil
@@ -465,7 +459,7 @@ func mockAnalyzeCommand(cmd *cli.Command) error {
 		os.MkdirAll(analysisDir, 0755)
 
 		csvFile := filepath.Join(analysisDir, "card_analysis.csv")
-		os.WriteFile(csvFile, []mockAnalysisCSV, 0644)
+		os.WriteFile(csvFile, []byte(mockAnalysisCSV), 0644)
 	}
 
 	if cmd.Bool("save") {
@@ -473,7 +467,7 @@ func mockAnalyzeCommand(cmd *cli.Command) error {
 		os.MkdirAll(analysisDir, 0755)
 
 		jsonFile := filepath.Join(analysisDir, "TEST12345.json")
-		os.WriteFile(jsonFile, []mockAnalysisJSON, 0644)
+		os.WriteFile(jsonFile, []byte(mockAnalysisJSON), 0644)
 	}
 
 	return nil
