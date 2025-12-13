@@ -49,6 +49,9 @@ func main() {
 			},
 		},
 		Commands: []*cli.Command{
+			addDeckCommands(),
+			addEventCommands(),
+			addExportCommands(),
 			{
 				Name:  "player",
 				Usage: "Get player information",
@@ -407,8 +410,16 @@ func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Export to CSV if requested
 	if exportCSV {
-		// TODO: Implement analysis CSV exporter
-		fmt.Printf("Note: CSV export for analysis not yet implemented\n")
+		dataDir := cmd.String("data-dir")
+		if verbose {
+			fmt.Printf("\nExporting analysis to CSV...\n")
+		}
+		analysisExporter := csv.NewAnalysisExporter()
+		if err := analysisExporter.Export(dataDir, cardAnalysis); err != nil {
+			fmt.Printf("Warning: Failed to export analysis: %v\n", err)
+		} else {
+			fmt.Printf("Analysis exported to CSV\n")
+		}
 	}
 
 	return nil
