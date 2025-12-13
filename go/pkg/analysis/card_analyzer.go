@@ -41,6 +41,14 @@ func AnalyzeCardCollection(player *clashroyale.Player, options AnalysisOptions) 
 		UpgradePriority: upgradePriorities,
 	}
 
+	// Populate max level cards list
+	analysis.MaxLevelCards = make([]string, 0)
+	for name, card := range analysis.CardLevels {
+		if card.IsMaxLevel {
+			analysis.MaxLevelCards = append(analysis.MaxLevelCards, name)
+		}
+	}
+
 	// Calculate summary
 	analysis.CalculateSummary()
 
@@ -56,7 +64,7 @@ func AnalyzeCardCollection(player *clashroyale.Player, options AnalysisOptions) 
 func convertCardsToUpgradeInfos(cards []clashroyale.Card) []UpgradeInfo {
 	infos := make([]UpgradeInfo, 0, len(cards))
 	for _, card := range cards {
-		info := CalculateUpgradeInfo(card.Name, card.Rarity, card.Level, card.Count)
+		info := CalculateUpgradeInfo(card.Name, card.Rarity, card.ElixirCost, card.Level, card.Count)
 		infos = append(infos, info)
 	}
 	return infos
@@ -72,6 +80,7 @@ func buildCardLevelsMap(infos []UpgradeInfo) map[string]CardLevelInfo {
 			Level:       info.CurrentLevel,
 			MaxLevel:    info.MaxLevel,
 			Rarity:      info.Rarity,
+			Elixir:      info.ElixirCost,
 			CardCount:   info.CardsOwned,
 			CardsToNext: info.CardsToNextLevel,
 			IsMaxLevel:  info.IsMaxLevel,
@@ -119,6 +128,7 @@ func calculateRarityBreakdown(infos []UpgradeInfo) map[string]RarityStats {
 		breakdown[rarity] = RarityStats{
 			Rarity:              rarity,
 			TotalCards:          cardCount,
+			TotalPossible:       totalCardsPerRarity[rarity],
 			MaxLevelCards:       maxLevelCount,
 			AvgLevel:            float64(totalLevel) / float64(cardCount),
 			AvgLevelRatio:       totalLevelRatio / float64(cardCount),

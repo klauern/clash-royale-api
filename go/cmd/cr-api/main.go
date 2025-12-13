@@ -60,16 +60,16 @@ func main() {
 						Required: true,
 					},
 					&cli.BoolFlag{
-						Name:    "chests",
-						Usage:   "Show upcoming chests",
+						Name:  "chests",
+						Usage: "Show upcoming chests",
 					},
 					&cli.BoolFlag{
-						Name:    "save",
-						Usage:   "Save player data to file",
+						Name:  "save",
+						Usage: "Save player data to file",
 					},
 					&cli.BoolFlag{
-						Name:    "export-csv",
-						Usage:   "Export player data to CSV",
+						Name:  "export-csv",
+						Usage: "Export player data to CSV",
 					},
 				},
 				Action: playerCommand,
@@ -79,8 +79,8 @@ func main() {
 				Usage: "Get card database",
 				Flags: []cli.Flag{
 					&cli.BoolFlag{
-						Name:    "export-csv",
-						Usage:   "Export card database to CSV",
+						Name:  "export-csv",
+						Usage: "Export card database to CSV",
 					},
 				},
 				Action: cardsCommand,
@@ -96,39 +96,39 @@ func main() {
 						Required: true,
 					},
 					&cli.BoolFlag{
-						Name:    "include-max-level",
-						Usage:   "Include max level cards in analysis",
+						Name:  "include-max-level",
+						Usage: "Include max level cards in analysis",
 					},
 					&cli.Float64Flag{
-						Name:    "min-priority-score",
-						Value:   30.0,
-						Usage:   "Minimum priority score for upgrade recommendations",
+						Name:  "min-priority-score",
+						Value: 30.0,
+						Usage: "Minimum priority score for upgrade recommendations",
 					},
 					&cli.StringSliceFlag{
-						Name:    "focus-rarities",
-						Usage:   "Focus on specific rarities (Common, Rare, Epic, Legendary, Champion)",
+						Name:  "focus-rarities",
+						Usage: "Focus on specific rarities (Common, Rare, Epic, Legendary, Champion)",
 					},
 					&cli.StringSliceFlag{
-						Name:    "exclude-cards",
-						Usage:   "Exclude specific cards from recommendations",
+						Name:  "exclude-cards",
+						Usage: "Exclude specific cards from recommendations",
 					},
 					&cli.BoolFlag{
-						Name:    "prioritize-win-cons",
-						Value:   true,
-						Usage:   "Boost priority for win condition cards",
+						Name:  "prioritize-win-cons",
+						Value: true,
+						Usage: "Boost priority for win condition cards",
 					},
 					&cli.IntFlag{
-						Name:    "top-n",
-						Value:   15,
-						Usage:   "Show top N upgrade priorities",
+						Name:  "top-n",
+						Value: 15,
+						Usage: "Show top N upgrade priorities",
 					},
 					&cli.BoolFlag{
-						Name:    "save",
-						Usage:   "Save analysis to JSON file",
+						Name:  "save",
+						Usage: "Save analysis to JSON file",
 					},
 					&cli.BoolFlag{
-						Name:    "export-csv",
-						Usage:   "Export analysis to CSV",
+						Name:  "export-csv",
+						Usage: "Export analysis to CSV",
 					},
 				},
 				Action: analyzeCommand,
@@ -305,7 +305,7 @@ func cardsCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Always display cards unless only exporting
 	if !exportCSV {
-		displayCards(*cards)
+		displayCards(cards.Items)
 	}
 
 	// Export to CSV if requested
@@ -315,7 +315,7 @@ func cardsCommand(ctx context.Context, cmd *cli.Command) error {
 			fmt.Printf("\nExporting card database to CSV...\n")
 		}
 		cardsExporter := csv.NewCardsExporter()
-		if err := cardsExporter.Export(dataDir, *cards); err != nil {
+		if err := cardsExporter.Export(dataDir, cards.Items); err != nil {
 			fmt.Printf("Warning: Failed to export cards: %v\n", err)
 		} else {
 			fmt.Printf("Card database exported to CSV\n")
@@ -358,12 +358,12 @@ func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Build analysis options from CLI flags
 	options := analysis.AnalysisOptions{
-		IncludeMaxLevel:     cmd.Bool("include-max-level"),
-		MinPriorityScore:    cmd.Float64("min-priority-score"),
-		FocusRarities:       cmd.StringSlice("focus-rarities"),
-		ExcludeCards:        cmd.StringSlice("exclude-cards"),
-		PrioritizeWinCons:   cmd.Bool("prioritize-win-cons"),
-		TopN:                cmd.Int("top-n"),
+		IncludeMaxLevel:   cmd.Bool("include-max-level"),
+		MinPriorityScore:  cmd.Float64("min-priority-score"),
+		FocusRarities:     cmd.StringSlice("focus-rarities"),
+		ExcludeCards:      cmd.StringSlice("exclude-cards"),
+		PrioritizeWinCons: cmd.Bool("prioritize-win-cons"),
+		TopN:              cmd.Int("top-n"),
 	}
 
 	client := clashroyale.NewClient(apiToken)

@@ -227,7 +227,7 @@ func TestCalculateUpgradeProgress(t *testing.T) {
 
 // TestCalculateUpgradeInfo tests complete upgrade info generation
 func TestCalculateUpgradeInfo(t *testing.T) {
-	info := CalculateUpgradeInfo("Fire Spirit", "Common", 10, 500)
+	info := CalculateUpgradeInfo("Fire Spirit", "Common", 1, 10, 500)
 
 	// Verify basic fields
 	if info.CardName != "Fire Spirit" {
@@ -264,7 +264,7 @@ func TestCalculateUpgradeInfo(t *testing.T) {
 	}
 
 	// Test max level card
-	maxInfo := CalculateUpgradeInfo("Max Card", "Legendary", 14, 100)
+	maxInfo := CalculateUpgradeInfo("Max Card", "Legendary", 3, 14, 100)
 	if !maxInfo.IsMaxLevel {
 		t.Error("Max level card: IsMaxLevel = false, want true")
 	}

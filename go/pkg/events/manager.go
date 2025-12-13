@@ -373,3 +373,28 @@ func (m *Manager) DeleteEventDeck(playerTag, eventID string) error {
 
 	return fmt.Errorf("event deck file not found: %s", eventID)
 }
+
+// GetEventDeck retrieves a specific event deck by ID for a player
+func (m *Manager) GetEventDeck(eventID, playerTag string) (*EventDeck, error) {
+	// Get collection to find the deck
+	collection, err := m.GetCollection(playerTag)
+	if err != nil {
+		return nil, err
+	}
+
+	// Find the deck in collection
+	for _, deck := range collection.Decks {
+		if deck.EventID == eventID {
+			// Return a copy to avoid modifying the collection
+			deckCopy := deck
+			return &deckCopy, nil
+		}
+	}
+
+	return nil, fmt.Errorf("event deck not found: %s", eventID)
+}
+
+// GetPlayerEventDecks retrieves all event decks for a player
+func (m *Manager) GetPlayerEventDecks(playerTag string) (*EventDeckCollection, error) {
+	return m.GetCollection(playerTag)
+}

@@ -15,6 +15,7 @@ type CardAnalysis struct {
 	AnalysisTime    time.Time                `json:"analysis_time"`
 	TotalCards      int                      `json:"total_cards"`
 	CardLevels      map[string]CardLevelInfo `json:"card_levels"`
+	MaxLevelCards   []string                 `json:"max_level_cards,omitempty"`
 	RarityBreakdown map[string]RarityStats   `json:"rarity_breakdown"`
 	UpgradePriority []UpgradePriority        `json:"upgrade_priority"`
 	Summary         CollectionSummary        `json:"summary"`
@@ -27,6 +28,7 @@ type CardLevelInfo struct {
 	Level       int    `json:"level"`
 	MaxLevel    int    `json:"max_level"`
 	Rarity      string `json:"rarity"`
+	Elixir      int    `json:"elixir,omitempty"`
 	CardCount   int    `json:"card_count"`
 	CardsToNext int    `json:"cards_to_next_level"`
 	IsMaxLevel  bool   `json:"is_max_level"`
@@ -54,6 +56,7 @@ func (cli *CardLevelInfo) ProgressToNext() float64 {
 type RarityStats struct {
 	Rarity           string  `json:"rarity"`
 	TotalCards       int     `json:"total_cards"`
+	TotalPossible    int     `json:"total_possible,omitempty"`
 	MaxLevelCards    int     `json:"max_level_cards"`
 	AvgLevel         float64 `json:"avg_level"`
 	AvgLevelRatio    float64 `json:"avg_level_ratio"`
