@@ -8,9 +8,14 @@ vars:
   PROJECT_NAME: clash-royale-api
   DATA_DIR: data
   TEST_PLAYER_TAG: '#R8QGUQRCV'
+  GO_DIR: go
+  CR_API_BIN: '{{.GO_DIR}}/bin/cr-api'
+  DECKBUILDER_BIN: '{{.GO_DIR}}/bin/deckbuilder'
 
 env:
   PYTHONPATH: './src'
+
+dotenv: ['.env']
 
 tasks:
   default:
@@ -23,6 +28,7 @@ tasks:
     cmds:
       - echo "Setting up development environment..."
       - uv sync
+      - task: build-go
       - echo "Creating data directories..."
       - mkdir -p {{.DATA_DIR}}/{players,clans,analysis,static,reference}
       - mkdir -p scripts
@@ -33,77 +39,166 @@ tasks:
       - echo "Please edit .env file with your API token"
 
   install:
-    desc: Install dependencies
+    desc: Install dependencies and build Go binaries
     cmds:
       - uv sync
+      - task: build-go
+
+  build-go:
+    desc: Build Go CLI binaries
+    dir: go
+    cmds:
+      - mkdir -p .cache
+      - GOCACHE=$(pwd)/.cache go mod download
+      - GOCACHE=$(pwd)/.cache go build -o bin/cr-api ./cmd/cr-api
+      - GOCACHE=$(pwd)/.cache go build -o bin/deckbuilder ./cmd/deckbuilder
 
   run:
-    desc: Run the CLI with player analysis
+    desc: Analyze a player's collection using the Go CLI
     summary: |
-      Analyze a player's card collection and display upgrade needs
+      Analyze a player's card collection and display upgrade needs using the Go binary
 
       Args:
         player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
     cmds:
       - |
         PLAYER_TAG="{{.CLI_ARGS}}"
-        if [ -n "$PLAYER_TAG" ]; then
-          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG"
-        else
-          echo "Using DEFAULT_PLAYER_TAG from .env..."
-          uv run python src/clash_royale_api/cli.py
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
         fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        CLEAN_TAG="${PLAYER_TAG#\#}"
+        echo "Analyzing $CLEAN_TAG with Go CLI..."
+        {{.CR_API_BIN}} analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build-go"
 
   run-with-save:
-    desc: Run CLI and save results to JSON files
+    desc: Run Go CLI analysis and save results to JSON files
     summary: |
-      Analyze a player and save the results to JSON files
+      Analyze a player and save the results to JSON files using the Go binary
 
       Args:
         player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
     cmds:
       - |
         PLAYER_TAG="{{.CLI_ARGS}}"
-        if [ -n "$PLAYER_TAG" ]; then
-          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --save
-        else
-          echo "Using DEFAULT_PLAYER_TAG from .env..."
-          uv run python src/clash_royale_api/cli.py --save
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
         fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        CLEAN_TAG="${PLAYER_TAG#\#}"
+        echo "Analyzing and saving results for $CLEAN_TAG..."
+        {{.CR_API_BIN}} analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --save
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build-go"
 
   export-csv:
-    desc: Export player data to CSV format
+    desc: Export player and reference data to CSV using the Go CLI
     summary: |
-      Export player's card collection and other data to CSV
+      Export player's card collection and other data to CSV using the Go binary
 
       Args:
         player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
     cmds:
       - |
         PLAYER_TAG="{{.CLI_ARGS}}"
-        if [ -n "$PLAYER_TAG" ]; then
-          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --export-csv
-        else
-          echo "Using DEFAULT_PLAYER_TAG from .env..."
-          uv run python src/clash_royale_api/cli.py --export-csv
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
         fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        CLEAN_TAG="${PLAYER_TAG#\#}"
+        echo "Exporting player data for $CLEAN_TAG to CSV..."
+        {{.CR_API_BIN}} player --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --export-csv --save
+
+        echo "Exporting card database to CSV..."
+        {{.CR_API_BIN}} cards --data-dir "{{.DATA_DIR}}" --export-csv
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build-go"
 
   export-all:
-    desc: Export all data types for a player
+    desc: Export all available data types for a player using the Go CLI
     summary: |
-      Export player, cards, battles, chests, and event decks data to CSV
+      Export player data, card database, and save analysis results using the Go binary
 
       Args:
         player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
     cmds:
       - |
         PLAYER_TAG="{{.CLI_ARGS}}"
-        if [ -n "$PLAYER_TAG" ]; then
-          uv run python src/clash_royale_api/cli.py --player "$PLAYER_TAG" --export-csv --csv-types all
-        else
-          echo "Using DEFAULT_PLAYER_TAG from .env..."
-          uv run python src/clash_royale_api/cli.py --export-csv --csv-types all
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
         fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        CLEAN_TAG="${PLAYER_TAG#\#}"
+        echo "Exporting full dataset for $CLEAN_TAG..."
+        {{.CR_API_BIN}} player --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --chests --export-csv --save
+        {{.CR_API_BIN}} cards --data-dir "{{.DATA_DIR}}" --export-csv
+        {{.CR_API_BIN}} analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --save
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build-go"
+
+  build-deck:
+    desc: Build an optimized 1v1 ladder deck from the latest analysis using Go binaries
+    summary: |
+      Runs card analysis (saved) and then builds a recommended 1v1 ladder deck.
+
+      Args:
+        player: Player tag to use (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        CLEAN_TAG="${PLAYER_TAG#\#}"
+
+        echo "Running analysis for $CLEAN_TAG..."
+        {{.CR_API_BIN}} analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --save
+
+        ANALYSIS_FILE="{{.DATA_DIR}}/analysis/${PLAYER_TAG}.json"
+        if [ ! -f "$ANALYSIS_FILE" ]; then
+          echo "Expected analysis file not found at $ANALYSIS_FILE" >&2
+          exit 1
+        fi
+
+        echo "Building optimized 1v1 deck from latest analysis..."
+        {{.DECKBUILDER_BIN}} -tag "$CLEAN_TAG" -data-dir "{{.DATA_DIR}}" -analysis-file "$ANALYSIS_FILE"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build-go"
+      - sh: test -x {{.DECKBUILDER_BIN}}
+        msg: "deckbuilder binary not found. Build it with: task build-go"
 
   # Event Deck Tasks
   scan-events:
