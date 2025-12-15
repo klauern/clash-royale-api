@@ -7,7 +7,7 @@ The Clash Royale CSV Export Tool allows you to export player data, card collecti
 ## Setup
 
 1. **Ensure your API token is configured**:
-   Edit `config/.env` and add your Clash Royale API token:
+   Copy `.env.example` to `.env` and add your Clash Royale API token:
    ```
    CLASH_ROYALE_API_TOKEN=your_api_token_here
    ```

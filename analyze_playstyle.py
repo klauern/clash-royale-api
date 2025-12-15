@@ -27,7 +27,7 @@ def analyze_playstyle(player_data: dict) -> dict:
 
     if not current_deck and 'cards' in player_data:
         # Try to find currentDeck from raw player data
-        with open('data/players/#R8QGUQRCV.json') as f:
+        with open('data/players/#PLAYERTAG.json') as f:
             raw_data = json.load(f)
             current_deck = raw_data.get('currentDeck', [])
 

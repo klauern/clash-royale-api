@@ -47,17 +47,17 @@ async def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  %(prog)s --player #R8QGUQRCV              # Analyze a specific player
-  %(prog)s --player #R8QGUQRCV --save       # Analyze and save player data
+  %(prog)s --player #PLAYERTAG              # Analyze a specific player
+  %(prog)s --player #PLAYERTAG --save       # Analyze and save player data
   %(prog)s --cards                         # Get all available cards
-  %(prog)s --player #R8QGUQRCV --chests    # Get player's upcoming chests
+  %(prog)s --player #PLAYERTAG --chests    # Get player's upcoming chests
 
   Event Deck Operations:
-  %(prog)s --player #R8QGUQRCV --scan-event-decks      # Scan battle logs for event decks
-  %(prog)s --player #R8QGUQRCV --export-event-decks   # Export event decks to CSV
-  %(prog)s --player #R8QGUQRCV --export-deck-builder  # Export in deck builder format
-  %(prog)s --player #R8QGUQRCV --analyze-events      # Analyze event performance
-  %(prog)s --player #R8QGUQRCV --sync-recent-events   # Sync recent event activity
+  %(prog)s --player #PLAYERTAG --scan-event-decks      # Scan battle logs for event decks
+  %(prog)s --player #PLAYERTAG --export-event-decks   # Export event decks to CSV
+  %(prog)s --player #PLAYERTAG --export-deck-builder  # Export in deck builder format
+  %(prog)s --player #PLAYERTAG --analyze-events      # Analyze event performance
+  %(prog)s --player #PLAYERTAG --sync-recent-events   # Sync recent event activity
         """,
     )
 

@@ -1,6 +1,6 @@
 # ZyLogan's Aggressive Fast-Cycle Deck Guide
 
-**Player:** ZyLogan (#R8QGUQRCV)
+**Player:** ZyLogan (#PLAYERTAG)
 **Trophy Range:** 2841 (Best: 2867)
 **Arena:** Jungle Arena
 **Playstyle:** VERY AGGRESSIVE (82.7% three-crown rate)

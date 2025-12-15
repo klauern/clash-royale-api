@@ -16,9 +16,8 @@ A comprehensive Python tool for collecting, analyzing, and tracking Clash Royale
 
 ```
 clash-royale-api/
-├── config/
-│   ├── .env.example          # Example configuration
-│   └── .env                  # Your actual configuration (with API token)
+├── .env.example               # Example configuration
+├── config/                    # Configuration directory
 ├── src/
 │   └── clash_royale_api/     # Python package
 │       ├── __init__.py       # Package initialization
@@ -31,6 +30,7 @@ clash-royale-api/
 ├── tests/                    # Test files
 ├── docs/                     # Additional documentation
 ├── pyproject.toml           # Project configuration and dependencies
+├── LICENSE                  # MIT License
 └── README.md                # This file
 ```
 
@@ -121,20 +121,20 @@ task status        # Show project status
 
 ```bash
 # Using uv (recommended)
-uv run python src/clash_royale_api/cli.py --player #R8QGUQRCV --save
+uv run python src/clash_royale_api/cli.py --player #PLAYERTAG --save
 
 # Basic player analysis
-uv run python src/clash_royale_api/cli.py --player #R8QGUQRCV
+uv run python src/clash_royale_api/cli.py --player #PLAYERTAG
 
 # Export to CSV
-uv run python src/clash_royale_api/cli.py --player #R8QGUQRCV --export-csv
+uv run python src/clash_royale_api/cli.py --player #PLAYERTAG --export-csv
 
 # Save results
-uv run python src/clash_royale_api/cli.py --player #R8QGUQRCV --save --format json
+uv run python src/clash_royale_api/cli.py --player #PLAYERTAG --save --format json
 
 # Auto-build a 1v1 ladder deck (uses latest saved analysis if present)
-uv run python src/clash_royale_api/cli.py --player #R8QGUQRCV --build-ladder-deck --save-deck
-uv run python src/clash_royale_api/cli.py --player #R8QGUQRCV --build-ladder-deck --analysis-file data/analysis/20251208_174559_analysis_R8QGUQRCV.json
+uv run python src/clash_royale_api/cli.py --player #PLAYERTAG --build-ladder-deck --save-deck
+uv run python src/clash_royale_api/cli.py --player #PLAYERTAG --build-ladder-deck --analysis-file data/analysis/20251208_174559_analysis_R8QGUQRCV.json
 ```
 
 ### Python API
@@ -205,7 +205,7 @@ CLASH_ROYALE_API_TOKEN=your_api_token_here
 ### Optional Configuration
 ```env
 # Default Player Tag (allows running tasks without arguments)
-DEFAULT_PLAYER_TAG=#R8QGUQRCV
+DEFAULT_PLAYER_TAG=#PLAYERTAG
 
 # API Configuration
 API_BASE_URL=https://api.clashroyale.com/v1
@@ -303,6 +303,8 @@ The client includes comprehensive error handling:
 4. Submit a pull request
 
 ## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 This project is for educational and personal use. Please respect Supercell's Terms of Service when using the Clash Royale API.
 

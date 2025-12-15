@@ -101,7 +101,7 @@ if grep -q "DEFAULT_PLAYER_TAG=" .env; then
     DEFAULT_PLAYER_TAG=$(grep "DEFAULT_PLAYER_TAG=" .env | cut -d'=' -f2- | tr -d '"' | tr -d "'")
     echo "Using DEFAULT_PLAYER_TAG from .env: $DEFAULT_PLAYER_TAG" | tee -a "${DEBUG_LIST}"
 else
-    DEFAULT_PLAYER_TAG="#R8QGUQRCV"
+    DEFAULT_PLAYER_TAG="#PLAYERTAG"
     echo "Using default player tag: $DEFAULT_PLAYER_TAG" | tee -a "${DEBUG_LIST}"
 fi
 export DEFAULT_PLAYER_TAG

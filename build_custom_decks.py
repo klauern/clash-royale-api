@@ -174,7 +174,7 @@ def save_deck(deck_data: dict, output_dir: Path, player_tag: str):
 
 def main():
     """Generate all custom decks."""
-    player_file = Path('data/players/#R8QGUQRCV.json')
+    player_file = Path('data/players/#PLAYERTAG.json')
     analysis_file = Path('data/analysis/20251208_174559_analysis_R8QGUQRCV.json')
     output_dir = Path('data/decks')
 

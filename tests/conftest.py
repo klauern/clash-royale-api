@@ -8,7 +8,7 @@ from pathlib import Path
 @pytest.fixture
 def test_player_tag():
     """Return a test player tag for testing purposes."""
-    return "#R8QGUQRCV"
+    return "#PLAYERTAG"
 
 
 @pytest.fixture

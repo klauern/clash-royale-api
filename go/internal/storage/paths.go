@@ -165,7 +165,7 @@ func (pb *PathBuilder) GetCSVAnalysisExportPath(playerTag string) string {
 }
 
 // SanitizePlayerTag removes # prefix and converts to safe filename
-// Example: #R8QGUQRCV -> R8QGUQRCV
+// Example: #PLAYERTAG -> R8QGUQRCV
 func SanitizePlayerTag(playerTag string) string {
 	return strings.TrimPrefix(playerTag, "#")
 }

@@ -10,7 +10,7 @@ Checking prerequisites...
 
 === Starting Task Execution ===
 
-Using DEFAULT_PLAYER_TAG from .env: #R8QGUQRCV
+Using DEFAULT_PLAYER_TAG from .env: #PLAYERTAG
 --- Phase 1: Setup & Prerequisites ---
 [16:15:52] Starting: default
   Command: task default 
@@ -50,35 +50,35 @@ Using DEFAULT_PLAYER_TAG from .env: #R8QGUQRCV
 
 --- Phase 3: Analysis Tasks ---
 [16:15:54] Starting: run
-  Command: task run -- #R8QGUQRCV
+  Command: task run -- #PLAYERTAG
 [FAILURE] run (1s)
   Exit code: 201
   Output: 1 lines to stdout, 16 errors
   Last error: task: Failed to run task "run": exit status 1
 
 [16:15:55] Starting: run-with-save
-  Command: task run-with-save -- #R8QGUQRCV
+  Command: task run-with-save -- #PLAYERTAG
 [FAILURE] run-with-save (0s)
   Exit code: 201
   Output: 1 lines to stdout, 16 errors
   Last error: task: Failed to run task "run-with-save": exit status 1
 
 [16:15:55] Starting: export-csv
-  Command: task export-csv -- #R8QGUQRCV
+  Command: task export-csv -- #PLAYERTAG
 [FAILURE] export-csv (1s)
   Exit code: 201
   Output: 1 lines to stdout, 19 errors
   Last error: task: Failed to run task "export-csv": exit status 1
 
 [16:15:56] Starting: export-all
-  Command: task export-all -- #R8QGUQRCV
+  Command: task export-all -- #PLAYERTAG
 [FAILURE] export-all (0s)
   Exit code: 201
   Output: 1 lines to stdout, 18 errors
   Last error: task: Failed to run task "export-all": exit status 1
 
 [16:15:56] Starting: build-deck
-  Command: task build-deck -- #R8QGUQRCV
+  Command: task build-deck -- #PLAYERTAG
 [FAILURE] build-deck (1s)
   Exit code: 201
   Output: 1 lines to stdout, 26 errors
@@ -86,35 +86,35 @@ Using DEFAULT_PLAYER_TAG from .env: #R8QGUQRCV
 
 --- Phase 4: Event Tasks ---
 [16:15:57] Starting: scan-events
-  Command: task scan-events -- #R8QGUQRCV
+  Command: task scan-events -- #PLAYERTAG
 [SUCCESS] scan-events (0s)
   Exit code: 0
   Output: 1 lines to stdout, 20 errors
   Last error: 
 
 [16:15:57] Starting: export-events
-  Command: task export-events -- #R8QGUQRCV
+  Command: task export-events -- #PLAYERTAG
 [SUCCESS] export-events (0s)
   Exit code: 0
   Output: 7 lines to stdout, 17 errors
   Last error: 
 
 [16:15:57] Starting: export-decks
-  Command: task export-decks -- #R8QGUQRCV
+  Command: task export-decks -- #PLAYERTAG
 [SUCCESS] export-decks (0s)
   Exit code: 0
   Output: 8 lines to stdout, 20 errors
   Last error: 
 
 [16:15:57] Starting: analyze-events
-  Command: task analyze-events -- #R8QGUQRCV
+  Command: task analyze-events -- #PLAYERTAG
 [FAILURE] analyze-events (0s)
   Exit code: 201
   Output: 1 lines to stdout, 19 errors
   Last error: task: Failed to run task "analyze-events": exit status 1
 
 [16:15:57] Starting: sync-events
-  Command: task sync-events -- #R8QGUQRCV
+  Command: task sync-events -- #PLAYERTAG
 [SUCCESS] sync-events (0s)
   Exit code: 0
   Output: 2 lines to stdout, 18 errors

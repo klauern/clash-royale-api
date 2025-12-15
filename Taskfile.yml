@@ -7,7 +7,7 @@ vars:
   PYTHON_VERSION: '3.11'
   PROJECT_NAME: clash-royale-api
   DATA_DIR: data
-  TEST_PLAYER_TAG: '#R8QGUQRCV'
+  TEST_PLAYER_TAG: '#PLAYERTAG'
   GO_DIR: go
   CR_API_BIN: '{{.GO_DIR}}/bin/cr-api'
   DECKBUILDER_BIN: '{{.GO_DIR}}/bin/deckbuilder'
@@ -33,7 +33,7 @@ tasks:
       - mkdir -p {{.DATA_DIR}}/{players,clans,analysis,static,reference}
       - mkdir -p scripts
       - echo "Copying example .env file..."
-      - test -f .env || cp config/.env.example .env 2>/dev/null || echo "No .env.example found, creating basic .env"
+      - test -f .env || cp .env.example .env 2>/dev/null || echo "No .env.example found, creating basic .env"
       - test -f .env || echo -e "CLASH_ROYALE_API_TOKEN=your_api_token_here\nDATA_DIR={{.DATA_DIR}}" > .env
       - echo "✅ Setup complete!"
       - echo "Please edit .env file with your API token"
@@ -498,5 +498,5 @@ help-api:
       - 'echo "- Lint: task lint (Go vet + Python ruff)"'
       - 'echo "- Format: task format (go fmt + Python black/ruff)"'
       - echo ''
-      - 'echo "Replace #PLAYER_TAG with actual tag (e.g., '#R8QGUQRCV')"'
+      - 'echo "Replace #PLAYER_TAG with actual tag (e.g., '#PLAYERTAG')"'
       - 'echo "Note: All tasks now use Go binaries instead of Python"'

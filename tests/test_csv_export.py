@@ -23,7 +23,7 @@ async def test_csv_export():
         print("✓ API client initialized successfully")
     except Exception as e:
         print(f"✗ Failed to initialize API client: {e}")
-        print("\nNote: Make sure you have CLASH_ROYALE_API_TOKEN set in config/.env")
+        print("\nNote: Make sure you have CLASH_ROYALE_API_TOKEN set in .env")
         return False
 
     # Test player tag (use a real tag for actual testing)
