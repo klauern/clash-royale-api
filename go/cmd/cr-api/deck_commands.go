@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"text/tabwriter"
 
+	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
+	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/urfave/cli/v3"
 )
 
@@ -161,6 +164,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	saveData := cmd.Bool("save")
 	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
+	dataDir := cmd.String("data-dir")
 
 	if apiToken == "" {
 		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
@@ -178,23 +182,46 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to get player: %w", err)
 	}
 
-	// TODO: Create a builder when needed
-	// builder := deck.NewBuilder(cmd.String("data-dir"))
+	if verbose {
+		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+		fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+	}
 
-	// TODO: Convert player data to card analysis format
-	// For now, just display basic info
-	fmt.Printf("\nDeck Build Options:\n")
-	fmt.Printf("===================\n")
-	fmt.Printf("Strategy: %s\n", strategy)
-	fmt.Printf("Min Elixir: %.1f\n", minElixir)
-	fmt.Printf("Max Elixir: %.1f\n", maxElixir)
-	fmt.Printf("Available Cards: %d\n", len(player.Cards))
+	// Perform card collection analysis
+	analysisOptions := analysis.DefaultAnalysisOptions()
+	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
+	if err != nil {
+		return fmt.Errorf("failed to analyze card collection: %w", err)
+	}
 
-	// Save basic info if requested
+	// Create deck builder
+	builder := deck.NewBuilder(dataDir)
+
+	// Build deck from analysis
+	deckRec, err := builder.BuildDeckFromPlayerAnalysis(cardAnalysis)
+	if err != nil {
+		return fmt.Errorf("failed to build deck: %w", err)
+	}
+
+	// Validate elixir constraints
+	if deckRec.AvgElixir < minElixir || deckRec.AvgElixir > maxElixir {
+		fmt.Printf("\n⚠ Warning: Deck average elixir (%.2f) is outside requested range (%.1f-%.1f)\n",
+			deckRec.AvgElixir, minElixir, maxElixir)
+	}
+
+	// Display deck recommendation
+	displayDeckRecommendation(deckRec, player)
+
+	// Save deck if requested
 	if saveData {
-		dataDir := cmd.String("data-dir")
 		if verbose {
-			fmt.Printf("\nDeck build options saved to: %s\n", dataDir)
+			fmt.Printf("\nSaving deck to: %s\n", dataDir)
+		}
+		deckPath, err := builder.SaveDeck(deckRec, "", player.Tag)
+		if err != nil {
+			fmt.Printf("Warning: Failed to save deck: %v\n", err)
+		} else {
+			fmt.Printf("\nDeck saved to: %s\n", deckPath)
 		}
 	}
 
@@ -248,6 +275,41 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Println("Note: Deck recommendations not yet implemented")
 
 	return nil
+}
+
+// displayDeckRecommendation displays a formatted deck recommendation
+func displayDeckRecommendation(rec *deck.DeckRecommendation, player *clashroyale.Player) {
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║              RECOMMENDED 1v1 LADDER DECK                           ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+	fmt.Printf("Average Elixir: %.2f\n\n", rec.AvgElixir)
+
+	// Display deck cards in a table
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "#\tCard\tLevel\tElixir\tRole\n")
+	fmt.Fprintf(w, "─\t────\t─────\t──────\t────\n")
+
+	for i, card := range rec.DeckDetail {
+		fmt.Fprintf(w, "%d\t%s\t%d/%d\t%d\t%s\n",
+			i+1,
+			card.Name,
+			card.Level,
+			card.MaxLevel,
+			card.Elixir,
+			card.Role)
+	}
+	w.Flush()
+
+	// Display strategic notes
+	if len(rec.Notes) > 0 {
+		fmt.Printf("\nStrategic Notes:\n")
+		fmt.Printf("════════════════\n")
+		for _, note := range rec.Notes {
+			fmt.Printf("• %s\n", note)
+		}
+	}
 }
 
 // Helper functions for deck operations
