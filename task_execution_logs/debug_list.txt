@@ -1,0 +1,177 @@
+=== Task Execution Debug List ===
+Generated: 2025-12-13T22:15:52Z
+
+Checking prerequisites...
+✅ Taskfile.yml exists
+✅ 'task' binary available
+✅ .env file exists
+✅ API token configured in .env
+✅ Go binaries check completed
+
+=== Starting Task Execution ===
+
+Using DEFAULT_PLAYER_TAG from .env: #R8QGUQRCV
+--- Phase 1: Setup & Prerequisites ---
+[16:15:52] Starting: default
+  Command: task default 
+[SUCCESS] default (0s)
+  Exit code: 0
+  Output: 22 lines to stdout, 1 errors
+  Last error: task: [default] task --list
+
+[16:15:52] Starting: status
+  Command: task status 
+[SUCCESS] status (0s)
+  Exit code: 0
+  Output: 8 lines to stdout, 8 errors
+  Last error: task: [status] test -f .env && grep -q "CLASH_ROYALE_API_TOKEN=" .env && echo "✅ API token configured" || echo "❌ API token not configured"
+
+[16:15:52] Starting: help-api
+  Command: task help-api 
+[FAILURE] help-api (0s)
+  Exit code: 200
+  Output: 22 lines to stdout, 1 errors
+  Last error: task: Task "help-api" does not exist
+
+--- Phase 2: Build & Installation ---
+[16:15:52] Starting: install
+  Command: task install 
+[SUCCESS] install (1s)
+  Exit code: 0
+  Output: 7 lines to stdout, 27 errors
+  Last error: task: [build-go] ls -la bin/
+
+[16:15:53] Starting: build-go
+  Command: task build-go 
+[SUCCESS] build-go (1s)
+  Exit code: 0
+  Output: 7 lines to stdout, 7 errors
+  Last error: task: [build-go] ls -la bin/
+
+--- Phase 3: Analysis Tasks ---
+[16:15:54] Starting: run
+  Command: task run -- #R8QGUQRCV
+[FAILURE] run (1s)
+  Exit code: 201
+  Output: 1 lines to stdout, 16 errors
+  Last error: task: Failed to run task "run": exit status 1
+
+[16:15:55] Starting: run-with-save
+  Command: task run-with-save -- #R8QGUQRCV
+[FAILURE] run-with-save (0s)
+  Exit code: 201
+  Output: 1 lines to stdout, 16 errors
+  Last error: task: Failed to run task "run-with-save": exit status 1
+
+[16:15:55] Starting: export-csv
+  Command: task export-csv -- #R8QGUQRCV
+[FAILURE] export-csv (1s)
+  Exit code: 201
+  Output: 1 lines to stdout, 19 errors
+  Last error: task: Failed to run task "export-csv": exit status 1
+
+[16:15:56] Starting: export-all
+  Command: task export-all -- #R8QGUQRCV
+[FAILURE] export-all (0s)
+  Exit code: 201
+  Output: 1 lines to stdout, 18 errors
+  Last error: task: Failed to run task "export-all": exit status 1
+
+[16:15:56] Starting: build-deck
+  Command: task build-deck -- #R8QGUQRCV
+[FAILURE] build-deck (1s)
+  Exit code: 201
+  Output: 1 lines to stdout, 26 errors
+  Last error: task: Failed to run task "build-deck": exit status 1
+
+--- Phase 4: Event Tasks ---
+[16:15:57] Starting: scan-events
+  Command: task scan-events -- #R8QGUQRCV
+[SUCCESS] scan-events (0s)
+  Exit code: 0
+  Output: 1 lines to stdout, 20 errors
+  Last error: 
+
+[16:15:57] Starting: export-events
+  Command: task export-events -- #R8QGUQRCV
+[SUCCESS] export-events (0s)
+  Exit code: 0
+  Output: 7 lines to stdout, 17 errors
+  Last error: 
+
+[16:15:57] Starting: export-decks
+  Command: task export-decks -- #R8QGUQRCV
+[SUCCESS] export-decks (0s)
+  Exit code: 0
+  Output: 8 lines to stdout, 20 errors
+  Last error: 
+
+[16:15:57] Starting: analyze-events
+  Command: task analyze-events -- #R8QGUQRCV
+[FAILURE] analyze-events (0s)
+  Exit code: 201
+  Output: 1 lines to stdout, 19 errors
+  Last error: task: Failed to run task "analyze-events": exit status 1
+
+[16:15:57] Starting: sync-events
+  Command: task sync-events -- #R8QGUQRCV
+[SUCCESS] sync-events (0s)
+  Exit code: 0
+  Output: 2 lines to stdout, 18 errors
+  Last error: 
+
+--- Phase 5: Development & Testing ---
+[16:15:57] Starting: test
+  Command: task test 
+[FAILURE] test (5s)
+  Exit code: 201
+  Output: 1379 lines to stdout, 16 errors
+  Last error: task: Failed to run task "test": exit status 1
+
+[16:16:02] Starting: test-go
+  Command: task test-go 
+[FAILURE] test-go (3s)
+  Exit code: 201
+  Output: 1379 lines to stdout, 16 errors
+  Last error: task: Failed to run task "test-go": exit status 1
+
+[16:16:05] Starting: lint
+  Command: task lint 
+[SUCCESS] lint (2s)
+  Exit code: 0
+  Output: 160 lines to stdout, 4 errors
+  Last error: task: [lint] uv run ruff check src/ || true
+
+[16:16:07] Starting: format
+  Command: task format 
+[SUCCESS] format (0s)
+  Exit code: 0
+  Output: 173 lines to stdout, 5 errors
+  Last error: task: [format] uv run ruff check --fix src/ 2>/dev/null || echo "ruff not available, skipping Python fixes"
+
+[SKIPPED] clean
+  Reason: User requested skip to preserve data
+
+--- Phase 6: Special Tasks ---
+[16:16:07] Starting: setup
+  Command: task setup 
+[SUCCESS] setup (1s)
+  Exit code: 0
+  Output: 12 lines to stdout, 19 errors
+  Last error: task: [setup] echo "Please edit .env file with your API token"
+
+[16:16:08] Starting: dev (with 30s timeout)
+  Command: task dev
+[FAILURE] dev (30s)
+  Exit code: 201
+
+=== Execution Complete ===
+Logs available in: ./task_execution_logs/
+
+=== Summary Statistics ===
+Successful: 11
+Failed: 10
+Timeout: 0
+Skipped: 1
+Total tasks attempted: 21
+

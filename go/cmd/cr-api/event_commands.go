@@ -194,7 +194,6 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 	eventTypes := cmd.StringSlice("event-types")
 	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
-	saveFlag := cmd.Bool("save")
 	exportCSV := cmd.Bool("export-csv")
 	dataDir := cmd.String("data-dir")
 
