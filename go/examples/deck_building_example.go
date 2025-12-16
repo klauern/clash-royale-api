@@ -1,116 +1,103 @@
 //go:build example
+// +build example
 
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 
+	"github.com/klauer/clash-royale-api/go/pkg/analysis"
+	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
 func main() {
-	// Create a new deck builder
-	builder := deck.NewBuilder("data")
+	// This example demonstrates how to use the deck building system
+	// to create optimized decks based on a player's card collection.
 
-	// Example analysis data - in real usage this would come from the card analyzer
-	analysis := deck.CardAnalysis{
-		CardLevels: map[string]deck.CardLevelData{
-			"Hog Rider": {
-				Level:    8,
-				MaxLevel: 13,
-				Rarity:   "Rare",
-				Elixir:   4,
-			},
-			"Fireball": {
-				Level:    7,
-				MaxLevel: 11,
-				Rarity:   "Rare",
-				Elixir:   4,
-			},
-			"Zap": {
-				Level:    11,
-				MaxLevel: 13,
-				Rarity:   "Common",
-				Elixir:   2,
-			},
-			"Cannon": {
-				Level:    11,
-				MaxLevel: 13,
-				Rarity:   "Common",
-				Elixir:   3,
-			},
-			"Archers": {
-				Level:    10,
-				MaxLevel: 13,
-				Rarity:   "Common",
-				Elixir:   3,
-			},
-			"Knight": {
-				Level:    11,
-				MaxLevel: 13,
-				Rarity:   "Common",
-				Elixir:   3,
-			},
-			"Skeletons": {
-				Level:    11,
-				MaxLevel: 13,
-				Rarity:   "Common",
-				Elixir:   1,
-			},
-			"Valkyrie": {
-				Level:    7,
-				MaxLevel: 11,
-				Rarity:   "Rare",
-				Elixir:   4,
-			},
-			"Baby Dragon": {
-				Level:    5,
-				MaxLevel: 11,
-				Rarity:   "Epic",
-				Elixir:   4,
-			},
-			"Musketeer": {
-				Level:    6,
-				MaxLevel: 13,
-				Rarity:   "Rare",
-				Elixir:   4,
-			},
-			"Wizard": {
-				Level:    4,
-				MaxLevel: 11,
-				Rarity:   "Epic",
-				Elixir:   5,
-			},
-			"Goblin Barrel": {
-				Level:    2,
-				MaxLevel: 13,
-				Rarity:   "Rare",
-				Elixir:   3,
-			},
-		},
-		AnalysisTime: "2024-01-15T10:30:00Z",
+	// Set your API token
+	apiToken := os.Getenv("CLASH_ROYALE_API_TOKEN")
+	if apiToken == "" {
+		fmt.Println("Please set CLASH_ROYALE_API_TOKEN environment variable")
+		fmt.Println("Example: export CLASH_ROYALE_API_TOKEN=your_token_here")
+		os.Exit(1)
 	}
 
-	// Build a deck from the analysis
-	fmt.Println("🏗️  Building optimized deck from card collection...")
-	deckRecommendation, err := builder.BuildDeckFromAnalysis(analysis)
+	// Player tag to analyze (without #)
+	playerTag := "#LQLPQGV8Q" // Example player tag
+
+	// Create API client
+	client := clashroyale.NewClient(apiToken)
+
+	// Get player data
+	fmt.Printf("Fetching data for player %s...\n", playerTag)
+	player, err := client.GetPlayer(playerTag)
+	if err != nil {
+		log.Fatalf("Failed to get player data: %v", err)
+	}
+
+	fmt.Printf("Successfully retrieved data for %s (%s)\n", player.Name, player.Tag)
+	fmt.Printf("Trophy count: %d | Level: %d\n", player.Trophies, player.ExpLevel)
+	fmt.Printf("Total cards: %d | Cards in collection: %d\n", len(player.Cards), len(player.Cards))
+
+	// Analyze card collection
+	fmt.Println("\nAnalyzing card collection...")
+	analysisOptions := analysis.DefaultAnalysisOptions()
+	analysisOptions.TopN = 20 // Show top 20 upgrade priorities
+	analysisOptions.MinPriorityScore = 20
+
+	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
+	if err != nil {
+		log.Fatalf("Failed to analyze card collection: %v", err)
+	}
+
+	// Display collection summary
+	fmt.Printf("\n=== Collection Summary ===\n")
+	fmt.Printf("Total Cards: %d\n", cardAnalysis.TotalCards)
+	fmt.Printf("Max Level Cards: %d\n", len(cardAnalysis.MaxLevelCards))
+	fmt.Printf("Average Card Level: %.1f\n", cardAnalysis.Summary.AvgCardLevel)
+	fmt.Printf("Collection Completion: %.1f%%\n", cardAnalysis.Summary.CompletionPercent)
+
+	// Display top upgrade priorities
+	if len(cardAnalysis.UpgradePriority) > 0 {
+		fmt.Printf("\n=== Top 10 Upgrade Priorities ===\n")
+		for i, priority := range cardAnalysis.UpgradePriority[:10] {
+			fmt.Printf("%d. %s (%s) - Priority: %.0f (%s)\n",
+				i+1, priority.CardName, priority.Rarity, priority.PriorityScore, priority.Priority)
+			fmt.Printf("   Level: %d/%d | Need: %d cards\n",
+				priority.CurrentLevel, priority.MaxLevel, priority.CardsNeeded)
+			fmt.Printf("   Reasons: %v\n", priority.Reasons)
+		}
+	}
+
+	// Build optimized deck using the deck builder
+	fmt.Println("\n=== Building Optimized Deck ===")
+	dataDir := "./data"
+	builder := deck.NewBuilder(dataDir)
+
+	// Convert analysis to deck builder format
+	deckAnalysis := deck.ConvertAnalysisForDeckBuilding(cardAnalysis)
+
+	// Build deck from analysis
+	deckRecommendation, err := builder.BuildDeckFromAnalysis(deckAnalysis)
 	if err != nil {
 		log.Fatalf("Failed to build deck: %v", err)
 	}
 
-	// Print the recommended deck
-	fmt.Println("\n🎯 Recommended Deck:")
-	fmt.Println("===============")
+	fmt.Printf("Recommended Deck\n")
+	fmt.Printf("Average Elixir: %.2f\n", deckRecommendation.AvgElixir)
+	if deckRecommendation.AnalysisTime != "" {
+		fmt.Printf("Analysis Time: %s\n", deckRecommendation.AnalysisTime)
+	}
+
+	fmt.Println("\nCards:")
 	for i, card := range deckRecommendation.Deck {
 		fmt.Printf("%d. %s\n", i+1, card)
 	}
 
-	// Print detailed information
-	fmt.Println("\n📊 Deck Details:")
-	fmt.Println("===============")
+	fmt.Println("\nDetailed Card Information:")
 	for _, detail := range deckRecommendation.DeckDetail {
 		roleIcon := ""
 		switch detail.Role {
@@ -133,13 +120,6 @@ func main() {
 			float64(detail.Elixir), detail.Score)
 	}
 
-	// Print summary
-	fmt.Printf("\n📈 Summary:\n")
-	fmt.Printf("Average Elixir: %.2f\n", deckRecommendation.AvgElixir)
-	if deckRecommendation.AnalysisTime != "" {
-		fmt.Printf("Analysis Time: %s\n", deckRecommendation.AnalysisTime)
-	}
-
 	// Print strategic notes
 	if len(deckRecommendation.Notes) > 0 {
 		fmt.Println("\n💡 Strategic Notes:")
@@ -148,34 +128,9 @@ func main() {
 		}
 	}
 
-	// Save the deck to disk
-	deckPath, err := builder.SaveDeck(deckRecommendation, "", "#EXAMPLE123")
-	if err != nil {
-		log.Printf("Warning: Failed to save deck: %v", err)
-	} else {
-		fmt.Printf("\n💾 Deck saved to: %s\n", deckPath)
-	}
-
-	// Example of loading from a file (if analysis file exists)
-	fmt.Println("\n🔍 Example: Loading deck from saved analysis...")
-
-	// Save the analysis first for demo purposes
-	analysisData, _ := json.MarshalIndent(analysis, "", "  ")
-	analysisPath := "example_analysis.json"
-	err = os.WriteFile(analysisPath, analysisData, 0644)
-	if err != nil {
-		log.Printf("Warning: Could not save analysis file: %v", err)
-	} else {
-		defer os.Remove(analysisPath) // Clean up
-
-		// Load deck from file
-		deckFromFile, err := builder.BuildDeckFromFile(analysisPath)
-		if err != nil {
-			log.Printf("Warning: Failed to load deck from file: %v", err)
-		} else {
-			fmt.Printf("✅ Successfully loaded deck from file: %v\n", deckFromFile.Deck)
-		}
-	}
-
-	fmt.Println("\n🎉 Deck building example completed!")
+	fmt.Println("\nExample completed successfully!")
+	fmt.Println("This demonstrates how to:")
+	fmt.Println("- Analyze a player's card collection")
+	fmt.Println("- Generate upgrade priorities")
+	fmt.Println("- Build optimized decks for different game modes")
 }

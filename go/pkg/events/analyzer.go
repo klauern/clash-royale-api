@@ -3,6 +3,7 @@
 package events
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -158,27 +159,229 @@ func filterDecksByEventType(decks []EventDeck, eventTypes []string) []EventDeck 
 	return filtered
 }
 
-// TODO: Implement calculateSummary
+// calculateSummary computes overall performance statistics across all event decks
 func calculateSummary(decks []EventDeck) EventSummary {
-	return EventSummary{}
+	summary := EventSummary{}
+
+	for _, deck := range decks {
+		perf := deck.Performance
+		summary.TotalBattles += perf.TotalBattles()
+		summary.TotalWins += perf.Wins
+		summary.TotalLosses += perf.Losses
+		summary.AvgCrownsPerBattle += float64(perf.CrownsEarned-perf.CrownsLost) / float64(perf.TotalBattles())
+		summary.AvgDeckElixir += deck.Deck.AvgElixir
+	}
+
+	// Calculate win rate
+	if summary.TotalBattles > 0 {
+		summary.OverallWinRate = float64(summary.TotalWins) / float64(summary.TotalBattles)
+		summary.AvgCrownsPerBattle /= float64(len(decks))
+		summary.AvgDeckElixir /= float64(len(decks))
+	}
+
+	return summary
 }
 
-// TODO: Implement analyzeCardUsage
+// analyzeCardUsage tracks card frequency and performance across all event decks
 func analyzeCardUsage(decks []EventDeck) EventCardAnalysis {
-	return EventCardAnalysis{}
+	cardUsage := make(map[string]int)      // card name -> usage count
+	cardWins := make(map[string]int)       // card name -> total wins with this card
+	cardBattles := make(map[string]int)    // card name -> total battles with this card
+
+	// Track all unique cards seen
+	uniqueCards := make(map[string]bool)
+
+	for _, deck := range decks {
+		for _, card := range deck.Deck.Cards {
+			cardName := card.Name
+			cardUsage[cardName]++
+			uniqueCards[cardName] = true
+
+			// Add battle stats for this card
+			cardWins[cardName] += deck.Performance.Wins
+			cardBattles[cardName] += deck.Performance.TotalBattles()
+		}
+	}
+
+	// Convert to slices and sort
+	var mostUsed []CardUsage
+	for name, count := range cardUsage {
+		mostUsed = append(mostUsed, CardUsage{CardName: name, Count: count})
+	}
+
+	// Sort by count descending
+	for i := 0; i < len(mostUsed)-1; i++ {
+		for j := i + 1; j < len(mostUsed); j++ {
+			if mostUsed[j].Count > mostUsed[i].Count {
+				mostUsed[i], mostUsed[j] = mostUsed[j], mostUsed[i]
+			}
+		}
+	}
+
+	// Limit top 10 most used cards
+	if len(mostUsed) > 10 {
+		mostUsed = mostUsed[:10]
+	}
+
+	// Calculate win rates
+	var highestWinRate []CardWinRate
+	for name, wins := range cardWins {
+		battles := cardBattles[name]
+		if battles >= 3 { // Only include cards with sufficient sample size
+			winRate := float64(wins) / float64(battles)
+			highestWinRate = append(highestWinRate, CardWinRate{
+				CardName: name,
+				WinRate:  winRate,
+			})
+		}
+	}
+
+	// Sort by win rate descending
+	for i := 0; i < len(highestWinRate)-1; i++ {
+		for j := i + 1; j < len(highestWinRate); j++ {
+			if highestWinRate[j].WinRate > highestWinRate[i].WinRate {
+				highestWinRate[i], highestWinRate[j] = highestWinRate[j], highestWinRate[i]
+			}
+		}
+	}
+
+	// Limit top 10 highest win rate cards
+	if len(highestWinRate) > 10 {
+		highestWinRate = highestWinRate[:10]
+	}
+
+	return EventCardAnalysis{
+		MostUsedCards:       mostUsed,
+		HighestWinRateCards: highestWinRate,
+		TotalUniqueCards:    len(uniqueCards),
+	}
 }
 
-// TODO: Implement analyzeElixirPerformance
+// analyzeElixirPerformance analyzes performance by deck elixir cost ranges
 func analyzeElixirPerformance(decks []EventDeck) EventElixirAnalysis {
-	return EventElixirAnalysis{}
+	var lowDecks, midDecks, highDecks []EventDeck
+
+	// Categorize decks by average elixir cost
+	for _, deck := range decks {
+		avgElixir := deck.Deck.AvgElixir
+		switch {
+		case avgElixir < 3.5:
+			lowDecks = append(lowDecks, deck)
+		case avgElixir < 4.5:
+			midDecks = append(midDecks, deck)
+		default:
+			highDecks = append(highDecks, deck)
+		}
+	}
+
+	return EventElixirAnalysis{
+		LowElixir:  calculateElixirRangeStats(lowDecks, "Low (0.0-3.4)"),
+		MidElixir:  calculateElixirRangeStats(midDecks, "Mid (3.5-4.4)"),
+		HighElixir: calculateElixirRangeStats(highDecks, "High (4.5+)"),
+	}
 }
 
-// TODO: Implement calculateEventBreakdown
+// calculateElixirRangeStats computes statistics for decks within an elixir range
+func calculateElixirRangeStats(decks []EventDeck, rangeLabel string) ElixirRangeStats {
+	if len(decks) == 0 {
+		return ElixirRangeStats{
+			Range:      rangeLabel,
+			DeckCount:  0,
+			AvgWinRate: 0,
+		}
+	}
+
+	totalWins := 0
+	totalBattles := 0
+
+	for _, deck := range decks {
+		perf := deck.Performance
+		totalWins += perf.Wins
+		totalBattles += perf.TotalBattles()
+	}
+
+	var avgWinRate float64
+	if totalBattles > 0 {
+		avgWinRate = float64(totalWins) / float64(totalBattles)
+	}
+
+	return ElixirRangeStats{
+		Range:      rangeLabel,
+		DeckCount:  len(decks),
+		AvgWinRate: avgWinRate,
+	}
+}
+
+// calculateEventBreakdown computes performance statistics by event type
 func calculateEventBreakdown(decks []EventDeck) map[string]EventStats {
-	return map[string]EventStats{}
+	eventStats := make(map[string]EventStats)
+
+	for _, deck := range decks {
+		eventType := string(deck.EventType)
+		stats, exists := eventStats[eventType]
+		if !exists {
+			stats = EventStats{
+				EventType: eventType,
+				Count:     0,
+				Wins:      0,
+				Losses:    0,
+			}
+		}
+
+		stats.Count++
+		stats.Wins += deck.Performance.Wins
+		stats.Losses += deck.Performance.Losses
+
+		eventStats[eventType] = stats
+	}
+
+	return eventStats
 }
 
-// TODO: Implement identifyTopPerformingDecks
+// identifyTopPerformingDecks finds the best performing decks based on win rate and battle count
 func identifyTopPerformingDecks(decks []EventDeck, options AnalysisOptions) []TopPerformingDeck {
-	return []TopPerformingDeck{}
+	var topDecks []TopPerformingDeck
+
+	for _, deck := range decks {
+		// Skip decks that don't meet minimum battle requirement
+		if deck.Performance.TotalBattles() < options.MinBattlesForTopDecks {
+			continue
+		}
+
+		// Extract card names from the deck
+		cardNames := make([]string, len(deck.Deck.Cards))
+		for i, card := range deck.Deck.Cards {
+			cardNames[i] = card.Name
+		}
+
+		// Create record string (e.g., "12W-2L")
+		record := fmt.Sprintf("%dW-%dL", deck.Performance.Wins, deck.Performance.Losses)
+
+		topDeck := TopPerformingDeck{
+			EventName: deck.EventName,
+			EventType: string(deck.EventType),
+			WinRate:   deck.Performance.WinRate,
+			Record:    record,
+			Deck:      cardNames,
+			AvgElixir: deck.Deck.AvgElixir,
+		}
+
+		topDecks = append(topDecks, topDeck)
+	}
+
+	// Sort by win rate descending
+	for i := 0; i < len(topDecks)-1; i++ {
+		for j := i + 1; j < len(topDecks); j++ {
+			if topDecks[j].WinRate > topDecks[i].WinRate {
+				topDecks[i], topDecks[j] = topDecks[j], topDecks[i]
+			}
+		}
+	}
+
+	// Limit to requested number
+	if len(topDecks) > options.LimitTopDecks {
+		topDecks = topDecks[:options.LimitTopDecks]
+	}
+
+	return topDecks
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/tabwriter"
 	"time"
 
@@ -340,14 +341,28 @@ func eventAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	eventID := cmd.String("event-id")
 	eventType := cmd.String("event-type")
+	minBattles := cmd.Int("min-battles")
+	includeDecks := cmd.Bool("include-decks")
+	exportCSV := cmd.Bool("export-csv")
 	apiToken := cmd.String("api-token")
+	verbose := cmd.Bool("verbose")
 
 	if apiToken == "" {
-		return fmt.Errorf("API token is required")
+		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
 	}
 
 	if eventID == "" && eventType == "" {
 		return fmt.Errorf("either --event-id or --event-type must be specified")
+	}
+
+	if verbose {
+		fmt.Printf("Analyzing event data for player %s\n", tag)
+		if eventID != "" {
+			fmt.Printf("Event ID: %s\n", eventID)
+		} else {
+			fmt.Printf("Event Type: %s\n", eventType)
+		}
+		fmt.Printf("Minimum battles: %d\n", minBattles)
 	}
 
 	// Load event deck collection
@@ -357,8 +372,76 @@ func eventAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to load event decks: %w", err)
 	}
 
-	// For now, just display basic statistics
-	displayEventStats(collection)
+	if len(collection.Decks) == 0 {
+		fmt.Printf("No event decks found for player %s\n", tag)
+		fmt.Printf("Try running 'cr-api events scan --tag %s' first to collect event data\n", tag)
+		return nil
+	}
+
+	// Filter decks based on criteria
+	filteredDecks := collection.Decks
+	if eventID != "" {
+		// Filter by specific event ID
+		filtered := make([]events.EventDeck, 0)
+		for _, deck := range collection.Decks {
+			if deck.EventID == eventID {
+				filtered = append(filtered, deck)
+			}
+		}
+		filteredDecks = filtered
+	} else if eventType != "" {
+		// Filter by event type
+		filtered := make([]events.EventDeck, 0)
+		for _, deck := range collection.Decks {
+			if string(deck.EventType) == eventType {
+				filtered = append(filtered, deck)
+			}
+		}
+		filteredDecks = filtered
+	}
+
+	// Filter by minimum battles
+	minBattlesFilter := make([]events.EventDeck, 0)
+	for _, deck := range filteredDecks {
+		if deck.Performance.TotalBattles() >= minBattles {
+			minBattlesFilter = append(minBattlesFilter, deck)
+		}
+	}
+	filteredDecks = minBattlesFilter
+
+	if len(filteredDecks) == 0 {
+		fmt.Printf("No event decks match the specified criteria\n")
+		return nil
+	}
+
+	if verbose {
+		fmt.Printf("Analyzing %d event decks\n", len(filteredDecks))
+	}
+
+	// Configure analysis options
+	analysisOptions := events.DefaultAnalysisOptions()
+	analysisOptions.MinBattlesForTopDecks = minBattles
+
+	if eventID != "" {
+		// For single event analysis, show all decks
+		analysisOptions.LimitTopDecks = 10
+	}
+
+	// Perform analysis
+	analysis := events.AnalyzeEventDecks(filteredDecks, analysisOptions)
+
+	// Display comprehensive analysis
+	displayComprehensiveAnalysis(analysis, includeDecks)
+
+	// Export to CSV if requested
+	if exportCSV {
+		if err := exportAnalysisToCSV(dataDir, analysis); err != nil {
+			return fmt.Errorf("failed to export analysis to CSV: %w", err)
+		}
+		if verbose {
+			fmt.Println("Analysis exported to CSV")
+		}
+	}
 
 	return nil
 }
@@ -560,4 +643,183 @@ func filterEventDecks(collection *events.EventDeckCollection, eventType string, 
 func sortEventDecks(decks []events.EventDeck, sortBy string) {
 	// In a real implementation, sort decks based on sortBy criteria
 	// For now, decks are already in chronological order
+}
+
+// displayComprehensiveAnalysis displays detailed event analysis results
+func displayComprehensiveAnalysis(analysis *events.EventAnalysis, includeDecks bool) {
+	fmt.Printf("\n=== Event Analysis for %s ===\n", analysis.PlayerTag)
+	fmt.Printf("Generated: %s\n", analysis.AnalysisTime.Format("2006-01-02 15:04:05"))
+	fmt.Printf("Total Decks Analyzed: %d\n\n", analysis.TotalDecks)
+
+	// Summary Statistics
+	fmt.Printf("📊 Overall Performance Summary:\n")
+	fmt.Printf("==============================\n")
+	fmt.Printf("Total Battles: %d\n", analysis.Summary.TotalBattles)
+	fmt.Printf("Total Wins: %d\n", analysis.Summary.TotalWins)
+	fmt.Printf("Total Losses: %d\n", analysis.Summary.TotalLosses)
+	fmt.Printf("Overall Win Rate: %.1f%%\n", analysis.Summary.OverallWinRate*100)
+	fmt.Printf("Average Crowns per Battle: %.1f\n", analysis.Summary.AvgCrownsPerBattle)
+	fmt.Printf("Average Deck Elixir: %.1f\n\n", analysis.Summary.AvgDeckElixir)
+
+	// Card Analysis
+	fmt.Printf("🎴 Card Usage Analysis:\n")
+	fmt.Printf("=======================\n")
+	fmt.Printf("Total Unique Cards Used: %d\n\n", analysis.CardAnalysis.TotalUniqueCards)
+
+	if len(analysis.CardAnalysis.MostUsedCards) > 0 {
+		fmt.Printf("Most Used Cards:\n")
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintf(w, "Card\tTimes Used\n")
+		fmt.Fprintf(w, "----\t----------\n")
+		for _, card := range analysis.CardAnalysis.MostUsedCards {
+			fmt.Fprintf(w, "%s\t%d\n", card.CardName, card.Count)
+		}
+		w.Flush()
+		fmt.Println()
+	}
+
+	if len(analysis.CardAnalysis.HighestWinRateCards) > 0 {
+		fmt.Printf("Highest Win Rate Cards (3+ battles):\n")
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintf(w, "Card\tWin Rate\n")
+		fmt.Fprintf(w, "----\t--------\n")
+		for _, card := range analysis.CardAnalysis.HighestWinRateCards {
+			fmt.Fprintf(w, "%s\t%.1f%%\n", card.CardName, card.WinRate*100)
+		}
+		w.Flush()
+		fmt.Println()
+	}
+
+	// Elixir Analysis
+	fmt.Printf("⚡ Elixir Cost Analysis:\n")
+	fmt.Printf("========================\n")
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "Elixir Range\tDecks\tAvg Win Rate\n")
+	fmt.Fprintf(w, "-------------\t-----\t------------\n")
+	fmt.Fprintf(w, "%s\t%d\t%.1f%%\n", analysis.ElixirAnalysis.LowElixir.Range,
+		analysis.ElixirAnalysis.LowElixir.DeckCount,
+		analysis.ElixirAnalysis.LowElixir.AvgWinRate*100)
+	fmt.Fprintf(w, "%s\t%d\t%.1f%%\n", analysis.ElixirAnalysis.MidElixir.Range,
+		analysis.ElixirAnalysis.MidElixir.DeckCount,
+		analysis.ElixirAnalysis.MidElixir.AvgWinRate*100)
+	fmt.Fprintf(w, "%s\t%d\t%.1f%%\n", analysis.ElixirAnalysis.HighElixir.Range,
+		analysis.ElixirAnalysis.HighElixir.DeckCount,
+		analysis.ElixirAnalysis.HighElixir.AvgWinRate*100)
+	w.Flush()
+	fmt.Println()
+
+	// Event Breakdown
+	if len(analysis.EventBreakdown) > 0 {
+		fmt.Printf("🏆 Performance by Event Type:\n")
+		fmt.Printf("===============================\n")
+		w = tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintf(w, "Event Type\tEvents\tWins\tLosses\tWin Rate\n")
+		fmt.Fprintf(w, "-----------\t------\t----\t------\t--------\n")
+		for eventType, stats := range analysis.EventBreakdown {
+			winRate := float64(0)
+			if stats.Wins+stats.Losses > 0 {
+				winRate = float64(stats.Wins) / float64(stats.Wins+stats.Losses)
+			}
+			fmt.Fprintf(w, "%s\t%d\t%d\t%d\t%.1f%%\n",
+				eventType, stats.Count, stats.Wins, stats.Losses, winRate*100)
+		}
+		w.Flush()
+		fmt.Println()
+	}
+
+	// Top Performing Decks
+	if len(analysis.TopDecks) > 0 {
+		fmt.Printf("⭐ Top Performing Decks:\n")
+		fmt.Printf("========================\n")
+		for i, deck := range analysis.TopDecks {
+			fmt.Printf("%d. %s (%s)\n", i+1, deck.EventName, deck.EventType)
+			fmt.Printf("   Record: %s | Win Rate: %.1f%% | Avg Elixir: %.1f\n",
+				deck.Record, deck.WinRate*100, deck.AvgElixir)
+			fmt.Printf("   Deck: %s\n", strings.Join(deck.Deck, ", "))
+			fmt.Println()
+		}
+	}
+
+	if includeDecks && analysis.TotalDecks > 0 {
+		fmt.Printf("📋 Individual Deck Details:\n")
+		fmt.Printf("=============================\n")
+		fmt.Printf("Run 'cr-api events list --tag %s' for detailed deck information\n", analysis.PlayerTag)
+	}
+}
+
+// exportAnalysisToCSV exports event analysis to CSV format
+func exportAnalysisToCSV(dataDir string, analysis *events.EventAnalysis) error {
+	analysisDir := filepath.Join(dataDir, "csv", "analysis")
+	if err := os.MkdirAll(analysisDir, 0755); err != nil {
+		return fmt.Errorf("failed to create analysis directory: %w", err)
+	}
+
+	// Create summary CSV
+	summaryFile := filepath.Join(analysisDir, fmt.Sprintf("event_analysis_%s_%s.csv",
+		analysis.PlayerTag, analysis.AnalysisTime.Format("20060102_150405")))
+
+	file, err := os.Create(summaryFile)
+	if err != nil {
+		return fmt.Errorf("failed to create analysis CSV: %w", err)
+	}
+	defer file.Close()
+
+	// Write analysis summary
+	fmt.Fprintf(file, "Event Analysis Summary\n")
+	fmt.Fprintf(file, "Player Tag,%s\n", analysis.PlayerTag)
+	fmt.Fprintf(file, "Analysis Time,%s\n", analysis.AnalysisTime.Format("2006-01-02 15:04:05"))
+	fmt.Fprintf(file, "Total Decks,%d\n", analysis.TotalDecks)
+	fmt.Fprintf(file, "\nPerformance Summary\n")
+	fmt.Fprintf(file, "Total Battles,%d\n", analysis.Summary.TotalBattles)
+	fmt.Fprintf(file, "Total Wins,%d\n", analysis.Summary.TotalWins)
+	fmt.Fprintf(file, "Total Losses,%d\n", analysis.Summary.TotalLosses)
+	fmt.Fprintf(file, "Overall Win Rate,%.2f\n", analysis.Summary.OverallWinRate)
+	fmt.Fprintf(file, "Average Crowns per Battle,%.2f\n", analysis.Summary.AvgCrownsPerBattle)
+	fmt.Fprintf(file, "Average Deck Elixir,%.1f\n", analysis.Summary.AvgDeckElixir)
+
+	// Write card usage
+	if len(analysis.CardAnalysis.MostUsedCards) > 0 {
+		fmt.Fprintf(file, "\nMost Used Cards\n")
+		fmt.Fprintf(file, "Card,Times Used\n")
+		for _, card := range analysis.CardAnalysis.MostUsedCards {
+			fmt.Fprintf(file, "%s,%d\n", card.CardName, card.Count)
+		}
+	}
+
+	// Write highest win rate cards
+	if len(analysis.CardAnalysis.HighestWinRateCards) > 0 {
+		fmt.Fprintf(file, "\nHighest Win Rate Cards\n")
+		fmt.Fprintf(file, "Card,Win Rate\n")
+		for _, card := range analysis.CardAnalysis.HighestWinRateCards {
+			fmt.Fprintf(file, "%s,%.2f\n", card.CardName, card.WinRate)
+		}
+	}
+
+	// Write event breakdown
+	if len(analysis.EventBreakdown) > 0 {
+		fmt.Fprintf(file, "\nEvent Type Performance\n")
+		fmt.Fprintf(file, "Event Type,Count,Wins,Losses,Win Rate\n")
+		for eventType, stats := range analysis.EventBreakdown {
+			winRate := float64(0)
+			if stats.Wins+stats.Losses > 0 {
+				winRate = float64(stats.Wins) / float64(stats.Wins+stats.Losses)
+			}
+			fmt.Fprintf(file, "%s,%d,%d,%d,%.2f\n",
+				eventType, stats.Count, stats.Wins, stats.Losses, winRate)
+		}
+	}
+
+	// Write top decks
+	if len(analysis.TopDecks) > 0 {
+		fmt.Fprintf(file, "\nTop Performing Decks\n")
+		fmt.Fprintf(file, "Rank,Event Name,Event Type,Win Rate,Record,Avg Elixir,Deck\n")
+		for i, deck := range analysis.TopDecks {
+			deckStr := strings.Join(deck.Deck, "|")
+			fmt.Fprintf(file, "%d,%s,%s,%.2f,%s,%.1f,%s\n",
+				i+1, deck.EventName, deck.EventType, deck.WinRate,
+				deck.Record, deck.AvgElixir, deckStr)
+		}
+	}
+
+	return nil
 }
