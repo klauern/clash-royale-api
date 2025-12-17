@@ -173,10 +173,11 @@ type UpgradeInfo struct {
 	CanUpgradeNow    bool    `json:"can_upgrade_now"`
 	TotalToMax       int     `json:"total_to_max"`
 	LevelsToMax      int     `json:"levels_to_max"`
+	MaxEvolutionLevel int    `json:"max_evolution_level,omitempty"`
 }
 
 // CalculateUpgradeInfo creates a complete UpgradeInfo for a card
-func CalculateUpgradeInfo(cardName string, rarity string, elixirCost int, currentLevel int, cardsOwned int) UpgradeInfo {
+func CalculateUpgradeInfo(cardName string, rarity string, elixirCost int, currentLevel int, cardsOwned int, maxEvolutionLevel int) UpgradeInfo {
 	maxLevel := GetMaxLevel(rarity)
 	isMaxLevel := IsMaxLevel(currentLevel, rarity)
 	cardsNeeded := CalculateCardsNeeded(currentLevel, rarity)
@@ -185,18 +186,19 @@ func CalculateUpgradeInfo(cardName string, rarity string, elixirCost int, curren
 	canUpgrade := cardsOwned >= cardsNeeded && !isMaxLevel
 
 	return UpgradeInfo{
-		CardName:         cardName,
-		Rarity:           rarity,
-		ElixirCost:       elixirCost,
-		CurrentLevel:     currentLevel,
-		MaxLevel:         maxLevel,
-		IsMaxLevel:       isMaxLevel,
-		CardsOwned:       cardsOwned,
-		CardsToNextLevel: cardsNeeded,
-		ProgressPercent:  progress,
-		CanUpgradeNow:    canUpgrade,
-		TotalToMax:       totalToMax,
-		LevelsToMax:      maxLevel - currentLevel,
+		CardName:          cardName,
+		Rarity:            rarity,
+		ElixirCost:        elixirCost,
+		CurrentLevel:      currentLevel,
+		MaxLevel:          maxLevel,
+		IsMaxLevel:        isMaxLevel,
+		CardsOwned:        cardsOwned,
+		CardsToNextLevel:  cardsNeeded,
+		ProgressPercent:   progress,
+		CanUpgradeNow:     canUpgrade,
+		TotalToMax:        totalToMax,
+		LevelsToMax:       maxLevel - currentLevel,
+		MaxEvolutionLevel: maxEvolutionLevel,
 	}
 }
 

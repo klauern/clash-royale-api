@@ -4,6 +4,7 @@ package deck
 import (
 	"encoding/json"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sort"
@@ -14,10 +15,12 @@ import (
 // Builder handles the construction of balanced Clash Royale decks
 // from player card analysis data.
 type Builder struct {
-	dataDir        string
-	roleGroups     map[CardRole][]string
-	fallbackElixir map[string]int
-	rarityWeights  map[string]float64
+	dataDir            string
+	unlockedEvolutions map[string]bool
+	evolutionSlotLimit int
+	roleGroups         map[CardRole][]string
+	fallbackElixir     map[string]int
+	rarityWeights      map[string]float64
 }
 
 // NewBuilder creates a new deck builder instance
@@ -26,9 +29,22 @@ func NewBuilder(dataDir string) *Builder {
 		dataDir = "data"
 	}
 
+	// Parse UNLOCKED_EVOLUTIONS environment variable
+	unlockedEvos := make(map[string]bool)
+	if envEvos := os.Getenv("UNLOCKED_EVOLUTIONS"); envEvos != "" {
+		for _, card := range strings.Split(envEvos, ",") {
+			cardName := strings.TrimSpace(card)
+			if cardName != "" {
+				unlockedEvos[cardName] = true
+			}
+		}
+	}
+
 	return &Builder{
-		dataDir: dataDir,
-		roleGroups: map[CardRole][]string{
+		dataDir:            dataDir,
+		unlockedEvolutions: unlockedEvos,
+		evolutionSlotLimit: 2,
+		roleGroups:         map[CardRole][]string{
 			RoleWinCondition: {
 				"Royal Giant", "Hog Rider", "Giant", "P.E.K.K.A", "Giant Skeleton",
 				"Goblin Barrel", "Mortar", "X-Bow", "Royal Hogs",
@@ -88,6 +104,7 @@ type CardLevelData struct {
 	MaxLevel int    `json:"max_level"`
 	Rarity   string `json:"rarity"`
 	Elixir   int    `json:"elixir,omitempty"`
+	MaxEvolutionLevel int `json:"max_evolution_level,omitempty"`
 }
 
 // BuildDeckFromAnalysis creates a deck recommendation from card analysis data
@@ -149,13 +166,17 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	// Ensure exactly 8 cards
 	deck = deck[:8]
 
+	// Select evolution slots based on role priority
+	evolutionSlots := b.selectEvolutionSlots(deck)
+
 	// Create recommendation
 	recommendation := &DeckRecommendation{
-		Deck:         make([]string, 8),
-		DeckDetail:   make([]CardDetail, 8),
-		AvgElixir:    b.calculateAvgElixir(deck),
-		AnalysisTime: analysis.AnalysisTime,
-		Notes:        notes,
+		Deck:           make([]string, 8),
+		DeckDetail:     make([]CardDetail, 8),
+		AvgElixir:      b.calculateAvgElixir(deck),
+		AnalysisTime:   analysis.AnalysisTime,
+		Notes:          notes,
+		EvolutionSlots: evolutionSlots,
 	}
 
 	for i, card := range deck {
@@ -177,6 +198,12 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 
 	// Add strategic notes
 	b.addStrategicNotes(recommendation)
+
+	// Add evolution slot note if applicable
+	if len(recommendation.EvolutionSlots) > 0 {
+		slotNote := fmt.Sprintf("Evolution slots: %s", strings.Join(recommendation.EvolutionSlots, ", "))
+		recommendation.AddNote(slotNote)
+	}
 
 	return recommendation, nil
 }
@@ -290,16 +317,23 @@ func (b *Builder) buildCandidate(name string, data CardLevelData) *CardCandidate
 
 	elixir := b.resolveElixir(name, data)
 	role := b.inferRole(name)
-	score := b.scoreCard(level, maxLevel, rarity, elixir, role)
+	score := b.scoreCard(level, maxLevel, rarity, elixir, role, data.MaxEvolutionLevel)
+
+	// Add evolution tracking
+	hasEvolution := data.MaxEvolutionLevel > 0 && b.unlockedEvolutions[name]
+	evoPriority := b.getEvolutionPriority(role)
 
 	return &CardCandidate{
-		Name:     name,
-		Level:    level,
-		MaxLevel: maxLevel,
-		Rarity:   rarity,
-		Elixir:   elixir,
-		Role:     role,
-		Score:    score,
+		Name:              name,
+		Level:             level,
+		MaxLevel:          maxLevel,
+		Rarity:            rarity,
+		Elixir:            elixir,
+		Role:              role,
+		Score:             score,
+		HasEvolution:      hasEvolution,
+		EvolutionPriority: evoPriority,
+		MaxEvolutionLevel: data.MaxEvolutionLevel,
 	}
 }
 
@@ -324,7 +358,7 @@ func (b *Builder) inferRole(name string) *CardRole {
 	return nil
 }
 
-func (b *Builder) scoreCard(level, maxLevel int, rarity string, elixir int, role *CardRole) float64 {
+func (b *Builder) scoreCard(level, maxLevel int, rarity string, elixir int, role *CardRole, maxEvolutionLevel int) float64 {
 	levelRatio := float64(level) / float64(maxLevel)
 	rarityBoost := b.rarityWeights[rarity]
 	if rarityBoost == 0 {
@@ -339,7 +373,87 @@ func (b *Builder) scoreCard(level, maxLevel int, rarity string, elixir int, role
 		roleBonus = 0
 	}
 
-	return (levelRatio * 1.2 * rarityBoost) + (elixirWeight * 0.15) + roleBonus
+	// Use level-scaled evolution bonus
+	evolutionBonus := b.calculateEvolutionBonus(name, level, maxLevel, maxEvolutionLevel)
+
+	return (levelRatio * 1.2 * rarityBoost) + (elixirWeight * 0.15) + roleBonus + evolutionBonus
+}
+
+// calculateEvolutionBonus returns level-scaled evolution bonus
+// Formula: baseBonus * (level/maxLevel)^1.5 * (1 + 0.2*(maxEvoLevel-1))
+// This rewards using higher-level cards and accounts for multi-evolution cards
+func (b *Builder) calculateEvolutionBonus(cardName string, level, maxLevel, maxEvoLevel int) float64 {
+	// Check if evolution is unlocked
+	if !b.unlockedEvolutions[cardName] || maxEvoLevel == 0 {
+		return 0.0
+	}
+
+	const baseBonus = 0.25
+	levelRatio := float64(level) / float64(maxLevel)
+	scaledRatio := math.Pow(levelRatio, 1.5)
+
+	// Bonus multiplier for multi-evolution cards (e.g., Knight with evo level 3)
+	evoMultiplier := 1.0 + (0.2 * float64(maxEvoLevel-1))
+
+	return baseBonus * scaledRatio * evoMultiplier
+}
+
+// getEvolutionPriority returns priority value for role (lower = higher priority)
+// Priority: Win Conditions (1) > Buildings (2) > Big Spells (3) > Support (4) > Small Spells (5) > Cycle (6)
+func (b *Builder) getEvolutionPriority(role *CardRole) int {
+	if role == nil {
+		return 100 // Lowest priority for cards without roles
+	}
+
+	priorityMap := map[CardRole]int{
+		RoleWinCondition: 1,
+		RoleBuilding:     2,
+		RoleSpellBig:     3,
+		RoleSupport:      4,
+		RoleSpellSmall:   5,
+		RoleCycle:        6,
+	}
+
+	if priority, exists := priorityMap[*role]; exists {
+		return priority
+	}
+	return 100
+}
+
+// selectEvolutionSlots chooses which cards use evolution slots based on role priority and card score
+// When 3+ evolved cards exist in deck, selects top N (default 2) by role priority, then score
+func (b *Builder) selectEvolutionSlots(deck []*CardCandidate) []string {
+	// Filter to evolved cards only
+	evolved := make([]*CardCandidate, 0)
+	for _, card := range deck {
+		if card.HasEvolution {
+			evolved = append(evolved, card)
+		}
+	}
+
+	// If we have <= slot limit, all evolved cards get slots
+	if len(evolved) <= b.evolutionSlotLimit {
+		slots := make([]string, len(evolved))
+		for i, card := range evolved {
+			slots[i] = card.Name
+		}
+		return slots
+	}
+
+	// Sort by priority (ASC - lower number = higher priority), then by score (DESC - higher is better)
+	sort.Slice(evolved, func(i, j int) bool {
+		if evolved[i].EvolutionPriority != evolved[j].EvolutionPriority {
+			return evolved[i].EvolutionPriority < evolved[j].EvolutionPriority
+		}
+		return evolved[i].Score > evolved[j].Score
+	})
+
+	// Select top N by slot limit
+	slots := make([]string, b.evolutionSlotLimit)
+	for i := 0; i < b.evolutionSlotLimit; i++ {
+		slots[i] = evolved[i].Name
+	}
+	return slots
 }
 
 func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[string]bool) *CardCandidate {
@@ -481,4 +595,24 @@ func (b *Builder) LoadDeckFromFile(deckPath string) (*DeckRecommendation, error)
 	}
 
 	return &recommendation, nil
+}
+
+// SetUnlockedEvolutions updates the unlocked evolutions list
+// This allows runtime override of the UNLOCKED_EVOLUTIONS environment variable
+func (b *Builder) SetUnlockedEvolutions(cards []string) {
+	b.unlockedEvolutions = make(map[string]bool)
+	for _, card := range cards {
+		cardName := strings.TrimSpace(card)
+		if cardName != "" {
+			b.unlockedEvolutions[cardName] = true
+		}
+	}
+}
+
+// SetEvolutionSlotLimit updates the evolution slot limit
+// This allows runtime override of the default 2-slot limit
+func (b *Builder) SetEvolutionSlotLimit(limit int) {
+	if limit > 0 {
+		b.evolutionSlotLimit = limit
+	}
 }

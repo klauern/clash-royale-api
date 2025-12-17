@@ -70,6 +70,15 @@ func addDeckCommands() *cli.Command {
 						Name:  "save",
 						Usage: "Save deck to file",
 					},
+					&cli.StringFlag{
+						Name:  "unlocked-evolutions",
+						Usage: "Comma-separated list of cards with unlocked evolutions (overrides UNLOCKED_EVOLUTIONS env var)",
+					},
+					&cli.IntFlag{
+						Name:  "evolution-slots",
+						Value: 2,
+						Usage: "Number of evolution slots available (default 2)",
+					},
 				},
 				Action: deckBuildCommand,
 			},
@@ -197,8 +206,18 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	// Create deck builder
 	builder := deck.NewBuilder(dataDir)
 
+	// Override unlocked evolutions if CLI flag provided
+	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
+		builder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+	}
+
+	// Override evolution slot limit if provided
+	if slots := cmd.Int("evolution-slots"); slots > 0 {
+		builder.SetEvolutionSlotLimit(slots)
+	}
+
 	// Build deck from analysis
-	deckRec, err := builder.BuildDeckFromPlayerAnalysis(cardAnalysis)
+	deckRec, err := builder.BuildDeckFromAnalysis(*cardAnalysis)
 	if err != nil {
 		return fmt.Errorf("failed to build deck: %w", err)
 	}

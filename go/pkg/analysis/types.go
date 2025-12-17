@@ -30,9 +30,10 @@ type CardLevelInfo struct {
 	Rarity      string `json:"rarity"`
 	Elixir      int    `json:"elixir,omitempty"`
 	CardCount   int    `json:"card_count"`
-	CardsToNext int    `json:"cards_to_next_level"`
-	IsMaxLevel  bool   `json:"is_max_level"`
-}
+		CardsToNext       int    `json:"cards_to_next_level"`
+		IsMaxLevel        bool   `json:"is_max_level"`
+		MaxEvolutionLevel int    `json:"max_evolution_level,omitempty"`
+	}
 
 // LevelRatio returns the card's level as a ratio of its max level (0.0 to 1.0)
 func (cli *CardLevelInfo) LevelRatio() float64 {

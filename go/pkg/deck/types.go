@@ -33,13 +33,16 @@ func (cr CardRole) String() string {
 // CardCandidate represents a card being considered for deck building
 // with its metadata and calculated score
 type CardCandidate struct {
-	Name     string
-	Level    int
-	MaxLevel int
-	Rarity   string
-	Elixir   int
-	Role     *CardRole
-	Score    float64
+	Name              string
+	Level             int
+	MaxLevel          int
+	Rarity            string
+	Elixir            int
+	Role              *CardRole
+	Score             float64
+	HasEvolution      bool
+	EvolutionPriority int
+	MaxEvolutionLevel int
 }
 
 // LevelRatio returns the card's level as a ratio of its max level
@@ -57,11 +60,12 @@ func (cc *CardCandidate) HasRole() bool {
 
 // DeckRecommendation represents a recommended 8-card deck with metadata
 type DeckRecommendation struct {
-	Deck         []string     `json:"deck"`
-	DeckDetail   []CardDetail `json:"deck_detail"`
-	AvgElixir    float64      `json:"average_elixir"`
-	AnalysisTime string       `json:"analysis_time,omitempty"`
-	Notes        []string     `json:"notes"`
+	Deck           []string     `json:"deck"`
+	DeckDetail     []CardDetail `json:"deck_detail"`
+	AvgElixir      float64      `json:"average_elixir"`
+	AnalysisTime   string       `json:"analysis_time,omitempty"`
+	Notes          []string     `json:"notes"`
+	EvolutionSlots []string     `json:"evolution_slots,omitempty"`
 }
 
 // CardDetail provides detailed information about a card in a recommended deck

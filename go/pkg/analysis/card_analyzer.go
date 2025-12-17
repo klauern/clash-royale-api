@@ -64,7 +64,7 @@ func AnalyzeCardCollection(player *clashroyale.Player, options AnalysisOptions) 
 func convertCardsToUpgradeInfos(cards []clashroyale.Card) []UpgradeInfo {
 	infos := make([]UpgradeInfo, 0, len(cards))
 	for _, card := range cards {
-		info := CalculateUpgradeInfo(card.Name, card.Rarity, card.ElixirCost, card.Level, card.Count)
+		info := CalculateUpgradeInfo(card.Name, card.Rarity, card.ElixirCost, card.Level, card.Count, card.MaxEvolutionLevel)
 		infos = append(infos, info)
 	}
 	return infos
@@ -84,6 +84,7 @@ func buildCardLevelsMap(infos []UpgradeInfo) map[string]CardLevelInfo {
 			CardCount:   info.CardsOwned,
 			CardsToNext: info.CardsToNextLevel,
 			IsMaxLevel:  info.IsMaxLevel,
+			MaxEvolutionLevel: info.MaxEvolutionLevel,
 		}
 	}
 	return cardLevels
