@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
@@ -82,6 +83,15 @@ func addDeckCommands() *cli.Command {
 						Name:  "evolution-slots",
 						Value: 2,
 						Usage: "Number of evolution slots available (default 2)",
+					},
+					&cli.Float64Flag{
+						Name:  "combat-stats-weight",
+						Value: 0.25,
+						Usage: "Weight for combat stats in scoring (0.0-1.0, where 0=disabled, 0.25=default, 1.0=combat-only)",
+					},
+					&cli.BoolFlag{
+						Name:  "disable-combat-stats",
+						Usage: "Disable combat stats completely (use traditional scoring only)",
 					},
 				},
 				Action: deckBuildCommand,
@@ -203,9 +213,24 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
+	combatStatsWeight := cmd.Float64("combat-stats-weight")
+	disableCombatStats := cmd.Bool("disable-combat-stats")
 
 	if apiToken == "" {
 		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	}
+
+	// Configure combat stats weight
+	if disableCombatStats {
+		os.Setenv("COMBAT_STATS_WEIGHT", "0")
+		if verbose {
+			fmt.Printf("Combat stats disabled (using traditional scoring only)\n")
+		}
+	} else if combatStatsWeight >= 0 && combatStatsWeight <= 1.0 {
+		os.Setenv("COMBAT_STATS_WEIGHT", fmt.Sprintf("%.2f", combatStatsWeight))
+		if verbose {
+			fmt.Printf("Combat stats weight set to: %.2f\n", combatStatsWeight)
+		}
 	}
 
 	client := clashroyale.NewClient(apiToken)
@@ -487,7 +512,19 @@ func displayDeckRecommendation(rec *deck.DeckRecommendation, player *clashroyale
 	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
 	fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-	fmt.Printf("Average Elixir: %.2f\n\n", rec.AvgElixir)
+	fmt.Printf("Average Elixir: %.2f\n", rec.AvgElixir)
+
+	// Display combat stats information if available
+	if combatWeight := os.Getenv("COMBAT_STATS_WEIGHT"); combatWeight != "" {
+		if combatWeight == "0" {
+			fmt.Printf("Scoring: Traditional only (combat stats disabled)\n")
+		} else {
+			fmt.Printf("Scoring: %.0f%% traditional, %.0f%% combat stats\n",
+				(1-mustParseFloat(combatWeight))*100,
+				mustParseFloat(combatWeight)*100)
+		}
+	}
+	fmt.Printf("\n")
 
 	// Display deck cards in a table
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -513,6 +550,14 @@ func displayDeckRecommendation(rec *deck.DeckRecommendation, player *clashroyale
 			fmt.Printf("• %s\n", note)
 		}
 	}
+}
+
+// mustParseFloat parses a float from a string, returning 0 if parsing fails
+func mustParseFloat(s string) float64 {
+	if val, err := strconv.ParseFloat(s, 64); err == nil {
+		return val
+	}
+	return 0
 }
 
 // Helper functions for deck operations
