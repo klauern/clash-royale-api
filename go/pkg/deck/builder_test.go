@@ -361,6 +361,208 @@ func TestBuilder_InferRole(t *testing.T) {
 	}
 }
 
+func TestBuilder_CalculateEvolutionBonus(t *testing.T) {
+	tests := []struct {
+		name         string
+		cardName     string
+		level        int
+		maxLevel     int
+		maxEvoLevel  int
+		unlocked     map[string]bool
+		expectedMin  float64
+		expectedMax  float64
+	}{
+		{
+			name:         "evolution not unlocked",
+			cardName:     "Knight",
+			level:        14,
+			maxLevel:     14,
+			maxEvoLevel:  3,
+			unlocked:     map[string]bool{},
+			expectedMin:  0.0,
+			expectedMax:  0.0,
+		},
+		{
+			name:         "no evolution support",
+			cardName:     "P.E.K.K.A",
+			level:        12,
+			maxLevel:     14,
+			maxEvoLevel:  0,
+			unlocked:     map[string]bool{"P.E.K.K.A": true},
+			expectedMin:  0.0,
+			expectedMax:  0.0,
+		},
+		{
+			name:         "single evolution at max level",
+			cardName:     "Archers",
+			level:        14,
+			maxLevel:     14,
+			maxEvoLevel:  1,
+			unlocked:     map[string]bool{"Archers": true},
+			expectedMin:  0.24,
+			expectedMax:  0.26,
+		},
+		{
+			name:         "single evolution at mid level",
+			cardName:     "Bomber",
+			level:        11,
+			maxLevel:     14,
+			maxEvoLevel:  1,
+			unlocked:     map[string]bool{"Bomber": true},
+			expectedMin:  0.17,
+			expectedMax:  0.18,
+		},
+		{
+			name:         "multi-evolution (3 levels) at max level",
+			cardName:     "Knight",
+			level:        14,
+			maxLevel:     14,
+			maxEvoLevel:  3,
+			unlocked:     map[string]bool{"Knight": true},
+			expectedMin:  0.34,
+			expectedMax:  0.36,
+		},
+		{
+			name:         "multi-evolution (3 levels) at level 10",
+			cardName:     "Musketeer",
+			level:        10,
+			maxLevel:     14,
+			maxEvoLevel:  3,
+			unlocked:     map[string]bool{"Musketeer": true},
+			expectedMin:  0.21,
+			expectedMax:  0.22,
+		},
+		{
+			name:         "multi-evolution (2 levels) at max level",
+			cardName:     "Giant",
+			level:        14,
+			maxLevel:     14,
+			maxEvoLevel:  2,
+			unlocked:     map[string]bool{"Giant": true},
+			expectedMin:  0.29,
+			expectedMax:  0.31,
+		},
+		{
+			name:         "evolution at very low level",
+			cardName:     "Knight",
+			level:        1,
+			maxLevel:     14,
+			maxEvoLevel:  3,
+			unlocked:     map[string]bool{"Knight": true},
+			expectedMin:  0.00,
+			expectedMax:  0.02,
+		},
+		{
+			name:         "evolution at level 0",
+			cardName:     "Test",
+			level:        0,
+			maxLevel:     14,
+			maxEvoLevel:  1,
+			unlocked:     map[string]bool{"Test": true},
+			expectedMin:  0.0,
+			expectedMax:  0.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewBuilder("testdata")
+			builder.unlockedEvolutions = tt.unlocked
+
+			bonus := builder.calculateEvolutionBonus(tt.cardName, tt.level, tt.maxLevel, tt.maxEvoLevel)
+
+			if bonus < tt.expectedMin || bonus > tt.expectedMax {
+				t.Errorf("Evolution bonus = %f, want range [%f, %f]",
+					bonus, tt.expectedMin, tt.expectedMax)
+			}
+
+			// Verify bonus is non-zero when evolution is unlocked
+			if tt.unlocked[tt.cardName] && tt.maxEvoLevel > 0 && tt.level > 0 {
+				if bonus <= 0 {
+					t.Errorf("Expected positive bonus for unlocked evolution, got %f", bonus)
+				}
+			}
+		})
+	}
+}
+
+func TestBuilder_CalculateEvolutionBonus_FormulaVerification(t *testing.T) {
+	// Test the exact formula: 0.25 * (level/maxLevel)^1.5 * (1 + 0.2*(maxEvoLevel-1))
+	builder := NewBuilder("testdata")
+	builder.unlockedEvolutions = map[string]bool{"Test": true}
+
+	// Test case: Knight at level 14/14 with maxEvoLevel=3
+	// Expected: 0.25 * (14/14)^1.5 * (1 + 0.2*2) = 0.25 * 1.0 * 1.4 = 0.35
+	bonus := builder.calculateEvolutionBonus("Test", 14, 14, 3)
+	expected := 0.35
+	tolerance := 0.01
+
+	if bonus < expected-tolerance || bonus > expected+tolerance {
+		t.Errorf("Formula test failed: got %f, want %f (±%f)", bonus, expected, tolerance)
+	}
+
+	// Test case: Archers at level 14/14 with maxEvoLevel=1
+	// Expected: 0.25 * (14/14)^1.5 * (1 + 0.2*0) = 0.25 * 1.0 * 1.0 = 0.25
+	bonus = builder.calculateEvolutionBonus("Test", 14, 14, 1)
+	expected = 0.25
+
+	if bonus < expected-tolerance || bonus > expected+tolerance {
+		t.Errorf("Formula test failed: got %f, want %f (±%f)", bonus, expected, tolerance)
+	}
+
+	// Test case: Card at level 10/14 with maxEvoLevel=2
+	// Expected: 0.25 * (10/14)^1.5 * (1 + 0.2*1) = 0.25 * 0.60368 * 1.2 ≈ 0.181
+	bonus = builder.calculateEvolutionBonus("Test", 10, 14, 2)
+	expected = 0.181
+	tolerance = 0.01
+
+	if bonus < expected-tolerance || bonus > expected+tolerance {
+		t.Errorf("Formula test failed: got %f, want %f (±%f)", bonus, expected, tolerance)
+	}
+}
+
+func TestBuilder_CalculateEvolutionBonus_LevelScaling(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.unlockedEvolutions = map[string]bool{"Test": true}
+
+	// Test that bonus increases with level for the same maxLevel
+	levels := []int{1, 5, 10, 12, 14}
+	var prevBonus float64
+
+	for i, level := range levels {
+		bonus := builder.calculateEvolutionBonus("Test", level, 14, 1)
+
+		if i > 0 && bonus <= prevBonus {
+			t.Errorf("Expected bonus to increase with level: level %d bonus %f <= level %d bonus %f",
+				level, bonus, levels[i-1], prevBonus)
+		}
+
+		prevBonus = bonus
+		t.Logf("Level %d/14: bonus = %f", level, bonus)
+	}
+}
+
+func TestBuilder_CalculateEvolutionBonus_EvolutionLevelScaling(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.unlockedEvolutions = map[string]bool{"Test": true}
+
+	// Test that bonus increases with maxEvolutionLevel for the same card level
+	evoLevels := []int{1, 2, 3}
+	var prevBonus float64
+
+	for i, evoLevel := range evoLevels {
+		bonus := builder.calculateEvolutionBonus("Test", 14, 14, evoLevel)
+
+		if i > 0 && bonus <= prevBonus {
+			t.Errorf("Expected bonus to increase with evo level: evo %d bonus %f <= evo %d bonus %f",
+				evoLevel, bonus, evoLevels[i-1], prevBonus)
+		}
+
+		prevBonus = bonus
+		t.Logf("MaxEvoLevel %d: bonus = %f", evoLevel, bonus)
+	}
+}
+
 // Benchmark tests
 func BenchmarkBuilder_BuildDeckFromAnalysis(b *testing.B) {
 	builder := NewBuilder("testdata")
@@ -393,5 +595,18 @@ func BenchmarkBuilder_BuildDeckFromAnalysis(b *testing.B) {
 		if err != nil {
 			b.Fatalf("Failed to build deck: %v", err)
 		}
+	}
+}
+
+func BenchmarkBuilder_CalculateEvolutionBonus(b *testing.B) {
+	builder := NewBuilder("testdata")
+	builder.unlockedEvolutions = map[string]bool{"Knight": true, "Archers": true, "Giant": true}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		builder.calculateEvolutionBonus("Knight", 14, 14, 3)
+		builder.calculateEvolutionBonus("Archers", 13, 14, 1)
+		builder.calculateEvolutionBonus("Giant", 12, 14, 2)
+		builder.calculateEvolutionBonus("P.E.K.K.A", 14, 14, 0)
 	}
 }
