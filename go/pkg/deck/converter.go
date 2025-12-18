@@ -14,10 +14,11 @@ func ConvertAnalysisForDeckBuilding(analysisData *analysis.CardAnalysis) CardAna
 
 	for cardName, cardInfo := range analysisData.CardLevels {
 		cardLevels[cardName] = CardLevelData{
-			Level:    cardInfo.Level,
-			MaxLevel: cardInfo.MaxLevel,
-			Rarity:   cardInfo.Rarity,
-			Elixir:   cardInfo.Elixir,
+			Level:             cardInfo.Level,
+			MaxLevel:          cardInfo.MaxLevel,
+			Rarity:            cardInfo.Rarity,
+			Elixir:            cardInfo.Elixir,
+			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
 		}
 	}
 
