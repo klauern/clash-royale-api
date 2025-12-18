@@ -266,3 +266,73 @@ func TestCard_Validate_EdgeCases(t *testing.T) {
 	}
 }
 
+func TestCard_Validate_NegativeValues(t *testing.T) {
+	tests := []struct {
+		name    string
+		card    Card
+		wantErr bool
+		errMsg  string
+	}{
+		{
+			name: "negative evolution level",
+			card: Card{
+				Name:              "Test",
+				EvolutionLevel:    -1,
+				MaxEvolutionLevel: 3,
+			},
+			wantErr: true,
+			errMsg:  "evolution level cannot be negative: -1",
+		},
+		{
+			name: "negative max evolution level",
+			card: Card{
+				Name:              "Test",
+				EvolutionLevel:    0,
+				MaxEvolutionLevel: -2,
+			},
+			wantErr: true,
+			errMsg:  "max evolution level cannot be negative: -2",
+		},
+		{
+			name: "negative star level",
+			card: Card{
+				Name:      "Test",
+				StarLevel: -3,
+			},
+			wantErr: true,
+			errMsg:  "star level cannot be negative: -3",
+		},
+		{
+			name: "multiple negative values - evolution level checked first",
+			card: Card{
+				Name:              "Test",
+				EvolutionLevel:    -1,
+				MaxEvolutionLevel: -2,
+				StarLevel:         -3,
+			},
+			wantErr: true,
+			errMsg:  "evolution level cannot be negative: -1",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.card.Validate()
+
+			if tt.wantErr {
+				if err == nil {
+					t.Error("Card.Validate() expected error, got nil")
+					return
+				}
+				if tt.errMsg != "" && err.Error() != tt.errMsg {
+					t.Errorf("Card.Validate() error = %q, want %q", err.Error(), tt.errMsg)
+				}
+			} else {
+				if err != nil {
+					t.Errorf("Card.Validate() unexpected error: %v", err)
+				}
+			}
+		})
+	}
+}
+
