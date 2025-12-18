@@ -1,0 +1,196 @@
+run:
+  timeout: 5m
+  issues-exit-code: 1
+  tests: true
+
+output:
+  format: colored-line-number
+  print-issued-lines: true
+  print-linter-name: true
+
+linters-settings:
+  govet:
+    check-shadowing: true
+    enable-all: true
+    disable:
+      - fieldalignment # Too strict for this project
+
+  gocyclo:
+    min-complexity: 15
+
+  maligned:
+    suggest-new: true
+
+  dupl:
+    threshold: 100
+
+  goconst:
+    min-len: 2
+    min-occurrences: 2
+
+  misspell:
+    locale: US
+
+  lll:
+    line-length: 140
+
+  goimports:
+    local-prefixes: github.com/klauern
+
+  gocritic:
+    enabled-tags:
+      - diagnostic
+      - experimental
+      - opinionated
+      - performance
+      - style
+    disabled-checks:
+      - dupImport # https://github.com/go-critic/go-critic/issues/845
+      - ifElseChain
+      - octalLiteral
+      - whyNoLint
+      - wrapperFunc
+
+  funlen:
+    lines: 100
+    statements: 50
+
+  gocognit:
+    min-complexity: 20
+
+  nestif:
+    min-complexity: 4
+
+  gomnd:
+    settings:
+      mnd:
+        checks: argument,case,condition,operation,return,assign
+
+  godox:
+    keywords:
+      - NOTE
+      - OPTIMIZE
+      - HACK
+      - FIXME
+      - TODO
+
+  unconvert:
+    check-unsafe: false
+
+  gosec:
+    excludes:
+      - G204  # Subprocess launched with variable
+      - G304  # File path provided as taint input
+      - G107  # Url provided as taint input
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - deadcode
+    - depguard
+    - dogsled
+    - dupl
+    - errcheck
+    - exportloopref
+    - exhaustive
+    - funlen
+    - gochecknoinits
+    - goconst
+    - gocritic
+    - gocyclo
+    - gofmt
+    - goimports
+    - golint
+    - gomnd
+    - goprintffuncname
+    - gosec
+    - gosimple
+    - govet
+    - ineffassign
+    - interfacer
+    - lll
+    - misspell
+    - nakedret
+    - noctx
+    - nolintlint
+    - rowserrcheck
+    - scopelint
+    - staticcheck
+    - structcheck
+    - stylecheck
+    - typecheck
+    - unconvert
+    - unparam
+    - unused
+    - varcheck
+    - whitespace
+    - wsl
+    - gocognit
+    - nestif
+    - prealloc
+    - gocritic
+    - godox
+    - goerr113
+    - gofumpt
+    - revive
+    - durationcheck
+    - forcetypeassert
+    - makezero
+    - nilerr
+    - nilnil
+    - tenv
+    - tparallel
+    - thelper
+    - wrapcheck
+
+issues:
+  exclude-rules:
+    # Exclude some linters from running on tests files
+    - path: _test\.go
+      linters:
+        - gocyclo
+        - errcheck
+        - dupl
+        - gosec
+        - funlen
+        - gocognit
+        - nestif
+
+    # Exclude known linter issues
+    - text: "weak cryptographic primitive"
+      linters:
+        - gosec
+
+    # Exclude shadow checking on err variables
+    - text: "shadow: declaration of \"err\""
+      linters:
+        - govet
+
+    # Exclude certain golint issues
+    - text: "should have a package comment"
+      linters:
+        - golint
+
+    # Exclude magic number warnings for common values
+    - text: "Magic number: [0-2]"
+      linters:
+        - gomnd
+
+  exclude-use-default: false
+  max-issues-per-linter: 0
+  max-same-issues: 0
+  new: false
+
+  exclude:
+    # Exclude known G104 issues in tests
+    - "G104: Errors unhandled"
+
+    # Exclude shadow issues in common patterns
+    - "declaration of \"err\" shadows declaration at"
+
+    # Exclude structcheck for external types
+    - "is unused"
+
+    # Exclude magic numbers in test tables
+    - "Magic number: [0-9]+"

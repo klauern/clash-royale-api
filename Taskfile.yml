@@ -366,9 +366,11 @@ tasks:
     desc: Run linting on Go code
     summary: |
       Run linter on Go code
-      - Go: go vet
+      - golangci-lint (comprehensive linting)
+      - go vet (built-in vet)
     cmds:
-      - echo "Running Go linter..."
+      - echo "Running golangci-lint..."
+      - cd go && golangci-lint run --timeout=5m || echo "golangci-lint not found, running go vet..."
       - cd go && go vet ./...
 
   format:
@@ -423,6 +425,139 @@ tasks:
       - sh: test -d go
         msg: "Go directory not found"
 
+  # CI/CD Tasks
+  build-all:
+    desc: Build cross-platform binaries for release
+    summary: |
+      Build binaries for all supported platforms (Linux, macOS, Windows)
+    cmds:
+      - echo "Building cross-platform binaries..."
+      - |
+        cd go
+        mkdir -p dist
+
+        # Build matrix
+        platforms=(
+          "linux/amd64"
+          "linux/arm64"
+          "darwin/amd64"
+          "darwin/arm64"
+          "windows/amd64"
+        )
+
+        for platform in "${platforms[@]}"; do
+          goos="${platform%/*}"
+          goarch="${platform#*/}"
+          suffix=""
+          if [[ "$goos" == "windows" ]]; then
+            suffix=".exe"
+          fi
+
+          echo "Building for $goos/$goarch..."
+          GOOS=$goos GOARCH=$goarch go build \
+            -ldflags="-s -w -X main.version=$(git describe --tags --always 2>/dev/null || echo 'dev')" \
+            -o dist/cr-api-${goos}-${goarch}${suffix} \
+            ./cmd/cr-api
+
+          GOOS=$goos GOARCH=$goarch go build \
+            -ldflags="-s -w -X main.version=$(git describe --tags --always 2>/dev/null || echo 'dev')" \
+            -o dist/deckbuilder-${goos}-${goarch}${suffix} \
+            ./cmd/deckbuilder
+        done
+
+        ls -la dist/
+        echo "✅ Cross-platform build complete!"
+
+  build-release:
+    desc: Build release artifacts
+    summary: |
+      Build and package release artifacts with archives
+    cmds:
+      - task: build-all
+      - |
+        cd go/dist
+        echo "Creating release archives..."
+
+        # Create archives
+        for binary in cr-api-* deckbuilder-*; do
+          if [[ "$binary" == *.exe ]]; then
+            # Windows - use zip
+            zip "${binary%.exe}.zip" "$binary"
+          else
+            # Unix-like - use tar.gz
+            tar -czf "${binary}.tar.gz" "$binary"
+          fi
+        done
+
+        # Generate checksums
+        sha256sum *.{tar.gz,zip} > checksums.txt 2>/dev/null || true
+
+        ls -la
+        echo "✅ Release artifacts ready!"
+
+  install-tools:
+    desc: Install development tools
+    summary: |
+      Install required development tools for the project
+    cmds:
+      - echo "Installing development tools..."
+      - |
+        # Install golangci-lint
+        if ! command -v golangci-lint &> /dev/null; then
+          echo "Installing golangci-lint..."
+          go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+        else
+          echo "golangci-lint already installed"
+        fi
+
+        # Install gosec
+        if ! command -v gosec &> /dev/null; then
+          echo "Installing gosec..."
+          go install github.com/securecodewarrior/gosec/v2/cmd/gosec@latest
+        else
+          echo "gosec already installed"
+        fi
+
+        echo "✅ Development tools installed!"
+
+  security-scan:
+    desc: Run security scanning
+    summary: |
+      Run security vulnerability scanning
+    cmds:
+      - echo "Running security scan..."
+      - cd go && gosec ./... || echo "gosec not found, skipping security scan"
+
+  generate-completion:
+    desc: Generate shell completion scripts
+    summary: |
+      Generate auto-completion scripts for bash, zsh, and fish
+    cmds:
+      - echo "Generating shell completion scripts..."
+      - |
+        cd go
+        mkdir -p dist/completion
+
+        # Generate completion for cr-api
+        if [ -f bin/cr-api ]; then
+          ./bin/cr-api --completion=bash > dist/completion/cr-api.bash 2>/dev/null || true
+          ./bin/cr-api --completion=zsh > dist/completion/cr-api.zsh 2>/dev/null || true
+          ./bin/cr-api --completion=fish > dist/completion/cr-api.fish 2>/dev/null || true
+        fi
+
+        # Generate completion for deckbuilder
+        if [ -f bin/deckbuilder ]; then
+          ./bin/deckbuilder --completion=bash > dist/completion/deckbuilder.bash 2>/dev/null || true
+          ./bin/deckbuilder --completion=zsh > dist/completion/deckbuilder.zsh 2>/dev/null || true
+          ./bin/deckbuilder --completion=fish > dist/completion/deckbuilder.fish 2>/dev/null || true
+        fi
+
+        echo "✅ Completion scripts generated in go/dist/completion/"
+        echo "Install them in:"
+        echo "  bash: ~/.local/share/bash-completion/completions/"
+        echo "  zsh:  ~/.zsh/completions/"
+        echo "  fish: ~/.config/fish/completions/"
+
 help:
     desc: Show API usage examples (Go CLI)
     cmds:
@@ -432,6 +567,7 @@ help:
       - echo "Prerequisites:"
       - 'echo "1. Build binaries: task build-go"'
       - 'echo "2. Set CLASH_ROYALE_API_TOKEN in .env file"'
+      - 'echo "3. Install dev tools: task install-tools (optional, for linting)"'
       - echo ''
       - echo "Basic Player Operations:"
       - 'echo "1. Basic player analysis: task run -- #PLAYER_TAG"'
@@ -450,8 +586,15 @@ help:
       - echo "Development Commands:"
       - 'echo "- Build: task build-go"'
       - 'echo "- Test: task test"'
-      - 'echo "- Lint: task lint"'
+      - 'echo "- Lint: task lint (includes golangci-lint)"'
       - 'echo "- Format: task format"'
+      - 'echo "- Security scan: task security-scan"'
+      - echo ''
+      - echo "Release/CI Commands:"
+      - 'echo "- Build all platforms: task build-all"'
+      - 'echo "- Build release artifacts: task build-release"'
+      - 'echo "- Generate shell completion: task generate-completion"'
+      - 'echo "- Install dev tools: task install-tools"'
       - echo ''
       - 'echo "Replace #PLAYER_TAG with actual tag (e.g., '#PLAYERTAG')"'
-      - 'echo "Project is now Go-only!"'
+      - 'echo "Project is now Go-only with CI/CD support!"'

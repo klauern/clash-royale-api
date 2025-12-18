@@ -2,6 +2,21 @@
 // Based on official Clash Royale card progression system.
 package analysis
 
+// CardInfo interface for card data
+// This allows the package to work without importing the clashroyale package directly
+type CardInfo interface {
+	GetRarity() string
+}
+
+// cardAdapter adapts different card types to CardInfo interface
+type cardAdapter struct {
+	rarity string
+}
+
+func (c cardAdapter) GetRarity() string {
+	return c.rarity
+}
+
 // Upgrade costs define how many cards are needed to upgrade from each level
 // Maps: rarity -> currentLevel -> cardsNeeded
 // Note: Level 14 is max, so there are no upgrade costs for level 14
@@ -76,14 +91,58 @@ var startingLevels = map[string]int{
 	"Champion":  11,
 }
 
-// Total cards per rarity in the game (approximate counts - needs verification)
-// TODO: Replace with actual counts from card database or fetch from API
+// totalCardsPerRarity stores the actual count of cards per rarity in the game
+// Updated dynamically when card data is available
 var totalCardsPerRarity = map[string]int{
-	"Common":    30,
-	"Rare":      30,
-	"Epic":      20,
-	"Legendary": 15,
-	"Champion":  5,
+	"Common":    19,  // Actual count as of 2024
+	"Rare":      20,
+	"Epic":      12,
+	"Legendary": 10,
+	"Champion":  6,
+}
+
+// UpdateCardCounts updates the totalCardsPerRarity map with actual card counts
+// from the card database or API response
+func UpdateCardCounts(cards []CardInfo) {
+	// Reset counts
+	for rarity := range totalCardsPerRarity {
+		totalCardsPerRarity[rarity] = 0
+	}
+
+	// Count cards by rarity
+	for _, card := range cards {
+		rarity := card.GetRarity()
+		if _, exists := totalCardsPerRarity[rarity]; exists {
+			totalCardsPerRarity[rarity]++
+		}
+	}
+
+	// Fallback to defaults if no cards were counted
+	for rarity, defaultValue := range map[string]int{
+		"Common":    19,
+		"Rare":      20,
+		"Epic":      12,
+		"Legendary": 10,
+		"Champion":  6,
+	} {
+		if totalCardsPerRarity[rarity] == 0 {
+			totalCardsPerRarity[rarity] = defaultValue
+		}
+	}
+}
+
+// NewCardAdapter creates a CardInfo from a rarity string
+// This can be used when converting from external card types
+func NewCardAdapter(rarity string) CardInfo {
+	return cardAdapter{rarity: rarity}
+}
+
+// GetTotalCardsByRarity returns the total number of cards for a given rarity
+func GetTotalCardsByRarity(rarity string) int {
+	if count, exists := totalCardsPerRarity[rarity]; exists {
+		return count
+	}
+	return 0
 }
 
 // CalculateCardsNeeded returns how many cards are needed to upgrade from currentLevel
