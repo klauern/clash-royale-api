@@ -1,1 +1,0 @@
-"""Tests for the Clash Royale API package."""

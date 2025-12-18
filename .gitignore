@@ -1,3 +1,17 @@
+# Go build artifacts
+bin/
+go/bin/
+
+# Test coverage
+*.out
+coverage.out
+
+# Task execution logs
+task_execution_logs/
+
+# Test output
+test_csv_output/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -112,10 +126,13 @@ venv.bak/
 .dmypy.json
 dmypy.json
 
+# Cache directories
+.ruff_cache/
+.uv-cache/
+
 # Data directories
 data/
-*.json
-*.csv
+go/data/
 
 # IDEs
 .vscode/

@@ -57,11 +57,13 @@ clash-royale-api/
 ### 2. Configure the Project
 
 Run the setup task (creates .env file automatically):
+
 ```bash
 task setup
 ```
 
 Edit `.env` in the project root and add your API token:
+
 ```env
 CLASH_ROYALE_API_TOKEN=your_api_token_here
 DEFAULT_PLAYER_TAG=#your_player_tag_here  # Optional
@@ -83,19 +85,7 @@ task build-go
 ./bin/cr-api player --tag PLAYER_TAG --export-csv
 ```
 
-## Python Setup (Legacy)
-
-The Python implementation is still available for existing users:
-
-```bash
-# Install Python dependencies
-uv sync
-
-# Run Python CLI
-uv run python src/clash_royale_api/cli.py --player #PLAYERTAG
-```
-
-## Go CLI Usage
+## CLI Usage
 
 ### Main Commands
 
@@ -161,7 +151,6 @@ task
 task setup              # Configure environment
 task build-go           # Build Go binaries
 task test-go            # Run Go tests
-task test               # Run all tests (Go + Python)
 
 # Player analysis (uses DEFAULT_PLAYER_TAG from .env if no tag provided)
 task run -- #PLAYER_TAG
@@ -174,56 +163,7 @@ task format             # Format code
 task clean              # Clean generated files
 ```
 
-## Python CLI (Legacy)
-
-```bash
-# Using uv (recommended)
-uv run python src/clash_royale_api/cli.py --player #PLAYERTAG --save
-
-# Basic operations
-uv run python src/clash_royale_api/cli.py --player #PLAYERTAG
-uv run python src/clash_royale_api/cli.py --player #PLAYERTAG --export-csv
-uv run python src/clash_royale_api/cli.py --player #PLAYERTAG --build-ladder-deck
-```
-
-### Python API
-
-```python
-import asyncio
-from clash_royale_api import ClashRoyaleAPI
-
-async def main():
-    # Use async context manager for proper resource management
-    async with ClashRoyaleAPI() as api:
-        # Get all available cards
-        cards = await api.get_all_cards()
-        print(f"Total cards: {len(cards['items'])}")
-
-        # Get player information with card needs
-        player_tag = "#ABC123"  # Replace with actual player tag
-        player_info = await api.get_player_info(player_tag, include_card_needs=True)
-
-        # Get complete player profile with analysis
-        profile = await api.get_complete_player_profile(player_tag, include_card_analysis=True)
-
-        # Analyze card collection
-        analysis = await api.analyze_card_collection(player_tag)
-        print(f"Cards needing upgrade: {len(analysis['cards_needing_upgrade'])}")
-
-# Run the async main function
-asyncio.run(main())
-```
-
-### Key Methods
-
-- `get_all_cards()`: Fetch all available cards
-- `get_player_info(player_tag)`: Get comprehensive player data
-- `get_player_upcoming_chests(player_tag)`: Get upcoming chests
-- `get_player_card_collection(player_tag)`: Get detailed card collection
-- `analyze_card_collection(player_tag)`: Analyze collection with upgrade priorities
-- `get_complete_player_profile(player_tag)`: Get everything in one call
-
-### Go API
+## Go API
 
 ```go
 package main
@@ -311,7 +251,9 @@ go get github.com/klauer/clash-royale-api/go/pkg/deck
 ## Data Structure
 
 ### Player Card Collection
+
 Each card in your collection includes:
+
 - `name`: Card name
 - `level`: Current level
 - `count`: Number of cards owned
@@ -319,7 +261,9 @@ Each card in your collection includes:
 - `max_level`: Maximum achievable level
 
 ### Analysis Output
+
 The analysis provides:
+
 - Total card count
 - Rarity breakdown
 - Max level cards
@@ -327,9 +271,11 @@ The analysis provides:
 - Cards needed for next levels
 
 ### Evolution Support
+
 The Go implementation includes evolution tracking for enhanced deck building:
 
 **Configuration (.env):**
+
 ```env
 # Cards with unlocked evolutions (comma-separated)
 UNLOCKED_EVOLUTIONS="Archers,Knight,Musketeer"
@@ -339,11 +285,13 @@ UNLOCKED_EVOLUTIONS="Archers,Knight,Musketeer"
 ```
 
 **How it works:**
+
 1. Cards with unlocked evolutions receive a level-scaled bonus
 2. Evolution slots are prioritized (default: 2 slots)
 3. Deck builder shows which cards use evolution slots in output
 
 **Example Output:**
+
 ```
 Strategic Notes:
 • Evolution slots: Archers, Knight
@@ -354,12 +302,14 @@ Strategic Notes:
 The project uses a `.env` file in the project root for configuration. All CLI arguments can be configured via environment variables, allowing you to run tasks without repeatedly typing arguments.
 
 ### Required Configuration
+
 ```env
 # API Token (required)
 CLASH_ROYALE_API_TOKEN=your_api_token_here
 ```
 
 ### Optional Configuration
+
 ```env
 # Default Player Tag (allows running tasks without arguments)
 DEFAULT_PLAYER_TAG=#PLAYERTAG
@@ -387,7 +337,9 @@ OUTPUT_FORMAT=table  # json, table
 ```
 
 ### Priority System
+
 The CLI uses the following priority for configuration:
+
 1. **CLI arguments** (highest priority)
 2. **Environment variables**
 3. **Default values** (lowest priority)
@@ -397,44 +349,10 @@ This means you can set defaults in `.env` and override them when needed with CLI
 ## Rate Limiting
 
 The client includes built-in rate limiting to respect the API's limits:
+
 - Default: 1 second between requests
 - Automatic retry with exponential backoff
 - Configurable delay and retry limits
-
-## Examples
-
-### Track Multiple Players
-
-```python
-players = ["#PLAYER1", "#PLAYER2", "#PLAYER3"]
-
-for player_tag in players:
-    try:
-        analysis = api.analyze_card_collection(player_tag)
-        print(f"{player_tag}: {len(analysis['max_level_cards'])} max level cards")
-    except Exception as e:
-        print(f"Error analyzing {player_tag}: {e}")
-```
-
-### Save Historical Data
-
-```python
-import datetime
-import json
-
-# Save player data with timestamp
-player_data = api.get_player_info(player_tag)
-timestamp = datetime.datetime.now().isoformat()
-
-historical_data = {
-    "timestamp": timestamp,
-    "player_data": player_data
-}
-
-# Save to historical tracking file
-with open(f"data/history/{player_tag}_{timestamp}.json", "w") as f:
-    json.dump(historical_data, f, indent=2)
-```
 
 ## API Endpoints Used
 
@@ -446,6 +364,7 @@ with open(f"data/history/{player_tag}_{timestamp}.json", "w") as f:
 ## Error Handling
 
 The client includes comprehensive error handling:
+
 - Invalid API tokens
 - Rate limiting
 - Network issues
@@ -474,6 +393,7 @@ This project is for educational and personal use. Please respect Supercell's Ter
 ## Changelog
 
 ### v2.0.0 (Current)
+
 - **Go Implementation**: Complete Go implementation with feature parity to Python
 - **Intelligent Deck Building**: AI-powered deck recommendations based on card collection
 - **Evolution Support**: Track unlocked evolutions and optimize deck building
@@ -484,6 +404,7 @@ This project is for educational and personal use. Please respect Supercell's Ter
 - **Combat Statistics**: Advanced card statistics including DPS, HP, and effectiveness metrics
 
 ### v1.0.0 (Python - Legacy)
+
 - Initial Python release
 - Complete card database access
 - Player profile analysis
