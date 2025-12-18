@@ -136,8 +136,22 @@ type Card struct {
 // Validate checks if the card data is valid
 func (c *Card) Validate() error {
 	if c.EvolutionLevel > c.MaxEvolutionLevel {
-		return fmt.Errorf("evolution level %d cannot be greater than max evolution level %d", c.EvolutionLevel, c.MaxEvolutionLevel)
+		return fmt.Errorf("evolution level %d cannot be greater than max evolution level %d",
+			c.EvolutionLevel, c.MaxEvolutionLevel)
 	}
+
+	if c.EvolutionLevel < 0 {
+		return fmt.Errorf("evolution level cannot be negative: %d", c.EvolutionLevel)
+	}
+
+	if c.MaxEvolutionLevel < 0 {
+		return fmt.Errorf("max evolution level cannot be negative: %d", c.MaxEvolutionLevel)
+	}
+
+	if c.StarLevel < 0 {
+		return fmt.Errorf("star level cannot be negative: %d", c.StarLevel)
+	}
+
 	return nil
 }
 
