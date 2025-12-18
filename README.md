@@ -1,8 +1,6 @@
 # Clash Royale API Data Collector
 
-A comprehensive dual-language (Python + Go) tool for collecting, analyzing, and tracking Clash Royale card data, player statistics, event decks, and intelligent deck building using the official Clash Royale API.
-
-**⚠️ Note**: The Go implementation is now the primary focus and has achieved feature parity with Python. The Python implementation is considered legacy but remains functional.
+A comprehensive Go tool for collecting, analyzing, and tracking Clash Royale card data, player statistics, event decks, and intelligent deck building using the official Clash Royale API.
 
 ## Features
 
@@ -10,11 +8,12 @@ A comprehensive dual-language (Python + Go) tool for collecting, analyzing, and 
 - 👤 **Player Profile Analysis**: Comprehensive player data including card collections
 - 🏗️ **Intelligent Deck Building**: AI-powered deck recommendations based on your collection
 - 📊 **Collection Analysis**: Detailed statistics on card levels, rarities, and upgrade priorities
+- 🎮 **Playstyle Analysis**: Analyze player's playstyle and get personalized deck recommendations
 - 🃏 **Event Deck Tracking**: Monitor and analyze performance in special events
 - 💾 **Data Persistence**: Save and track historical data over time
 - 📈 **CSV Export**: Export player data, card collections, and event statistics
 - 🔄 **Rate Limiting**: Built-in rate limiting to respect API limits
-- ⚡ **High Performance**: Go implementation offers superior performance and type safety
+- ⚡ **High Performance**: Go implementation provides superior performance and type safety
 
 ## Project Structure
 
@@ -22,28 +21,25 @@ A comprehensive dual-language (Python + Go) tool for collecting, analyzing, and 
 clash-royale-api/
 ├── .env.example               # Example configuration
 ├── Taskfile.yml              # Task runner configuration
-├── go/                       # Go implementation (primary)
+├── go/                       # Go implementation
 │   ├── cmd/
 │   │   ├── cr-api/          # Main CLI application
 │   │   └── deckbuilder/     # Standalone deck builder
 │   ├── pkg/                 # Go libraries
 │   │   ├── clashroyale/     # API client
-│   │   ├── analysis/        # Collection analysis
+│   │   ├── analysis/        # Collection analysis & playstyle
 │   │   ├── deck/            # Deck building algorithms
 │   │   └── events/          # Event deck tracking
 │   ├── internal/            # Internal packages
 │   │   ├── exporter/        # CSV export
 │   │   └── storage/         # Data persistence
 │   └── bin/                 # Built binaries
-├── src/                     # Python implementation (legacy)
-│   └── clash_royale_api/    # Python package
 ├── data/                    # Data storage
 │   ├── static/              # Static game data
 │   ├── players/             # Player profiles
 │   ├── analysis/            # Collection analysis
 │   ├── csv/                 # CSV exports
 │   └── event_decks/         # Event deck tracking
-├── tests/                   # Test files
 ├── scripts/                 # Utility scripts
 ├── LICENSE                  # MIT License
 └── README.md                # This file

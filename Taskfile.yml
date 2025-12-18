@@ -4,16 +4,12 @@
 version: '3'
 
 vars:
-  PYTHON_VERSION: '3.11'
   PROJECT_NAME: clash-royale-api
   DATA_DIR: data
   TEST_PLAYER_TAG: '#PLAYERTAG'
   GO_DIR: go
   CR_API_BIN: '{{.GO_DIR}}/bin/cr-api'
   DECKBUILDER_BIN: '{{.GO_DIR}}/bin/deckbuilder'
-
-env:
-  PYTHONPATH: './src'
 
 dotenv: ['.env']
 
@@ -27,7 +23,6 @@ tasks:
     desc: Set up the development environment
     cmds:
       - echo "Setting up development environment..."
-      - uv sync
       - task: build-go
       - echo "Creating data directories..."
       - mkdir -p {{.DATA_DIR}}/{players,clans,analysis,static,reference}
@@ -39,9 +34,8 @@ tasks:
       - echo "Please edit .env file with your API token"
 
   install:
-    desc: Install dependencies and build Go binaries
+    desc: Build Go binaries
     cmds:
-      - uv sync
       - task: build-go
 
   build-go:
@@ -361,86 +355,48 @@ tasks:
         msg: "cr-api binary not found. Build it with: task build-go"
 
   test:
-    desc: Run tests (both Go and Python)
+    desc: Run Go tests
     summary: |
       Run all tests for the project.
       - Go tests: Run all Go package tests with coverage
-      - Python tests: Run existing Python tests (legacy)
     cmds:
-      - echo "Running Go tests..."
-      - |
-        cd go && \
-        if [ -f "../.env" ]; then
-          # Export only valid variable names from .env (skip lines with # or invalid names)
-          set -a
-          while IFS='=' read -r key value; do
-            # Skip lines starting with #, empty lines, or keys with invalid characters
-            if [[ ! "$key" =~ ^[[:space:]]*# ]] && [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
-              export "$key=$value"
-            fi
-          done < ../.env
-          set +a
-        fi && \
-        go test -v -race -coverprofile=coverage.out ./... 2>/dev/null || go test -v ./...
-      - echo "Running Python tests (legacy)..."
-      - uv run pytest tests/ -x || true
+      - task: test-go
 
   lint:
-    desc: Run linting on the code (Go and Python)
+    desc: Run linting on Go code
     summary: |
-      Run linters on both Go and Python code
-      - Go: go vet and golint if available
-      - Python: ruff for Python code (legacy)
+      Run linter on Go code
+      - Go: go vet
     cmds:
       - echo "Running Go linter..."
       - cd go && go vet ./...
-      - echo "Running Python linter (legacy)..."
-      - uv run ruff check src/ || true
 
   format:
-    desc: Format the code (Go and Python)
+    desc: Format Go code
     summary: |
-      Format both Go and Python code
-      - Go: go fmt and goimports if available
-      - Python: black and ruff for Python code (legacy)
+      Format Go code
+      - Go: go fmt
     cmds:
       - echo "Formatting Go code..."
       - cd go && go fmt ./...
-      - echo "Formatting Python code (legacy)..."
-      - uv run black src/ 2>/dev/null || echo "black not available, skipping Python formatting"
-      - uv run ruff check --fix src/ 2>/dev/null || echo "ruff not available, skipping Python fixes"
 
   clean:
     desc: Clean up generated files
     cmds:
       - echo "Cleaning up..."
       - rm -rf {{.DATA_DIR}}/
-      - rm -rf __pycache__/
-      - rm -rf src/__pycache__/
-      - rm -rf src/*/__pycache__/
-      - find . -name '*.pyc' -delete
       - echo "✅ Clean complete!"
 
   status:
     desc: Show project status
     cmds:
       - 'echo "=== Project Status ==="'
-      - 'echo "Python version: {{.PYTHON_VERSION}}"'
       - 'echo "Project name: {{.PROJECT_NAME}}"'
       - 'echo "Data directory: {{.DATA_DIR}}"'
       - echo ''
       - 'echo "=== Environment ==="'
       - 'test -f .env && echo "✅ .env file exists" || echo "❌ .env file missing"'
       - 'test -f .env && grep -q "CLASH_ROYALE_API_TOKEN=" .env && echo "✅ API token configured" || echo "❌ API token not configured"'
-
-  dev:
-    desc: Start development mode with watch
-    summary: |
-      Watch for file changes and auto-format on save
-      Requires: watchdog (installed with dev dependencies)
-    cmds:
-      - echo "Starting development mode..."
-      - uv run python scripts/watch_dev.py
 
   test-go:
     desc: Run Go tests only
@@ -467,7 +423,7 @@ tasks:
       - sh: test -d go
         msg: "Go directory not found"
 
-help-api:
+help:
     desc: Show API usage examples (Go CLI)
     cmds:
       - echo "Clash Royale API - Go CLI Usage Examples:"
@@ -493,10 +449,9 @@ help-api:
       - echo ''
       - echo "Development Commands:"
       - 'echo "- Build: task build-go"'
-      - 'echo "- Test all: task test (runs Go tests + Python legacy tests)"'
-      - 'echo "- Test Go only: task test-go"'
-      - 'echo "- Lint: task lint (Go vet + Python ruff)"'
-      - 'echo "- Format: task format (go fmt + Python black/ruff)"'
+      - 'echo "- Test: task test"'
+      - 'echo "- Lint: task lint"'
+      - 'echo "- Format: task format"'
       - echo ''
       - 'echo "Replace #PLAYER_TAG with actual tag (e.g., '#PLAYERTAG')"'
-      - 'echo "Note: All tasks now use Go binaries instead of Python"'
+      - 'echo "Project is now Go-only!"'

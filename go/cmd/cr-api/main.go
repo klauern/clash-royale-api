@@ -136,6 +136,27 @@ func main() {
 				},
 				Action: analyzeCommand,
 			},
+			{
+				Name:  "playstyle",
+				Usage: "Analyze player's playstyle and recommend decks",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #)",
+						Required: true,
+					},
+					&cli.BoolFlag{
+						Name:  "recommend-decks",
+						Usage: "Include deck recommendations based on playstyle",
+					},
+					&cli.BoolFlag{
+						Name:  "save",
+						Usage: "Save analysis to JSON file",
+					},
+				},
+				Action: playstyleCommand,
+			},
 		},
 	}
 
@@ -524,6 +545,217 @@ func saveAnalysisData(dataDir string, a *analysis.CardAnalysis) error {
 
 	if err := os.WriteFile(filename, data, 0644); err != nil {
 		return fmt.Errorf("failed to write analysis file: %w", err)
+	}
+
+	return nil
+}
+
+func playstyleCommand(ctx context.Context, cmd *cli.Command) error {
+	tag := cmd.String("tag")
+	recommendDecks := cmd.Bool("recommend-decks")
+	saveData := cmd.Bool("save")
+	apiToken := cmd.String("api-token")
+	verbose := cmd.Bool("verbose")
+	dataDir := cmd.String("data-dir")
+
+	if apiToken == "" {
+		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	}
+
+	client := clashroyale.NewClient(apiToken)
+
+	if verbose {
+		fmt.Printf("Analyzing playstyle for tag: %s\n", tag)
+	}
+
+	// Get player information
+	player, err := client.GetPlayer(tag)
+	if err != nil {
+		return fmt.Errorf("failed to get player: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+		fmt.Printf("Analyzing playstyle based on %d battles...\n", player.BattleCount)
+	}
+
+	// Perform playstyle analysis
+	playstyleAnalysis, err := analysis.AnalyzePlaystyle(player)
+	if err != nil {
+		return fmt.Errorf("failed to analyze playstyle: %w", err)
+	}
+
+	// Display playstyle analysis
+	displayPlaystyleAnalysis(playstyleAnalysis)
+
+	// Get deck recommendations if requested
+	var recommendations *analysis.DeckRecommendationResult
+	if recommendDecks {
+		if verbose {
+			fmt.Printf("\nGenerating deck recommendations...\n")
+		}
+		recommendations, err = analysis.RecommendDecks(playstyleAnalysis, dataDir)
+		if err != nil {
+			fmt.Printf("Warning: Failed to generate deck recommendations: %v\n", err)
+		} else {
+			displayDeckRecommendations(recommendations)
+		}
+	}
+
+	// Save analysis if requested
+	if saveData {
+		if verbose {
+			fmt.Printf("\nSaving playstyle analysis to: %s\n", dataDir)
+		}
+
+		// Save playstyle analysis
+		if err := savePlaystyleData(dataDir, playstyleAnalysis, recommendations); err != nil {
+			fmt.Printf("Warning: Failed to save playstyle analysis: %v\n", err)
+		} else {
+			fmt.Printf("Playstyle analysis saved to: %s/analysis/playstyle_%s.json\n", dataDir, playstyleAnalysis.PlayerTag)
+		}
+	}
+
+	return nil
+}
+
+func displayPlaystyleAnalysis(p *analysis.PlaystyleAnalysis) {
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║                    PLAYSTYLE ANALYSIS                             ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	fmt.Printf("Player: %s (%s)\n", p.PlayerName, p.PlayerTag)
+	fmt.Printf("Analysis Time: %s\n\n", p.AnalysisTime.Format("2006-01-02 15:04:05"))
+
+	// Display statistics
+	fmt.Printf("Overall Statistics:\n")
+	fmt.Printf("═══════════════════\n")
+	fmt.Printf("Total Battles:     %d\n", p.TotalBattles)
+	fmt.Printf("Record:            %dW - %dL\n", p.Wins, p.Losses)
+	fmt.Printf("Win Rate:          %.1f%%\n", p.WinRate)
+	fmt.Printf("Three-Crown Wins:  %d (%.1f%% of wins)\n\n", p.ThreeCrownWins, p.ThreeCrownRate)
+
+	// Display playstyle profile
+	fmt.Printf("Playstyle Profile:\n")
+	fmt.Printf("═══════════════════\n")
+	fmt.Printf("Aggression Level:  %s\n", p.AggressionLevel)
+	fmt.Printf("Consistency:       %s\n", p.Consistency)
+	fmt.Printf("Current Deck Style: %s\n", p.DeckStyle)
+	if p.CurrentWinCondition != "" {
+		fmt.Printf("Current Win Condition: %s\n", p.CurrentWinCondition)
+		fmt.Printf("Current Average Elixir: %.1f\n", p.CurrentDeckAvgElixir)
+	}
+	fmt.Printf("Deck Elixir Distribution: %s\n", p.DeckElixirDistribution)
+	fmt.Printf("\n")
+
+	// Display traits
+	fmt.Printf("Key Traits:\n")
+	fmt.Printf("════════════\n")
+	for _, trait := range p.PlaystyleTraits {
+		fmt.Printf("• %s\n", trait)
+	}
+	fmt.Printf("\n")
+
+	// Display current deck if available
+	if len(p.CurrentDeckCards) > 0 {
+		fmt.Printf("Current Deck Cards:\n")
+		fmt.Printf("═══════════════════\n")
+		for _, card := range p.CurrentDeckCards {
+			fmt.Printf("• %s\n", card)
+		}
+		fmt.Printf("\n")
+	}
+}
+
+func displayDeckRecommendations(r *analysis.DeckRecommendationResult) {
+	if r.Recommended == nil {
+		fmt.Printf("\nNo deck recommendations available.\n")
+		return
+	}
+
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║                    RECOMMENDED DECK                               ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	topDeck := r.Recommended.Deck
+	fmt.Printf("Deck: %s\n", topDeck.DeckName)
+	fmt.Printf("Win Condition: %s\n", topDeck.WinCondition)
+	fmt.Printf("Average Elixir: %.1f\n", topDeck.AverageElixir)
+	fmt.Printf("Match Score: %d/100\n", r.Recommended.Score)
+	fmt.Printf("Compatibility: %s\n\n", r.Recommended.Compatibility)
+
+	fmt.Printf("Why this deck:\n")
+	for _, reason := range r.Recommended.Reasons {
+		fmt.Printf("✓ %s\n", reason)
+	}
+	fmt.Printf("\n")
+
+	if len(topDeck.DeckDetail) > 0 {
+		fmt.Printf("Cards:\n")
+		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+		fmt.Fprintf(w, "  Card                 Level   Elixir\n")
+		fmt.Fprintf(w, "  ----                 -----   ------\n")
+		for _, card := range topDeck.DeckDetail {
+			levelPct := float64(card.Level) / float64(card.MaxLevel) * 100
+			indicator := "✓"
+			if levelPct <= 60 {
+				indicator = "○"
+			}
+			fmt.Fprintf(w, "  %s%-20s %2d/%-2d   %2d\n", indicator, card.Name, card.Level, card.MaxLevel, card.Elixir)
+		}
+		w.Flush()
+		fmt.Printf("\n")
+	}
+
+	fmt.Printf("Strategy: %s\n\n", topDeck.Strategy)
+
+	// Show other options
+	if len(r.AllScores) > 1 {
+		fmt.Printf("╔════════════════════════════════════════════════════════════════════╗\n")
+		fmt.Printf("║                    OTHER DECK OPTIONS                              ║\n")
+		fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+		for i, rankedDeck := range r.AllScores[1:] {
+			deck := rankedDeck.Deck
+			fmt.Printf("#%d: %s\n", i+2, deck.DeckName)
+			fmt.Printf("    Score: %d/100\n", rankedDeck.Score)
+			fmt.Printf("    Compatibility: %s\n", rankedDeck.Compatibility)
+			fmt.Printf("    Average Elixir: %.1f\n", deck.AverageElixir)
+			if len(rankedDeck.Reasons) > 0 {
+				fmt.Printf("    Top reason: %s\n", rankedDeck.Reasons[0])
+			}
+			fmt.Printf("\n")
+		}
+	}
+}
+
+func savePlaystyleData(dataDir string, p *analysis.PlaystyleAnalysis, r *analysis.DeckRecommendationResult) error {
+	// Create analysis directory if it doesn't exist
+	analysisDir := filepath.Join(dataDir, "analysis")
+	if err := os.MkdirAll(analysisDir, 0755); err != nil {
+		return fmt.Errorf("failed to create analysis directory: %w", err)
+	}
+
+	// Prepare data for saving
+	saveData := struct {
+		PlaystyleAnalysis *analysis.PlaystyleAnalysis          `json:"playstyle_analysis"`
+		DeckRecommendations *analysis.DeckRecommendationResult `json:"deck_recommendations,omitempty"`
+	}{
+		PlaystyleAnalysis: p,
+	}
+
+	if r != nil {
+		saveData.DeckRecommendations = r
+	}
+
+	// Save as JSON
+	filename := filepath.Join(analysisDir, fmt.Sprintf("playstyle_%s.json", p.PlayerTag))
+	data, err := json.MarshalIndent(saveData, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal playstyle data: %w", err)
+	}
+
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return fmt.Errorf("failed to write playstyle file: %w", err)
 	}
 
 	return nil
