@@ -9,31 +9,31 @@ import (
 
 // EventAnalysis represents comprehensive analysis of event decks
 type EventAnalysis struct {
-	PlayerTag      string                 `json:"player_tag"`
-	AnalysisTime   time.Time              `json:"analysis_time"`
-	TotalDecks     int                    `json:"total_decks"`
-	Summary        EventSummary           `json:"summary"`
-	CardAnalysis   EventCardAnalysis      `json:"card_analysis"`
-	ElixirAnalysis EventElixirAnalysis    `json:"elixir_analysis"`
-	EventBreakdown map[string]EventStats  `json:"event_breakdown"`
-	TopDecks       []TopPerformingDeck    `json:"top_decks"`
+	PlayerTag      string                `json:"player_tag"`
+	AnalysisTime   time.Time             `json:"analysis_time"`
+	TotalDecks     int                   `json:"total_decks"`
+	Summary        EventSummary          `json:"summary"`
+	CardAnalysis   EventCardAnalysis     `json:"card_analysis"`
+	ElixirAnalysis EventElixirAnalysis   `json:"elixir_analysis"`
+	EventBreakdown map[string]EventStats `json:"event_breakdown"`
+	TopDecks       []TopPerformingDeck   `json:"top_decks"`
 }
 
 // EventSummary provides high-level statistics about event deck performance
 type EventSummary struct {
-	TotalBattles        int     `json:"total_battles"`
-	TotalWins           int     `json:"total_wins"`
-	TotalLosses         int     `json:"total_losses"`
-	OverallWinRate      float64 `json:"overall_win_rate"`
-	AvgCrownsPerBattle  float64 `json:"avg_crowns_per_battle"`
-	AvgDeckElixir       float64 `json:"avg_deck_elixir"`
+	TotalBattles       int     `json:"total_battles"`
+	TotalWins          int     `json:"total_wins"`
+	TotalLosses        int     `json:"total_losses"`
+	OverallWinRate     float64 `json:"overall_win_rate"`
+	AvgCrownsPerBattle float64 `json:"avg_crowns_per_battle"`
+	AvgDeckElixir      float64 `json:"avg_deck_elixir"`
 }
 
 // EventCardAnalysis provides card usage and performance statistics
 type EventCardAnalysis struct {
-	MostUsedCards        []CardUsage      `json:"most_used_cards"`
-	HighestWinRateCards  []CardWinRate    `json:"highest_win_rate_cards"`
-	TotalUniqueCards     int              `json:"total_unique_cards"`
+	MostUsedCards       []CardUsage   `json:"most_used_cards"`
+	HighestWinRateCards []CardWinRate `json:"highest_win_rate_cards"`
+	TotalUniqueCards    int           `json:"total_unique_cards"`
 }
 
 // CardUsage tracks how frequently a card appears across event decks
@@ -57,9 +57,9 @@ type EventElixirAnalysis struct {
 
 // ElixirRangeStats provides statistics for a specific elixir cost range
 type ElixirRangeStats struct {
-	Range       string  `json:"range"`
-	DeckCount   int     `json:"deck_count"`
-	AvgWinRate  float64 `json:"avg_win_rate"`
+	Range      string  `json:"range"`
+	DeckCount  int     `json:"deck_count"`
+	AvgWinRate float64 `json:"avg_win_rate"`
 }
 
 // EventStats provides statistics for a specific event type
@@ -72,12 +72,12 @@ type EventStats struct {
 
 // TopPerformingDeck represents a high-performing event deck
 type TopPerformingDeck struct {
-	EventName   string   `json:"event_name"`
-	EventType   string   `json:"event_type"`
-	WinRate     float64  `json:"win_rate"`
-	Record      string   `json:"record"` // e.g., "12W-2L"
-	Deck        []string `json:"deck"`
-	AvgElixir   float64  `json:"avg_elixir"`
+	EventName string   `json:"event_name"`
+	EventType string   `json:"event_type"`
+	WinRate   float64  `json:"win_rate"`
+	Record    string   `json:"record"` // e.g., "12W-2L"
+	Deck      []string `json:"deck"`
+	AvgElixir float64  `json:"avg_elixir"`
 }
 
 // AnalysisOptions configures event deck analysis behavior
@@ -104,12 +104,12 @@ func AnalyzeEventDecks(decks []EventDeck, options AnalysisOptions) *EventAnalysi
 
 	if len(filteredDecks) == 0 {
 		return &EventAnalysis{
-			AnalysisTime: time.Now(),
-			Summary: EventSummary{},
-			CardAnalysis: EventCardAnalysis{},
+			AnalysisTime:   time.Now(),
+			Summary:        EventSummary{},
+			CardAnalysis:   EventCardAnalysis{},
 			ElixirAnalysis: EventElixirAnalysis{},
 			EventBreakdown: map[string]EventStats{},
-			TopDecks: []TopPerformingDeck{},
+			TopDecks:       []TopPerformingDeck{},
 		}
 	}
 
@@ -184,9 +184,9 @@ func calculateSummary(decks []EventDeck) EventSummary {
 
 // analyzeCardUsage tracks card frequency and performance across all event decks
 func analyzeCardUsage(decks []EventDeck) EventCardAnalysis {
-	cardUsage := make(map[string]int)      // card name -> usage count
-	cardWins := make(map[string]int)       // card name -> total wins with this card
-	cardBattles := make(map[string]int)    // card name -> total battles with this card
+	cardUsage := make(map[string]int)   // card name -> usage count
+	cardWins := make(map[string]int)    // card name -> total wins with this card
+	cardBattles := make(map[string]int) // card name -> total battles with this card
 
 	// Track all unique cards seen
 	uniqueCards := make(map[string]bool)

@@ -1,6 +1,7 @@
 package clashroyale
 
 import (
+	"fmt"
 	"time"
 )
 
@@ -127,8 +128,17 @@ type Card struct {
 	Type              string   `json:"type"`
 	Rarity            string   `json:"rarity"`
 	Description       string   `json:"description,omitempty"`
+	EvolutionLevel    int      `json:"evolutionLevel,omitempty"`
 	MaxEvolutionLevel int      `json:"maxEvolutionLevel,omitempty"`
 	StarLevel         int      `json:"starLevel,omitempty"`
+}
+
+// Validate checks if the card data is valid
+func (c *Card) Validate() error {
+	if c.EvolutionLevel > c.MaxEvolutionLevel {
+		return fmt.Errorf("evolution level %d cannot be greater than max evolution level %d", c.EvolutionLevel, c.MaxEvolutionLevel)
+	}
+	return nil
 }
 
 // Chest represents an upcoming chest

@@ -75,15 +75,15 @@ func buildCardLevelsMap(infos []UpgradeInfo) map[string]CardLevelInfo {
 	cardLevels := make(map[string]CardLevelInfo)
 	for _, info := range infos {
 		cardLevels[info.CardName] = CardLevelInfo{
-			Name:        info.CardName,
-			ID:          0, // Not available in UpgradeInfo
-			Level:       info.CurrentLevel,
-			MaxLevel:    info.MaxLevel,
-			Rarity:      info.Rarity,
-			Elixir:      info.ElixirCost,
-			CardCount:   info.CardsOwned,
-			CardsToNext: info.CardsToNextLevel,
-			IsMaxLevel:  info.IsMaxLevel,
+			Name:              info.CardName,
+			ID:                0, // Not available in UpgradeInfo
+			Level:             info.CurrentLevel,
+			MaxLevel:          info.MaxLevel,
+			Rarity:            info.Rarity,
+			Elixir:            info.ElixirCost,
+			CardCount:         info.CardsOwned,
+			CardsToNext:       info.CardsToNextLevel,
+			IsMaxLevel:        info.IsMaxLevel,
 			MaxEvolutionLevel: info.MaxEvolutionLevel,
 		}
 	}

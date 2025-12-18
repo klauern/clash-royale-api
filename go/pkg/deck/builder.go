@@ -10,6 +10,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
 // Builder handles the construction of balanced Clash Royale decks
@@ -21,6 +23,7 @@ type Builder struct {
 	roleGroups         map[CardRole][]string
 	fallbackElixir     map[string]int
 	rarityWeights      map[string]float64
+	statsRegistry      *clashroyale.CardStatsRegistry
 }
 
 // NewBuilder creates a new deck builder instance
@@ -40,11 +43,11 @@ func NewBuilder(dataDir string) *Builder {
 		}
 	}
 
-	return &Builder{
+	builder := &Builder{
 		dataDir:            dataDir,
 		unlockedEvolutions: unlockedEvos,
 		evolutionSlotLimit: 2,
-		roleGroups:         map[CardRole][]string{
+		roleGroups: map[CardRole][]string{
 			RoleWinCondition: {
 				"Royal Giant", "Hog Rider", "Giant", "P.E.K.K.A", "Giant Skeleton",
 				"Goblin Barrel", "Mortar", "X-Bow", "Royal Hogs",
@@ -90,6 +93,17 @@ func NewBuilder(dataDir string) *Builder {
 			"Champion":  1.2,
 		},
 	}
+
+	// Try to load combat stats
+	statsPath := filepath.Join(dataDir, "cards_stats.json")
+	if stats, err := clashroyale.LoadStats(statsPath); err == nil {
+		builder.statsRegistry = stats
+	} else {
+		// Log error if needed, for now just silent failure or maybe print to stderr
+		// fmt.Fprintf(os.Stderr, "Warning: Failed to load card stats from %s: %v\n", statsPath, err)
+	}
+
+	return builder
 }
 
 // CardAnalysis represents the input analysis data structure
@@ -100,11 +114,11 @@ type CardAnalysis struct {
 
 // CardLevelData represents card level and metadata from analysis
 type CardLevelData struct {
-	Level    int    `json:"level"`
-	MaxLevel int    `json:"max_level"`
-	Rarity   string `json:"rarity"`
-	Elixir   int    `json:"elixir,omitempty"`
-	MaxEvolutionLevel int `json:"max_evolution_level,omitempty"`
+	Level             int    `json:"level"`
+	MaxLevel          int    `json:"max_level"`
+	Rarity            string `json:"rarity"`
+	Elixir            int    `json:"elixir,omitempty"`
+	MaxEvolutionLevel int    `json:"max_evolution_level,omitempty"`
 }
 
 // BuildDeckFromAnalysis creates a deck recommendation from card analysis data
@@ -317,11 +331,27 @@ func (b *Builder) buildCandidate(name string, data CardLevelData) *CardCandidate
 
 	elixir := b.resolveElixir(name, data)
 	role := b.inferRole(name)
-	score := b.scoreCard(level, maxLevel, rarity, elixir, role, data.MaxEvolutionLevel)
 
 	// Add evolution tracking
 	hasEvolution := data.MaxEvolutionLevel > 0 && b.unlockedEvolutions[name]
 	evoPriority := b.getEvolutionPriority(role)
+
+	var stats *clashroyale.CombatStats
+	if b.statsRegistry != nil {
+		stats = b.statsRegistry.GetStats(name)
+	}
+
+	// Use combat-enhanced scoring if stats are available
+	var score float64
+	if stats != nil {
+		// Calculate custom evolution bonus and add to combat-enhanced score
+		evolutionBonus := b.calculateEvolutionBonus(name, level, maxLevel, data.MaxEvolutionLevel)
+		combatScore := ScoreCardWithCombat(level, maxLevel, rarity, elixir, role, stats)
+		score = combatScore + evolutionBonus
+	} else {
+		// Fall back to traditional scoring if no combat stats available
+		score = b.scoreCard(name, level, maxLevel, rarity, elixir, role, data.MaxEvolutionLevel)
+	}
 
 	return &CardCandidate{
 		Name:              name,
@@ -334,6 +364,7 @@ func (b *Builder) buildCandidate(name string, data CardLevelData) *CardCandidate
 		HasEvolution:      hasEvolution,
 		EvolutionPriority: evoPriority,
 		MaxEvolutionLevel: data.MaxEvolutionLevel,
+		Stats:             stats,
 	}
 }
 
@@ -358,7 +389,7 @@ func (b *Builder) inferRole(name string) *CardRole {
 	return nil
 }
 
-func (b *Builder) scoreCard(level, maxLevel int, rarity string, elixir int, role *CardRole, maxEvolutionLevel int) float64 {
+func (b *Builder) scoreCard(name string, level, maxLevel int, rarity string, elixir int, role *CardRole, maxEvolutionLevel int) float64 {
 	levelRatio := float64(level) / float64(maxLevel)
 	rarityBoost := b.rarityWeights[rarity]
 	if rarityBoost == 0 {

@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"text/tabwriter"
+	"time"
 
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
+	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/urfave/cli/v3"
 )
 
@@ -161,6 +165,31 @@ func addDeckCommands() *cli.Command {
 				},
 				Action: deckRecommendCommand,
 			},
+			{
+				Name:  "mulligan",
+				Usage: "Generate mulligan guide (opening hand strategy) for a deck",
+				Flags: []cli.Flag{
+					&cli.StringSliceFlag{
+						Name:     "cards",
+						Aliases:  []string{"c"},
+						Usage:    "8 card names for the deck to analyze",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:  "deck-name",
+						Usage: "Custom name for the deck (optional)",
+					},
+					&cli.BoolFlag{
+						Name:  "save",
+						Usage: "Save mulligan guide to file",
+					},
+					&cli.BoolFlag{
+						Name:  "json",
+						Usage: "Output guide in JSON format",
+					},
+				},
+				Action: deckMulliganCommand,
+			},
 		},
 	}
 }
@@ -216,8 +245,24 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		builder.SetEvolutionSlotLimit(slots)
 	}
 
+	// Convert analysis.CardAnalysis to deck.CardAnalysis
+	deckCardAnalysis := deck.CardAnalysis{
+		CardLevels:   make(map[string]deck.CardLevelData),
+		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+	}
+
+	for cardName, cardInfo := range cardAnalysis.CardLevels {
+		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
+			Level:             cardInfo.Level,
+			MaxLevel:          cardInfo.MaxLevel,
+			Rarity:            cardInfo.Rarity,
+			Elixir:            cardInfo.Elixir,
+			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
+		}
+	}
+
 	// Build deck from analysis
-	deckRec, err := builder.BuildDeckFromAnalysis(*cardAnalysis)
+	deckRec, err := builder.BuildDeckFromAnalysis(deckCardAnalysis)
 	if err != nil {
 		return fmt.Errorf("failed to build deck: %w", err)
 	}
@@ -292,6 +337,145 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Printf("Getting deck recommendations for player %s\n", tag)
 	fmt.Printf("Limit: %d recommendations\n", limit)
 	fmt.Println("Note: Deck recommendations not yet implemented")
+
+	return nil
+}
+
+func deckMulliganCommand(ctx context.Context, cmd *cli.Command) error {
+	cardNames := cmd.StringSlice("cards")
+	deckName := cmd.String("deck-name")
+	saveData := cmd.Bool("save")
+	jsonOutput := cmd.Bool("json")
+	dataDir := cmd.String("data-dir")
+	verbose := cmd.Bool("verbose")
+
+	if len(cardNames) != 8 {
+		return fmt.Errorf("exactly 8 cards are required for mulligan analysis")
+	}
+
+	// Generate default deck name if not provided
+	if deckName == "" {
+		deckName = "Custom Deck"
+	}
+
+	if verbose {
+		fmt.Printf("Generating mulligan guide for deck: %s\n", deckName)
+		fmt.Printf("Cards: %v\n", cardNames)
+	}
+
+	// Create mulligan generator
+	generator := mulligan.NewGenerator()
+
+	// Generate the mulligan guide
+	guide, err := generator.GenerateGuide(cardNames, deckName)
+	if err != nil {
+		return fmt.Errorf("failed to generate mulligan guide: %w", err)
+	}
+
+	// Output the guide
+	if jsonOutput {
+		return outputMulliganGuideJSON(guide)
+	} else {
+		displayMulliganGuide(guide)
+	}
+
+	// Save guide if requested
+	if saveData {
+		if verbose {
+			fmt.Printf("\nSaving mulligan guide to: %s\n", dataDir)
+		}
+		if err := saveMulliganGuide(dataDir, guide); err != nil {
+			fmt.Printf("Warning: Failed to save mulligan guide: %v\n", err)
+		} else {
+			fmt.Printf("\nMulligan guide saved to file\n")
+		}
+	}
+
+	return nil
+}
+
+// displayMulliganGuide displays a formatted mulligan guide
+func displayMulliganGuide(guide *mulligan.MulliganGuide) {
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║                    MULLIGAN GUIDE - OPENING PLAYS               ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	fmt.Printf("Deck: %s (%s)\n", guide.DeckName, guide.Archetype.String())
+	fmt.Printf("Generated: %s\n\n", guide.GeneratedAt.Format("2006-01-02 15:04:05"))
+
+	fmt.Printf("📋 General Principles:\n")
+	for _, principle := range guide.GeneralPrinciples {
+		fmt.Printf("   • %s\n", principle)
+	}
+	fmt.Println()
+
+	fmt.Printf("🃏 Deck Composition:\n")
+	fmt.Printf("   Cards: %s\n", strings.Join(guide.DeckCards, ", "))
+	fmt.Println()
+
+	if len(guide.IdealOpenings) > 0 {
+		fmt.Printf("✅ Ideal Opening Cards:\n")
+		for _, opening := range guide.IdealOpenings {
+			fmt.Printf("   ✓ %s\n", opening)
+		}
+		fmt.Println()
+	}
+
+	if len(guide.NeverOpenWith) > 0 {
+		fmt.Printf("❌ Never Open With:\n")
+		for _, never := range guide.NeverOpenWith {
+			fmt.Printf("   ✗ %s\n", never)
+		}
+		fmt.Println()
+	}
+
+	fmt.Printf("🎮 Matchup-Specific Openings:\n\n")
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	for i, matchup := range guide.Matchups {
+		fmt.Printf("%d. VS %s\n", i+1, matchup.OpponentType)
+		fmt.Printf("   ▶ Opening Play: %s\n", matchup.OpeningPlay)
+		fmt.Printf("   ▶ Why: %s\n", matchup.Reason)
+		fmt.Printf("   ▶ Backup: %s\n", matchup.Backup)
+		fmt.Printf("   ▶ Key Cards: %s\n", strings.Join(matchup.KeyCards, ", "))
+		fmt.Printf("   ▶ Danger Level: %s\n", matchup.DangerLevel)
+		fmt.Println()
+	}
+	w.Flush()
+}
+
+// outputMulliganGuideJSON outputs the guide in JSON format
+func outputMulliganGuideJSON(guide *mulligan.MulliganGuide) error {
+	data, err := json.MarshalIndent(guide, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal mulligan guide: %w", err)
+	}
+
+	fmt.Println(string(data))
+	return nil
+}
+
+// saveMulliganGuide saves the mulligan guide to a JSON file
+func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
+	// Create mulligan directory if it doesn't exist
+	mulliganDir := filepath.Join(dataDir, "mulligan")
+	if err := os.MkdirAll(mulliganDir, 0755); err != nil {
+		return fmt.Errorf("failed to create mulligan directory: %w", err)
+	}
+
+	// Generate filename with timestamp
+	timestamp := guide.GeneratedAt.Format("20060102_150405")
+	filename := filepath.Join(mulliganDir, fmt.Sprintf("%s_%s.json", guide.DeckName, timestamp))
+
+	// Save as JSON
+	data, err := json.MarshalIndent(guide, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal mulligan guide: %w", err)
+	}
+
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return fmt.Errorf("failed to write mulligan guide file: %w", err)
+	}
 
 	return nil
 }

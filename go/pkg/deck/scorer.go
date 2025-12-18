@@ -4,7 +4,11 @@ package deck
 
 import (
 	"math"
+	"os"
 	"sort"
+	"strconv"
+
+	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
 // Rarity weights boost scores for higher rarity cards since they're harder to level up
@@ -24,6 +28,12 @@ const (
 	elixirWeightFactor = 0.15
 	levelWeightFactor  = 1.2
 	roleBonusValue     = 0.05
+
+	// Combat stats integration weights
+	defaultCombatWeight = 0.25 // 25% combat stats, 75% base scoring
+	combatDPSWeight     = 0.4  // 40% of combat score from DPS efficiency
+	combatHPWeight      = 0.4  // 40% of combat score from HP efficiency
+	combatRoleWeight    = 0.2  // 20% of combat score from role-specific effectiveness
 )
 
 // ScoreCard calculates a comprehensive score for a card based on multiple factors:
@@ -197,4 +207,115 @@ func GetRarityDistribution(candidates []CardCandidate) map[string]int {
 		distribution[candidate.Rarity]++
 	}
 	return distribution
+}
+
+// getCombatWeight returns the combat stats weight from environment or default
+func getCombatWeight() float64 {
+	if weightStr := os.Getenv("COMBAT_STATS_WEIGHT"); weightStr != "" {
+		if weight, err := strconv.ParseFloat(weightStr, 64); err == nil {
+			// Clamp to reasonable range (0.0 to 1.0)
+			if weight < 0 {
+				return 0
+			}
+			if weight > 1 {
+				return 1
+			}
+			return weight
+		}
+	}
+	return defaultCombatWeight
+}
+
+// roleToString converts CardRole to string for combat stats integration
+func roleToString(role *CardRole) string {
+	if role == nil {
+		return ""
+	}
+	switch *role {
+	case RoleWinCondition:
+		return "wincondition"
+	case RoleBuilding:
+		return "building"
+	case RoleSupport:
+		return "support"
+	case RoleSpellBig:
+		return "spell"
+	case RoleSpellSmall:
+		return "spell" // Treat both spell types as "spell" for combat analysis
+	case RoleCycle:
+		return "cycle"
+	default:
+		return ""
+	}
+}
+
+// calculateCombatScore calculates combat effectiveness score from stats
+func calculateCombatScore(stats *clashroyale.CombatStats, elixir int, role string) float64 {
+	if stats == nil {
+		return 0 // No combat stats available
+	}
+
+	// Calculate efficiency metrics
+	dpsEfficiency := stats.DPSPerElixir(elixir)
+	hpEfficiency := stats.HPPerElixir(elixir)
+	roleEffectiveness := stats.RoleSpecificEffectiveness(role)
+
+	// Normalize efficiency scores to 0-1 range
+	// These normalization values are approximate and can be tuned
+	dpsNormalized := math.Min(dpsEfficiency/50.0, 1.0) // ~50 DPS/elixir as excellent
+	hpNormalized := math.Min(hpEfficiency/400.0, 1.0)  // ~400 HP/elixir as excellent
+
+	// Combine combat factors with weights
+	combatScore := (dpsNormalized * combatDPSWeight) +
+		(hpNormalized * combatHPWeight) +
+		(roleEffectiveness * combatRoleWeight)
+
+	return math.Max(0, math.Min(1, combatScore)) // Clamp to 0-1 range
+}
+
+// ScoreCardWithCombat calculates enhanced score using combat statistics
+// Combines traditional scoring with combat effectiveness analysis
+func ScoreCardWithCombat(level, maxLevel int, rarity string, elixir int, role *CardRole, stats *clashroyale.CombatStats) float64 {
+	// Calculate base score using existing algorithm
+	baseScore := ScoreCard(level, maxLevel, rarity, elixir, role)
+
+	// Get combat weight from environment (default 0.25)
+	combatWeight := getCombatWeight()
+
+	if combatWeight == 0 || stats == nil {
+		// Combat stats disabled or not available, return base score only
+		return baseScore
+	}
+
+	// Calculate combat score
+	roleStr := roleToString(role)
+	combatScore := calculateCombatScore(stats, elixir, roleStr)
+
+	// Combine base score and combat score
+	// Final Score = (Base Score × (1 - combatWeight)) + (Combat Score × combatWeight)
+	finalScore := (baseScore * (1 - combatWeight)) + (combatScore * combatWeight)
+
+	return finalScore
+}
+
+// ScoreCardCandidateWithCombat calculates enhanced score for a CardCandidate using combat statistics
+// Updates the candidate's Score field and returns the score
+func ScoreCardCandidateWithCombat(candidate *CardCandidate) float64 {
+	score := ScoreCardWithCombat(
+		candidate.Level,
+		candidate.MaxLevel,
+		candidate.Rarity,
+		candidate.Elixir,
+		candidate.Role,
+		candidate.Stats,
+	)
+	candidate.Score = score
+	return score
+}
+
+// ScoreAllCandidatesWithCombat scores a slice of CardCandidates in place using combat statistics
+func ScoreAllCandidatesWithCombat(candidates []CardCandidate) {
+	for i := range candidates {
+		ScoreCardCandidateWithCombat(&candidates[i])
+	}
 }

@@ -16,21 +16,21 @@ type ExportFormat string
 const (
 	FormatCSV       ExportFormat = "csv"
 	FormatJSON      ExportFormat = "json"
-	FormatDeckList  ExportFormat = "decklist" // Simple deck list format
+	FormatDeckList  ExportFormat = "decklist"  // Simple deck list format
 	FormatRoyaleAPI ExportFormat = "royaleapi" // RoyaleAPI deck format
 )
 
 // ExportOptions configures the export behavior
 type ExportOptions struct {
-	Format         ExportFormat   `json:"format"`
-	OutputDir      string         `json:"output_dir"`
-	EventTypes     []EventType    `json:"event_types,omitempty"`     // Filter by event types
-	StartDate      *time.Time     `json:"start_date,omitempty"`      // Filter by start date
-	EndDate        *time.Time     `json:"end_date,omitempty"`        // Filter by end date
-	MinBattles     int            `json:"min_battles,omitempty"`     // Minimum battles per deck
-	MinWinRate     float64        `json:"min_win_rate,omitempty"`    // Minimum win rate (0.0-1.0)
-	IncludeBattles bool           `json:"include_battles"`           // Include detailed battle logs
-	GroupByEvent   bool           `json:"group_by_event"`            // Group decks by event type
+	Format         ExportFormat `json:"format"`
+	OutputDir      string       `json:"output_dir"`
+	EventTypes     []EventType  `json:"event_types,omitempty"`  // Filter by event types
+	StartDate      *time.Time   `json:"start_date,omitempty"`   // Filter by start date
+	EndDate        *time.Time   `json:"end_date,omitempty"`     // Filter by end date
+	MinBattles     int          `json:"min_battles,omitempty"`  // Minimum battles per deck
+	MinWinRate     float64      `json:"min_win_rate,omitempty"` // Minimum win rate (0.0-1.0)
+	IncludeBattles bool         `json:"include_battles"`        // Include detailed battle logs
+	GroupByEvent   bool         `json:"group_by_event"`         // Group decks by event type
 }
 
 // DefaultExportOptions returns sensible defaults for exporting

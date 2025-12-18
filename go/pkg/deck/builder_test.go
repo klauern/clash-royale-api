@@ -228,7 +228,7 @@ func TestBuilder_ScoreCard(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			score := builder.scoreCard(test.level, test.maxLevel, test.rarity, test.elixir, test.role)
+			score := builder.scoreCard("TestCard", test.level, test.maxLevel, test.rarity, test.elixir, test.role, 0)
 			if score < test.expected-0.1 || score > test.expected+0.1 {
 				t.Errorf("Score %f not close to expected %f", score, test.expected)
 			}

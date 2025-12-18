@@ -131,9 +131,7 @@ class DeckBuilder:
             "Spear Goblins": 2,
             "Goblin Gang": 3,
             "Minions": 3,
-            "Goblin Barrel": 3,
-            "Bomber": 2,
-        }
+          }
 
         self.rarity_weights = {
             "Common": 1.0,

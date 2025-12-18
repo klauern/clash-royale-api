@@ -2,6 +2,10 @@
 // with intelligent card selection based on player's collection.
 package deck
 
+import (
+	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
+)
+
 // CardRole represents the strategic role of a card in a deck
 type CardRole string
 
@@ -43,6 +47,7 @@ type CardCandidate struct {
 	HasEvolution      bool
 	EvolutionPriority int
 	MaxEvolutionLevel int
+	Stats             *clashroyale.CombatStats
 }
 
 // LevelRatio returns the card's level as a ratio of its max level

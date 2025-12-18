@@ -2,7 +2,10 @@ package deck
 
 import (
 	"math"
+	"os"
 	"testing"
+
+	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
 // TestScoreCard validates the scoring algorithm matches expected Python behavior
@@ -293,6 +296,224 @@ func BenchmarkScoreCard(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		ScoreCard(10, 14, "Epic", 4, role)
+	}
+}
+
+// Test ScoreCardWithCombat functionality
+func TestScoreCardWithCombat(t *testing.T) {
+	// Create role variables
+	winConRole := RoleWinCondition
+	supportRole := RoleSupport
+
+	// Test with default combat weight
+	t.Run("Default combat weight", func(t *testing.T) {
+		stats := &clashroyale.CombatStats{
+			Hitpoints:       4000, // Higher HP to favor win condition
+			DamagePerSecond: 150,  // Higher DPS
+			Range:           6,
+			Targets:         "Air & Ground",
+			Speed:           "Fast",
+		}
+
+		score := ScoreCardWithCombat(11, 14, "Legendary", 5, &winConRole, stats)
+
+		// Score should be reasonable for good combat stats
+		if score <= 0 {
+			t.Errorf("Combat score should be positive, got %v", score)
+		}
+
+		// Combat-enhanced scoring should produce a meaningful score
+		if score < 0.5 || score > 2.0 {
+			t.Errorf("Combat score %v seems unreasonable", score)
+		}
+	})
+
+	// Test with no combat stats
+	t.Run("No combat stats", func(t *testing.T) {
+		score := ScoreCardWithCombat(10, 14, "Common", 3, &supportRole, nil)
+		baseScore := ScoreCard(10, 14, "Common", 3, &supportRole)
+
+		// Should equal base score when no combat stats available
+		if score != baseScore {
+			t.Errorf("Score with no stats %v should equal base score %v", score, baseScore)
+		}
+	})
+
+	// Test with combat weight disabled
+	t.Run("Combat weight disabled", func(t *testing.T) {
+		os.Setenv("COMBAT_STATS_WEIGHT", "0")
+		defer os.Unsetenv("COMBAT_STATS_WEIGHT")
+
+		stats := &clashroyale.CombatStats{
+			Hitpoints: 2000,
+			Damage:    500,
+		}
+
+		score := ScoreCardWithCombat(10, 14, "Rare", 5, &winConRole, stats)
+		baseScore := ScoreCard(10, 14, "Rare", 5, &winConRole)
+
+		// Should equal base score when combat weight is 0
+		if score != baseScore {
+			t.Errorf("Score with disabled weight %v should equal base score %v", score, baseScore)
+		}
+	})
+}
+
+func TestScoreCardCandidateWithCombat(t *testing.T) {
+	supportRole := RoleSupport
+	candidate := &CardCandidate{
+		Name:     "Test Card",
+		Level:    10,
+		MaxLevel: 14,
+		Rarity:   "Rare",
+		Elixir:   4,
+		Role:     &supportRole,
+		Stats: &clashroyale.CombatStats{
+			Hitpoints:       1500,
+			DamagePerSecond: 80,
+			Range:           6,
+			Targets:         "Air & Ground",
+		},
+	}
+
+	originalScore := candidate.Score
+	score := ScoreCardCandidateWithCombat(candidate)
+
+	// Verify score was updated on candidate
+	if candidate.Score != score {
+		t.Error("ScoreCardCandidateWithCombat did not update candidate.Score")
+	}
+
+	// Verify score is reasonable
+	if score <= 0 {
+		t.Errorf("Combat-enhanced score should be positive, got %v", score)
+	}
+
+	// Score should be higher than original (which was 0) for good combat stats
+	if score <= originalScore {
+		t.Errorf("Combat-enhanced score %v should be > original score %v for good combat stats", score, originalScore)
+	}
+}
+
+func TestScoreAllCandidatesWithCombat(t *testing.T) {
+	winConRole := RoleWinCondition
+	cycleRole := RoleCycle
+	supportRole := RoleSupport
+
+	candidates := []CardCandidate{
+		{
+			Name:     "Strong Card",
+			Level:    11,
+			MaxLevel: 14,
+			Rarity:   "Epic",
+			Elixir:   5,
+			Role:     &winConRole,
+			Stats: &clashroyale.CombatStats{
+				Hitpoints:       3000,
+				DamagePerSecond: 120,
+				Range:           4,
+				Targets:         "Ground",
+				Speed:           "Slow",
+			},
+		},
+		{
+			Name:     "Weak Card",
+			Level:    5,
+			MaxLevel: 14,
+			Rarity:   "Common",
+			Elixir:   2,
+			Role:     &cycleRole,
+			Stats: &clashroyale.CombatStats{
+				Hitpoints: 300,
+				Damage:    30,
+				Speed:     "Fast",
+			},
+		},
+		{
+			Name:     "No Stats Card",
+			Level:    8,
+			MaxLevel: 14,
+			Rarity:   "Rare",
+			Elixir:   3,
+			Role:     &supportRole,
+			Stats:    nil,
+		},
+	}
+
+	// Store original scores
+	originalScores := make([]float64, len(candidates))
+	for i, candidate := range candidates {
+		originalScores[i] = candidate.Score
+	}
+
+	// Score with combat
+	ScoreAllCandidatesWithCombat(candidates)
+
+	// Verify all candidates have scores
+	for i, candidate := range candidates {
+		if candidate.Score <= 0 {
+			t.Errorf("Candidate %v has invalid score after combat scoring: %v", candidate.Name, candidate.Score)
+		}
+
+		// Verify scores were updated
+		if candidate.Score == originalScores[i] && candidate.Stats != nil {
+			t.Logf("Note: %v score unchanged after combat scoring: %v", candidate.Name, candidate.Score)
+		}
+	}
+}
+
+func TestGetCombatWeight(t *testing.T) {
+	tests := []struct {
+		name          string
+		envValue      string
+		expectedValue float64
+	}{
+		{
+			name:          "Default weight",
+			envValue:      "",
+			expectedValue: 0.25,
+		},
+		{
+			name:          "Custom weight",
+			envValue:      "0.5",
+			expectedValue: 0.5,
+		},
+		{
+			name:          "Zero weight",
+			envValue:      "0",
+			expectedValue: 0,
+		},
+		{
+			name:          "Weight above 1 (clamped)",
+			envValue:      "1.5",
+			expectedValue: 1,
+		},
+		{
+			name:          "Negative weight (clamped)",
+			envValue:      "-0.5",
+			expectedValue: 0,
+		},
+		{
+			name:          "Invalid weight (uses default)",
+			envValue:      "invalid",
+			expectedValue: 0.25,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if tt.envValue != "" {
+				os.Setenv("COMBAT_STATS_WEIGHT", tt.envValue)
+				defer os.Unsetenv("COMBAT_STATS_WEIGHT")
+			} else {
+				os.Unsetenv("COMBAT_STATS_WEIGHT")
+			}
+
+			weight := getCombatWeight()
+			if weight != tt.expectedValue {
+				t.Errorf("getCombatWeight() = %v, want %v", weight, tt.expectedValue)
+			}
+		})
 	}
 }
 
