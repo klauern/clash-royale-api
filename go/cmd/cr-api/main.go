@@ -14,6 +14,13 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// Version information (set via ldflags during build)
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildTime = "unknown"
+)
+
 func main() {
 	// Get default paths
 	homeDir, err := os.UserHomeDir()
@@ -26,8 +33,9 @@ func main() {
 
 	// Create the CLI app
 	cmd := &cli.Command{
-		Name:  "cr-api",
-		Usage: "Clash Royale API client and analysis tool",
+		Name:    "cr-api",
+		Usage:   "Clash Royale API client and analysis tool",
+		Version: fmt.Sprintf("%s (commit: %s, built: %s)", version, commit, buildTime),
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "api-token",

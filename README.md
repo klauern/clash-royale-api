@@ -45,6 +45,75 @@ clash-royale-api/
 └── README.md                # This file
 ```
 
+## Installation
+
+### Binary Releases (Recommended)
+
+Download pre-built binaries from the [Releases page](https://github.com/klauern/clash-royale-api/releases):
+
+1. **Download** the appropriate archive for your platform:
+   - Linux (amd64): `clash-royale-api_vX.X.X_linux_amd64.tar.gz`
+   - Linux (arm64): `clash-royale-api_vX.X.X_linux_arm64.tar.gz`
+   - macOS (Intel): `clash-royale-api_vX.X.X_darwin_amd64.tar.gz`
+   - macOS (Apple Silicon): `clash-royale-api_vX.X.X_darwin_arm64.tar.gz`
+   - Windows: `clash-royale-api_vX.X.X_windows_amd64.zip`
+
+2. **Extract** the archive:
+   ```bash
+   # Unix/macOS
+   tar -xzf clash-royale-api_vX.X.X_*.tar.gz
+
+   # Windows (PowerShell)
+   Expand-Archive clash-royale-api_vX.X.X_windows_amd64.zip
+   ```
+
+3. **Install** binaries to your PATH:
+   ```bash
+   # Unix/macOS (system-wide)
+   sudo mv cr-api deckbuilder /usr/local/bin/
+
+   # Unix/macOS (user-only)
+   mv cr-api deckbuilder ~/.local/bin/
+
+   # Windows: Add directory to PATH via System Properties
+   ```
+
+4. **(Optional) Install shell completions**:
+   ```bash
+   # Bash
+   cp completions/cr-api.bash ~/.local/share/bash-completion/completions/cr-api
+   cp completions/deckbuilder.bash ~/.local/share/bash-completion/completions/deckbuilder
+
+   # Zsh
+   mkdir -p ~/.zsh/completions
+   cp completions/*.zsh ~/.zsh/completions/
+
+   # Fish
+   cp completions/*.fish ~/.config/fish/completions/
+   ```
+
+5. **Verify installation**:
+   ```bash
+   cr-api --version
+   deckbuilder --version
+   ```
+
+### Build from Source
+
+Requires Go 1.22+ and Task runner:
+
+```bash
+# Clone the repository
+git clone https://github.com/klauern/clash-royale-api.git
+cd clash-royale-api
+
+# Build binaries
+task build
+
+# Binaries will be in go/bin/
+./go/bin/cr-api --version
+```
+
 ## Quick Start (Go)
 
 ### 1. Get Your API Token

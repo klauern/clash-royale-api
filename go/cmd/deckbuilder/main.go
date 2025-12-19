@@ -4,16 +4,32 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
+// Version information (set via ldflags during build)
+var (
+	version   = "dev"
+	commit    = "unknown"
+	buildTime = "unknown"
+)
+
 func main() {
+	// Version flag
+	showVersion := flag.Bool("version", false, "Show version information")
+
 	tag := flag.String("tag", "", "Player tag (with or without #)")
 	dataDir := flag.String("data-dir", "data", "Base data directory")
 	analysisDir := flag.String("analysis-dir", "data/analysis", "Directory containing card analysis JSON files")
 	analysisFile := flag.String("analysis-file", "", "Explicit analysis JSON file to load (overrides --analysis-dir lookup)")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("deckbuilder version %s (commit: %s, built: %s)\n", version, commit, buildTime)
+		os.Exit(0)
+	}
 
 	if *tag == "" {
 		log.Fatal("missing required --tag")

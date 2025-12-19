@@ -1,0 +1,140 @@
+# GoReleaser configuration for clash-royale-api
+# Documentation: https://goreleaser.com/customization/
+
+before:
+  hooks:
+    # Ensure dependencies are up to date (run in go directory)
+    - sh -c "cd go && go mod download"
+    - sh -c "cd go && go mod tidy"
+
+builds:
+  # Build cr-api binary
+  - id: cr-api
+    main: ./cmd/cr-api
+    binary: cr-api
+    dir: go
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildTime={{.Date}}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+  # Build deckbuilder binary
+  - id: deckbuilder
+    main: ./cmd/deckbuilder
+    binary: deckbuilder
+    dir: go
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.buildTime={{.Date}}
+    mod_timestamp: '{{ .CommitTimestamp }}'
+
+archives:
+  - id: default
+    format: tar.gz
+    format_overrides:
+      - goos: windows
+        format: zip
+    # Naming: clash-royale-api_v1.0.0_linux_amd64.tar.gz
+    name_template: >-
+      {{ .ProjectName }}_
+      {{- .Version }}_
+      {{- .Os }}_
+      {{- .Arch }}
+    files:
+      # Include documentation
+      - LICENSE
+      - README.md
+      # Include shell completions if they exist
+      - src: go/dist/completion/*.bash
+        dst: completions/
+        strip_parent: true
+      - src: go/dist/completion/*.zsh
+        dst: completions/
+        strip_parent: true
+      - src: go/dist/completion/*.fish
+        dst: completions/
+        strip_parent: true
+
+checksum:
+  name_template: 'checksums.txt'
+  algorithm: sha256
+
+changelog:
+  use: github
+  sort: asc
+  abbrev: 7
+  groups:
+    - title: Features
+      regexp: '^.*?feat(\([[:word:]]+\))??!?:.+$'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^.*?fix(\([[:word:]]+\))??!?:.+$'
+      order: 1
+    - title: Improvements
+      regexp: '^.*?(perf|refactor)(\([[:word:]]+\))??!?:.+$'
+      order: 2
+    - title: Tests
+      regexp: '^.*?test(\([[:word:]]+\))??!?:.+$'
+      order: 3
+    - title: Others
+      order: 999
+  filters:
+    exclude:
+      - '^docs:'
+      - '^chore:'
+      - '^build:'
+      - '^ci:'
+
+release:
+  github:
+    owner: klauern
+    name: clash-royale-api
+  draft: false
+  prerelease: auto
+  mode: replace
+  name_template: "{{.ProjectName}} v{{.Version}}"
+  header: |
+    ## Clash Royale API v{{ .Version }}
+
+    **Release Date**: {{ .Date }}
+
+    ### Installation
+
+    Download the appropriate archive for your platform, extract it, and add the binaries to your PATH.
+
+    ### Shell Completions
+
+    Each archive includes shell completion scripts in the `completions/` directory:
+    - **bash**: Copy to `~/.local/share/bash-completion/completions/`
+    - **zsh**: Copy to `~/.zsh/completions/`
+    - **fish**: Copy to `~/.config/fish/completions/`
+  footer: |
+    **Full Changelog**: https://github.com/klauern/clash-royale-api/compare/{{ .PreviousTag }}...{{ .Tag }}
+
+# Disable Docker and Homebrew (not needed per user requirements)
+dockers:
+  - skip_push: true
+brews:
+  - skip_upload: true

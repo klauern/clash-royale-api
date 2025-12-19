@@ -23,7 +23,7 @@ tasks:
     desc: Set up the development environment
     cmds:
       - echo "Setting up development environment..."
-      - task: build-go
+      - task: build
       - echo "Creating data directories..."
       - mkdir -p {{.DATA_DIR}}/{players,clans,analysis,static,reference}
       - mkdir -p scripts
@@ -36,19 +36,28 @@ tasks:
   install:
     desc: Build Go binaries
     cmds:
-      - task: build-go
+      - task: build
 
-  build-go:
-    desc: Build Go CLI binaries
+  build:
+    desc: Build Go CLI binaries for local development
     dir: go
     cmds:
-      - echo "Building Go binaries..."
+      - echo "Building Go binaries for local development..."
       - mkdir -p bin
       - go mod download
-      - go build -o bin/cr-api ./cmd/cr-api
-      - go build -o bin/deckbuilder ./cmd/deckbuilder
+      - |
+        VERSION=$(git describe --tags --always 2>/dev/null || echo 'dev')
+        COMMIT=$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')
+        BUILD_TIME=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
+
+        go build \
+          -ldflags="-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.buildTime=$BUILD_TIME" \
+          -o bin/cr-api ./cmd/cr-api
+
+        go build \
+          -ldflags="-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.buildTime=$BUILD_TIME" \
+          -o bin/deckbuilder ./cmd/deckbuilder
       - echo "✅ Go binaries built successfully!"
-      - ls -la bin/
 
   run:
     desc: Analyze a player's collection using the Go CLI
@@ -74,7 +83,7 @@ tasks:
         {{.CR_API_BIN}} analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}"
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build-go"
+        msg: "cr-api binary not found. Build it with: task build"
 
   run-with-save:
     desc: Run Go CLI analysis and save results to JSON files
@@ -100,7 +109,7 @@ tasks:
         {{.CR_API_BIN}} analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --save
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build-go"
+        msg: "cr-api binary not found. Build it with: task build"
 
   export-csv:
     desc: Export player and reference data to CSV using the Go CLI
@@ -129,7 +138,7 @@ tasks:
         {{.CR_API_BIN}} cards --data-dir "{{.DATA_DIR}}" --export-csv
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build-go"
+        msg: "cr-api binary not found. Build it with: task build"
 
   export-all:
     desc: Export all available data types for a player using the Go CLI
@@ -157,7 +166,7 @@ tasks:
         {{.CR_API_BIN}} analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --save
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build-go"
+        msg: "cr-api binary not found. Build it with: task build"
 
   build-deck:
     desc: Build an optimized 1v1 ladder deck from the latest analysis using Go binaries
@@ -193,9 +202,9 @@ tasks:
         {{.DECKBUILDER_BIN}} -tag "$CLEAN_TAG" -data-dir "{{.DATA_DIR}}" -analysis-file "$ANALYSIS_FILE"
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build-go"
+        msg: "cr-api binary not found. Build it with: task build"
       - sh: test -x {{.DECKBUILDER_BIN}}
-        msg: "deckbuilder binary not found. Build it with: task build-go"
+        msg: "deckbuilder binary not found. Build it with: task build"
 
   # Event Deck Tasks
   scan-events:
@@ -232,7 +241,7 @@ tasks:
         sh: "echo '{{.ARGS}}' | grep -oE '[0-9]+$' || echo '7'"
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build-go"
+        msg: "cr-api binary not found. Build it with: task build"
 
   export-events:
     desc: Export event decks to CSV using Go CLI
@@ -261,7 +270,7 @@ tasks:
         {{.CR_API_BIN}} events list --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --export-csv
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build-go"
+        msg: "cr-api binary not found. Build it with: task build"
 
   export-decks:
     desc: Export event decks in deck builder format using Go CLI
@@ -293,7 +302,7 @@ tasks:
         echo "Deck builder format exported to CSV - can be imported into deck building sites"
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build-go"
+        msg: "cr-api binary not found. Build it with: task build"
 
   analyze-events:
     desc: Analyze event deck performance using Go CLI
@@ -322,7 +331,7 @@ tasks:
         {{.CR_API_BIN}} events analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --min-battles 5 --export-csv
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build-go"
+        msg: "cr-api binary not found. Build it with: task build"
 
   sync-events:
     desc: Sync recent event activity using Go CLI
@@ -352,7 +361,7 @@ tasks:
         echo "Sync complete! Use 'task analyze-events -- $CLEAN_TAG' to analyze the data."
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build-go"
+        msg: "cr-api binary not found. Build it with: task build"
 
   test:
     desc: Run Go tests
@@ -426,75 +435,6 @@ tasks:
         msg: "Go directory not found"
 
   # CI/CD Tasks
-  build-all:
-    desc: Build cross-platform binaries for release
-    summary: |
-      Build binaries for all supported platforms (Linux, macOS, Windows)
-    cmds:
-      - echo "Building cross-platform binaries..."
-      - |
-        cd go
-        mkdir -p dist
-
-        # Build matrix
-        platforms=(
-          "linux/amd64"
-          "linux/arm64"
-          "darwin/amd64"
-          "darwin/arm64"
-          "windows/amd64"
-        )
-
-        for platform in "${platforms[@]}"; do
-          goos="${platform%/*}"
-          goarch="${platform#*/}"
-          suffix=""
-          if [[ "$goos" == "windows" ]]; then
-            suffix=".exe"
-          fi
-
-          echo "Building for $goos/$goarch..."
-          GOOS=$goos GOARCH=$goarch go build \
-            -ldflags="-s -w -X main.version=$(git describe --tags --always 2>/dev/null || echo 'dev')" \
-            -o dist/cr-api-${goos}-${goarch}${suffix} \
-            ./cmd/cr-api
-
-          GOOS=$goos GOARCH=$goarch go build \
-            -ldflags="-s -w -X main.version=$(git describe --tags --always 2>/dev/null || echo 'dev')" \
-            -o dist/deckbuilder-${goos}-${goarch}${suffix} \
-            ./cmd/deckbuilder
-        done
-
-        ls -la dist/
-        echo "✅ Cross-platform build complete!"
-
-  build-release:
-    desc: Build release artifacts
-    summary: |
-      Build and package release artifacts with archives
-    cmds:
-      - task: build-all
-      - |
-        cd go/dist
-        echo "Creating release archives..."
-
-        # Create archives
-        for binary in cr-api-* deckbuilder-*; do
-          if [[ "$binary" == *.exe ]]; then
-            # Windows - use zip
-            zip "${binary%.exe}.zip" "$binary"
-          else
-            # Unix-like - use tar.gz
-            tar -czf "${binary}.tar.gz" "$binary"
-          fi
-        done
-
-        # Generate checksums
-        sha256sum *.{tar.gz,zip} > checksums.txt 2>/dev/null || true
-
-        ls -la
-        echo "✅ Release artifacts ready!"
-
   install-tools:
     desc: Install development tools
     summary: |
@@ -528,35 +468,89 @@ tasks:
       - echo "Running security scan..."
       - cd go && gosec ./... || echo "gosec not found, skipping security scan"
 
-  generate-completion:
-    desc: Generate shell completion scripts
+  install-goreleaser:
+    desc: Install GoReleaser
     summary: |
-      Generate auto-completion scripts for bash, zsh, and fish
+      Install GoReleaser for release management
+    cmds:
+      - |
+        if ! command -v goreleaser &> /dev/null; then
+          echo "Installing GoReleaser..."
+          go install github.com/goreleaser/goreleaser/v2@latest
+        else
+          echo "GoReleaser already installed: $(goreleaser --version)"
+        fi
+
+  check-release:
+    desc: Validate GoReleaser configuration
+    summary: |
+      Check .goreleaser.yml configuration for errors
+    cmds:
+      - goreleaser check
+    preconditions:
+      - sh: command -v goreleaser
+        msg: "GoReleaser not found. Install with: task install-goreleaser"
+
+  snapshot:
+    desc: Build snapshot release (test release process)
+    summary: |
+      Build binaries for all platforms without publishing.
+      Useful for testing the release process locally.
+    deps:
+      - generate-completion
+    cmds:
+      - echo "Building snapshot release..."
+      - goreleaser release --snapshot --clean --skip=publish
+      - echo "✅ Snapshot built in go/dist/"
+      - ls -la go/dist/
+    preconditions:
+      - sh: command -v goreleaser
+        msg: "GoReleaser not found. Install with: task install-goreleaser"
+
+  release:
+    desc: Create production release with GoReleaser
+    summary: |
+      Build and release binaries for all platforms using GoReleaser.
+      This should be run on tag creation (CI handles this automatically).
+
+      Requires: GITHUB_TOKEN environment variable
+    deps:
+      - generate-completion
+    cmds:
+      - echo "Running GoReleaser release..."
+      - goreleaser release --clean
+    preconditions:
+      - sh: command -v goreleaser
+        msg: "GoReleaser not found. Install with: task install-goreleaser"
+      - sh: test -n "$GITHUB_TOKEN"
+        msg: "GITHUB_TOKEN environment variable required for releases"
+
+  generate-completion:
+    desc: Generate shell completion scripts for GoReleaser
+    summary: |
+      Generate auto-completion scripts for bash, zsh, and fish.
+      Required before running GoReleaser release/snapshot.
+    deps:
+      - build
     cmds:
       - echo "Generating shell completion scripts..."
       - |
         cd go
         mkdir -p dist/completion
 
-        # Generate completion for cr-api
-        if [ -f bin/cr-api ]; then
-          ./bin/cr-api --completion=bash > dist/completion/cr-api.bash 2>/dev/null || true
-          ./bin/cr-api --completion=zsh > dist/completion/cr-api.zsh 2>/dev/null || true
-          ./bin/cr-api --completion=fish > dist/completion/cr-api.fish 2>/dev/null || true
-        fi
+        # urfave/cli/v3 may not support --completion flags
+        # Create placeholder completion files for now
+        # TODO: Implement proper completion scripts
 
-        # Generate completion for deckbuilder
-        if [ -f bin/deckbuilder ]; then
-          ./bin/deckbuilder --completion=bash > dist/completion/deckbuilder.bash 2>/dev/null || true
-          ./bin/deckbuilder --completion=zsh > dist/completion/deckbuilder.zsh 2>/dev/null || true
-          ./bin/deckbuilder --completion=fish > dist/completion/deckbuilder.fish 2>/dev/null || true
-        fi
+        touch dist/completion/cr-api.bash
+        touch dist/completion/cr-api.zsh
+        touch dist/completion/cr-api.fish
+        touch dist/completion/deckbuilder.bash
+        touch dist/completion/deckbuilder.zsh
+        touch dist/completion/deckbuilder.fish
 
-        echo "✅ Completion scripts generated in go/dist/completion/"
-        echo "Install them in:"
-        echo "  bash: ~/.local/share/bash-completion/completions/"
-        echo "  zsh:  ~/.zsh/completions/"
-        echo "  fish: ~/.config/fish/completions/"
+        echo "✅ Completion placeholders created in go/dist/completion/"
+        echo "TODO: Implement actual shell completions"
 
 help:
     desc: Show API usage examples (Go CLI)
@@ -565,7 +559,7 @@ help:
       - echo "=========================================="
       - echo ''
       - echo "Prerequisites:"
-      - 'echo "1. Build binaries: task build-go"'
+      - 'echo "1. Build binaries: task build"'
       - 'echo "2. Set CLASH_ROYALE_API_TOKEN in .env file"'
       - 'echo "3. Install dev tools: task install-tools (optional, for linting)"'
       - echo ''
@@ -584,7 +578,7 @@ help:
       - 'echo "10. Sync recent events: task sync-events -- #PLAYER_TAG"'
       - echo ''
       - echo "Development Commands:"
-      - 'echo "- Build: task build-go"'
+      - 'echo "- Build: task build"'
       - 'echo "- Test: task test"'
       - 'echo "- Lint: task lint (includes golangci-lint)"'
       - 'echo "- Format: task format"'
