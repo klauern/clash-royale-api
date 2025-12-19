@@ -27,6 +27,7 @@ type CardLevelInfo struct {
 	ID                int    `json:"id,omitempty"`
 	Level             int    `json:"level"`
 	MaxLevel          int    `json:"max_level"`
+	EvolutionLevel    int    `json:"evolution_level,omitempty"`
 	Rarity            string `json:"rarity"`
 	Elixir            int    `json:"elixir,omitempty"`
 	CardCount         int    `json:"card_count"`
@@ -35,17 +36,43 @@ type CardLevelInfo struct {
 	MaxEvolutionLevel int    `json:"max_evolution_level,omitempty"`
 }
 
-// LevelRatio returns the card's level as a ratio of its max level (0.0 to 1.0)
+// LevelRatio returns the card's level progress ratio (0.0 to 1.0), including evolution levels once maxed.
 func (cli *CardLevelInfo) LevelRatio() float64 {
 	if cli.MaxLevel == 0 {
 		return 0
 	}
-	return float64(cli.Level) / float64(cli.MaxLevel)
+	if cli.MaxEvolutionLevel <= 0 || cli.Level < cli.MaxLevel {
+		return float64(cli.Level) / float64(cli.MaxLevel)
+	}
+
+	totalLevels := cli.MaxLevel + cli.MaxEvolutionLevel
+	if totalLevels == 0 {
+		return 0
+	}
+
+	return float64(cli.Level+cli.EvolutionLevel) / float64(totalLevels)
 }
 
-// ProgressToNext returns the progress toward next level as a percentage (0-100)
+// ProgressToNext returns the progress toward next upgrade as a percentage (0-100),
+// using evolution progress for max-level cards when available.
 func (cli *CardLevelInfo) ProgressToNext() float64 {
-	if cli.IsMaxLevel || cli.CardsToNext == 0 {
+	if cli.IsMaxLevel {
+		if cli.MaxEvolutionLevel <= 0 {
+			return 100.0
+		}
+
+		progress := (float64(cli.EvolutionLevel) / float64(cli.MaxEvolutionLevel)) * 100.0
+		if progress > 100.0 {
+			return 100.0
+		}
+		if progress < 0 {
+			return 0.0
+		}
+
+		return progress
+	}
+
+	if cli.CardsToNext == 0 {
 		return 100.0
 	}
 	needed := cli.CardsToNext

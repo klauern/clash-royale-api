@@ -94,7 +94,7 @@ var startingLevels = map[string]int{
 // totalCardsPerRarity stores the actual count of cards per rarity in the game
 // Updated dynamically when card data is available
 var totalCardsPerRarity = map[string]int{
-	"Common":    19,  // Actual count as of 2024
+	"Common":    19, // Actual count as of 2024
 	"Rare":      20,
 	"Epic":      12,
 	"Legendary": 10,
@@ -225,6 +225,7 @@ type UpgradeInfo struct {
 	ElixirCost        int     `json:"elixir_cost,omitempty"`
 	CurrentLevel      int     `json:"current_level"`
 	MaxLevel          int     `json:"max_level"`
+	EvolutionLevel    int     `json:"evolution_level,omitempty"`
 	IsMaxLevel        bool    `json:"is_max_level"`
 	CardsOwned        int     `json:"cards_owned"`
 	CardsToNextLevel  int     `json:"cards_to_next_level"`
@@ -236,7 +237,7 @@ type UpgradeInfo struct {
 }
 
 // CalculateUpgradeInfo creates a complete UpgradeInfo for a card
-func CalculateUpgradeInfo(cardName string, rarity string, elixirCost int, currentLevel int, cardsOwned int, maxEvolutionLevel int) UpgradeInfo {
+func CalculateUpgradeInfo(cardName string, rarity string, elixirCost int, currentLevel int, cardsOwned int, evolutionLevel int, maxEvolutionLevel int) UpgradeInfo {
 	maxLevel := GetMaxLevel(rarity)
 	isMaxLevel := IsMaxLevel(currentLevel, rarity)
 	cardsNeeded := CalculateCardsNeeded(currentLevel, rarity)
@@ -250,6 +251,7 @@ func CalculateUpgradeInfo(cardName string, rarity string, elixirCost int, curren
 		ElixirCost:        elixirCost,
 		CurrentLevel:      currentLevel,
 		MaxLevel:          maxLevel,
+		EvolutionLevel:    evolutionLevel,
 		IsMaxLevel:        isMaxLevel,
 		CardsOwned:        cardsOwned,
 		CardsToNextLevel:  cardsNeeded,
