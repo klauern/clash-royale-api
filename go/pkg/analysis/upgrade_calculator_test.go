@@ -43,6 +43,30 @@ func TestCalculateCardsNeeded(t *testing.T) {
 
 		// Unknown rarity
 		{"Unknown rarity", 5, "Unknown", 0},
+
+		// Edge cases for different rarities at invalid levels
+		{"Rare below starting level 1", 1, "Rare", 0},
+		{"Rare below starting level 2", 2, "Rare", 0},
+		{"Epic below starting level 1", 1, "Epic", 0},
+		{"Epic below starting level 5", 5, "Epic", 0},
+		{"Legendary below starting level 1", 1, "Legendary", 0},
+		{"Legendary below starting level 8", 8, "Legendary", 0},
+		{"Champion below starting level 1", 1, "Champion", 0},
+		{"Champion below starting level 10", 10, "Champion", 0},
+
+		// All rarities at max level (14)
+		{"Common at max level 14", 14, "Common", 0},
+		{"Rare at max level 14", 14, "Rare", 0},
+		{"Epic at max level 14", 14, "Epic", 0},
+		{"Legendary at max level 14", 14, "Legendary", 0},
+		{"Champion at max level 14", 14, "Champion", 0},
+
+		// All rarities above max level (should also return 0)
+		{"Common above max level 15", 15, "Common", 0},
+		{"Rare above max level 15", 15, "Rare", 0},
+		{"Epic above max level 15", 15, "Epic", 0},
+		{"Legendary above max level 15", 15, "Legendary", 0},
+		{"Champion above max level 15", 15, "Champion", 0},
 	}
 
 	for _, tt := range tests {

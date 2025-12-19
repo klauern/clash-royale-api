@@ -146,16 +146,29 @@ func GetTotalCardsByRarity(rarity string) int {
 }
 
 // CalculateCardsNeeded returns how many cards are needed to upgrade from currentLevel
-// Returns 0 if already at max level or invalid rarity
+// Returns 0 if already at max level, below starting level, or invalid rarity
 func CalculateCardsNeeded(currentLevel int, rarity string) int {
+	// Check if already at max level
+	maxLevel := GetMaxLevel(rarity)
+	if currentLevel >= maxLevel {
+		return 0 // Valid: already at max level
+	}
+
+	// Check if level is below starting level for this rarity
+	startingLevel := GetStartingLevel(rarity)
+	if currentLevel < startingLevel {
+		return 0 // Valid: card not unlocked yet
+	}
+
 	costs, exists := upgradeCosts[rarity]
 	if !exists {
-		return 0
+		return 0 // Invalid rarity
 	}
 
 	cardsNeeded, exists := costs[currentLevel]
 	if !exists {
-		return 0 // Either max level or invalid level for this rarity
+		// This should not happen with the above validation, but handle gracefully
+		return 0
 	}
 
 	return cardsNeeded

@@ -1,6 +1,6 @@
 # Go build artifacts
 bin/
-go/bin/
+go/cr-api
 
 # Test coverage
 *.out
