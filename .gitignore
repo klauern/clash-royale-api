@@ -1,6 +1,6 @@
 # Go build artifacts
 bin/
-go/cr-api
+cr-api
 
 # Test coverage
 *.out
@@ -132,7 +132,6 @@ dmypy.json
 
 # Data directories
 data/
-go/data/
 
 # IDEs
 .vscode/

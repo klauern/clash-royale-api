@@ -21,19 +21,18 @@ A comprehensive Go tool for collecting, analyzing, and tracking Clash Royale car
 clash-royale-api/
 ├── .env.example               # Example configuration
 ├── Taskfile.yml              # Task runner configuration
-├── go/                       # Go implementation
-│   ├── cmd/
-│   │   ├── cr-api/          # Main CLI application
-│   │   └── deckbuilder/     # Standalone deck builder
-│   ├── pkg/                 # Go libraries
-│   │   ├── clashroyale/     # API client
-│   │   ├── analysis/        # Collection analysis & playstyle
-│   │   ├── deck/            # Deck building algorithms
-│   │   └── events/          # Event deck tracking
-│   ├── internal/            # Internal packages
-│   │   ├── exporter/        # CSV export
-│   │   └── storage/         # Data persistence
-│   └── bin/                 # Built binaries
+├── cmd/                      # Command-line applications
+│   ├── cr-api/              # Main CLI application
+│   └── deckbuilder/         # Standalone deck builder
+├── pkg/                      # Go libraries
+│   ├── clashroyale/          # API client
+│   ├── analysis/             # Collection analysis & playstyle
+│   ├── deck/                 # Deck building algorithms
+│   └── events/               # Event deck tracking
+├── internal/                 # Internal packages
+│   ├── exporter/             # CSV export
+│   └── storage/              # Data persistence
+├── bin/                      # Built binaries
 ├── data/                    # Data storage
 │   ├── static/              # Static game data
 │   ├── players/             # Player profiles
@@ -110,8 +109,8 @@ cd clash-royale-api
 # Build binaries
 task build
 
-# Binaries will be in go/bin/
-./go/bin/cr-api --version
+# Binaries will be in bin/
+./bin/cr-api --version
 ```
 
 ## Quick Start (Go)
@@ -160,8 +159,8 @@ task build-go
 
 ```bash
 # Build binaries (first time only)
-task build-go
-# or: cd go && go build -o bin/cr-api ./cmd/cr-api
+task build
+# or: go build -o bin/cr-api ./cmd/cr-api
 
 # Player information
 ./bin/cr-api player --tag PLAYER_TAG
@@ -242,9 +241,9 @@ import (
     "fmt"
     "log"
 
-    "github.com/klauer/clash-royale-api/go/pkg/clashroyale"
-    "github.com/klauer/clash-royale-api/go/pkg/analysis"
-    "github.com/klauer/clash-royale-api/go/pkg/deck"
+    "github.com/klauer/clash-royale-api/pkg/clashroyale"
+    "github.com/klauer/clash-royale-api/pkg/analysis"
+    "github.com/klauer/clash-royale-api/pkg/deck"
 )
 
 func main() {
@@ -302,19 +301,19 @@ func convertCardLevels(levels map[string]analysis.CardLevelInfo) map[string]deck
 
 #### Key Go Packages
 
-- `github.com/klauer/clash-royale-api/go/pkg/clashroyale`: API client
-- `github.com/klauer/clash-royale-api/go/pkg/analysis`: Collection analysis
-- `github.com/klauer/clash-royale-api/go/pkg/deck`: Deck building algorithms
-- `github.com/klauer/clash-royale-api/go/pkg/events`: Event deck tracking
+- `github.com/klauer/clash-royale-api/pkg/clashroyale`: API client
+- `github.com/klauer/clash-royale-api/pkg/analysis`: Collection analysis
+- `github.com/klauer/clash-royale-api/pkg/deck`: Deck building algorithms
+- `github.com/klauer/clash-royale-api/pkg/events`: Event deck tracking
 
 #### Go Modules
 
 Import the Go modules in your project:
 
 ```bash
-go get github.com/klauer/clash-royale-api/go/pkg/clashroyale
-go get github.com/klauer/clash-royale-api/go/pkg/analysis
-go get github.com/klauer/clash-royale-api/go/pkg/deck
+go get github.com/klauer/clash-royale-api/pkg/clashroyale
+go get github.com/klauer/clash-royale-api/pkg/analysis
+go get github.com/klauer/clash-royale-api/pkg/deck
 ```
 
 ## Data Structure

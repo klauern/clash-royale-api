@@ -3,16 +3,15 @@
 
 before:
   hooks:
-    # Ensure dependencies are up to date (run in go directory)
-    - sh -c "cd go && go mod download"
-    - sh -c "cd go && go mod tidy"
+    # Ensure dependencies are up to date
+    - sh -c "go mod download"
+    - sh -c "go mod tidy"
 
 builds:
   # Build cr-api binary
   - id: cr-api
     main: ./cmd/cr-api
     binary: cr-api
-    dir: go
     env:
       - CGO_ENABLED=0
     goos:
@@ -33,7 +32,6 @@ builds:
   - id: deckbuilder
     main: ./cmd/deckbuilder
     binary: deckbuilder
-    dir: go
     env:
       - CGO_ENABLED=0
     goos:
@@ -67,13 +65,13 @@ archives:
       - LICENSE
       - README.md
       # Include shell completions if they exist
-      - src: go/dist/completion/*.bash
+      - src: dist/completion/*.bash
         dst: completions/
         strip_parent: true
-      - src: go/dist/completion/*.zsh
+      - src: dist/completion/*.zsh
         dst: completions/
         strip_parent: true
-      - src: go/dist/completion/*.fish
+      - src: dist/completion/*.fish
         dst: completions/
         strip_parent: true
 

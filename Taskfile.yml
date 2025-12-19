@@ -40,7 +40,6 @@ tasks:
 
   build:
     desc: Build Go CLI binaries for local development
-    dir: go
     cmds:
       - echo "Building Go binaries for local development..."
       - mkdir -p bin
@@ -416,8 +415,7 @@ tasks:
     cmds:
       - echo "Running Go tests..."
       - |
-        cd go && \
-        if [ -f "../.env" ]; then
+        if [ -f ".env" ]; then
           # Export only valid variable names from .env (skip lines with # or invalid names)
           set -a
           while IFS='=' read -r key value; do
@@ -425,14 +423,11 @@ tasks:
             if [[ ! "$key" =~ ^[[:space:]]*# ]] && [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
               export "$key=$value"
             fi
-          done < ../.env
+          done < .env
           set +a
         fi && \
         go test -v -race -coverprofile=coverage.out ./... 2>/dev/null || go test -v ./...
-      - cd go && go tool cover -func=coverage.out | tail -1 || echo "Coverage report not available"
-    preconditions:
-      - sh: test -d go
-        msg: "Go directory not found"
+      - go tool cover -func=coverage.out | tail -1 || echo "Coverage report not available"
 
   # CI/CD Tasks
   install-tools:
@@ -501,8 +496,8 @@ tasks:
     cmds:
       - echo "Building snapshot release..."
       - goreleaser release --snapshot --clean --skip=publish
-      - echo "✅ Snapshot built in go/dist/"
-      - ls -la go/dist/
+      - echo "✅ Snapshot built in dist/"
+      - ls -la dist/
     preconditions:
       - sh: command -v goreleaser
         msg: "GoReleaser not found. Install with: task install-goreleaser"
@@ -549,7 +544,7 @@ tasks:
         touch dist/completion/deckbuilder.zsh
         touch dist/completion/deckbuilder.fish
 
-        echo "✅ Completion placeholders created in go/dist/completion/"
+        echo "✅ Completion placeholders created in dist/completion/"
         echo "TODO: Implement actual shell completions"
 
 help:
