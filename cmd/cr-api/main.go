@@ -57,6 +57,7 @@ func main() {
 			},
 		},
 		Commands: []*cli.Command{
+			addArchetypeCommands(),
 			addDeckCommands(),
 			addEventCommands(),
 			addExportCommands(),

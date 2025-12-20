@@ -362,6 +362,66 @@ tasks:
       - sh: test -x {{.CR_API_BIN}}
         msg: "cr-api binary not found. Build it with: task build"
 
+  # Archetype Analysis Tasks
+  analyze-archetypes:
+    desc: Analyze archetype variety and upgrade costs using Go CLI
+    summary: |
+      Generate decks for all 8 archetypes and calculate upgrade costs to target level
+
+      Args:
+        player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+        target-level: Target competitive card level (default: 11)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Analyzing archetype variety for $CLEAN_TAG..."
+        {{.CR_API_BIN}} archetypes --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  export-archetypes:
+    desc: Analyze and export archetype data to CSV using Go CLI
+    summary: |
+      Generate archetype analysis and export to CSV with upgrade details
+
+      Args:
+        player: Player tag to analyze (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Analyzing and exporting archetype data for $CLEAN_TAG to CSV..."
+        {{.CR_API_BIN}} archetypes --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --export-csv --save
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
   test:
     desc: Run Go tests
     summary: |
