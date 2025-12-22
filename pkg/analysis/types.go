@@ -99,7 +99,8 @@ type UpgradePriority struct {
 	CurrentLevel  int      `json:"current_level"`
 	MaxLevel      int      `json:"max_level"`
 	CardsOwned    int      `json:"cards_owned"`
-	CardsNeeded   int      `json:"cards_needed"`
+	CardsRequired int      `json:"cards_required"` // Total cards needed for next level
+	CardsNeeded   int      `json:"cards_needed"`   // Cards remaining to reach next level
 	Priority      string   `json:"priority"`       // "high", "medium", "low"
 	PriorityScore float64  `json:"priority_score"` // 0-100
 	Reasons       []string `json:"reasons"`
@@ -107,15 +108,15 @@ type UpgradePriority struct {
 
 // IsReadyToUpgrade returns true if the player has enough cards to upgrade
 func (up *UpgradePriority) IsReadyToUpgrade() bool {
-	return up.CardsOwned >= up.CardsNeeded
+	return up.CardsOwned >= up.CardsRequired
 }
 
 // PercentageComplete returns progress toward upgrade as percentage (0-100)
 func (up *UpgradePriority) PercentageComplete() float64 {
-	if up.CardsNeeded == 0 {
+	if up.CardsRequired == 0 {
 		return 100.0
 	}
-	return (float64(up.CardsOwned) / float64(up.CardsNeeded)) * 100.0
+	return (float64(up.CardsOwned) / float64(up.CardsRequired)) * 100.0
 }
 
 // CollectionSummary provides high-level overview statistics

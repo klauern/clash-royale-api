@@ -34,7 +34,8 @@ clash-royale-api/
 │   └── storage/              # Data persistence
 ├── bin/                      # Built binaries
 ├── data/                    # Data storage
-│   ├── static/              # Static game data
+│   ├── evolution_shards.json # Evolution shard inventory
+│   ├── static/              # Static game data (cards.json cache)
 │   ├── players/             # Player profiles
 │   ├── analysis/            # Collection analysis
 │   ├── csv/                 # CSV exports
@@ -181,6 +182,12 @@ task build
 ./bin/cr-api deck build --tag PLAYER_TAG             # Build optimized deck
 ./bin/cr-api deck build --tag PLAYER_TAG --verbose   # With detailed reasoning
 
+# Evolution shard inventory
+./bin/cr-api evolutions shards list
+./bin/cr-api evolutions shards list --card "Archers"
+./bin/cr-api evolutions shards set --card "Archers" --count 3
+./bin/cr-api cards                                  # Refresh cached card database for validation
+
 # Event tracking
 ./bin/cr-api events scan --tag PLAYER_TAG            # Scan battle log for events
 ./bin/cr-api events scan --tag PLAYER_TAG --days 30 --save
@@ -192,6 +199,8 @@ task build
 ./bin/cr-api export cards                            # Export card database
 ./bin/cr-api export analysis --tag PLAYER_TAG        # Export collection analysis
 ```
+
+Evolution shard commands validate card names against the cached card database at `data/static/cards.json`. Run `cr-api cards` to refresh the cache (or pass `--api-token` to fetch on demand).
 
 ### Deck Building Options
 

@@ -73,7 +73,7 @@ func (a *Analyzer) buildArchetypeDeck(
 	currentAvgLevel := calculateAvgLevel(recommendation.DeckDetail)
 
 	// Calculate upgrade costs
-	upgrades, totalCards, totalGold := CalculateUpgradeCosts(recommendation, targetLevel)
+	upgrades, totalCards, totalGold, totalGems := CalculateUpgradeCosts(recommendation, targetLevel)
 
 	// Calculate distance metric
 	distance := CalculateDistanceMetric(recommendation, targetLevel)
@@ -87,6 +87,7 @@ func (a *Analyzer) buildArchetypeDeck(
 		TargetLevel:     targetLevel,
 		CardsNeeded:     totalCards,
 		GoldNeeded:      totalGold,
+		GemsNeeded:      totalGems,
 		DistanceMetric:  distance,
 		UpgradeDetails:  upgrades,
 	}, nil

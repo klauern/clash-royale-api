@@ -8,11 +8,11 @@ import (
 )
 
 // CalculateUpgradeCosts calculates upgrade requirements for all cards in a deck.
-// It returns per-card upgrades, total cards needed, and total gold needed.
+// It returns per-card upgrades, total cards needed, total gold needed, and total gems needed.
 func CalculateUpgradeCosts(
 	recommendation *deck.DeckRecommendation,
 	targetLevel int,
-) ([]CardUpgrade, int, int) {
+) ([]CardUpgrade, int, int, int) {
 	upgrades := make([]CardUpgrade, len(recommendation.DeckDetail))
 	totalCards := 0
 	totalGold := 0
@@ -45,7 +45,10 @@ func CalculateUpgradeCosts(
 		totalGold += upgrade.GoldNeeded
 	}
 
-	return upgrades, totalCards, totalGold
+	// Calculate gems needed for the total gold
+	totalGems := deck.CalculateGemsNeeded(totalGold)
+
+	return upgrades, totalCards, totalGold, totalGems
 }
 
 // CalculateDistanceMetric computes how far a deck is from ideal competitive state.

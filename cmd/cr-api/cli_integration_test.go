@@ -386,6 +386,7 @@ func createTestCommand(dataDir string) *cli.Command {
 		},
 		Commands: []*cli.Command{
 			addDeckCommands(),
+			addEvolutionCommands(),
 			addEventCommands(),
 			addExportCommands(),
 			{

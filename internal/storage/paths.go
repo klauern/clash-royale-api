@@ -42,6 +42,11 @@ func (pb *PathBuilder) GetStaticDir() string {
 	return filepath.Join(pb.BaseDir, StaticDir)
 }
 
+// GetStaticCardsPath returns the path to the cached card database JSON.
+func (pb *PathBuilder) GetStaticCardsPath() string {
+	return filepath.Join(pb.GetStaticDir(), "cards.json")
+}
+
 // GetPlayersDir returns the players data directory path
 func (pb *PathBuilder) GetPlayersDir() string {
 	return filepath.Join(pb.BaseDir, PlayersDir)
@@ -60,6 +65,11 @@ func (pb *PathBuilder) GetDecksDir() string {
 // GetEventDecksDir returns the event decks directory path
 func (pb *PathBuilder) GetEventDecksDir() string {
 	return filepath.Join(pb.BaseDir, EventDecksDir)
+}
+
+// GetEvolutionShardsPath returns the path to the evolution shard inventory file.
+func (pb *PathBuilder) GetEvolutionShardsPath() string {
+	return filepath.Join(pb.BaseDir, "evolution_shards.json")
 }
 
 // GetCSVDir returns the CSV export directory path
