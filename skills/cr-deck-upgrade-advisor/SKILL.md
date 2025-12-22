@@ -1,0 +1,86 @@
+---
+name: cr-deck-upgrade-advisor
+description: Deck building and upgrade projection guidance for this Clash Royale Go repo. Use when asked to build best decks (1v1 or war lineups), suggest upgrades or archetype shifts, or simulate "within reach" decks using ./bin/cr-api, ./bin/deckbuilder, or a projected analysis file.
+---
+
+# CR Deck Upgrade Advisor
+
+## Overview
+
+Guide deck building and upgrade suggestions using the repo binaries and player card data. Focus on multi-option 1v1 decks, 4-deck war lineups with no repeats, and upgrade projections tied to affordability.
+
+## Inputs to Collect
+
+- Player tag (with or without #)
+- Goal: best 1v1 options, war lineup, upgrade path, or archetype shift
+- Constraints: strategy, min/max elixir, include/exclude cards, unlocked evolutions, evolution slots, combat stats weight
+- Budget: upgrades to simulate and wildcard counts by rarity (if affordability matters)
+
+## Quick Start (Live API Deck Build)
+
+Use this when the user wants the best current deck from their live collection.
+
+```bash
+./bin/cr-api deck build --tag <TAG> --strategy balanced --data-dir ./data --save
+```
+
+Adjust with:
+- `--strategy` (balanced, aggro, control, cycle, splash, spell)
+- `--min-elixir` / `--max-elixir`
+- `--include-cards` / `--exclude-cards`
+- `--unlocked-evolutions` / `--evolution-slots`
+- `--combat-stats-weight` or `--disable-combat-stats`
+
+## Task: Multiple 1v1 Options
+
+1) Build 3-5 decks with different strategies or constraints.
+2) Present each deck with average elixir and a short rationale.
+3) Highlight any cards that repeat across options (staples).
+
+Example command set:
+```bash
+./bin/cr-api deck build --tag <TAG> --strategy balanced --data-dir ./data --save
+./bin/cr-api deck build --tag <TAG> --strategy cycle --min-elixir 2.6 --max-elixir 3.2 --data-dir ./data --save
+./bin/cr-api deck build --tag <TAG> --strategy control --min-elixir 3.4 --max-elixir 4.2 --data-dir ./data --save
+```
+
+If the user wants a specific archetype, force the win condition via `--include-cards` and then build 2-3 variants by tweaking elixir or exclusion lists.
+
+## Task: War Lineup (4 Decks, 32 Unique Cards)
+
+1) Build deck 1 and record the 8 cards.
+2) Build deck 2-4 with `--exclude-cards` using the accumulated list.
+3) If a deck is invalid or too weak, loosen strategy constraints and retry.
+
+Example flow:
+```bash
+./bin/cr-api deck build --tag <TAG> --strategy balanced --data-dir ./data --save
+./bin/cr-api deck build --tag <TAG> --strategy cycle --exclude-cards "CardA,CardB,..." --data-dir ./data --save
+./bin/cr-api deck build --tag <TAG> --strategy control --exclude-cards "CardA,CardB,..." --data-dir ./data --save
+./bin/cr-api deck build --tag <TAG> --strategy aggro --exclude-cards "CardA,CardB,..." --data-dir ./data --save
+```
+
+Return the four decks plus a combined 32-card list. Note any compromises made to satisfy the no-repeat rule.
+
+## Task: Upgrade Suggestions and "Within Reach" Projections
+
+Use this when the user wants to know which upgrades unlock a new archetype or strengthen a current deck.
+
+1) Generate an analysis file:
+```bash
+./bin/cr-api analyze --tag <TAG> --save --data-dir ./data
+```
+2) Use the projection helper to apply a small upgrade plan and budget (wildcards by rarity).
+```bash
+./scripts/project_deck_projection.py --analysis ./data/analysis/<analysis>.json --plan ./data/upgrade_plan.json --tag <TAG>
+```
+3) Build a deck from the projected analysis using `./bin/deckbuilder --analysis-file`.
+4) Compare current vs projected decks and call out the minimal upgrades that unlock the better option.
+
+If wildcard counts are unknown, ask for a rough budget by rarity or skip affordability checks and label the projection as \"unbounded\" (use `--unbounded`).
+
+## References
+
+- Read `DECK_BUILDER.md` for deck roles and scoring details.
+- Read `DECK_STRATEGIES.md` for strategy definitions and tuning.
+- Use `cmd/cr-api/deck_commands.go` for exact flag names and defaults.

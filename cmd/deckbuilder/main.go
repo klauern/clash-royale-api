@@ -20,9 +20,15 @@ func main() {
 	// Version flag
 	showVersion := flag.Bool("version", false, "Show version information")
 
+	// Get default data directory from environment or use "./data"
+	defaultDataDir := os.Getenv("DATA_DIR")
+	if defaultDataDir == "" {
+		defaultDataDir = "./data"
+	}
+
 	tag := flag.String("tag", "", "Player tag (with or without #)")
-	dataDir := flag.String("data-dir", "data", "Base data directory")
-	analysisDir := flag.String("analysis-dir", "data/analysis", "Directory containing card analysis JSON files")
+	dataDir := flag.String("data-dir", defaultDataDir, "Base data directory")
+	analysisDir := flag.String("analysis-dir", "", "Directory containing card analysis JSON files (defaults to <data-dir>/analysis)")
 	analysisFile := flag.String("analysis-file", "", "Explicit analysis JSON file to load (overrides --analysis-dir lookup)")
 	flag.Parse()
 
@@ -37,6 +43,12 @@ func main() {
 
 	builder := deck.NewBuilder(*dataDir)
 
+	// Default analysisDir to <data-dir>/analysis if not specified
+	actualAnalysisDir := *analysisDir
+	if actualAnalysisDir == "" {
+		actualAnalysisDir = *dataDir + "/analysis"
+	}
+
 	var (
 		analysis *deck.CardAnalysis
 		err      error
@@ -48,7 +60,7 @@ func main() {
 			log.Fatalf("failed to load analysis file: %v", err)
 		}
 	} else {
-		analysis, err = builder.LoadLatestAnalysis(*tag, *analysisDir)
+		analysis, err = builder.LoadLatestAnalysis(*tag, actualAnalysisDir)
 		if err != nil {
 			log.Fatalf("failed to load latest analysis: %v", err)
 		}

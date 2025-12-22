@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 
 	"github.com/klauer/clash-royale-api/go/internal/exporter/csv"
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/urfave/cli/v3"
@@ -59,6 +60,7 @@ func main() {
 		Commands: []*cli.Command{
 			addArchetypeCommands(),
 			addDeckCommands(),
+			addEvolutionCommands(),
 			addEventCommands(),
 			addExportCommands(),
 			{
@@ -320,6 +322,7 @@ func cardsCommand(ctx context.Context, cmd *cli.Command) error {
 	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	exportCSV := cmd.Bool("export-csv")
+	dataDir := cmd.String("data-dir")
 
 	if apiToken == "" {
 		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
@@ -336,6 +339,10 @@ func cardsCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to get cards: %w", err)
 	}
 
+	if err := cacheStaticCards(dataDir, cards); err != nil && verbose {
+		fmt.Printf("Warning: Failed to cache card database: %v\n", err)
+	}
+
 	// Always display cards unless only exporting
 	if !exportCSV {
 		displayCards(cards.Items)
@@ -343,7 +350,6 @@ func cardsCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Export to CSV if requested
 	if exportCSV {
-		dataDir := cmd.String("data-dir")
 		if verbose {
 			fmt.Printf("\nExporting card database to CSV...\n")
 		}
@@ -431,10 +437,12 @@ func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
 		if verbose {
 			fmt.Printf("\nSaving analysis to: %s\n", dataDir)
 		}
+		pb := storage.NewPathBuilder(dataDir)
+		analysisPath := pb.GetAnalysisFilePath(cardAnalysis.PlayerTag)
 		if err := saveAnalysisData(dataDir, cardAnalysis); err != nil {
 			fmt.Printf("Warning: Failed to save analysis: %v\n", err)
 		} else {
-			fmt.Printf("Analysis saved to: %s/analysis/%s.json\n", dataDir, cardAnalysis.PlayerTag)
+			fmt.Printf("Analysis saved to: %s\n", analysisPath)
 		}
 	}
 
@@ -539,14 +547,17 @@ func displayAnalysis(a *analysis.CardAnalysis) {
 }
 
 func saveAnalysisData(dataDir string, a *analysis.CardAnalysis) error {
-	// Create analysis directory if it doesn't exist
-	analysisDir := filepath.Join(dataDir, "analysis")
-	if err := os.MkdirAll(analysisDir, 0755); err != nil {
+	// Use storage.PathBuilder for consistent file naming
+	pb := storage.NewPathBuilder(dataDir)
+
+	// Ensure analysis directory exists
+	if err := os.MkdirAll(pb.GetAnalysisDir(), 0755); err != nil {
 		return fmt.Errorf("failed to create analysis directory: %w", err)
 	}
 
-	// Save as JSON
-	filename := filepath.Join(analysisDir, fmt.Sprintf("%s.json", a.PlayerTag))
+	// Get standardized file path with timestamp
+	filename := pb.GetAnalysisFilePath(a.PlayerTag)
+
 	data, err := json.MarshalIndent(a, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to marshal analysis data: %w", err)
@@ -746,7 +757,7 @@ func savePlaystyleData(dataDir string, p *analysis.PlaystyleAnalysis, r *analysi
 
 	// Prepare data for saving
 	saveData := struct {
-		PlaystyleAnalysis *analysis.PlaystyleAnalysis          `json:"playstyle_analysis"`
+		PlaystyleAnalysis   *analysis.PlaystyleAnalysis        `json:"playstyle_analysis"`
 		DeckRecommendations *analysis.DeckRecommendationResult `json:"deck_recommendations,omitempty"`
 	}{
 		PlaystyleAnalysis: p,

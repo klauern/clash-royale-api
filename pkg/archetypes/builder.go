@@ -2,6 +2,7 @@ package archetypes
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
@@ -24,8 +25,7 @@ func NewArchetypeBuilder(dataDir string) *ArchetypeBuilder {
 }
 
 // BuildForArchetype builds a deck matching the specified archetype characteristics.
-// It filters the card collection based on archetype constraints, then uses the
-// base builder to create an optimal deck from the filtered candidates.
+// It uses archetype-specific deck composition and prioritizes preferred cards.
 func (ab *ArchetypeBuilder) BuildForArchetype(
 	archetype mulligan.Archetype,
 	analysis deck.CardAnalysis,
@@ -38,12 +38,12 @@ func (ab *ArchetypeBuilder) BuildForArchetype(
 	// Filter candidates based on archetype constraints
 	filteredAnalysis := ab.filterCandidates(analysis, constraints)
 
-	// Use base builder to create deck from filtered candidates
-	recommendation, err := ab.baseBuilder.BuildDeckFromAnalysis(filteredAnalysis)
+	// Build deck using archetype-specific composition
+	recommendation, err := ab.buildArchetypeSpecificDeck(archetype, filteredAnalysis, constraints)
 	if err != nil {
 		// Try with relaxed constraints if initial build fails
 		relaxedAnalysis := ab.filterCandidatesRelaxed(analysis, constraints)
-		recommendation, err = ab.baseBuilder.BuildDeckFromAnalysis(relaxedAnalysis)
+		recommendation, err = ab.buildArchetypeSpecificDeck(archetype, relaxedAnalysis, constraints)
 		if err != nil {
 			return nil, fmt.Errorf("failed to build %s deck: %w", archetype, err)
 		}
@@ -80,6 +80,41 @@ func (ab *ArchetypeBuilder) filterCandidates(
 	// Filter out excluded cards
 	for cardName, cardData := range analysis.CardLevels {
 		if !excludedMap[cardName] {
+			filtered.CardLevels[cardName] = cardData
+		}
+	}
+
+	return filtered
+}
+
+// filterCandidatesWithPreference filters cards and boosts preferred cards for archetype.
+func (ab *ArchetypeBuilder) filterCandidatesWithPreference(
+	analysis deck.CardAnalysis,
+	constraints ArchetypeConstraints,
+) deck.CardAnalysis {
+	filtered := deck.CardAnalysis{
+		CardLevels:   make(map[string]deck.CardLevelData),
+		AnalysisTime: analysis.AnalysisTime,
+	}
+
+	// Create excluded cards and preferred cards maps for fast lookup
+	excludedMap := make(map[string]bool)
+	for _, cardName := range constraints.ExcludedCards {
+		excludedMap[cardName] = true
+	}
+
+	preferredMap := make(map[string]bool)
+	for _, cardName := range constraints.PreferredCards {
+		preferredMap[cardName] = true
+	}
+
+	// Filter out excluded cards and boost preferred cards
+	for cardName, cardData := range analysis.CardLevels {
+		if !excludedMap[cardName] {
+			// Boost level for preferred cards to increase selection priority
+			if preferredMap[cardName] {
+				cardData.Level += 2 // Artificially boost by 2 levels for scoring
+			}
 			filtered.CardLevels[cardName] = cardData
 		}
 	}
@@ -167,4 +202,59 @@ func (ab *ArchetypeBuilder) validateArchetype(
 	}
 
 	return true
+}
+
+// buildArchetypeSpecificDeck builds a deck using archetype-specific composition templates.
+func (ab *ArchetypeBuilder) buildArchetypeSpecificDeck(
+	_ mulligan.Archetype, // archetype info is embedded in constraints
+	analysis deck.CardAnalysis,
+	constraints ArchetypeConstraints,
+) (*deck.DeckRecommendation, error) {
+	// Apply preferred card boosting
+	weightedAnalysis := ab.filterCandidatesWithPreference(analysis, constraints)
+
+	// Use base builder for initial deck
+	recommendation, err := ab.baseBuilder.BuildDeckFromAnalysis(weightedAnalysis)
+	if err != nil {
+		return nil, err
+	}
+
+	// Adjust deck composition based on archetype requirements
+	recommendation = ab.adjustDeckForArchetype(recommendation, constraints)
+
+	return recommendation, nil
+}
+
+// adjustDeckForArchetype modifies the deck to better match archetype characteristics.
+func (ab *ArchetypeBuilder) adjustDeckForArchetype(
+	recommendation *deck.DeckRecommendation,
+	constraints ArchetypeConstraints,
+) *deck.DeckRecommendation {
+	// Check elixir range and suggest adjustments if needed
+	if recommendation.AvgElixir < constraints.MinElixir {
+		recommendation.AddNote(fmt.Sprintf("Low elixir for %s (target: %.1f-%.1f)",
+			constraints.Archetype, constraints.MinElixir, constraints.MaxElixir))
+	} else if recommendation.AvgElixir > constraints.MaxElixir {
+		recommendation.AddNote(fmt.Sprintf("High elixir for %s (target: %.1f-%.1f)",
+			constraints.Archetype, constraints.MinElixir, constraints.MaxElixir))
+	}
+
+	// Add archetype-specific notes
+	if len(constraints.PreferredCards) > 0 {
+		maxShow := min(3, len(constraints.PreferredCards))
+		recommendation.AddNote(fmt.Sprintf("Preferred for %s: %s",
+			constraints.Archetype, strings.Join(constraints.PreferredCards[:maxShow], ", ")))
+	}
+
+	return recommendation
+}
+
+// SetUnlockedEvolutions updates the unlocked evolutions list for the base builder.
+func (ab *ArchetypeBuilder) SetUnlockedEvolutions(cards []string) {
+	ab.baseBuilder.SetUnlockedEvolutions(cards)
+}
+
+// SetEvolutionSlotLimit updates the evolution slot limit for the base builder.
+func (ab *ArchetypeBuilder) SetEvolutionSlotLimit(limit int) {
+	ab.baseBuilder.SetEvolutionSlotLimit(limit)
 }

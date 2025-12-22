@@ -45,6 +45,7 @@ type ArchetypeDeck struct {
 	TargetLevel     int                `json:"target_level"`      // Target competitive level
 	CardsNeeded     int                `json:"cards_needed"`      // Total cards to reach target
 	GoldNeeded      int                `json:"gold_needed"`       // Total gold to reach target
+	GemsNeeded      int                `json:"gems_needed"`       // Total gems to reach target
 	DistanceMetric  float64            `json:"distance_metric"`   // 0.0 (perfect) to 1.0 (far from ideal)
 	UpgradeDetails  []CardUpgrade      `json:"upgrade_details"`   // Per-card upgrade breakdown
 }

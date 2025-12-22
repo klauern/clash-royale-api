@@ -12,61 +12,60 @@ func TestCalculateCardsNeeded(t *testing.T) {
 		rarity       string
 		want         int
 	}{
-		// Common progression
 		{"Common level 1", 1, "Common", 2},
 		{"Common level 5", 5, "Common", 50},
 		{"Common level 10", 10, "Common", 1000},
-		{"Common level 13", 13, "Common", 10000},
-		{"Common max level", 14, "Common", 0},
+		{"Common level 13", 13, "Common", 2500},
+		{"Common max level", 16, "Common", 0},
 
 		// Rare progression
 		{"Rare level 3", 3, "Rare", 2},
 		{"Rare level 7", 7, "Rare", 50},
-		{"Rare level 11", 11, "Rare", 800},
-		{"Rare max level", 14, "Rare", 0},
+		{"Rare level 11", 11, "Rare", 400},
+		{"Rare max level", 16, "Rare", 0},
 
 		// Epic progression
 		{"Epic level 6", 6, "Epic", 2},
 		{"Epic level 10", 10, "Epic", 50},
-		{"Epic level 13", 13, "Epic", 400},
-		{"Epic max level", 14, "Epic", 0},
+		{"Epic level 13", 13, "Epic", 70},
+		{"Epic max level", 16, "Epic", 0},
 
 		// Legendary progression
 		{"Legendary level 9", 9, "Legendary", 2},
 		{"Legendary level 12", 12, "Legendary", 20},
-		{"Legendary max level", 14, "Legendary", 0},
+		{"Legendary max level", 16, "Legendary", 0},
 
 		// Champion progression
 		{"Champion level 11", 11, "Champion", 2},
-		{"Champion level 13", 13, "Champion", 10},
-		{"Champion max level", 14, "Champion", 0},
+		{"Champion level 13", 13, "Champion", 8},
+		{"Champion max level", 16, "Champion", 0},
 
 		// Unknown rarity
 		{"Unknown rarity", 5, "Unknown", 0},
 
 		// Edge cases for different rarities at invalid levels
-		{"Rare below starting level 1", 1, "Rare", 0},
-		{"Rare below starting level 2", 2, "Rare", 0},
+		{"Rare below starting level 1", 1, "Rare", 0}, // Now returns 0
+		{"Rare below starting level 2", 2, "Rare", 0}, // Now returns 0
 		{"Epic below starting level 1", 1, "Epic", 0},
 		{"Epic below starting level 5", 5, "Epic", 0},
 		{"Legendary below starting level 1", 1, "Legendary", 0},
 		{"Legendary below starting level 8", 8, "Legendary", 0},
 		{"Champion below starting level 1", 1, "Champion", 0},
-		{"Champion below starting level 10", 10, "Champion", 0},
+		{"Champion below starting level 10", 10, "Champion", 0}, 
 
-		// All rarities at max level (14)
-		{"Common at max level 14", 14, "Common", 0},
-		{"Rare at max level 14", 14, "Rare", 0},
-		{"Epic at max level 14", 14, "Epic", 0},
-		{"Legendary at max level 14", 14, "Legendary", 0},
-		{"Champion at max level 14", 14, "Champion", 0},
+		// All rarities at max level (16)
+		{"Common at max level 16", 16, "Common", 0},
+		{"Rare at max level 16", 16, "Rare", 0},
+		{"Epic at max level 16", 16, "Epic", 0},
+		{"Legendary at max level 16", 16, "Legendary", 0},
+		{"Champion at max level 16", 16, "Champion", 0},
 
 		// All rarities above max level (should also return 0)
-		{"Common above max level 15", 15, "Common", 0},
-		{"Rare above max level 15", 15, "Rare", 0},
-		{"Epic above max level 15", 15, "Epic", 0},
-		{"Legendary above max level 15", 15, "Legendary", 0},
-		{"Champion above max level 15", 15, "Champion", 0},
+		{"Common above max level 17", 17, "Common", 0},
+		{"Rare above max level 17", 17, "Rare", 0},
+		{"Epic above max level 17", 17, "Epic", 0},
+		{"Legendary above max level 17", 17, "Legendary", 0},
+		{"Champion above max level 17", 17, "Champion", 0},
 	}
 
 	for _, tt := range tests {
@@ -86,12 +85,12 @@ func TestGetMaxLevel(t *testing.T) {
 		rarity string
 		want   int
 	}{
-		{"Common", 14},
-		{"Rare", 14},
-		{"Epic", 14},
-		{"Legendary", 14},
-		{"Champion", 14},
-		{"Unknown", 14}, // Default
+		{"Common", 16},
+		{"Rare", 16},
+		{"Epic", 16},
+		{"Legendary", 16},
+		{"Champion", 16},
+		{"Unknown", 16}, // Default
 	}
 
 	for _, tt := range tests {
@@ -136,12 +135,12 @@ func TestIsMaxLevel(t *testing.T) {
 		rarity       string
 		want         bool
 	}{
-		{"Common at max", 14, "Common", true},
-		{"Common below max", 13, "Common", false},
-		{"Rare at max", 14, "Rare", true},
-		{"Epic at max", 14, "Epic", true},
-		{"Legendary below max", 13, "Legendary", false},
-		{"Champion at max", 14, "Champion", true},
+		{"Common at max", 16, "Common", true},
+		{"Common below max", 15, "Common", false},
+		{"Rare at max", 16, "Rare", true},
+		{"Epic at max", 16, "Epic", true},
+		{"Legendary below max", 15, "Legendary", false},
+		{"Champion at max", 16, "Champion", true},
 	}
 
 	for _, tt := range tests {
@@ -167,18 +166,19 @@ func TestCalculateTotalCardsToMax(t *testing.T) {
 			name:         "Common 1 to max",
 			currentLevel: 1,
 			rarity:       "Common",
-			// 2+4+10+20+50+100+200+400+800+1000+2000+5000+10000 = 19586
-			want: 19586,
+			// 2+4+10+20+50+100+200+400+800+1000+2000+3000+2500+3500+5500 = 19086
+			want: 19086,
 		},
 		{
 			name:         "Common 13 to max",
 			currentLevel: 13,
 			rarity:       "Common",
-			want:         10000,
+			// 2500+3500+5500 = 11500
+			want: 11500,
 		},
 		{
 			name:         "Common already max",
-			currentLevel: 14,
+			currentLevel: 16,
 			rarity:       "Common",
 			want:         0,
 		},
@@ -186,29 +186,29 @@ func TestCalculateTotalCardsToMax(t *testing.T) {
 			name:         "Rare 10 to max",
 			currentLevel: 10,
 			rarity:       "Rare",
-			// 400+800+1000+2000 = 4200
-			want: 4200,
+			// 300+400+400+550+750+1000 = 3400
+			want: 3400,
 		},
 		{
 			name:         "Epic 12 to max",
 			currentLevel: 12,
 			rarity:       "Epic",
-			// 200+400 = 600
-			want: 600,
+			// 40+70+100+140 = 350
+			want: 350,
 		},
 		{
 			name:         "Legendary 9 to max",
 			currentLevel: 9,
 			rarity:       "Legendary",
-			// 2+4+10+20+40 = 76
-			want: 76,
+			// 2+4+10+20+10+12+15 = 73
+			want: 73,
 		},
 		{
 			name:         "Champion 11 to max",
 			currentLevel: 11,
 			rarity:       "Champion",
-			// 2+4+10 = 16
-			want: 16,
+			// 2+4+8+10+12 = 36
+			want: 36,
 		},
 	}
 
@@ -251,7 +251,7 @@ func TestCalculateUpgradeProgress(t *testing.T) {
 
 // TestCalculateUpgradeInfo tests complete upgrade info generation
 func TestCalculateUpgradeInfo(t *testing.T) {
-	info := CalculateUpgradeInfo("Fire Spirit", "Common", 1, 10, 500, 2, 3)
+	info := CalculateUpgradeInfo("Fire Spirit", "Common", 1, 10, 500, 2, 3, 14)
 
 	// Verify basic fields
 	if info.CardName != "Fire Spirit" {
@@ -294,7 +294,7 @@ func TestCalculateUpgradeInfo(t *testing.T) {
 	}
 
 	// Test max level card
-	maxInfo := CalculateUpgradeInfo("Max Card", "Legendary", 3, 14, 100, 0, 0)
+	maxInfo := CalculateUpgradeInfo("Max Card", "Legendary", 3, 14, 100, 0, 0, 14)
 	if !maxInfo.IsMaxLevel {
 		t.Error("Max level card: IsMaxLevel = false, want true")
 	}

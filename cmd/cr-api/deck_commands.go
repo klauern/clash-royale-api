@@ -97,6 +97,42 @@ func addDeckCommands() *cli.Command {
 				Action: deckBuildCommand,
 			},
 			{
+				Name:  "war",
+				Usage: "Build a 4-deck war set with no repeated cards",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #)",
+						Required: true,
+					},
+					&cli.IntFlag{
+						Name:  "deck-count",
+						Value: 4,
+						Usage: "Number of decks to build (default 4)",
+					},
+					&cli.StringFlag{
+						Name:  "unlocked-evolutions",
+						Usage: "Comma-separated list of cards with unlocked evolutions (overrides UNLOCKED_EVOLUTIONS env var)",
+					},
+					&cli.IntFlag{
+						Name:  "evolution-slots",
+						Value: 2,
+						Usage: "Number of evolution slots available (default 2)",
+					},
+					&cli.Float64Flag{
+						Name:  "combat-stats-weight",
+						Value: 0.25,
+						Usage: "Weight for combat stats in scoring (0.0-1.0, where 0=disabled, 0.25=default, 1.0=combat-only)",
+					},
+					&cli.BoolFlag{
+						Name:  "disable-combat-stats",
+						Usage: "Disable combat stats completely (use traditional scoring only)",
+					},
+				},
+				Action: deckWarCommand,
+			},
+			{
 				Name:  "analyze",
 				Usage: "Analyze a deck's strengths and weaknesses",
 				Flags: []cli.Flag{
@@ -215,6 +251,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	dataDir := cmd.String("data-dir")
 	combatStatsWeight := cmd.Float64("combat-stats-weight")
 	disableCombatStats := cmd.Bool("disable-combat-stats")
+	excludeCards := cmd.StringSlice("exclude-cards")
 
 	if apiToken == "" {
 		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
@@ -276,7 +313,18 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
 	}
 
+	excludeMap := make(map[string]bool)
+	for _, card := range excludeCards {
+		trimmed := strings.TrimSpace(card)
+		if trimmed != "" {
+			excludeMap[strings.ToLower(trimmed)] = true
+		}
+	}
+
 	for cardName, cardInfo := range cardAnalysis.CardLevels {
+		if excludeMap[strings.ToLower(cardName)] {
+			continue
+		}
 		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
 			Level:             cardInfo.Level,
 			MaxLevel:          cardInfo.MaxLevel,
