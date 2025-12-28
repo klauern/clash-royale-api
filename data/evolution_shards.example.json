@@ -1,0 +1,13 @@
+{
+  "last_updated": "2025-01-01T00:00:00.000000Z",
+  "shards": {
+    "Archers": 0,
+    "Knight": 0,
+    "Musketeer": 0
+  },
+  "_comment": {
+    "shards": "Number of evolution shards owned for each card",
+    "last_updated": "ISO timestamp of last update",
+    "note": "Copy to data/evolution_shards.json to track your evolution progress"
+  }
+}

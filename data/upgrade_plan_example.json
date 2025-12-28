@@ -1,0 +1,28 @@
+{
+  "wildcards": {
+    "Common": 1200,
+    "Rare": 400,
+    "Epic": 60,
+    "Legendary": 8,
+    "Champion": 3
+  },
+  "upgrades": [
+    {
+      "card": "Hog Rider",
+      "target_level": 11
+    },
+    {
+      "card": "Fireball",
+      "target_level": 10
+    },
+    {
+      "card": "Archers",
+      "target_level": 13
+    }
+  ],
+  "_comment": {
+    "wildcards": "Number of wildcards available by rarity (check your in-game inventory)",
+    "upgrades": "List of cards to upgrade with target levels",
+    "rarity_values": "Common, Rare, Epic, Legendary, Champion (case-insensitive)"
+  }
+}
