@@ -45,6 +45,14 @@ clash-royale-api/
 └── README.md                # This file
 ```
 
+## Security Notice
+
+**⚠️ Important**: Never commit your `.env` file or API tokens to version control.
+
+The `.env` file contains sensitive credentials and is **gitignored** by design. This repository includes `.env.example` as a safe template with placeholder values.
+
+**Local-only data**: The `data/` directory stores cached API responses, analysis results, and local artifacts. It is excluded from version control to keep the repository clean and avoid committing large generated files.
+
 ## Installation
 
 ### Binary Releases (Recommended)
@@ -125,18 +133,24 @@ task build
 
 ### 2. Configure the Project
 
-Run the setup task (creates .env file automatically):
+Copy the example environment file and add your API token:
 
 ```bash
-task setup
+# Copy the template to create your local .env file
+cp .env.example .env
+
+# Edit .env and add your actual API token
+nano .env  # or use your preferred editor
 ```
 
 Edit `.env` in the project root and add your API token:
 
 ```env
-CLASH_ROYALE_API_TOKEN=your_api_token_here
+CLASH_ROYALE_API_TOKEN=your_actual_api_token_here
 DEFAULT_PLAYER_TAG=#your_player_tag_here  # Optional
 ```
+
+**⚠️ Remember**: The `.env` file is gitignored and should never be committed to version control. Only `.env.example` (which contains safe placeholders) is tracked in the repository.
 
 ### 3. Build and Run
 
@@ -377,6 +391,8 @@ Strategic Notes:
 ## Environment Variable Configuration
 
 The project uses a `.env` file in the project root for configuration. All CLI arguments can be configured via environment variables, allowing you to run tasks without repeatedly typing arguments.
+
+**⚠️ Security**: Copy `.env.example` to `.env` and add your actual values. The `.env` file is gitignored and should never be committed. Only `.env.example` (with safe placeholders) is tracked in the repository.
 
 ### Required Configuration
 
