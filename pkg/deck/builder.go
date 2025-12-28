@@ -118,7 +118,8 @@ type CardLevelData struct {
 	MaxLevel          int    `json:"max_level"`
 	Rarity            string `json:"rarity"`
 	Elixir            int    `json:"elixir,omitempty"`
-	MaxEvolutionLevel int    `json:"max_evolution_level,omitempty"`
+	EvolutionLevel    int    `json:"evolution_level,omitempty"`    // Current evolution level (0-3)
+	MaxEvolutionLevel int    `json:"max_evolution_level,omitempty"` // Maximum possible evolution level
 }
 
 // BuildDeckFromAnalysis creates a deck recommendation from card analysis data
@@ -363,6 +364,7 @@ func (b *Builder) buildCandidate(name string, data CardLevelData) *CardCandidate
 		Score:             score,
 		HasEvolution:      hasEvolution,
 		EvolutionPriority: evoPriority,
+		EvolutionLevel:    data.EvolutionLevel,
 		MaxEvolutionLevel: data.MaxEvolutionLevel,
 		Stats:             stats,
 	}

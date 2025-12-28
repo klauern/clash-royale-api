@@ -46,16 +46,31 @@ type CardCandidate struct {
 	Score             float64
 	HasEvolution      bool
 	EvolutionPriority int
+	EvolutionLevel    int // Current evolution level (0 = no evolution, 1-3 = evolution stages)
 	MaxEvolutionLevel int
 	Stats             *clashroyale.CombatStats
 }
 
-// LevelRatio returns the card's level as a ratio of its max level
+// LevelRatio returns the card's overall progression as a weighted combination
+// of card level and evolution level. Card level is weighted 70%, evolution 30%.
+// For cards without evolution capability, returns pure card level ratio.
 func (cc *CardCandidate) LevelRatio() float64 {
 	if cc.MaxLevel == 0 {
 		return 0
 	}
-	return float64(cc.Level) / float64(cc.MaxLevel)
+
+	cardLevelRatio := float64(cc.Level) / float64(cc.MaxLevel)
+
+	// If card has no evolution capability, return pure card level ratio
+	if cc.MaxEvolutionLevel == 0 {
+		return cardLevelRatio
+	}
+
+	// Calculate evolution level ratio
+	evolutionRatio := float64(cc.EvolutionLevel) / float64(cc.MaxEvolutionLevel)
+
+	// Weighted combination: 70% card level, 30% evolution level
+	return (cardLevelRatio * 0.7) + (evolutionRatio * 0.3)
 }
 
 // HasRole returns true if the candidate has a defined role

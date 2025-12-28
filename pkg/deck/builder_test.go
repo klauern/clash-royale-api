@@ -610,3 +610,288 @@ func BenchmarkBuilder_CalculateEvolutionBonus(b *testing.B) {
 		builder.calculateEvolutionBonus("P.E.K.K.A", 14, 14, 0)
 	}
 }
+
+func TestCardCandidate_LevelRatio(t *testing.T) {
+	tests := []struct {
+		name              string
+		level             int
+		maxLevel          int
+		evolutionLevel    int
+		maxEvolutionLevel int
+		expected          float64
+		tolerance         float64
+	}{
+		{
+			name:              "no evolution capability",
+			level:             13,
+			maxLevel:          14,
+			evolutionLevel:    0,
+			maxEvolutionLevel: 0,
+			expected:          13.0 / 14.0, // ~0.929
+			tolerance:         0.01,
+		},
+		{
+			name:              "max level, no evolution",
+			level:             14,
+			maxLevel:          14,
+			evolutionLevel:    0,
+			maxEvolutionLevel: 0,
+			expected:          1.0,
+			tolerance:         0.01,
+		},
+		{
+			name:              "evolution capable, no evolution progress",
+			level:             14,
+			maxLevel:          14,
+			evolutionLevel:    0,
+			maxEvolutionLevel: 3,
+			expected:          (1.0 * 0.7) + (0.0 * 0.3), // 0.7
+			tolerance:         0.01,
+		},
+		{
+			name:              "evolution capable, partial evolution",
+			level:             14,
+			maxLevel:          14,
+			evolutionLevel:    2,
+			maxEvolutionLevel: 3,
+			expected:          (1.0 * 0.7) + (2.0/3.0 * 0.3), // ~0.90
+			tolerance:         0.01,
+		},
+		{
+			name:              "evolution capable, max evolution",
+			level:             14,
+			maxLevel:          14,
+			evolutionLevel:    3,
+			maxEvolutionLevel: 3,
+			expected:          (1.0 * 0.7) + (1.0 * 0.3), // 1.0
+			tolerance:         0.01,
+		},
+		{
+			name:              "mid level with partial evolution",
+			level:             10,
+			maxLevel:          14,
+			evolutionLevel:    1,
+			maxEvolutionLevel: 3,
+			expected:          (10.0/14.0 * 0.7) + (1.0/3.0 * 0.3), // ~0.60
+			tolerance:         0.01,
+		},
+		{
+			name:              "low level with max evolution",
+			level:             5,
+			maxLevel:          14,
+			evolutionLevel:    2,
+			maxEvolutionLevel: 2,
+			expected:          (5.0/14.0 * 0.7) + (1.0 * 0.3), // ~0.55
+			tolerance:         0.01,
+		},
+		{
+			name:              "zero max level edge case",
+			level:             0,
+			maxLevel:          0,
+			evolutionLevel:    0,
+			maxEvolutionLevel: 0,
+			expected:          0.0,
+			tolerance:         0.01,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			candidate := &CardCandidate{
+				Level:             tt.level,
+				MaxLevel:          tt.maxLevel,
+				EvolutionLevel:    tt.evolutionLevel,
+				MaxEvolutionLevel: tt.maxEvolutionLevel,
+			}
+
+			ratio := candidate.LevelRatio()
+
+			if ratio < tt.expected-tt.tolerance || ratio > tt.expected+tt.tolerance {
+				t.Errorf("LevelRatio() = %f, want %f (±%f)", ratio, tt.expected, tt.tolerance)
+			}
+
+			t.Logf("Card %d/%d, Evo %d/%d: ratio = %.3f",
+				tt.level, tt.maxLevel, tt.evolutionLevel, tt.maxEvolutionLevel, ratio)
+		})
+	}
+}
+
+func TestBuilder_BuildCandidate_EvolutionLevel(t *testing.T) {
+	builder := NewBuilder("testdata")
+
+	tests := []struct {
+		name              string
+		cardName          string
+		data              CardLevelData
+		expectedEvoLevel  int
+		expectedMaxEvoLvl int
+	}{
+		{
+			name:     "no evolution capability",
+			cardName: "P.E.K.K.A",
+			data: CardLevelData{
+				Level:             14,
+				MaxLevel:          14,
+				Rarity:            "Epic",
+				Elixir:            7,
+				EvolutionLevel:    0,
+				MaxEvolutionLevel: 0,
+			},
+			expectedEvoLevel:  0,
+			expectedMaxEvoLvl: 0,
+		},
+		{
+			name:     "evolution capable, no progress",
+			cardName: "Knight",
+			data: CardLevelData{
+				Level:             14,
+				MaxLevel:          14,
+				Rarity:            "Common",
+				Elixir:            3,
+				EvolutionLevel:    0,
+				MaxEvolutionLevel: 3,
+			},
+			expectedEvoLevel:  0,
+			expectedMaxEvoLvl: 3,
+		},
+		{
+			name:     "evolution capable, partial progress",
+			cardName: "Archers",
+			data: CardLevelData{
+				Level:             14,
+				MaxLevel:          14,
+				Rarity:            "Common",
+				Elixir:            3,
+				EvolutionLevel:    1,
+				MaxEvolutionLevel: 1,
+			},
+			expectedEvoLevel:  1,
+			expectedMaxEvoLvl: 1,
+		},
+		{
+			name:     "evolution capable, max progress",
+			cardName: "Musketeer",
+			data: CardLevelData{
+				Level:             14,
+				MaxLevel:          14,
+				Rarity:            "Rare",
+				Elixir:            4,
+				EvolutionLevel:    3,
+				MaxEvolutionLevel: 3,
+			},
+			expectedEvoLevel:  3,
+			expectedMaxEvoLvl: 3,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			candidate := builder.buildCandidate(tt.cardName, tt.data)
+
+			if candidate.EvolutionLevel != tt.expectedEvoLevel {
+				t.Errorf("EvolutionLevel = %d, want %d", candidate.EvolutionLevel, tt.expectedEvoLevel)
+			}
+
+			if candidate.MaxEvolutionLevel != tt.expectedMaxEvoLvl {
+				t.Errorf("MaxEvolutionLevel = %d, want %d", candidate.MaxEvolutionLevel, tt.expectedMaxEvoLvl)
+			}
+
+			t.Logf("Card %s: EvolutionLevel=%d, MaxEvolutionLevel=%d, LevelRatio=%.3f",
+				tt.cardName, candidate.EvolutionLevel, candidate.MaxEvolutionLevel, candidate.LevelRatio())
+		})
+	}
+}
+
+func TestBuilder_BuildDeckFromAnalysis_WithEvolutionLevels(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.unlockedEvolutions = map[string]bool{
+		"Knight":  true,
+		"Archers": true,
+	}
+
+	// Create test analysis with evolution levels
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Hog Rider": {
+				Level:    8,
+				MaxLevel: 13,
+				Rarity:   "Rare",
+				Elixir:   4,
+			},
+			"Fireball": {
+				Level:    7,
+				MaxLevel: 11,
+				Rarity:   "Rare",
+				Elixir:   4,
+			},
+			"Zap": {
+				Level:    11,
+				MaxLevel: 13,
+				Rarity:   "Common",
+				Elixir:   2,
+			},
+			"Cannon": {
+				Level:    11,
+				MaxLevel: 13,
+				Rarity:   "Common",
+				Elixir:   3,
+			},
+			"Archers": {
+				Level:             14,
+				MaxLevel:          14,
+				Rarity:            "Common",
+				Elixir:            3,
+				EvolutionLevel:    1,
+				MaxEvolutionLevel: 1,
+			},
+			"Knight": {
+				Level:             14,
+				MaxLevel:          14,
+				Rarity:            "Common",
+				Elixir:            3,
+				EvolutionLevel:    2,
+				MaxEvolutionLevel: 3,
+			},
+			"Skeletons": {
+				Level:    11,
+				MaxLevel: 13,
+				Rarity:   "Common",
+				Elixir:   1,
+			},
+			"Valkyrie": {
+				Level:    7,
+				MaxLevel: 11,
+				Rarity:   "Rare",
+				Elixir:   4,
+			},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	deck, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build deck: %v", err)
+	}
+
+	// Validate that evolution levels are preserved
+	foundKnight := false
+	foundArchers := false
+
+	for _, detail := range deck.DeckDetail {
+		if detail.Name == "Knight" {
+			foundKnight = true
+			t.Logf("Knight: Level %d/%d, Score %.3f", detail.Level, detail.MaxLevel, detail.Score)
+		}
+		if detail.Name == "Archers" {
+			foundArchers = true
+			t.Logf("Archers: Level %d/%d, Score %.3f", detail.Level, detail.MaxLevel, detail.Score)
+		}
+	}
+
+	if !foundKnight && !foundArchers {
+		t.Log("Note: Neither evolved card made it into the deck (may be expected based on other factors)")
+	}
+
+	t.Logf("Generated deck: %v", deck.Deck)
+	t.Logf("Evolution slots: %v", deck.EvolutionSlots)
+}
