@@ -3,6 +3,8 @@
 package deck
 
 import (
+	"fmt"
+
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
@@ -90,13 +92,15 @@ type DeckRecommendation struct {
 
 // CardDetail provides detailed information about a card in a recommended deck
 type CardDetail struct {
-	Name     string  `json:"name"`
-	Level    int     `json:"level"`
-	MaxLevel int     `json:"max_level"`
-	Rarity   string  `json:"rarity"`
-	Elixir   int     `json:"elixir"`
-	Role     string  `json:"role,omitempty"`
-	Score    float64 `json:"score"`
+	Name              string  `json:"name"`
+	Level             int     `json:"level"`
+	MaxLevel          int     `json:"max_level"`
+	Rarity            string  `json:"rarity"`
+	Elixir            int     `json:"elixir"`
+	Role              string  `json:"role,omitempty"`
+	Score             float64 `json:"score"`
+	EvolutionLevel    int     `json:"evolution_level,omitempty"`
+	MaxEvolutionLevel int     `json:"max_evolution_level,omitempty"`
 }
 
 // CalculateAvgElixir calculates the average elixir cost from card details
@@ -110,7 +114,16 @@ func (dr *DeckRecommendation) CalculateAvgElixir() float64 {
 		total += card.Elixir
 	}
 
-	return float64(total) / float64(len(dr.DeckDetail))
+	return roundToTwo(float64(total) / float64(len(dr.DeckDetail)))
+}
+
+// FormatEvolutionBadge returns a formatted evolution badge for a card.
+// Examples: "Evo 1", "Evo 2", or "" if no evolution.
+func FormatEvolutionBadge(evolutionLevel int) string {
+	if evolutionLevel > 0 {
+		return fmt.Sprintf("Evo %d", evolutionLevel)
+	}
+	return ""
 }
 
 // AddNote appends a strategic note to the recommendation

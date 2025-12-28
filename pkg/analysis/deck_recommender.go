@@ -171,10 +171,12 @@ func convertCardsToDeckDetail(cards []clashroyale.Card) []CardDeckDetail {
 	detail := make([]CardDeckDetail, len(cards))
 	for i, card := range cards {
 		detail[i] = CardDeckDetail{
-			Name:     card.Name,
-			Level:    card.Level,
-			MaxLevel: card.MaxLevel,
-			Elixir:   card.ElixirCost,
+			Name:              card.Name,
+			Level:             card.Level,
+			MaxLevel:          card.MaxLevel,
+			Elixir:            card.ElixirCost,
+			EvolutionLevel:    card.EvolutionLevel,
+			MaxEvolutionLevel: card.MaxEvolutionLevel,
 		}
 	}
 	return detail

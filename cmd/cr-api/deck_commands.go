@@ -649,15 +649,19 @@ func displayDeckRecommendation(rec *deck.DeckRecommendation, player *clashroyale
 
 	// Display deck cards in a table
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "#\tCard\tLevel\tElixir\tRole\n")
-	fmt.Fprintf(w, "─\t────\t─────\t──────\t────\n")
+	fmt.Fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
+	fmt.Fprintf(w, "─\t────\t─────\t\t──────\t────\n")
 
 	for i, card := range rec.DeckDetail {
-		fmt.Fprintf(w, "%d\t%s\t%d/%d\t%d\t%s\n",
+		evoBadge := deck.FormatEvolutionBadge(card.EvolutionLevel)
+		levelStr := fmt.Sprintf("%d/%d", card.Level, card.MaxLevel)
+		if evoBadge != "" {
+			levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
+		}
+		fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
 			i+1,
 			card.Name,
-			card.Level,
-			card.MaxLevel,
+			levelStr,
 			card.Elixir,
 			card.Role)
 	}
@@ -906,14 +910,18 @@ func displayBudgetDeckDetail(rank int, analysis *budget.DeckBudgetAnalysis) {
 
 	// Deck cards table
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "Card\tLevel\tElixir\tRole\n")
-	fmt.Fprintf(w, "────\t─────\t──────\t────\n")
+	fmt.Fprintf(w, "Card\tLevel\t\tElixir\tRole\n")
+	fmt.Fprintf(w, "────\t─────\t\t──────\t────\n")
 
 	for _, card := range analysis.Deck.DeckDetail {
-		fmt.Fprintf(w, "%s\t%d/%d\t%d\t%s\n",
+		evoBadge := deck.FormatEvolutionBadge(card.EvolutionLevel)
+		levelStr := fmt.Sprintf("%d/%d", card.Level, card.MaxLevel)
+		if evoBadge != "" {
+			levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
+		}
+		fmt.Fprintf(w, "%s\t%s\t%d\t%s\n",
 			card.Name,
-			card.Level,
-			card.MaxLevel,
+			levelStr,
 			card.Elixir,
 			card.Role)
 	}

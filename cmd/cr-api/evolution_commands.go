@@ -11,6 +11,7 @@ import (
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
+	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/urfave/cli/v3"
 )
 
@@ -53,6 +54,32 @@ func addEvolutionCommands() *cli.Command {
 						Action: evolutionShardsSetCommand,
 					},
 				},
+			},
+			{
+				Name:  "recommend",
+				Usage: "Recommend optimal evolutions based on shards and card levels",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #)",
+						Required: true,
+					},
+					&cli.IntFlag{
+						Name:  "top",
+						Value: 10,
+						Usage: "Number of recommendations to show",
+					},
+					&cli.BoolFlag{
+						Name:  "verbose",
+						Usage: "Show detailed reasons for each recommendation",
+					},
+					&cli.StringFlag{
+						Name:  "unlocked-evolutions",
+						Usage: "Comma-separated list of cards with unlocked evolutions (overrides UNLOCKED_EVOLUTIONS env var)",
+					},
+				},
+				Action: evolutionRecommendCommand,
 			},
 		},
 	}
@@ -224,4 +251,94 @@ func loadStaticCards(dataDir, apiToken string, verbose bool) ([]clashroyale.Card
 	}
 
 	return cards.Items, nil
+}
+
+func evolutionRecommendCommand(ctx context.Context, cmd *cli.Command) error {
+	dataDir := cmd.String("data-dir")
+	apiToken := cmd.String("api-token")
+	verbose := cmd.Bool("verbose")
+	playerTag := cmd.String("tag")
+	topN := cmd.Int("top")
+	unlockedEvolutionsStr := cmd.String("unlocked-evolutions")
+
+	// Parse unlocked evolutions
+	var unlockedEvolutions []string
+	if unlockedEvolutionsStr != "" {
+		unlockedEvolutions = strings.Split(unlockedEvolutionsStr, ",")
+		for i := range unlockedEvolutions {
+			unlockedEvolutions[i] = strings.TrimSpace(unlockedEvolutions[i])
+		}
+	} else {
+		// Fallback to env var if not specified
+		envVar := cmd.String("unlocked-evolutions") // Note: this gets from env if set
+		if envVar != "" {
+			unlockedEvolutions = strings.Split(envVar, ",")
+			for i := range unlockedEvolutions {
+				unlockedEvolutions[i] = strings.TrimSpace(unlockedEvolutions[i])
+			}
+		}
+	}
+
+	// Load player data
+	client := clashroyale.NewClient(apiToken)
+	if verbose {
+		fmt.Printf("Fetching player data for %s...\n", playerTag)
+	}
+
+	player, err := client.GetPlayer(playerTag)
+	if err != nil {
+		return fmt.Errorf("failed to fetch player: %w", err)
+	}
+
+	// Load shard inventory
+	pathBuilder := storage.NewPathBuilder(dataDir)
+	shardInventory, err := storage.LoadEvolutionShardInventory(pathBuilder.GetEvolutionShardsPath())
+	if err != nil {
+		return fmt.Errorf("failed to load shard inventory: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Loaded shard inventory with %d cards tracked.\n", len(shardInventory.Shards))
+	}
+
+	// Load static cards for max evolution levels
+	cards, err := loadStaticCards(dataDir, apiToken, verbose)
+	if err != nil {
+		return err
+	}
+
+	// Build max evolution level lookup
+	maxEvolutionLevels := make(map[string]int)
+	for _, card := range cards {
+		if card.MaxEvolutionLevel > 0 {
+			maxEvolutionLevels[card.Name] = card.MaxEvolutionLevel
+		}
+	}
+
+	// Build card candidates from player data
+	candidates := make([]deck.CardCandidate, 0, len(player.Cards))
+	for _, card := range player.Cards {
+		candidate := deck.CardCandidate{
+			Name:              card.Name,
+			Level:             card.Level,
+			MaxLevel:          card.MaxLevel,
+			Rarity:            card.Rarity,
+			Elixir:            card.ElixirCost,
+			EvolutionLevel:    card.EvolutionLevel,
+			MaxEvolutionLevel: maxEvolutionLevels[card.Name],
+		}
+		candidates = append(candidates, candidate)
+	}
+
+	// Classify candidates
+	deck.ClassifyAllCandidates(candidates)
+
+	// Create recommender and get recommendations
+	recommender := deck.NewEvolutionRecommender(shardInventory.Shards, unlockedEvolutions)
+	recommendations := recommender.Recommend(candidates, topN)
+
+	// Display results
+	fmt.Print(deck.FormatRecommendations(recommendations, verbose))
+
+	return nil
 }

@@ -1,5 +1,6 @@
 # GoReleaser configuration for clash-royale-api
 # Documentation: https://goreleaser.com/customization/
+version: 2
 
 before:
   hooks:
@@ -50,10 +51,10 @@ builds:
 
 archives:
   - id: default
-    format: tar.gz
+    formats: ["tar.gz"]
     format_overrides:
       - goos: windows
-        format: zip
+        formats: ["zip"]
     # Naming: clash-royale-api_v1.0.0_linux_amd64.tar.gz
     name_template: >-
       {{ .ProjectName }}_

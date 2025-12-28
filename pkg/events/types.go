@@ -34,12 +34,14 @@ const (
 
 // CardInDeck represents a single card within a deck, including its level and properties
 type CardInDeck struct {
-	Name       string `json:"name"`
-	ID         int    `json:"id"`
-	Level      int    `json:"level"`
-	MaxLevel   int    `json:"max_level"`
-	Rarity     string `json:"rarity"`
-	ElixirCost int    `json:"elixir_cost"`
+	Name              string `json:"name"`
+	ID                int    `json:"id"`
+	Level             int    `json:"level"`
+	MaxLevel          int    `json:"max_level"`
+	Rarity            string `json:"rarity"`
+	ElixirCost        int    `json:"elixir_cost"`
+	EvolutionLevel    int    `json:"evolution_level,omitempty"`
+	MaxEvolutionLevel int    `json:"max_evolution_level,omitempty"`
 }
 
 // Deck represents an 8-card Clash Royale deck composition

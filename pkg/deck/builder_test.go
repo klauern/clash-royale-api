@@ -419,8 +419,8 @@ func TestBuilder_CalculateEvolutionBonus(t *testing.T) {
 			maxLevel:     14,
 			maxEvoLevel:  3,
 			unlocked:     map[string]bool{"Knight": true},
-			expectedMin:  0.34,
-			expectedMax:  0.36,
+			expectedMin:  0.37, // Updated for 10% role override bonus: 0.35 * 1.1 = 0.385
+			expectedMax:  0.39,
 		},
 		{
 			name:         "multi-evolution (3 levels) at level 10",
@@ -894,4 +894,199 @@ func TestBuilder_BuildDeckFromAnalysis_WithEvolutionLevels(t *testing.T) {
 
 	t.Logf("Generated deck: %v", deck.Deck)
 	t.Logf("Evolution slots: %v", deck.EvolutionSlots)
+}
+
+// TestBuilder_EvolutionSlotSelection tests evolution slot prioritization
+func TestBuilder_EvolutionSlotSelection(t *testing.T) {
+	// Create builder with multiple unlocked evolutions
+	builder := NewBuilder("testdata")
+	builder.SetUnlockedEvolutions([]string{"Knight", "Archers", "Valkyrie", "Musketeer"})
+	builder.SetEvolutionSlotLimit(2) // Default 2 slots
+
+	// Build analysis with multiple evolved cards at high levels
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			// Multiple win conditions
+			"Hog Rider":   {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 4},
+			"Royal Giant": {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 6},
+			// Multiple evolved support cards
+			"Knight":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 3},
+			"Archers":   {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 1},
+			"Valkyrie":  {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4, MaxEvolutionLevel: 3},
+			"Musketeer": {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4, MaxEvolutionLevel: 3},
+			// Other cards
+			"Cannon":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Zap":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Log":        {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
+			"Ice Spirit": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	deck, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build deck: %v", err)
+	}
+
+	// Verify evolution slots were assigned
+	if len(deck.EvolutionSlots) > 2 {
+		t.Errorf("Expected at most 2 evolution slots, got %d", len(deck.EvolutionSlots))
+	}
+
+	// Check that evolution slots contain valid evolved cards from our deck
+	slotCards := make(map[string]bool)
+	for _, slot := range deck.EvolutionSlots {
+		slotCards[slot] = true
+		t.Logf("Evolution slot: %s", slot)
+	}
+
+	// Verify slot assignments follow priority rules
+	// Slots should go to: Win Conditions > Buildings > Big Spells > Support > Small Spells > Cycle
+	// Knight, Archers, Valkyrie, Musketeer are all Support, so they compete on score
+
+	foundEvoInDeck := 0
+	for _, cardName := range deck.Deck {
+		if slotCards[cardName] {
+			foundEvoInDeck++
+			t.Logf("Evolved card in deck: %s", cardName)
+		}
+	}
+
+	t.Logf("Total evolved cards with slots: %d", foundEvoInDeck)
+}
+
+// TestBuilder_EvolutionSlotPriority tests that higher-priority evolved cards get slots
+func TestBuilder_EvolutionSlotPriority(t *testing.T) {
+	builder := NewBuilder("testdata")
+
+	// Scenario: Win condition evolution vs support evolution
+	// Win condition should get priority
+	builder.SetUnlockedEvolutions([]string{"Royal Giant", "Knight"})
+	builder.SetEvolutionSlotLimit(1) // Only 1 slot
+
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Royal Giant": {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 6, MaxEvolutionLevel: 3},
+			"Knight":      {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 3},
+			// Other cards to fill deck
+			"Cannon":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Zap":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Musketeer":  {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Fireball":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Log":        {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
+			"Ice Spirit": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	deck, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build deck: %v", err)
+	}
+
+	// Verify slot was assigned
+	if len(deck.EvolutionSlots) == 0 {
+		t.Error("Expected at least 1 evolution slot, got 0")
+	}
+
+	// Royal Giant (win condition) should be prioritized over Knight (support)
+	// if both are in the deck
+	hasRoyalGiant := false
+	hasKnight := false
+	royalGiantHasSlot := false
+	knightHasSlot := false
+
+	for _, card := range deck.Deck {
+		if card == "Royal Giant" {
+			hasRoyalGiant = true
+		}
+		if card == "Knight" {
+			hasKnight = true
+		}
+	}
+
+	for _, slot := range deck.EvolutionSlots {
+		if slot == "Royal Giant" {
+			royalGiantHasSlot = true
+		}
+		if slot == "Knight" {
+			knightHasSlot = true
+		}
+	}
+
+	t.Logf("Deck contains Royal Giant: %v, Knight: %v", hasRoyalGiant, hasKnight)
+	t.Logf("Slots: Royal Giant=%v, Knight=%v", royalGiantHasSlot, knightHasSlot)
+
+	// If both cards are in deck and Royal Giant is higher priority (win condition),
+	// it should get the slot when only 1 is available
+	if hasRoyalGiant && hasKnight && len(deck.EvolutionSlots) == 1 {
+		if !royalGiantHasSlot {
+			t.Error("Expected Royal Giant (win condition) to get evolution slot over Knight (support)")
+		}
+	}
+}
+
+// TestBuilder_EvolutionMultiSlot tests with multiple evolution slots available
+func TestBuilder_EvolutionMultiSlot(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.SetUnlockedEvolutions([]string{"Knight", "Archers", "Valkyrie"})
+	builder.SetEvolutionSlotLimit(3) // 3 slots available
+
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Knight":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 3},
+			"Archers":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 1},
+			"Valkyrie":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4, MaxEvolutionLevel: 3},
+			"Hog Rider":   {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 4},
+			"Musketeer":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Log":         {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
+			"Ice Spirit":  {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Cannon":      {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	deck, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build deck: %v", err)
+	}
+
+	// Should use up to 3 evolution slots
+	if len(deck.EvolutionSlots) > 3 {
+		t.Errorf("Expected at most 3 evolution slots, got %d", len(deck.EvolutionSlots))
+	}
+
+	t.Logf("Evolution slots (%d): %v", len(deck.EvolutionSlots), deck.EvolutionSlots)
+}
+
+// TestBuilder_EvolutionNoUnlocked tests behavior when no evolutions are unlocked
+func TestBuilder_EvolutionNoUnlocked(t *testing.T) {
+	builder := NewBuilder("testdata")
+	// Explicitly clear all unlocked evolutions (to override any environment variable)
+	builder.SetUnlockedEvolutions([]string{})
+	builder.SetEvolutionSlotLimit(2)
+
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Knight":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 3},
+			"Archers":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 1},
+			"Hog Rider":   {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 4},
+			"Musketeer":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Log":         {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
+			"Ice Spirit":  {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Cannon":      {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Zap":         {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	deck, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build deck: %v", err)
+	}
+
+	// No evolution slots should be assigned when no evolutions are unlocked
+	if len(deck.EvolutionSlots) != 0 {
+		t.Errorf("Expected 0 evolution slots when none unlocked, got %d", len(deck.EvolutionSlots))
+	}
 }

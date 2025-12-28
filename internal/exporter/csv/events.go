@@ -52,10 +52,14 @@ func eventDeckExport(dataDir string, data interface{}) error {
 	var rows [][]string
 
 	for _, deck := range collection.Decks {
-		// Format deck cards as a string
+		// Format deck cards as a string, including evolution level if present
 		cardNames := make([]string, len(deck.Deck.Cards))
 		for i, card := range deck.Deck.Cards {
-			cardNames[i] = fmt.Sprintf("%s (Lv.%d)", card.Name, card.Level)
+			if card.EvolutionLevel > 0 {
+				cardNames[i] = fmt.Sprintf("%s (Lv.%d Evo.%d)", card.Name, card.Level, card.EvolutionLevel)
+			} else {
+				cardNames[i] = fmt.Sprintf("%s (Lv.%d)", card.Name, card.Level)
+			}
 		}
 
 		// Format end time

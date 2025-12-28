@@ -517,3 +517,261 @@ func TestGetRoleDescription(t *testing.T) {
 		})
 	}
 }
+
+// TestClassifyCardWithEvolution tests evolution-aware role classification
+func TestClassifyCardWithEvolution(t *testing.T) {
+	tests := []struct {
+		name           string
+		cardName       string
+		elixirCost     int
+		evolutionLevel int
+		wantRole       *CardRole
+	}{
+		// Evolved Valkyrie - base is support, evolved stays support (override confirms this)
+		{
+			name:           "Valkyrie unevolved is support",
+			cardName:       "Valkyrie",
+			elixirCost:     4,
+			evolutionLevel: 0,
+			wantRole:       rolePtr(RoleSupport),
+		},
+		{
+			name:           "Valkyrie evolved is support (override)",
+			cardName:       "Valkyrie",
+			elixirCost:     4,
+			evolutionLevel: 1,
+			wantRole:       rolePtr(RoleSupport),
+		},
+		// Evolved Knight - base is support, evolved stays support
+		{
+			name:           "Knight unevolved is support",
+			cardName:       "Knight",
+			elixirCost:     3,
+			evolutionLevel: 0,
+			wantRole:       rolePtr(RoleSupport),
+		},
+		{
+			name:           "Knight evolved is support (override)",
+			cardName:       "Knight",
+			elixirCost:     3,
+			evolutionLevel: 1,
+			wantRole:       rolePtr(RoleSupport),
+		},
+		// Evolved Royal Giant - base is win condition, evolved stays win condition
+		{
+			name:           "Royal Giant unevolved is win condition",
+			cardName:       "Royal Giant",
+			elixirCost:     6,
+			evolutionLevel: 0,
+			wantRole:       rolePtr(RoleWinCondition),
+		},
+		{
+			name:           "Royal Giant evolved is win condition (override)",
+			cardName:       "Royal Giant",
+			elixirCost:     6,
+			evolutionLevel: 1,
+			wantRole:       rolePtr(RoleWinCondition),
+		},
+		// Evolved Golem - base is win condition, evolved stays win condition
+		{
+			name:           "Golem unevolved is win condition",
+			cardName:       "Golem",
+			elixirCost:     8,
+			evolutionLevel: 0,
+			wantRole:       rolePtr(RoleWinCondition),
+		},
+		{
+			name:           "Golem evolved is win condition (override)",
+			cardName:       "Golem",
+			elixirCost:     8,
+			evolutionLevel: 1,
+			wantRole:       rolePtr(RoleWinCondition),
+		},
+		// Card without evolution override - no change when evolved
+		{
+			name:           "Hog Rider unevolved is win condition",
+			cardName:       "Hog Rider",
+			elixirCost:     4,
+			evolutionLevel: 0,
+			wantRole:       rolePtr(RoleWinCondition),
+		},
+		{
+			name:           "Hog Rider evolved is still win condition (no override)",
+			cardName:       "Hog Rider",
+			elixirCost:     4,
+			evolutionLevel: 1,
+			wantRole:       rolePtr(RoleWinCondition),
+		},
+		// Card without evolution capability
+		{
+			name:           "Musketeer with evolutionLevel 0 is support",
+			cardName:       "Musketeer",
+			elixirCost:     4,
+			evolutionLevel: 0,
+			wantRole:       rolePtr(RoleSupport),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			role := ClassifyCardWithEvolution(tt.cardName, tt.elixirCost, tt.evolutionLevel)
+
+			if role == nil {
+				if tt.wantRole != nil {
+					t.Errorf("ClassifyCardWithEvolution(%v, evo=%v) = nil, want %v",
+						tt.cardName, tt.evolutionLevel, *tt.wantRole)
+				}
+				return
+			}
+
+			if tt.wantRole == nil {
+				t.Errorf("ClassifyCardWithEvolution(%v, evo=%v) = %v, want nil",
+					tt.cardName, tt.evolutionLevel, *role)
+				return
+			}
+
+			if *role != *tt.wantRole {
+				t.Errorf("ClassifyCardWithEvolution(%v, evo=%v) = %v, want %v",
+					tt.cardName, tt.evolutionLevel, *role, *tt.wantRole)
+			}
+		})
+	}
+}
+
+// TestClassifyCardCandidateWithEvolution tests classifying a CardCandidate with evolution
+func TestClassifyCardCandidateWithEvolution(t *testing.T) {
+	tests := []struct {
+		name           string
+		candidate      CardCandidate
+		expectedRole   CardRole
+	}{
+		{
+			name: "Evolved Valkyrie candidate",
+			candidate: CardCandidate{
+				Name:           "Valkyrie",
+				Elixir:         4,
+				EvolutionLevel: 1,
+			},
+			expectedRole: RoleSupport,
+		},
+		{
+			name: "Unevolved Valkyrie candidate",
+			candidate: CardCandidate{
+				Name:           "Valkyrie",
+				Elixir:         4,
+				EvolutionLevel: 0,
+			},
+			expectedRole: RoleSupport,
+		},
+		{
+			name: "Evolved Royal Giant candidate",
+			candidate: CardCandidate{
+				Name:           "Royal Giant",
+				Elixir:         6,
+				EvolutionLevel: 2,
+			},
+			expectedRole: RoleWinCondition,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			role := ClassifyCardCandidate(&tt.candidate)
+
+			if role == nil {
+				t.Fatalf("ClassifyCardCandidate returned nil")
+			}
+
+			if *role != tt.expectedRole {
+				t.Errorf("ClassifyCardCandidate() role = %v, want %v", *role, tt.expectedRole)
+			}
+
+			// Verify role was set on candidate
+			if tt.candidate.Role == nil {
+				t.Error("ClassifyCardCandidate did not set candidate.Role")
+			} else if *tt.candidate.Role != tt.expectedRole {
+				t.Errorf("candidate.Role = %v, want %v", *tt.candidate.Role, tt.expectedRole)
+			}
+		})
+	}
+}
+
+// TestHasEvolutionOverride tests checking if a card has an evolution override
+func TestHasEvolutionOverride(t *testing.T) {
+	tests := []struct {
+		name           string
+		cardName       string
+		evolutionLevel int
+		want           bool
+	}{
+		{"Valkyrie evolved has override", "Valkyrie", 1, true},
+		{"Valkyrie unevolved no override", "Valkyrie", 0, false},
+		{"Knight evolved has override", "Knight", 1, true},
+		{"Hog Rider evolved no override", "Hog Rider", 1, false},
+		{"Unknown card no override", "Unknown Card", 1, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := HasEvolutionOverride(tt.cardName, tt.evolutionLevel)
+			if got != tt.want {
+				t.Errorf("HasEvolutionOverride(%v, evo=%v) = %v, want %v",
+					tt.cardName, tt.evolutionLevel, got, tt.want)
+			}
+		})
+	}
+}
+
+// TestGetEvolutionOverrideRole tests getting evolution override role
+func TestGetEvolutionOverrideRole(t *testing.T) {
+	tests := []struct {
+		name           string
+		cardName       string
+		evolutionLevel int
+		wantRole       *CardRole
+	}{
+		{
+			name:           "Valkyrie evolved returns support override",
+			cardName:       "Valkyrie",
+			evolutionLevel: 1,
+			wantRole:       rolePtr(RoleSupport),
+		},
+		{
+			name:           "Valkyrie unevolved returns nil",
+			cardName:       "Valkyrie",
+			evolutionLevel: 0,
+			wantRole:       nil,
+		},
+		{
+			name:           "Hog Rider evolved returns nil (no override)",
+			cardName:       "Hog Rider",
+			evolutionLevel: 1,
+			wantRole:       nil,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := GetEvolutionOverrideRole(tt.cardName, tt.evolutionLevel)
+
+			if got == nil {
+				if tt.wantRole != nil {
+					t.Errorf("GetEvolutionOverrideRole(%v, evo=%v) = nil, want %v",
+						tt.cardName, tt.evolutionLevel, *tt.wantRole)
+				}
+				return
+			}
+
+			if tt.wantRole == nil {
+				t.Errorf("GetEvolutionOverrideRole(%v, evo=%v) = %v, want nil",
+					tt.cardName, tt.evolutionLevel, *got)
+				return
+			}
+
+			if *got != *tt.wantRole {
+				t.Errorf("GetEvolutionOverrideRole(%v, evo=%v) = %v, want %v",
+					tt.cardName, tt.evolutionLevel, *got, *tt.wantRole)
+			}
+		})
+	}
+}

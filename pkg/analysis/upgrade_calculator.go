@@ -730,6 +730,8 @@ func CalculateRarityStats(cards []UpgradeInfo, rarity string) RarityUpgradeStats
 
 // - Rarity boost (20% weight)
 
+// - Evolution capability (bonus 10-30 points)
+
 func CalculatePriorityScore(info UpgradeInfo) float64 {
 
 	// Already max level = 0 priority
@@ -784,11 +786,28 @@ func CalculatePriorityScore(info UpgradeInfo) float64 {
 
 
 
-	// Weighted combination
-
+	// Weighted combination (base score without evolution)
 	priorityScore := (proximityScore * 0.5) + (levelScore * 0.3) + (rarityScore * 0.2)
 
+	// Evolution bonus: cards with evolution capability get higher priority
+	if info.MaxEvolutionLevel > 0 {
+		// Evolution bonus based on proximity to max level (evolution is only useful at max)
+		evolutionBonus := 0.0
 
+		// Base bonus for having evolution capability
+		evolutionBonus += 10.0
+
+		// Additional bonus based on level ratio (more useful when closer to max)
+		evolutionBonus += levelRatio * 20.0
+
+		// Bonus for evolution progress (partially evolved cards get slight boost)
+		if info.EvolutionLevel > 0 {
+			evoRatio := float64(info.EvolutionLevel) / float64(info.MaxEvolutionLevel)
+			evolutionBonus += evoRatio * 5.0 // Up to 5 extra points
+		}
+
+		priorityScore += evolutionBonus
+	}
 
 	// Boost if can upgrade immediately
 	if info.CanUpgradeNow {

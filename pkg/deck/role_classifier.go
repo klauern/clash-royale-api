@@ -137,11 +137,47 @@ var cycleTroops = map[string]bool{
 	"Larry":          true, // Skeletons alternate name
 }
 
+// EvolutionRoleOverrides defines cards whose role changes when evolved
+// Format: card name -> evolved role (nil means no special override)
+var evolutionRoleOverrides = map[string]CardRole{
+	// Cards that gain significant behavior changes when evolved
+	"Valkyrie":     RoleSupport, // Evolved: whirlwind pull makes it a control support card
+	"Knight":       RoleSupport, // Evolved: clone on death increases defensive value
+	"Royal Giant":  RoleWinCondition, // Evolved: anti-pushback improves win condition reliability
+	"Barbarian":    RoleSupport, // Evolved: 3 spawned barbarians act as support swarm
+	"Witch":        RoleSupport, // Evolved: faster skeleton spawn enhances support
+	"Golem":        RoleWinCondition, // Evolved: golemites spawn on death strengthens win condition
+}
+
+// hasEvolutionOverride checks if a card has a special role when evolved
+func hasEvolutionOverride(cardName string, evolutionLevel int) *CardRole {
+	if evolutionLevel <= 0 {
+		return nil
+	}
+	normalized := strings.TrimSpace(cardName)
+	if role, exists := evolutionRoleOverrides[normalized]; exists {
+		return &role
+	}
+	return nil
+}
+
 // ClassifyCard determines the strategic role of a card based on its properties
 // Returns a pointer to CardRole, or nil if the card doesn't fit a clear role
 func ClassifyCard(cardName string, elixirCost int) *CardRole {
+	return ClassifyCardWithEvolution(cardName, elixirCost, 0)
+}
+
+// ClassifyCardWithEvolution determines the strategic role of a card considering
+// both its base properties and evolution status. When a card is evolved and has
+// a specific evolution role override, that role takes precedence over base classification.
+func ClassifyCardWithEvolution(cardName string, elixirCost int, evolutionLevel int) *CardRole {
 	// Normalize card name for matching (case-insensitive, trim whitespace)
 	normalized := strings.TrimSpace(cardName)
+
+	// Check evolution-specific role overrides first (highest priority when evolved)
+	if override := hasEvolutionOverride(normalized, evolutionLevel); override != nil {
+		return override
+	}
 
 	// Check win conditions first (highest priority)
 	if winConditions[normalized] {
@@ -200,9 +236,10 @@ func ClassifyCard(cardName string, elixirCost int) *CardRole {
 	return nil
 }
 
-// ClassifyCardCandidate assigns a role to a CardCandidate and updates its Role field
+// ClassifyCardCandidate assigns a role to a CardCandidate and updates its Role field.
+// Considers the card's evolution level when determining its role.
 func ClassifyCardCandidate(candidate *CardCandidate) *CardRole {
-	role := ClassifyCard(candidate.Name, candidate.Elixir)
+	role := ClassifyCardWithEvolution(candidate.Name, candidate.Elixir, candidate.EvolutionLevel)
 	candidate.Role = role
 	return role
 }
@@ -294,4 +331,14 @@ func HasBalancedRoles(candidates []CardCandidate) bool {
 	}
 
 	return true
+}
+
+// HasEvolutionOverride returns true if the card has a special role override when evolved
+func HasEvolutionOverride(cardName string, evolutionLevel int) bool {
+	return hasEvolutionOverride(cardName, evolutionLevel) != nil
+}
+
+// GetEvolutionOverrideRole returns the override role for an evolved card, or nil if none
+func GetEvolutionOverrideRole(cardName string, evolutionLevel int) *CardRole {
+	return hasEvolutionOverride(cardName, evolutionLevel)
 }

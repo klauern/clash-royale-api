@@ -11,14 +11,14 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
-	"github.com/klauer/clash-royale-api/go/pkg/deck"
+	deckpkg "github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/urfave/cli/v3"
 )
 
 type warDeckCandidate struct {
 	Archetype mulligan.Archetype
-	Deck      *deck.DeckRecommendation
+	Deck      *deckpkg.DeckRecommendation
 	Score     float64
 }
 
@@ -74,7 +74,7 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to analyze card collection: %w", err)
 	}
 
-	deckAnalysis := deck.ConvertAnalysisForDeckBuilding(cardAnalysis)
+	deckAnalysis := deckpkg.ConvertAnalysisForDeckBuilding(cardAnalysis)
 
 	builder := archetypes.NewArchetypeBuilder(dataDir)
 	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
@@ -95,7 +95,7 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 
 func buildWarDecks(
 	builder *archetypes.ArchetypeBuilder,
-	analysis deck.CardAnalysis,
+	analysis deckpkg.CardAnalysis,
 	deckCount int,
 ) ([]warDeckCandidate, error) {
 	allArchetypes := archetypes.GetAllArchetypes()
@@ -188,15 +188,19 @@ func displayWarDecks(player *clashroyale.Player, warDecks []warDeckCandidate) {
 		fmt.Printf("Deck score: %.3f\n", deck.Score)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(w, "#\tCard\tLevel\tElixir\tRole\n")
-		fmt.Fprintf(w, "-\t----\t-----\t------\t----\n")
+		fmt.Fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
+		fmt.Fprintf(w, "-\t----\t-----\t\t------\t----\n")
 
 		for j, card := range deck.Deck.DeckDetail {
-			fmt.Fprintf(w, "%d\t%s\t%d/%d\t%d\t%s\n",
+			evoBadge := deckpkg.FormatEvolutionBadge(card.EvolutionLevel)
+			levelStr := fmt.Sprintf("%d/%d", card.Level, card.MaxLevel)
+			if evoBadge != "" {
+				levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
+			}
+			fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
 				j+1,
 				card.Name,
-				card.Level,
-				card.MaxLevel,
+				levelStr,
 				card.Elixir,
 				card.Role)
 		}
@@ -240,9 +244,9 @@ func permuteArchetypes(
 	walk()
 }
 
-func filterDeckAnalysis(analysis deck.CardAnalysis, excluded map[string]bool) deck.CardAnalysis {
-	filtered := deck.CardAnalysis{
-		CardLevels:   make(map[string]deck.CardLevelData),
+func filterDeckAnalysis(analysis deckpkg.CardAnalysis, excluded map[string]bool) deckpkg.CardAnalysis {
+	filtered := deckpkg.CardAnalysis{
+		CardLevels:   make(map[string]deckpkg.CardLevelData),
 		AnalysisTime: analysis.AnalysisTime,
 	}
 
@@ -256,7 +260,7 @@ func filterDeckAnalysis(analysis deck.CardAnalysis, excluded map[string]bool) de
 	return filtered
 }
 
-func sumDeckScore(rec *deck.DeckRecommendation) float64 {
+func sumDeckScore(rec *deckpkg.DeckRecommendation) float64 {
 	total := 0.0
 	for _, card := range rec.DeckDetail {
 		total += card.Score

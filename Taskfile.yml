@@ -560,7 +560,8 @@ tasks:
           echo "Integration tests require a valid API token from developer.clashroyale.com"
           exit 1
         fi
-      - echo "Testing with token: ${CLASH_ROYALE_API_TOKEN:0:20}..."
+      - |
+        printf 'Testing with token: %.20s...\n' "$CLASH_ROYALE_API_TOKEN"
       - go test -v -race -tags=integration ./...
 
   # CI/CD Tasks

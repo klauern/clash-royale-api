@@ -12,6 +12,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
+	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/urfave/cli/v3"
 )
 
@@ -714,15 +715,19 @@ func displayDeckRecommendations(r *analysis.DeckRecommendationResult) {
 	if len(topDeck.DeckDetail) > 0 {
 		fmt.Printf("Cards:\n")
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(w, "  Card                 Level   Elixir\n")
-		fmt.Fprintf(w, "  ----                 -----   ------\n")
+		fmt.Fprintf(w, "  Card                 Level       Elixir\n")
+		fmt.Fprintf(w, "  ----                 -----       ------\n")
 		for _, card := range topDeck.DeckDetail {
 			levelPct := float64(card.Level) / float64(card.MaxLevel) * 100
 			indicator := "✓"
 			if levelPct <= 60 {
 				indicator = "○"
 			}
-			fmt.Fprintf(w, "  %s%-20s %2d/%-2d   %2d\n", indicator, card.Name, card.Level, card.MaxLevel, card.Elixir)
+			levelStr := fmt.Sprintf("%2d/%-2d", card.Level, card.MaxLevel)
+			if evoBadge := deck.FormatEvolutionBadge(card.EvolutionLevel); evoBadge != "" {
+				levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
+			}
+			fmt.Fprintf(w, "  %s%-20s %-11s %2d\n", indicator, card.Name, levelStr, card.Elixir)
 		}
 		w.Flush()
 		fmt.Printf("\n")

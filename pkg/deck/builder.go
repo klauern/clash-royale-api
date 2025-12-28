@@ -202,13 +202,15 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 			roleStr = string(*card.Role)
 		}
 		recommendation.DeckDetail[i] = CardDetail{
-			Name:     card.Name,
-			Level:    card.Level,
-			MaxLevel: card.MaxLevel,
-			Rarity:   card.Rarity,
-			Elixir:   card.Elixir,
-			Role:     roleStr,
-			Score:    roundToThree(card.Score),
+			Name:              card.Name,
+			Level:             card.Level,
+			MaxLevel:          card.MaxLevel,
+			Rarity:            card.Rarity,
+			Elixir:            card.Elixir,
+			Role:              roleStr,
+			Score:             roundToThree(card.Score),
+			EvolutionLevel:    card.EvolutionLevel,
+			MaxEvolutionLevel: card.MaxEvolutionLevel,
 		}
 	}
 
@@ -420,6 +422,7 @@ func (b *Builder) scoreCard(name string, level, maxLevel int, rarity string, eli
 
 // calculateEvolutionBonus returns level-scaled evolution bonus
 // Formula: baseBonus * (level/maxLevel)^1.5 * (1 + 0.2*(maxEvoLevel-1))
+// Additional bonus for cards with evolution-specific role overrides
 // This rewards using higher-level cards and accounts for multi-evolution cards
 func (b *Builder) calculateEvolutionBonus(cardName string, level, maxLevel, maxEvoLevel int) float64 {
 	// Check if evolution is unlocked
@@ -434,7 +437,17 @@ func (b *Builder) calculateEvolutionBonus(cardName string, level, maxLevel, maxE
 	// Bonus multiplier for multi-evolution cards (e.g., Knight with evo level 3)
 	evoMultiplier := 1.0 + (0.2 * float64(maxEvoLevel-1))
 
-	return baseBonus * scaledRatio * evoMultiplier
+	bonus := baseBonus * scaledRatio * evoMultiplier
+
+	// Additional bonus for cards with evolution-specific role overrides
+	// These cards have their strategic role changed by evolution, making them
+	// more valuable in deck building
+	if HasEvolutionOverride(cardName, 1) {
+		// Add 10% extra bonus for evolution role overrides
+		bonus *= 1.1
+	}
+
+	return bonus
 }
 
 // getEvolutionPriority returns priority value for role (lower = higher priority)

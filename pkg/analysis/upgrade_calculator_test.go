@@ -483,3 +483,121 @@ func BenchmarkCalculatePriorityScore(b *testing.B) {
 		CalculatePriorityScore(info)
 	}
 }
+
+// TestCalculatePriorityScore_EvolutionBonus tests evolution-specific priority bonuses
+func TestCalculatePriorityScore_EvolutionBonus(t *testing.T) {
+	tests := []struct {
+		name              string
+		info              UpgradeInfo
+		wantMinScore      float64
+		wantMaxScore      float64
+		exceedsNonEvoBy   float64 // How much more than non-evo equivalent
+	}{
+		{
+			name: "Evolution-capable card at low level gets base bonus",
+			info: UpgradeInfo{
+				Rarity:            "Common",
+				CurrentLevel:      5,
+				MaxLevel:          14,
+				EvolutionLevel:    0,
+				MaxEvolutionLevel: 3, // Has evolution capability
+				IsMaxLevel:        false,
+				CanUpgradeNow:     false,
+				ProgressPercent:   20.0,
+			},
+			wantMinScore:    20.0, // Base ~10 + evolution bonus 10-20
+			wantMaxScore:    45.0,
+			exceedsNonEvoBy: 10.0, // At least 10 points more than non-evo
+		},
+		{
+			name: "Evolution-capable card at high level gets large bonus",
+			info: UpgradeInfo{
+				Rarity:            "Rare",
+				CurrentLevel:      13,
+				MaxLevel:          14,
+				EvolutionLevel:    0,
+				MaxEvolutionLevel: 3, // Has evolution capability
+				IsMaxLevel:        false,
+				CanUpgradeNow:     false, // Not ready to avoid cap
+				ProgressPercent:   80.0,
+			},
+			wantMinScore:    60.0,  // High score with evolution bonus
+			wantMaxScore:    110.0, // No cap when not ready to upgrade
+			exceedsNonEvoBy: 10.0,  // Evolution bonus applies (10-30 points)
+		},
+		{
+			name: "Partially evolved card gets additional bonus",
+			info: UpgradeInfo{
+				Rarity:            "Epic",
+				CurrentLevel:      14,
+				MaxLevel:          14,
+				EvolutionLevel:    1,
+				MaxEvolutionLevel: 3,
+				IsMaxLevel:        false,
+				CanUpgradeNow:     false,
+				ProgressPercent:   33.0, // 1/3 of evolution
+			},
+			wantMinScore:    70.0, // Evolution bonus: 10 + 20 + ~1.5 = ~31.5 + base ~43 = ~75
+			wantMaxScore:    100.0,
+			exceedsNonEvoBy: 10.0, // At least 10 points more than non-evo
+		},
+		{
+			name: "Non-evolution card gets no bonus",
+			info: UpgradeInfo{
+				Rarity:            "Common",
+				CurrentLevel:      10,
+				MaxLevel:          14,
+				EvolutionLevel:    0,
+				MaxEvolutionLevel: 0, // No evolution capability
+				IsMaxLevel:        false,
+				CanUpgradeNow:     true,
+				ProgressPercent:   100.0,
+			},
+			wantMinScore:    80.0, // Base score only: 50*0.5 + 71.4*0.3 = 71.4 * 1.2 = ~85.7
+			wantMaxScore:    100.0,
+			exceedsNonEvoBy: 0.0,  // No bonus expected
+		},
+		{
+			name: "Max level card with partial evolution",
+			info: UpgradeInfo{
+				Rarity:            "Legendary",
+				CurrentLevel:      14,
+				MaxLevel:          14,
+				EvolutionLevel:    1,
+				MaxEvolutionLevel: 3,
+				IsMaxLevel:        true,
+				CanUpgradeNow:     false,
+				ProgressPercent:   33.0,
+			},
+			wantMinScore:    0.0, // Max level = 0 priority regardless of evolution
+			wantMaxScore:    0.0,
+			exceedsNonEvoBy: 0.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			score := CalculatePriorityScore(tt.info)
+
+			// Check score is in expected range
+			if score < tt.wantMinScore || score > tt.wantMaxScore {
+				t.Errorf("CalculatePriorityScore() = %v, want between %v and %v",
+					score, tt.wantMinScore, tt.wantMaxScore)
+			}
+
+			// For non-max-level cards, compare with equivalent non-evo card
+			if !tt.info.IsMaxLevel && tt.exceedsNonEvoBy > 0 {
+				nonEvoInfo := tt.info
+				nonEvoInfo.MaxEvolutionLevel = 0
+				nonEvoInfo.EvolutionLevel = 0
+				nonEvoScore := CalculatePriorityScore(nonEvoInfo)
+
+				diff := score - nonEvoScore
+				if diff < tt.exceedsNonEvoBy-5.0 { // Allow some tolerance for floating point
+					t.Errorf("Evolution bonus too small: evo score %v - non-evo score %v = %v, want at least %v",
+						score, nonEvoScore, diff, tt.exceedsNonEvoBy)
+				}
+			}
+		})
+	}
+}

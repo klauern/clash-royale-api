@@ -56,10 +56,12 @@ type DeckAnalysis struct {
 
 // CardDeckDetail represents detailed card information in a deck
 type CardDeckDetail struct {
-	Name     string  `json:"name"`
-	Level    int     `json:"level"`
-	MaxLevel int     `json:"max_level"`
-	Elixir   int     `json:"elixir"`
+	Name              string  `json:"name"`
+	Level             int     `json:"level"`
+	MaxLevel          int     `json:"max_level"`
+	Elixir            int     `json:"elixir"`
+	EvolutionLevel    int     `json:"evolution_level,omitempty"`
+	MaxEvolutionLevel int     `json:"max_evolution_level,omitempty"`
 }
 
 // AnalyzePlaystyle performs comprehensive playstyle analysis
