@@ -103,7 +103,9 @@ celerybeat-schedule
 # Environments
 .env
 .env.home
-.env.*
+.env.local
+.env.production
+.env.test
 .venv
 env/
 venv/
