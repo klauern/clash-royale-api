@@ -63,6 +63,7 @@ func main() {
 			addEvolutionCommands(),
 			addEventCommands(),
 			addExportCommands(),
+			addUpgradeImpactCommands(),
 			{
 				Name:  "player",
 				Usage: "Get player information",

@@ -114,12 +114,13 @@ type CardAnalysis struct {
 
 // CardLevelData represents card level and metadata from analysis
 type CardLevelData struct {
-	Level             int    `json:"level"`
-	MaxLevel          int    `json:"max_level"`
-	Rarity            string `json:"rarity"`
-	Elixir            int    `json:"elixir,omitempty"`
-	EvolutionLevel    int    `json:"evolution_level,omitempty"`    // Current evolution level (0-3)
-	MaxEvolutionLevel int    `json:"max_evolution_level,omitempty"` // Maximum possible evolution level
+	Level             int     `json:"level"`
+	MaxLevel          int     `json:"max_level"`
+	Rarity            string  `json:"rarity"`
+	Elixir            int     `json:"elixir,omitempty"`
+	EvolutionLevel    int     `json:"evolution_level,omitempty"`    // Current evolution level (0-3)
+	MaxEvolutionLevel int     `json:"max_evolution_level,omitempty"` // Maximum possible evolution level
+	ScoreBoost        float64 `json:"score_boost,omitempty"`         // Boost for preferred cards (doesn't affect display level)
 }
 
 // BuildDeckFromAnalysis creates a deck recommendation from card analysis data
@@ -352,6 +353,11 @@ func (b *Builder) buildCandidate(name string, data CardLevelData) *CardCandidate
 	} else {
 		// Fall back to traditional scoring if no combat stats available
 		score = b.scoreCard(name, level, maxLevel, rarity, elixir, role, data.MaxEvolutionLevel)
+	}
+
+	// Apply archetype-preferred card boost (if any)
+	if data.ScoreBoost > 0 {
+		score *= (1 + data.ScoreBoost)
 	}
 
 	return &CardCandidate{

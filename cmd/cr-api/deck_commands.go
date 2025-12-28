@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
+	"github.com/klauer/clash-royale-api/go/pkg/budget"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
@@ -235,6 +236,78 @@ func addDeckCommands() *cli.Command {
 					},
 				},
 				Action: deckMulliganCommand,
+			},
+			{
+				Name:  "budget",
+				Usage: "Find budget-optimized decks with minimal upgrade investment",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #)",
+						Required: true,
+					},
+					&cli.IntFlag{
+						Name:  "max-cards",
+						Value: 0,
+						Usage: "Maximum cards needed for upgrades (0 = no limit)",
+					},
+					&cli.IntFlag{
+						Name:  "max-gold",
+						Value: 0,
+						Usage: "Maximum gold needed for upgrades (0 = no limit)",
+					},
+					&cli.Float64Flag{
+						Name:  "target-level",
+						Value: 12.0,
+						Usage: "Target average card level for viability",
+					},
+					&cli.StringFlag{
+						Name:  "sort-by",
+						Value: "roi",
+						Usage: "Sort results by: roi, cost_efficiency, total_cards, total_gold, current_score, projected_score",
+					},
+					&cli.IntFlag{
+						Name:  "top-n",
+						Value: 10,
+						Usage: "Number of top decks to display",
+					},
+					&cli.BoolFlag{
+						Name:  "include-variations",
+						Usage: "Generate and analyze deck variations",
+					},
+					&cli.IntFlag{
+						Name:  "max-variations",
+						Value: 5,
+						Usage: "Maximum number of deck variations to generate",
+					},
+					&cli.BoolFlag{
+						Name:  "quick-wins",
+						Usage: "Show only quick-win decks (1-2 upgrades away)",
+					},
+					&cli.BoolFlag{
+						Name:  "ready-only",
+						Usage: "Show only decks that are already competitive",
+					},
+					&cli.StringFlag{
+						Name:  "unlocked-evolutions",
+						Usage: "Comma-separated list of cards with unlocked evolutions",
+					},
+					&cli.IntFlag{
+						Name:  "evolution-slots",
+						Value: 2,
+						Usage: "Number of evolution slots available",
+					},
+					&cli.BoolFlag{
+						Name:  "json",
+						Usage: "Output results in JSON format",
+					},
+					&cli.BoolFlag{
+						Name:  "save",
+						Usage: "Save results to file",
+					},
+				},
+				Action: deckBudgetCommand,
 			},
 		},
 	}
@@ -616,5 +689,296 @@ func saveDeck(dataDir, playerTag string, options map[string]interface{}) error {
 	}
 
 	// In a real implementation, you'd marshal options to JSON
+	return nil
+}
+
+func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
+	tag := cmd.String("tag")
+	maxCards := cmd.Int("max-cards")
+	maxGold := cmd.Int("max-gold")
+	targetLevel := cmd.Float64("target-level")
+	sortBy := cmd.String("sort-by")
+	topN := cmd.Int("top-n")
+	includeVariations := cmd.Bool("include-variations")
+	maxVariations := cmd.Int("max-variations")
+	quickWinsOnly := cmd.Bool("quick-wins")
+	readyOnly := cmd.Bool("ready-only")
+	jsonOutput := cmd.Bool("json")
+	saveData := cmd.Bool("save")
+	apiToken := cmd.String("api-token")
+	verbose := cmd.Bool("verbose")
+	dataDir := cmd.String("data-dir")
+
+	if apiToken == "" {
+		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	}
+
+	client := clashroyale.NewClient(apiToken)
+
+	if verbose {
+		fmt.Printf("Finding budget-optimized decks for player %s\n", tag)
+	}
+
+	// Get player information
+	player, err := client.GetPlayer(tag)
+	if err != nil {
+		return fmt.Errorf("failed to get player: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+		fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+	}
+
+	// Perform card collection analysis
+	analysisOptions := analysis.DefaultAnalysisOptions()
+	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
+	if err != nil {
+		return fmt.Errorf("failed to analyze card collection: %w", err)
+	}
+
+	// Create budget finder options
+	options := budget.BudgetFinderOptions{
+		MaxCardsNeeded:      maxCards,
+		MaxGoldNeeded:       maxGold,
+		TargetAverageLevel:  targetLevel,
+		QuickWinMaxUpgrades: 2,
+		QuickWinMaxCards:    1000,
+		SortBy:              parseSortCriteria(sortBy),
+		TopN:                topN,
+		IncludeVariations:   includeVariations,
+		MaxVariations:       maxVariations,
+	}
+
+	// Create budget finder
+	finder := budget.NewFinder(dataDir, options)
+
+	// Override unlocked evolutions if CLI flag provided
+	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
+		finder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+	}
+
+	// Override evolution slot limit if provided
+	if slots := cmd.Int("evolution-slots"); slots > 0 {
+		finder.SetEvolutionSlotLimit(slots)
+	}
+
+	// Convert analysis.CardAnalysis to deck.CardAnalysis
+	deckCardAnalysis := deck.CardAnalysis{
+		CardLevels:   make(map[string]deck.CardLevelData),
+		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+	}
+
+	for cardName, cardInfo := range cardAnalysis.CardLevels {
+		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
+			Level:             cardInfo.Level,
+			MaxLevel:          cardInfo.MaxLevel,
+			Rarity:            cardInfo.Rarity,
+			Elixir:            cardInfo.Elixir,
+			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
+		}
+	}
+
+	// Find optimal decks
+	result, err := finder.FindOptimalDecks(deckCardAnalysis, player.Tag, player.Name)
+	if err != nil {
+		return fmt.Errorf("failed to find optimal decks: %w", err)
+	}
+
+	// Filter results if requested
+	if quickWinsOnly {
+		result.AllDecks = result.QuickWins
+	} else if readyOnly {
+		result.AllDecks = result.ReadyDecks
+	}
+
+	// Output results
+	if jsonOutput {
+		return outputBudgetResultJSON(result)
+	}
+
+	displayBudgetResult(result, player, options)
+
+	// Save results if requested
+	if saveData {
+		if verbose {
+			fmt.Printf("\nSaving budget analysis to: %s\n", dataDir)
+		}
+		if err := saveBudgetResult(dataDir, result); err != nil {
+			fmt.Printf("Warning: Failed to save budget analysis: %v\n", err)
+		} else {
+			fmt.Printf("\nBudget analysis saved to file\n")
+		}
+	}
+
+	return nil
+}
+
+// parseSortCriteria converts string to SortCriteria
+func parseSortCriteria(s string) budget.SortCriteria {
+	switch strings.ToLower(s) {
+	case "roi":
+		return budget.SortByROI
+	case "cost_efficiency":
+		return budget.SortByCostEfficiency
+	case "total_cards":
+		return budget.SortByTotalCards
+	case "total_gold":
+		return budget.SortByTotalGold
+	case "current_score":
+		return budget.SortByCurrentScore
+	case "projected_score":
+		return budget.SortByProjectedScore
+	default:
+		return budget.SortByROI
+	}
+}
+
+// displayBudgetResult displays budget analysis results in a formatted way
+func displayBudgetResult(result *budget.BudgetFinderResult, player *clashroyale.Player, options budget.BudgetFinderOptions) {
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║              BUDGET-OPTIMIZED DECK FINDER                          ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	fmt.Printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
+	fmt.Printf("Average Card Level: %.2f\n\n", result.Summary.PlayerAverageLevel)
+
+	// Display summary
+	fmt.Printf("Summary:\n")
+	fmt.Printf("════════\n")
+	fmt.Printf("Total Decks Analyzed:    %d\n", result.Summary.TotalDecksAnalyzed)
+	fmt.Printf("Ready Decks:             %d\n", result.Summary.ReadyDeckCount)
+	fmt.Printf("Quick Win Decks:         %d\n", result.Summary.QuickWinCount)
+	fmt.Printf("Best ROI:                %.4f\n", result.Summary.BestROI)
+	fmt.Printf("Lowest Cards Needed:     %d\n", result.Summary.LowestCardsNeeded)
+	fmt.Printf("\n")
+
+	// Display quick wins if available
+	if len(result.QuickWins) > 0 {
+		fmt.Printf("Quick Wins (1-2 upgrades away):\n")
+		fmt.Printf("════════════════════════════════\n")
+		for i, analysis := range result.QuickWins {
+			if i >= 3 {
+				break // Show top 3 quick wins
+			}
+			displayBudgetDeckSummary(i+1, analysis)
+		}
+		fmt.Printf("\n")
+	}
+
+	// Display all decks
+	if len(result.AllDecks) > 0 {
+		fmt.Printf("Top Decks (sorted by %s):\n", options.SortBy)
+		fmt.Printf("═════════════════════════════════════\n\n")
+
+		for i, analysis := range result.AllDecks {
+			displayBudgetDeckDetail(i+1, analysis)
+		}
+	} else {
+		fmt.Printf("No decks found matching criteria.\n")
+	}
+}
+
+// displayBudgetDeckSummary displays a brief deck summary
+func displayBudgetDeckSummary(rank int, analysis *budget.DeckBudgetAnalysis) {
+	if analysis.Deck == nil {
+		return
+	}
+
+	cards := make([]string, 0, len(analysis.Deck.DeckDetail))
+	for _, card := range analysis.Deck.DeckDetail {
+		cards = append(cards, card.Name)
+	}
+
+	fmt.Printf("#%d: %s\n", rank, strings.Join(cards[:min(3, len(cards))], ", ")+"...")
+	fmt.Printf("    Cards Needed: %d | Gold: %d | ROI: %.4f\n",
+		analysis.TotalCardsNeeded, analysis.TotalGoldNeeded, analysis.ROI)
+}
+
+// displayBudgetDeckDetail displays detailed deck information
+func displayBudgetDeckDetail(rank int, analysis *budget.DeckBudgetAnalysis) {
+	if analysis.Deck == nil {
+		return
+	}
+
+	fmt.Printf("Deck #%d [%s]\n", rank, analysis.BudgetCategory)
+	fmt.Printf("─────────────────────────────────────\n")
+
+	// Deck cards table
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "Card\tLevel\tElixir\tRole\n")
+	fmt.Fprintf(w, "────\t─────\t──────\t────\n")
+
+	for _, card := range analysis.Deck.DeckDetail {
+		fmt.Fprintf(w, "%s\t%d/%d\t%d\t%s\n",
+			card.Name,
+			card.Level,
+			card.MaxLevel,
+			card.Elixir,
+			card.Role)
+	}
+	w.Flush()
+
+	fmt.Printf("\n")
+	fmt.Printf("Average Elixir: %.2f\n", analysis.Deck.AvgElixir)
+	fmt.Printf("Current Score: %.4f | Projected Score: %.4f\n",
+		analysis.CurrentScore, analysis.ProjectedScore)
+	fmt.Printf("Cards Needed: %d | Gold Needed: %d\n",
+		analysis.TotalCardsNeeded, analysis.TotalGoldNeeded)
+	fmt.Printf("ROI: %.4f | Cost Efficiency: %.4f\n",
+		analysis.ROI, analysis.CostEfficiency)
+
+	// Display upgrade priorities if there are upgrades needed
+	if len(analysis.CardUpgrades) > 0 {
+		fmt.Printf("\nUpgrade Priorities:\n")
+		for i, upgrade := range analysis.CardUpgrades {
+			if i >= 3 {
+				fmt.Printf("  ... and %d more\n", len(analysis.CardUpgrades)-3)
+				break
+			}
+			fmt.Printf("  %d. %s: Level %d -> %d (%d cards, %d gold)\n",
+				i+1, upgrade.CardName, upgrade.CurrentLevel, upgrade.TargetLevel,
+				upgrade.CardsNeeded, upgrade.GoldNeeded)
+		}
+	}
+
+	fmt.Printf("\n")
+}
+
+// outputBudgetResultJSON outputs budget analysis in JSON format
+func outputBudgetResultJSON(result *budget.BudgetFinderResult) error {
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal budget result: %w", err)
+	}
+
+	fmt.Println(string(data))
+	return nil
+}
+
+// saveBudgetResult saves budget analysis to a JSON file
+func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
+	// Create budget directory if it doesn't exist
+	budgetDir := filepath.Join(dataDir, "budget")
+	if err := os.MkdirAll(budgetDir, 0755); err != nil {
+		return fmt.Errorf("failed to create budget directory: %w", err)
+	}
+
+	// Generate filename with timestamp
+	timestamp := time.Now().Format("20060102_150405")
+	cleanTag := strings.TrimPrefix(result.PlayerTag, "#")
+	filename := filepath.Join(budgetDir, fmt.Sprintf("%s_budget_%s.json", timestamp, cleanTag))
+
+	// Save as JSON
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal budget result: %w", err)
+	}
+
+	if err := os.WriteFile(filename, data, 0644); err != nil {
+		return fmt.Errorf("failed to write budget file: %w", err)
+	}
+
+	fmt.Printf("Budget analysis saved to: %s\n", filename)
 	return nil
 }

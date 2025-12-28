@@ -7,9 +7,8 @@ vars:
   PROJECT_NAME: clash-royale-api
   DATA_DIR: data
   TEST_PLAYER_TAG: '#PLAYERTAG'
-  GO_DIR: go
-  CR_API_BIN: '{{.GO_DIR}}/bin/cr-api'
-  DECKBUILDER_BIN: '{{.GO_DIR}}/bin/deckbuilder'
+  CR_API_BIN: bin/cr-api
+  DECKBUILDER_BIN: bin/deckbuilder
 
 dotenv: ['.env']
 
@@ -204,6 +203,34 @@ tasks:
         msg: "cr-api binary not found. Build it with: task build"
       - sh: test -x {{.DECKBUILDER_BIN}}
         msg: "deckbuilder binary not found. Build it with: task build"
+
+  war-decks:
+    desc: Build a 4-deck war lineup with no repeated cards
+    summary: |
+      Builds an optimized 4-deck war lineup using archetype-based deck building.
+      Automatically finds the best combination of archetypes to maximize deck quality
+      while ensuring zero card overlap across all 4 decks.
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        CLEAN_TAG="${PLAYER_TAG#\#}"
+        echo "Building war deck lineup for $CLEAN_TAG..."
+        {{.CR_API_BIN}} deck war --tag "$CLEAN_TAG"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
 
   # Event Deck Tasks
   scan-events:
@@ -624,13 +651,14 @@ help:
       - 'echo "3. Export to CSV: task export-csv -- #PLAYER_TAG"'
       - 'echo "4. Export all data: task export-all -- #PLAYER_TAG"'
       - 'echo "5. Build optimized deck: task build-deck -- #PLAYER_TAG"'
+      - 'echo "6. Build war deck lineup: task war-decks -- #PLAYER_TAG"'
       - echo ''
       - echo "Event Deck Operations (using Go CLI):"
-      - 'echo "6. Scan for event decks: task scan-events -- #PLAYER_TAG"'
-      - 'echo "7. Export event decks: task export-events -- #PLAYER_TAG"'
-      - 'echo "8. Export deck builder format: task export-decks -- #PLAYER_TAG"'
-      - 'echo "9. Analyze events: task analyze-events -- #PLAYER_TAG"'
-      - 'echo "10. Sync recent events: task sync-events -- #PLAYER_TAG"'
+      - 'echo "7. Scan for event decks: task scan-events -- #PLAYER_TAG"'
+      - 'echo "8. Export event decks: task export-events -- #PLAYER_TAG"'
+      - 'echo "9. Export deck builder format: task export-decks -- #PLAYER_TAG"'
+      - 'echo "10. Analyze events: task analyze-events -- #PLAYER_TAG"'
+      - 'echo "11. Sync recent events: task sync-events -- #PLAYER_TAG"'
       - echo ''
       - echo "Development Commands:"
       - 'echo "- Build: task build"'

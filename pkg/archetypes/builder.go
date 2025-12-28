@@ -111,9 +111,10 @@ func (ab *ArchetypeBuilder) filterCandidatesWithPreference(
 	// Filter out excluded cards and boost preferred cards
 	for cardName, cardData := range analysis.CardLevels {
 		if !excludedMap[cardName] {
-			// Boost level for preferred cards to increase selection priority
+			// Boost score for preferred cards to increase selection priority
+			// (using ScoreBoost instead of Level to preserve correct display values)
 			if preferredMap[cardName] {
-				cardData.Level += 2 // Artificially boost by 2 levels for scoring
+				cardData.ScoreBoost = 0.2 // 20% score boost for archetype-preferred cards
 			}
 			filtered.CardLevels[cardName] = cardData
 		}

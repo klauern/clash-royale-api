@@ -34,6 +34,10 @@ const (
 	combatDPSWeight     = 0.4  // 40% of combat score from DPS efficiency
 	combatHPWeight      = 0.4  // 40% of combat score from HP efficiency
 	combatRoleWeight    = 0.2  // 20% of combat score from role-specific effectiveness
+
+	// Evolution level bonus weights
+	// Evolution level provides additional score boost based on how far the card is evolved
+	evolutionBonusWeight = 0.15 // Base weight for evolution bonus (0.15 = up to +0.15 score at max evo)
 )
 
 // ScoreCard calculates a comprehensive score for a card based on multiple factors:
@@ -47,6 +51,23 @@ const (
 //
 // Score range: typically 0.0 to ~1.5, higher is better
 func ScoreCard(level, maxLevel int, rarity string, elixir int, role *CardRole) float64 {
+	return ScoreCardWithEvolution(level, maxLevel, rarity, elixir, role, 0, 0)
+}
+
+// ScoreCardWithEvolution calculates a comprehensive score for a card including evolution level bonus.
+//
+// Factors considered:
+// 1. Level Ratio (0-1): Higher level cards score better
+// 2. Rarity Boost (1.0-1.2): Rarer cards get slight boost since they're harder to level
+// 3. Elixir Weight (0-1): Cards around 3-4 elixir are optimal
+// 4. Role Bonus (+0.05): Cards with defined roles get small bonus
+// 5. Evolution Bonus (0-0.15): Cards with higher evolution level get additional score
+//
+// Evolution Bonus Formula: evolutionBonusWeight * (evolutionLevel / maxEvolutionLevel)
+// This provides a linear scaling based on evolution progress.
+//
+// Score range: typically 0.0 to ~1.65, higher is better
+func ScoreCardWithEvolution(level, maxLevel int, rarity string, elixir int, role *CardRole, evolutionLevel, maxEvolutionLevel int) float64 {
 	// Calculate level ratio (0.0 to 1.0)
 	levelRatio := 0.0
 	if maxLevel > 0 {
@@ -70,22 +91,52 @@ func ScoreCard(level, maxLevel int, rarity string, elixir int, role *CardRole) f
 		roleBonus = roleBonusValue
 	}
 
+	// Calculate evolution level bonus
+	evolutionBonus := calculateEvolutionLevelBonus(evolutionLevel, maxEvolutionLevel)
+
 	// Combine all factors into final score
 	score := (levelRatio * levelWeightFactor * rarityBoost) +
 		(elixirWeight * elixirWeightFactor) +
-		roleBonus
+		roleBonus +
+		evolutionBonus
 
 	return score
 }
 
-// ScoreCardCandidate calculates score for a CardCandidate and updates its Score field
+// calculateEvolutionLevelBonus calculates the evolution level bonus for a card.
+// The bonus is proportional to the evolution progress (evolutionLevel/maxEvolutionLevel).
+//
+// Formula: evolutionBonusWeight * (evolutionLevel / maxEvolutionLevel)
+//
+// Returns 0 if card has no evolution capability (maxEvolutionLevel == 0) or no evolution progress.
+func calculateEvolutionLevelBonus(evolutionLevel, maxEvolutionLevel int) float64 {
+	if maxEvolutionLevel <= 0 || evolutionLevel <= 0 {
+		return 0.0
+	}
+
+	// Calculate evolution ratio (0.0 to 1.0)
+	evolutionRatio := float64(evolutionLevel) / float64(maxEvolutionLevel)
+
+	// Clamp ratio to valid range
+	if evolutionRatio > 1.0 {
+		evolutionRatio = 1.0
+	}
+
+	// Apply evolution bonus weight
+	return evolutionBonusWeight * evolutionRatio
+}
+
+// ScoreCardCandidate calculates score for a CardCandidate and updates its Score field.
+// This function now uses ScoreCardWithEvolution to include evolution level bonus.
 func ScoreCardCandidate(candidate *CardCandidate) float64 {
-	score := ScoreCard(
+	score := ScoreCardWithEvolution(
 		candidate.Level,
 		candidate.MaxLevel,
 		candidate.Rarity,
 		candidate.Elixir,
 		candidate.Role,
+		candidate.EvolutionLevel,
+		candidate.MaxEvolutionLevel,
 	)
 	candidate.Score = score
 	return score
@@ -275,9 +326,17 @@ func calculateCombatScore(stats *clashroyale.CombatStats, elixir int, role strin
 
 // ScoreCardWithCombat calculates enhanced score using combat statistics
 // Combines traditional scoring with combat effectiveness analysis
+// For backward compatibility, this does not include evolution level bonus.
+// Use ScoreCardWithCombatAndEvolution for full scoring with evolution support.
 func ScoreCardWithCombat(level, maxLevel int, rarity string, elixir int, role *CardRole, stats *clashroyale.CombatStats) float64 {
-	// Calculate base score using existing algorithm
-	baseScore := ScoreCard(level, maxLevel, rarity, elixir, role)
+	return ScoreCardWithCombatAndEvolution(level, maxLevel, rarity, elixir, role, stats, 0, 0)
+}
+
+// ScoreCardWithCombatAndEvolution calculates enhanced score using combat statistics and evolution level.
+// Combines traditional scoring with combat effectiveness analysis and evolution bonus.
+func ScoreCardWithCombatAndEvolution(level, maxLevel int, rarity string, elixir int, role *CardRole, stats *clashroyale.CombatStats, evolutionLevel, maxEvolutionLevel int) float64 {
+	// Calculate base score using evolution-aware algorithm
+	baseScore := ScoreCardWithEvolution(level, maxLevel, rarity, elixir, role, evolutionLevel, maxEvolutionLevel)
 
 	// Get combat weight from environment (default 0.25)
 	combatWeight := getCombatWeight()
@@ -298,16 +357,19 @@ func ScoreCardWithCombat(level, maxLevel int, rarity string, elixir int, role *C
 	return finalScore
 }
 
-// ScoreCardCandidateWithCombat calculates enhanced score for a CardCandidate using combat statistics
-// Updates the candidate's Score field and returns the score
+// ScoreCardCandidateWithCombat calculates enhanced score for a CardCandidate using combat statistics.
+// This function now includes evolution level bonus in the scoring.
+// Updates the candidate's Score field and returns the score.
 func ScoreCardCandidateWithCombat(candidate *CardCandidate) float64 {
-	score := ScoreCardWithCombat(
+	score := ScoreCardWithCombatAndEvolution(
 		candidate.Level,
 		candidate.MaxLevel,
 		candidate.Rarity,
 		candidate.Elixir,
 		candidate.Role,
 		candidate.Stats,
+		candidate.EvolutionLevel,
+		candidate.MaxEvolutionLevel,
 	)
 	candidate.Score = score
 	return score

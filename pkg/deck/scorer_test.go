@@ -532,3 +532,354 @@ func BenchmarkSortByScore(b *testing.B) {
 		SortByScore(candidates)
 	}
 }
+
+// TestCalculateEvolutionLevelBonus tests the evolution level bonus calculation
+func TestCalculateEvolutionLevelBonus(t *testing.T) {
+	tests := []struct {
+		name              string
+		evolutionLevel    int
+		maxEvolutionLevel int
+		wantBonus         float64
+	}{
+		{
+			name:              "No evolution capability",
+			evolutionLevel:    0,
+			maxEvolutionLevel: 0,
+			wantBonus:         0.0,
+		},
+		{
+			name:              "Has evolution but not evolved",
+			evolutionLevel:    0,
+			maxEvolutionLevel: 3,
+			wantBonus:         0.0,
+		},
+		{
+			name:              "Half evolved (1/2)",
+			evolutionLevel:    1,
+			maxEvolutionLevel: 2,
+			wantBonus:         0.075, // 0.15 * (1/2) = 0.075
+		},
+		{
+			name:              "Fully evolved (2/2)",
+			evolutionLevel:    2,
+			maxEvolutionLevel: 2,
+			wantBonus:         0.15, // 0.15 * (2/2) = 0.15
+		},
+		{
+			name:              "Partially evolved (1/3)",
+			evolutionLevel:    1,
+			maxEvolutionLevel: 3,
+			wantBonus:         0.05, // 0.15 * (1/3) = 0.05
+		},
+		{
+			name:              "Two-thirds evolved (2/3)",
+			evolutionLevel:    2,
+			maxEvolutionLevel: 3,
+			wantBonus:         0.10, // 0.15 * (2/3) = 0.10
+		},
+		{
+			name:              "Fully evolved (3/3)",
+			evolutionLevel:    3,
+			maxEvolutionLevel: 3,
+			wantBonus:         0.15, // 0.15 * (3/3) = 0.15
+		},
+		{
+			name:              "Single evolution level fully evolved (1/1)",
+			evolutionLevel:    1,
+			maxEvolutionLevel: 1,
+			wantBonus:         0.15, // 0.15 * (1/1) = 0.15
+		},
+		{
+			name:              "Negative evolution level treated as zero",
+			evolutionLevel:    -1,
+			maxEvolutionLevel: 3,
+			wantBonus:         0.0,
+		},
+		{
+			name:              "Negative max evolution level treated as zero",
+			evolutionLevel:    1,
+			maxEvolutionLevel: -1,
+			wantBonus:         0.0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			bonus := calculateEvolutionLevelBonus(tt.evolutionLevel, tt.maxEvolutionLevel)
+
+			if math.Abs(bonus-tt.wantBonus) > 0.001 {
+				t.Errorf("calculateEvolutionLevelBonus(%d, %d) = %v, want %v",
+					tt.evolutionLevel, tt.maxEvolutionLevel, bonus, tt.wantBonus)
+			}
+		})
+	}
+}
+
+// TestScoreCardWithEvolution tests the evolution-aware scoring function
+func TestScoreCardWithEvolution(t *testing.T) {
+	tests := []struct {
+		name              string
+		level             int
+		maxLevel          int
+		rarity            string
+		elixir            int
+		role              *CardRole
+		evolutionLevel    int
+		maxEvolutionLevel int
+		wantScoreMin      float64
+		wantScoreMax      float64
+	}{
+		{
+			name:              "Card without evolution (same as ScoreCard)",
+			level:             11,
+			maxLevel:          14,
+			rarity:            "Common",
+			elixir:            3,
+			role:              rolePtr(RoleCycle),
+			evolutionLevel:    0,
+			maxEvolutionLevel: 0,
+			wantScoreMin:      1.14, // Should match TestScoreCard result
+			wantScoreMax:      1.15,
+		},
+		{
+			name:              "Card with evolution capability but not evolved",
+			level:             11,
+			maxLevel:          14,
+			rarity:            "Common",
+			elixir:            3,
+			role:              rolePtr(RoleCycle),
+			evolutionLevel:    0,
+			maxEvolutionLevel: 3,
+			wantScoreMin:      1.14, // Same as without evolution
+			wantScoreMax:      1.15,
+		},
+		{
+			name:              "Card fully evolved",
+			level:             11,
+			maxLevel:          14,
+			rarity:            "Common",
+			elixir:            3,
+			role:              rolePtr(RoleCycle),
+			evolutionLevel:    3,
+			maxEvolutionLevel: 3,
+			wantScoreMin:      1.29, // 1.14 + 0.15 = 1.29
+			wantScoreMax:      1.30,
+		},
+		{
+			name:              "Card partially evolved (1/3)",
+			level:             11,
+			maxLevel:          14,
+			rarity:            "Common",
+			elixir:            3,
+			role:              rolePtr(RoleCycle),
+			evolutionLevel:    1,
+			maxEvolutionLevel: 3,
+			wantScoreMin:      1.19, // 1.14 + 0.05 = 1.19
+			wantScoreMax:      1.20,
+		},
+		{
+			name:              "Max level legendary fully evolved",
+			level:             14,
+			maxLevel:          14,
+			rarity:            "Legendary",
+			elixir:            4,
+			role:              nil,
+			evolutionLevel:    2,
+			maxEvolutionLevel: 2,
+			wantScoreMin:      1.66, // 1.51 + 0.15 = 1.66
+			wantScoreMax:      1.67,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			score := ScoreCardWithEvolution(
+				tt.level, tt.maxLevel, tt.rarity, tt.elixir, tt.role,
+				tt.evolutionLevel, tt.maxEvolutionLevel,
+			)
+
+			if score < tt.wantScoreMin || score > tt.wantScoreMax {
+				t.Errorf("ScoreCardWithEvolution() = %v, want between %v and %v",
+					score, tt.wantScoreMin, tt.wantScoreMax)
+			}
+		})
+	}
+}
+
+// TestScoreCardCandidateWithEvolution tests that ScoreCardCandidate uses evolution data
+func TestScoreCardCandidateWithEvolution(t *testing.T) {
+	// Card without evolution
+	candidateNoEvo := CardCandidate{
+		Name:              "Knight",
+		Level:             11,
+		MaxLevel:          14,
+		Rarity:            "Common",
+		Elixir:            3,
+		Role:              rolePtr(RoleCycle),
+		EvolutionLevel:    0,
+		MaxEvolutionLevel: 0,
+	}
+
+	// Card with full evolution
+	candidateFullEvo := CardCandidate{
+		Name:              "Knight",
+		Level:             11,
+		MaxLevel:          14,
+		Rarity:            "Common",
+		Elixir:            3,
+		Role:              rolePtr(RoleCycle),
+		EvolutionLevel:    3,
+		MaxEvolutionLevel: 3,
+	}
+
+	scoreNoEvo := ScoreCardCandidate(&candidateNoEvo)
+	scoreFullEvo := ScoreCardCandidate(&candidateFullEvo)
+
+	// Verify scores were updated on candidates
+	if candidateNoEvo.Score != scoreNoEvo {
+		t.Error("ScoreCardCandidate did not update candidateNoEvo.Score")
+	}
+	if candidateFullEvo.Score != scoreFullEvo {
+		t.Error("ScoreCardCandidate did not update candidateFullEvo.Score")
+	}
+
+	// Full evolution should score higher than no evolution
+	if scoreFullEvo <= scoreNoEvo {
+		t.Errorf("Fully evolved card score (%v) should be higher than non-evolved (%v)",
+			scoreFullEvo, scoreNoEvo)
+	}
+
+	// The difference should be approximately the evolution bonus weight (0.15)
+	expectedDiff := evolutionBonusWeight
+	actualDiff := scoreFullEvo - scoreNoEvo
+	if math.Abs(actualDiff-expectedDiff) > 0.01 {
+		t.Errorf("Score difference (%v) should be approximately %v", actualDiff, expectedDiff)
+	}
+}
+
+// TestScoreCardWithCombatAndEvolution tests the combined combat + evolution scoring
+func TestScoreCardWithCombatAndEvolution(t *testing.T) {
+	winConRole := RoleWinCondition
+
+	stats := &clashroyale.CombatStats{
+		Hitpoints:       4000,
+		DamagePerSecond: 150,
+		Range:           6,
+		Targets:         "Air & Ground",
+		Speed:           "Fast",
+	}
+
+	// Test without evolution
+	scoreNoEvo := ScoreCardWithCombatAndEvolution(
+		11, 14, "Legendary", 5, &winConRole, stats,
+		0, 0,
+	)
+
+	// Test with full evolution
+	scoreFullEvo := ScoreCardWithCombatAndEvolution(
+		11, 14, "Legendary", 5, &winConRole, stats,
+		3, 3,
+	)
+
+	// Full evolution should score higher
+	if scoreFullEvo <= scoreNoEvo {
+		t.Errorf("Evolved score (%v) should be higher than non-evolved (%v)",
+			scoreFullEvo, scoreNoEvo)
+	}
+
+	// Verify scores are reasonable
+	if scoreNoEvo <= 0 || scoreNoEvo > 2.0 {
+		t.Errorf("Score without evolution (%v) seems unreasonable", scoreNoEvo)
+	}
+	if scoreFullEvo <= 0 || scoreFullEvo > 2.5 {
+		t.Errorf("Score with evolution (%v) seems unreasonable", scoreFullEvo)
+	}
+}
+
+// TestScoreCardCandidateWithCombatIncludesEvolution tests that combat scoring includes evolution
+func TestScoreCardCandidateWithCombatIncludesEvolution(t *testing.T) {
+	supportRole := RoleSupport
+
+	// Card without evolution
+	candidateNoEvo := &CardCandidate{
+		Name:              "Test Card",
+		Level:             10,
+		MaxLevel:          14,
+		Rarity:            "Rare",
+		Elixir:            4,
+		Role:              &supportRole,
+		EvolutionLevel:    0,
+		MaxEvolutionLevel: 0,
+		Stats: &clashroyale.CombatStats{
+			Hitpoints:       1500,
+			DamagePerSecond: 80,
+			Range:           6,
+			Targets:         "Air & Ground",
+		},
+	}
+
+	// Card with full evolution
+	candidateFullEvo := &CardCandidate{
+		Name:              "Test Card",
+		Level:             10,
+		MaxLevel:          14,
+		Rarity:            "Rare",
+		Elixir:            4,
+		Role:              &supportRole,
+		EvolutionLevel:    2,
+		MaxEvolutionLevel: 2,
+		Stats: &clashroyale.CombatStats{
+			Hitpoints:       1500,
+			DamagePerSecond: 80,
+			Range:           6,
+			Targets:         "Air & Ground",
+		},
+	}
+
+	scoreNoEvo := ScoreCardCandidateWithCombat(candidateNoEvo)
+	scoreFullEvo := ScoreCardCandidateWithCombat(candidateFullEvo)
+
+	// Verify scores were updated
+	if candidateNoEvo.Score != scoreNoEvo {
+		t.Error("ScoreCardCandidateWithCombat did not update candidate.Score")
+	}
+	if candidateFullEvo.Score != scoreFullEvo {
+		t.Error("ScoreCardCandidateWithCombat did not update candidate.Score")
+	}
+
+	// Full evolution should score higher
+	if scoreFullEvo <= scoreNoEvo {
+		t.Errorf("Evolved card score (%v) should be higher than non-evolved (%v)",
+			scoreFullEvo, scoreNoEvo)
+	}
+}
+
+// TestEvolutionBonusClampedToMax tests that evolution ratio is clamped to 1.0
+func TestEvolutionBonusClampedToMax(t *testing.T) {
+	// Evolution level exceeds max (edge case that shouldn't happen in practice)
+	bonus := calculateEvolutionLevelBonus(5, 3)
+
+	// Should be clamped to max bonus
+	expectedMax := evolutionBonusWeight
+	if bonus > expectedMax+0.001 {
+		t.Errorf("Evolution bonus (%v) should be clamped to max (%v)", bonus, expectedMax)
+	}
+}
+
+// BenchmarkScoreCardWithEvolution benchmarks the evolution-aware scoring
+func BenchmarkScoreCardWithEvolution(b *testing.B) {
+	role := rolePtr(RoleWinCondition)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		ScoreCardWithEvolution(10, 14, "Epic", 4, role, 2, 3)
+	}
+}
+
+// BenchmarkCalculateEvolutionLevelBonus benchmarks the evolution bonus calculation
+func BenchmarkCalculateEvolutionLevelBonus(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		calculateEvolutionLevelBonus(2, 3)
+	}
+}

@@ -48,19 +48,53 @@ If the user wants a specific archetype, force the win condition via `--include-c
 
 ## Task: War Lineup (4 Decks, 32 Unique Cards)
 
-1) Build deck 1 and record the 8 cards.
-2) Build deck 2-4 with `--exclude-cards` using the accumulated list.
-3) If a deck is invalid or too weak, loosen strategy constraints and retry.
+Use the dedicated `deck war` command to automatically build an optimal war lineup with no repeated cards:
 
-Example flow:
 ```bash
-./bin/cr-api deck build --tag <TAG> --strategy balanced --data-dir ./data --save
-./bin/cr-api deck build --tag <TAG> --strategy cycle --exclude-cards "CardA,CardB,..." --data-dir ./data --save
-./bin/cr-api deck build --tag <TAG> --strategy control --exclude-cards "CardA,CardB,..." --data-dir ./data --save
-./bin/cr-api deck build --tag <TAG> --strategy aggro --exclude-cards "CardA,CardB,..." --data-dir ./data --save
+./bin/cr-api deck war --tag <TAG>
 ```
 
-Return the four decks plus a combined 32-card list. Note any compromises made to satisfy the no-repeat rule.
+The command:
+1. Evaluates all 8 available archetypes (Beatdown, Cycle, Control, Siege, BridgeSpam, Midrange, Spawndeck, Bait)
+2. Finds the optimal 4-archetype combination that maximizes total deck quality
+3. Ensures zero card overlap across all decks
+4. Returns all 4 decks with card details, elixir costs, and a unique card count
+
+### Options
+
+- `--deck-count N`: Build N decks instead of 4 (useful for 3-deck formats)
+- `--unlocked-evolutions "Card1,Card2"`: Specify which evolutions you've unlocked
+- `--evolution-slots N`: Override evolution slot limit (default 2)
+- `--combat-stats-weight 0.5`: Adjust combat stats influence (0.0-1.0)
+- `--disable-combat-stats`: Use traditional scoring only
+- `--verbose`: Show detailed progress
+
+### Example Output
+
+```
+WAR DECK SET (NO REPEATS)
+========================
+
+Player: YourName (#TAG)
+Decks: 4
+Unique cards: 32
+Total score: 42.567
+
+Deck 1 - Beatdown
+Average Elixir: 3.88
+...
+```
+
+### Manual Approach (Legacy)
+
+For more control over specific archetypes, you can still build decks manually with `--exclude-cards`:
+
+```bash
+./bin/cr-api deck build --tag <TAG> --strategy balanced --save
+./bin/cr-api deck build --tag <TAG> --strategy cycle --exclude-cards "Card1,Card2,..."
+./bin/cr-api deck build --tag <TAG> --strategy control --exclude-cards "..."
+./bin/cr-api deck build --tag <TAG> --strategy aggro --exclude-cards "..."
+```
 
 ## Task: Upgrade Suggestions and "Within Reach" Projections
 
