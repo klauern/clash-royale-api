@@ -464,6 +464,43 @@ The client includes comprehensive error handling:
 - Invalid player tags
 - API downtime
 
+## Testing
+
+The project uses Go's built-in testing framework with support for both unit and integration tests.
+
+### Unit Tests
+
+Unit tests run in CI and require no external dependencies:
+
+```bash
+# Run unit tests
+task test-go
+# or: go test -v -race -tags='!integration' ./...
+
+# Run with coverage
+task test-go
+# Coverage report generated at coverage.html
+```
+
+### Integration Tests
+
+Integration tests connect to the live Clash Royale API and require a valid API token:
+
+```bash
+# Run integration tests (requires CLASH_ROYALE_API_TOKEN in .env)
+task test-integration
+# or: go test -v -race -tags=integration ./...
+```
+
+**Note**: Integration tests are excluded from CI to avoid IP rate limiting issues. The Clash Royale API has rate limits and potential IP restrictions that make automated CI integration testing challenging. See task `clash-royale-api-zac.9` for ongoing research on IP allowlisting options.
+
+### Test Structure
+
+- **Unit tests** (`*_test.go`): Test individual functions and packages in isolation
+- **Integration tests** (`integration_test.go`, `integration_evolution_test.go`): Test end-to-end flows with live API
+
+Integration tests are built with the `//go:build integration` tag, ensuring they only run when explicitly enabled.
+
 ## Contributing
 
 1. Fork the repository

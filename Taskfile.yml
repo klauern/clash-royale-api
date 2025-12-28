@@ -465,17 +465,27 @@ tasks:
       - go vet (built-in vet)
     cmds:
       - echo "Running golangci-lint..."
-      - cd go && golangci-lint run --timeout=5m || echo "golangci-lint not found, running go vet..."
-      - cd go && go vet ./...
+      - |
+        if command -v golangci-lint >/dev/null 2>&1; then
+          golangci-lint run --timeout=5m
+        else
+          echo "golangci-lint not found, running go vet..."
+        fi
+      - go vet ./...
 
   format:
     desc: Format Go code
     summary: |
       Format Go code
-      - Go: go fmt
+      - Go: goimports (preferred) or gofmt
     cmds:
       - echo "Formatting Go code..."
-      - cd go && go fmt ./...
+      - |
+        if command -v goimports >/dev/null 2>&1; then
+          goimports -w $(go list -f '{{.Dir}}' ./...)
+        else
+          gofmt -w $(go list -f '{{.Dir}}' ./...)
+        fi
 
   clean:
     desc: Clean up generated files
@@ -496,11 +506,13 @@ tasks:
       - 'test -f .env && grep -q "CLASH_ROYALE_API_TOKEN=" .env && echo "✅ API token configured" || echo "❌ API token not configured"'
 
   test-go:
-    desc: Run Go tests only
+    desc: Run Go unit tests only
     summary: |
-      Run Go tests with coverage and race detection
+      Run Go unit tests with coverage and race detection.
+      Integration tests (requires API token) are excluded by default.
+      Use 'task test-integration' to run integration tests.
     cmds:
-      - echo "Running Go tests..."
+      - echo "Running Go unit tests (excluding integration)..."
       - |
         if [ -f ".env" ]; then
           # Export only valid variable names from .env (skip lines with # or invalid names)
@@ -513,8 +525,43 @@ tasks:
           done < .env
           set +a
         fi && \
-        go test -v -race -coverprofile=coverage.out ./... 2>/dev/null || go test -v ./...
-      - go tool cover -func=coverage.out | tail -1 || echo "Coverage report not available"
+        go test -v -race -tags='!integration' -covermode=atomic -coverpkg=./... -coverprofile=coverage.out ./...
+      - |
+        if [ -f "coverage.out" ]; then
+          go tool cover -func=coverage.out | tail -1
+          go tool cover -html=coverage.out -o coverage.html
+        else
+          echo "Coverage report not available"
+        fi
+
+  test-integration:
+    desc: Run integration tests (requires API token)
+    summary: |
+      Run integration tests that connect to the live Clash Royale API.
+      Requires CLASH_ROYALE_API_TOKEN in .env file.
+
+      Note: Integration tests are excluded from CI to avoid IP rate limiting issues.
+    cmds:
+      - echo "Running integration tests (requires valid API token)..."
+      - |
+        if [ -f ".env" ]; then
+          # Export environment variables from .env
+          set -a
+          while IFS='=' read -r key value; do
+            if [[ ! "$key" =~ ^[[:space:]]*# ]] && [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+              export "$key=$value"
+            fi
+          done < .env
+          set +a
+        fi
+      - |
+        if [ -z "$CLASH_ROYALE_API_TOKEN" ]; then
+          echo "❌ CLASH_ROYALE_API_TOKEN not found in .env file"
+          echo "Integration tests require a valid API token from developer.clashroyale.com"
+          exit 1
+        fi
+      - echo "Testing with token: ${CLASH_ROYALE_API_TOKEN:0:20}..."
+      - go test -v -race -tags=integration ./...
 
   # CI/CD Tasks
   install-tools:
