@@ -1,6 +1,23 @@
 # Clash Royale API Data Collector
 
+[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub Releases](https://img.shields.io/github/v/release/klauern/clash-royale-api)](https://github.com/klauern/clash-royale-api/releases)
+
 A comprehensive Go tool for collecting, analyzing, and tracking Clash Royale card data, player statistics, event decks, and intelligent deck building using the official Clash Royale API.
+
+## Quickstart
+
+```bash
+# 1. Get your API token from https://developer.clashroyale.com/
+# 2. Download the latest release for your platform
+# 3. Configure
+cp .env.example .env
+# Edit .env and add your API token
+
+# 4. Run
+./cr-api analyze --tag YOUR_PLAYER_TAG
+```
 
 ## Features
 
@@ -565,6 +582,44 @@ This project uses **Option 1** (manual testing) for public CI:
 - [GitHub Actions IP discussion](https://github.com/orgs/community/discussions/26442)
 - [Clash Royale Developer Portal](https://developer.clashroyale.com/)
 
+## Releases
+
+This project uses [GoReleaser](https://goreleaser.com/) for automated releases.
+
+### Release Process
+
+Releases are created automatically when you push a version tag:
+
+```bash
+# 1. Ensure all changes are committed and tests pass
+task test && task lint
+
+# 2. Create and push a semantic version tag
+git tag -a v2.0.1 -m "Release v2.0.1: Bug fixes and improvements"
+git push origin v2.0.1
+```
+
+GitHub Actions will:
+- Build binaries for Linux, macOS, and Windows (amd64/arm64)
+- Generate a changelog from conventional commits
+- Create a GitHub Release with all artifacts
+- Generate shell completion files
+
+### Version Tags
+
+- Format: `vX.Y.Z` (Semantic Versioning)
+- `X` = Major (breaking changes)
+- `Y` = Minor (new features)
+- `Z` = Patch (bug fixes)
+
+### Commit Prefixes
+
+| Prefix | Section |
+|--------|---------|
+| `feat:` | Features |
+| `fix:` | Bug Fixes |
+| `perf:`, `refactor:` | Improvements |
+
 ## Contributing
 
 1. Fork the repository
@@ -583,6 +638,64 @@ This project is for educational and personal use. Please respect Supercell's Ter
 - [Official API Documentation](https://developer.clashroyale.com/#/documentation)
 - [Clash Royale API Discord](https://discord.gg/clashroyale)
 - Issues: Create an issue in this repository
+
+## Troubleshooting
+
+### "API token not found" Error
+
+**Problem**: The tool reports that `CLASH_ROYALE_API_TOKEN` is not configured.
+
+**Solution**:
+```bash
+# Copy the example environment file
+cp .env.example .env
+
+# Edit .env and add your actual API token from developer.clashroyale.com
+nano .env
+```
+
+### "Invalid API token" Error
+
+**Problem**: API returns 403 or 401 errors.
+
+**Solutions**:
+1. Verify your token is correct (no extra spaces)
+2. Check that your IP is allowlisted at [developer.clashroyale.com](https://developer.clashroyale.com/)
+3. Ensure the token hasn't expired
+
+### Rate Limiting Issues
+
+**Problem**: Requests are failing or getting blocked.
+
+**Solutions**:
+1. Increase `REQUEST_DELAY` in `.env` (default: 1 second)
+2. Reduce the frequency of requests
+3. Check if you've exceeded the undocumented rate limits (~10-20 req/sec)
+
+### Build Failures
+
+**Problem**: `go build` fails with module errors.
+
+**Solution**:
+```bash
+# Download dependencies
+go mod download
+
+# Verify go.mod is consistent
+go mod tidy
+
+# Try building again
+go build -o bin/cr-api ./cmd/cr-api
+```
+
+### Permission Denied on Binary
+
+**Problem**: `./bin/cr-api` fails with "permission denied".
+
+**Solution**:
+```bash
+chmod +x bin/cr-api bin/deckbuilder
+```
 
 ## Changelog
 
