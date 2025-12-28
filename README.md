@@ -492,7 +492,7 @@ task test-integration
 # or: go test -v -race -tags=integration ./...
 ```
 
-**Note**: Integration tests are excluded from CI to avoid IP rate limiting issues. The Clash Royale API has rate limits and potential IP restrictions that make automated CI integration testing challenging. See task `clash-royale-api-zac.9` for ongoing research on IP allowlisting options.
+**Note**: Integration tests are excluded from CI due to Clash Royale API IP restrictions. See [CI/CD](#ci--cd-limitations) below for details.
 
 ### Test Structure
 
@@ -500,6 +500,70 @@ task test-integration
 - **Integration tests** (`integration_test.go`, `integration_evolution_test.go`): Test end-to-end flows with live API
 
 Integration tests are built with the `//go:build integration` tag, ensuring they only run when explicitly enabled.
+
+## CI/CD Limitations
+
+### Clash Royale API IP Restrictions
+
+The official Clash Royale API has significant limitations that affect CI/CD integration:
+
+**IP Whitelisting Requirements:**
+- **Maximum 5 IP addresses** per API key
+- **Static IPs only** - must be pre-allowlisted at [developer.clashroyale.com](https://developer.clashroyale.com/)
+- **No "allow all" option** - dynamic IPs cannot be used
+
+**Rate Limits (Undocumented):**
+- Exact limits are not publicly disclosed by Supercell
+- Community reports suggest **10-20 requests/second** may trigger blocking
+- Exceeding limits can result in **24-hour IP bans**
+
+**GitHub Actions Compatibility:**
+| Runner Type | Static IP | Viable for CR API |
+|-------------|-----------|-------------------|
+| Standard (`ubuntu-latest`) | ❌ Dynamic | No |
+| Standard (`windows-latest`) | ❌ Dynamic | No |
+| Standard (`macos-latest`) | ❌ Dynamic | No |
+| Larger Runners (Enterprise) | ✅ Configurable | Yes (requires Enterprise) |
+| Self-Hosted | ✅ Your IP | Yes |
+
+### Recommended Approaches
+
+**Option 1: Manual Integration Tests (Current Approach)** ✅
+```bash
+# Run locally before pushing changes
+task test-integration
+```
+- **Pros**: Simple, no additional infrastructure, free
+- **Cons**: Manual step, relies on developer diligence
+
+**Option 2: Self-Hosted GitHub Actions Runner** ⭐ Recommended for Teams
+```yaml
+# Deploy a self-hosted runner with a static IP
+# Allowlist the runner's IP at developer.clashroyale.com
+```
+- **Pros**: Automated integration tests, full control
+- **Cons**: Requires server maintenance ($5-20/month for VPS)
+
+**Option 3: GitHub Enterprise Larger Runners** 💰
+- **Pros**: Managed service, static IPs available
+- **Cons**: Requires GitHub Enterprise Cloud (~$21/user/month)
+
+**Option 4: Proxy Service** 🔀
+- Use services that provide static IP forwarding
+- **Cons**: Additional dependency, cost, potential latency
+
+### Current Strategy
+
+This project uses **Option 1** (manual testing) for public CI:
+- CI runs unit tests only (no API calls)
+- Integration tests run locally via `task test-integration`
+- This keeps the repository public and CI free without API costs
+
+**Sources:**
+- [About GitHub's IP addresses](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-githubs-ip-addresses)
+- [Larger runners reference](https://docs.github.com/en/actions/reference/runners/larger-runners)
+- [GitHub Actions IP discussion](https://github.com/orgs/community/discussions/26442)
+- [Clash Royale Developer Portal](https://developer.clashroyale.com/)
 
 ## Contributing
 
