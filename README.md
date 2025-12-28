@@ -405,6 +405,64 @@ Strategic Notes:
 • Evolution slots: Archers, Knight
 ```
 
+## Upgrade Projections and Wildcards
+
+**Important**: The Clash Royale API does not provide wildcard counts. You must manually enter your wildcard inventory for upgrade projections.
+
+### Wildcard Configuration
+
+Wildcards are special items that can substitute any card of a specific rarity. They are tracked separately from regular cards.
+
+To use upgrade projections with wildcards, create an `upgrade_plan.json` file:
+
+```json
+{
+  "wildcards": {
+    "Common": 1200,
+    "Rare": 400,
+    "Epic": 60,
+    "Legendary": 8,
+    "Champion": 3
+  },
+  "upgrades": [
+    {
+      "card": "Hog Rider",
+      "target_level": 11
+    },
+    {
+      "card": "Fireball",
+      "target_level": 10
+    }
+  ]
+}
+```
+
+**Rarity values** (case-insensitive): `Common`, `Rare`, `Epic`, `Legendary`, `Champion`
+
+### Running Upgrade Projections
+
+```bash
+# 1. Generate an analysis file
+./bin/cr-api analyze --tag PLAYER_TAG --save
+
+# 2. Apply upgrade plan with wildcards
+./scripts/project_deck_projection.py \
+  --analysis ./data/analysis/ANALYSIS_FILE.json \
+  --plan ./data/upgrade_plan.json \
+  --tag PLAYER_TAG
+
+# 3. Build deck from projected analysis
+./bin/deckbuilder --tag PLAYER_TAG --analysis-file PROJECTED_FILE.json
+```
+
+### Options
+
+- `--unbounded`: Skip wildcard affordability checks (allows any upgrades)
+- `--dry-run`: Show planned changes without writing output
+- `--output`: Specify output path for projected analysis
+
+**See** `data/upgrade_plan_example.json` for a complete template.
+
 ## Environment Variable Configuration
 
 The project uses a `.env` file in the project root for configuration. All CLI arguments can be configured via environment variables, allowing you to run tasks without repeatedly typing arguments.

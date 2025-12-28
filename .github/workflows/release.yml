@@ -22,11 +22,10 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.22'
-          cache-dependency-path: go/go.sum
+          cache-dependency-path: go.sum
 
       - name: Generate shell completions
         run: |
-          cd go
           mkdir -p dist/completion
           touch dist/completion/{cr-api,deckbuilder}.{bash,zsh,fish}
 

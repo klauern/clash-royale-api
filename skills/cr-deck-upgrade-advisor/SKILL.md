@@ -105,13 +105,39 @@ Use this when the user wants to know which upgrades unlock a new archetype or st
 ./bin/cr-api analyze --tag <TAG> --save --data-dir ./data
 ```
 2) Use the projection helper to apply a small upgrade plan and budget (wildcards by rarity).
+
+**Note**: The Clash Royale API does NOT provide wildcard counts. Ask the user to manually provide their wildcard inventory by rarity:
+
 ```bash
+# Create upgrade_plan.json with wildcards
+cat > data/upgrade_plan.json << 'EOF'
+{
+  "wildcards": {
+    "Common": 1200,
+    "Rare": 400,
+    "Epic": 60,
+    "Legendary": 8,
+    "Champion": 3
+  },
+  "upgrades": [
+    {"card": "Hog Rider", "target_level": 11},
+    {"card": "Fireball", "target_level": 10}
+  ]
+}
+EOF
+
+# Run projection
 ./scripts/project_deck_projection.py --analysis ./data/analysis/<analysis>.json --plan ./data/upgrade_plan.json --tag <TAG>
 ```
+
+**If wildcard counts are unknown**:
+- Ask: "How many wildcards do you have for each rarity? (Common, Rare, Epic, Legendary, Champion)"
+- Or skip affordability checks with `--unbounded` (labels projection as "unbounded")
+
 3) Build a deck from the projected analysis using `./bin/deckbuilder --analysis-file`.
 4) Compare current vs projected decks and call out the minimal upgrades that unlock the better option.
 
-If wildcard counts are unknown, ask for a rough budget by rarity or skip affordability checks and label the projection as \"unbounded\" (use `--unbounded`).
+**See**: `data/upgrade_plan_example.json` for a complete template.
 
 ## References
 
