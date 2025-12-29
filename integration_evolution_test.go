@@ -283,7 +283,7 @@ func TestEvolutionOmitempty(t *testing.T) {
 func containsField(jsonStr, fieldName string) bool {
 	return json.Valid([]byte(jsonStr)) &&
 		(len(jsonStr) > 0 && fieldName != "" &&
-		contains(jsonStr, fmt.Sprintf(`"%s":`, fieldName)))
+			contains(jsonStr, fmt.Sprintf(`"%s":`, fieldName)))
 }
 
 func contains(str, substr string) bool {

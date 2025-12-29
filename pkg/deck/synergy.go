@@ -9,13 +9,13 @@ import (
 type SynergyCategory string
 
 const (
-	SynergyTankSupport  SynergyCategory = "tank_support"   // Tank + Support troops
-	SynergyBait         SynergyCategory = "bait"           // Bait combos (log bait, zap bait)
-	SynergySpellCombo   SynergyCategory = "spell_combo"    // Spell combinations
-	SynergyWinCondition SynergyCategory = "win_condition"  // Win condition combos
-	SynergyDefensive    SynergyCategory = "defensive"      // Defensive combinations
-	SynergyCycle        SynergyCategory = "cycle"          // Cycle card combinations
-	SynergyBridgeSpam   SynergyCategory = "bridge_spam"    // Bridge spam combinations
+	SynergyTankSupport  SynergyCategory = "tank_support"  // Tank + Support troops
+	SynergyBait         SynergyCategory = "bait"          // Bait combos (log bait, zap bait)
+	SynergySpellCombo   SynergyCategory = "spell_combo"   // Spell combinations
+	SynergyWinCondition SynergyCategory = "win_condition" // Win condition combos
+	SynergyDefensive    SynergyCategory = "defensive"     // Defensive combinations
+	SynergyCycle        SynergyCategory = "cycle"         // Cycle card combinations
+	SynergyBridgeSpam   SynergyCategory = "bridge_spam"   // Bridge spam combinations
 )
 
 // SynergyPair represents synergy between two cards
@@ -23,23 +23,23 @@ type SynergyPair struct {
 	Card1       string          `json:"card1"`
 	Card2       string          `json:"card2"`
 	SynergyType SynergyCategory `json:"synergy_type"`
-	Score       float64         `json:"score"`        // 0.0 to 1.0
+	Score       float64         `json:"score"` // 0.0 to 1.0
 	Description string          `json:"description"`
 }
 
 // SynergyDatabase holds known card synergies
 type SynergyDatabase struct {
-	Pairs      []SynergyPair             `json:"pairs"`
+	Pairs      []SynergyPair                     `json:"pairs"`
 	Categories map[SynergyCategory][]SynergyPair `json:"categories"`
 }
 
 // DeckSynergyAnalysis represents the synergy analysis of a deck
 type DeckSynergyAnalysis struct {
-	TotalScore      float64                          `json:"total_score"`       // 0-100
-	AverageScore    float64                          `json:"average_score"`     // Average synergy per pair
-	TopSynergies    []SynergyPair                    `json:"top_synergies"`     // Best synergies in deck
-	MissingSynergies []string                        `json:"missing_synergies"` // Cards that don't synergize well
-	CategoryScores  map[SynergyCategory]int          `json:"category_scores"`   // Count by category
+	TotalScore       float64                 `json:"total_score"`       // 0-100
+	AverageScore     float64                 `json:"average_score"`     // Average synergy per pair
+	TopSynergies     []SynergyPair           `json:"top_synergies"`     // Best synergies in deck
+	MissingSynergies []string                `json:"missing_synergies"` // Cards that don't synergize well
+	CategoryScores   map[SynergyCategory]int `json:"category_scores"`   // Count by category
 }
 
 // SynergyRecommendation suggests a card to add based on synergies

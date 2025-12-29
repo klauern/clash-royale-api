@@ -22,23 +22,23 @@ func (m mapShardSource) GetShardCount(cardName string) int {
 
 // EvolutionRecommendation represents a recommended evolution with scoring.
 type EvolutionRecommendation struct {
-	CardName           string  `json:"card_name"`
-	CurrentShards      int     `json:"current_shards"`
-	ShardsNeeded       int     `json:"shards_needed"`
-	CompletionPercent  float64 `json:"completion_percent"`
-	CardLevel          int     `json:"card_level"`
-	MaxLevel           int     `json:"max_level"`
-	LevelRatio         float64 `json:"level_ratio"`
-	Role               string  `json:"role,omitempty"`
-	EvolutionMaxLevel  int     `json:"evolution_max_level"`
-	RecommendationScore float64 `json:"recommendation_score"`
-	Reasons            []string `json:"reasons"`
+	CardName            string   `json:"card_name"`
+	CurrentShards       int      `json:"current_shards"`
+	ShardsNeeded        int      `json:"shards_needed"`
+	CompletionPercent   float64  `json:"completion_percent"`
+	CardLevel           int      `json:"card_level"`
+	MaxLevel            int      `json:"max_level"`
+	LevelRatio          float64  `json:"level_ratio"`
+	Role                string   `json:"role,omitempty"`
+	EvolutionMaxLevel   int      `json:"evolution_max_level"`
+	RecommendationScore float64  `json:"recommendation_score"`
+	Reasons             []string `json:"reasons"`
 }
 
 // EvolutionRecommender recommends evolutions based on card levels, shard inventory,
 // and strategic impact.
 type EvolutionRecommender struct {
-	shardSource    EvolutionShardSource
+	shardSource        EvolutionShardSource
 	unlockedEvolutions map[string]bool
 	shardsPerEvolution int // Usually 10 for single evolution, may vary
 }
@@ -50,7 +50,7 @@ func NewEvolutionRecommender(shardSource map[string]int, unlockedEvolutions []st
 		unlocked[name] = true
 	}
 	return &EvolutionRecommender{
-		shardSource:       mapShardSource(shardSource),
+		shardSource:        mapShardSource(shardSource),
 		unlockedEvolutions: unlocked,
 		shardsPerEvolution: 10, // Standard: 10 shards per evolution level
 	}

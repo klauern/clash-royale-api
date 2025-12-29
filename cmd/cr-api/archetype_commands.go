@@ -270,43 +270,6 @@ func findSpells(cards []deck.CardDetail) string {
 	return strings.Join(allSpells, ", ")
 }
 
-// formatDeck formats deck cards into a readable list
-func formatDeck(deck []string) string {
-	if len(deck) == 0 {
-		return ""
-	}
-	return strings.Join(deck, ", ")
-}
-
-// formatDeckCompact formats deck cards in a compact, readable way
-func formatDeckCompact(deck []string) string {
-	if len(deck) == 0 {
-		return "No cards"
-	}
-
-	// Show all cards - Clash Royale decks have exactly 8 cards
-	return strings.Join(deck, " • ")
-}
-
-// formatDeckLines formats cards into multiple lines for better readability in verbose mode
-func formatDeckLines(deck []string) []string {
-	if len(deck) == 0 {
-		return []string{"No cards"}
-	}
-
-	var lines []string
-
-	// Split into 4 cards per line for better readability
-	if len(deck) <= 4 {
-		lines = append(lines, strings.Join(deck, " • "))
-	} else {
-		lines = append(lines, strings.Join(deck[:4], " • "))
-		lines = append(lines, strings.Join(deck[4:], " • "))
-	}
-
-	return lines
-}
-
 // formatNumber formats numbers with commas for readability
 func formatNumber(n int) string {
 	if n == 0 {

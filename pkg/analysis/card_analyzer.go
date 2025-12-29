@@ -70,10 +70,10 @@ func convertCardsToUpgradeInfos(cards []clashroyale.Card) []UpgradeInfo {
 		// e.g. Common 1 + 1 - 1 = 1
 		// e.g. Epic 1 + 6 - 1 = 6 (if API level 1 is start)
 		// Let's assume API returns relative level starting from 1 for the card's rarity
-		
+
 		rarity := NormalizeRarity(card.Rarity)
 		startingLevel := GetStartingLevel(rarity)
-		
+
 		// If API level is 0, it might mean level 1? Usually API uses 1-based levels matching the in-game display for that rarity relative to 1
 		// Actually for non-commons, if API says level 6 for Epic, and Epic starts at 6, is it Absolute 6?
 		// User observed: Witch (Epic) API Level 6 corresponds to a card that needs 50 to upgrade (Level 10->11) or 30/100 (Level 11->12)?
@@ -81,9 +81,9 @@ func convertCardsToUpgradeInfos(cards []clashroyale.Card) []UpgradeInfo {
 		// 10 - 5 = 5.
 		// Epic Starting Level is 6. So 6 - 1 = 5.
 		// Formula: AbsLevel = APILevel + StartingLevel - 1
-		
+
 		absLevel := card.Level + startingLevel - 1
-		
+
 		// Adjust max level similarly
 		// If MaxLevel is 11 (from API for Epic), AbsMax = 11 + 6 - 1 = 16
 		absMaxLevel := card.MaxLevel + startingLevel - 1

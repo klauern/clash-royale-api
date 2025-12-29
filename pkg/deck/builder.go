@@ -118,7 +118,7 @@ type CardLevelData struct {
 	MaxLevel          int     `json:"max_level"`
 	Rarity            string  `json:"rarity"`
 	Elixir            int     `json:"elixir,omitempty"`
-	EvolutionLevel    int     `json:"evolution_level,omitempty"`    // Current evolution level (0-3)
+	EvolutionLevel    int     `json:"evolution_level,omitempty"`     // Current evolution level (0-3)
 	MaxEvolutionLevel int     `json:"max_evolution_level,omitempty"` // Maximum possible evolution level
 	ScoreBoost        float64 `json:"score_boost,omitempty"`         // Boost for preferred cards (doesn't affect display level)
 }

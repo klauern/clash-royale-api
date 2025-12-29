@@ -59,9 +59,9 @@ func TestGetSynergyPair(t *testing.T) {
 	db := NewSynergyDatabase()
 
 	tests := []struct {
-		name      string
-		card1     string
-		card2     string
+		name       string
+		card1      string
+		card2      string
 		shouldFind bool
 	}{
 		{"Existing pair", "Giant", "Witch", true},
@@ -92,27 +92,27 @@ func TestAnalyzeDeckSynergy(t *testing.T) {
 		expectSynergy int // Minimum expected synergies
 	}{
 		{
-			name: "Log bait deck",
-			deck: []string{"Goblin Barrel", "Princess", "Goblin Gang", "Log", "Cannon", "Ice Spirit", "Knight", "Rocket"},
-			expectScore: true,
+			name:          "Log bait deck",
+			deck:          []string{"Goblin Barrel", "Princess", "Goblin Gang", "Log", "Cannon", "Ice Spirit", "Knight", "Rocket"},
+			expectScore:   true,
 			expectSynergy: 2, // At least Goblin Barrel + Princess, Goblin Barrel + Goblin Gang
 		},
 		{
-			name: "Giant beatdown",
-			deck: []string{"Giant", "Witch", "Musketeer", "Fireball", "Zap", "Cannon", "Ice Spirit", "Skeletons"},
-			expectScore: true,
+			name:          "Giant beatdown",
+			deck:          []string{"Giant", "Witch", "Musketeer", "Fireball", "Zap", "Cannon", "Ice Spirit", "Skeletons"},
+			expectScore:   true,
 			expectSynergy: 2, // Giant + Witch, Giant + Musketeer
 		},
 		{
-			name: "No synergies",
-			deck: []string{"Card1", "Card2", "Card3", "Card4", "Card5", "Card6", "Card7", "Card8"},
-			expectScore: false,
+			name:          "No synergies",
+			deck:          []string{"Card1", "Card2", "Card3", "Card4", "Card5", "Card6", "Card7", "Card8"},
+			expectScore:   false,
 			expectSynergy: 0,
 		},
 		{
-			name: "Empty deck",
-			deck: []string{},
-			expectScore: false,
+			name:          "Empty deck",
+			deck:          []string{},
+			expectScore:   false,
 			expectSynergy: 0,
 		},
 	}

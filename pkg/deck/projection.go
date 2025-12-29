@@ -48,12 +48,12 @@ type CardUpgrade struct {
 
 // ProjectionComparison compares two deck projections
 type ProjectionComparison struct {
-	DeckA            string  `json:"deck_a"`
-	DeckB            string  `json:"deck_b"`
-	ScoreDifference  float64 `json:"score_difference"`
-	CostDifference   int     `json:"cost_difference"`   // Gold cost difference
-	ValueRatio       float64 `json:"value_ratio"`       // Score improvement per 1000 gold
-	Recommendation   string  `json:"recommendation"`
+	DeckA           string  `json:"deck_a"`
+	DeckB           string  `json:"deck_b"`
+	ScoreDifference float64 `json:"score_difference"`
+	CostDifference  int     `json:"cost_difference"` // Gold cost difference
+	ValueRatio      float64 `json:"value_ratio"`     // Score improvement per 1000 gold
+	Recommendation  string  `json:"recommendation"`
 }
 
 // NewProjection creates a deck projection from card candidates

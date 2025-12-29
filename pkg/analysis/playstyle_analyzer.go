@@ -11,25 +11,25 @@ import (
 
 // PlaystyleAnalysis represents the analysis of a player's playstyle
 type PlaystyleAnalysis struct {
-	PlayerTag              string    `json:"player_tag"`
-	PlayerName             string    `json:"player_name"`
-	AnalysisTime           time.Time `json:"analysis_time"`
+	PlayerTag    string    `json:"player_tag"`
+	PlayerName   string    `json:"player_name"`
+	AnalysisTime time.Time `json:"analysis_time"`
 
 	// Battle Statistics
-	Wins                   int     `json:"wins"`
-	Losses                 int     `json:"losses"`
-	TotalBattles           int     `json:"total_battles"`
-	WinRate                float64 `json:"win_rate"`
-	ThreeCrownWins         int     `json:"three_crown_wins"`
-	ThreeCrownRate         float64 `json:"three_crown_rate"`
+	Wins           int     `json:"wins"`
+	Losses         int     `json:"losses"`
+	TotalBattles   int     `json:"total_battles"`
+	WinRate        float64 `json:"win_rate"`
+	ThreeCrownWins int     `json:"three_crown_wins"`
+	ThreeCrownRate float64 `json:"three_crown_rate"`
 
 	// Playstyle Characteristics
-	AggressionLevel        string   `json:"aggression_level"`
-	Consistency            string   `json:"consistency"`
-	CurrentDeckAvgElixir   float64  `json:"current_deck_avg_elixir"`
-	CurrentWinCondition    string   `json:"current_win_condition"`
-	DeckStyle              string   `json:"deck_style"`
-	PlaystyleTraits        []string `json:"playstyle_traits"`
+	AggressionLevel      string   `json:"aggression_level"`
+	Consistency          string   `json:"consistency"`
+	CurrentDeckAvgElixir float64  `json:"current_deck_avg_elixir"`
+	CurrentWinCondition  string   `json:"current_win_condition"`
+	DeckStyle            string   `json:"deck_style"`
+	PlaystyleTraits      []string `json:"playstyle_traits"`
 
 	// Current Deck Analysis
 	CurrentDeckCards       []string `json:"current_deck_cards"`
@@ -38,30 +38,30 @@ type PlaystyleAnalysis struct {
 
 // DeckRecommendation represents a deck recommendation with scoring
 type DeckRecommendation struct {
-	Deck            *DeckAnalysis `json:"deck"`
-	Score           int           `json:"score"`
-	Reasons         []string      `json:"reasons"`
-	Compatibility   string        `json:"compatibility"`
+	Deck          *DeckAnalysis `json:"deck"`
+	Score         int           `json:"score"`
+	Reasons       []string      `json:"reasons"`
+	Compatibility string        `json:"compatibility"`
 }
 
 // DeckAnalysis represents a deck with its analysis
 type DeckAnalysis struct {
-	DeckName        string                   `json:"deck_name"`
-	WinCondition    string                   `json:"win_condition"`
-	AverageElixir   float64                  `json:"average_elixir"`
-	Cards           []clashroyale.Card       `json:"cards"`
-	Strategy        string                   `json:"strategy"`
-	DeckDetail      []CardDeckDetail         `json:"deck_detail"`
+	DeckName      string             `json:"deck_name"`
+	WinCondition  string             `json:"win_condition"`
+	AverageElixir float64            `json:"average_elixir"`
+	Cards         []clashroyale.Card `json:"cards"`
+	Strategy      string             `json:"strategy"`
+	DeckDetail    []CardDeckDetail   `json:"deck_detail"`
 }
 
 // CardDeckDetail represents detailed card information in a deck
 type CardDeckDetail struct {
-	Name              string  `json:"name"`
-	Level             int     `json:"level"`
-	MaxLevel          int     `json:"max_level"`
-	Elixir            int     `json:"elixir"`
-	EvolutionLevel    int     `json:"evolution_level,omitempty"`
-	MaxEvolutionLevel int     `json:"max_evolution_level,omitempty"`
+	Name              string `json:"name"`
+	Level             int    `json:"level"`
+	MaxLevel          int    `json:"max_level"`
+	Elixir            int    `json:"elixir"`
+	EvolutionLevel    int    `json:"evolution_level,omitempty"`
+	MaxEvolutionLevel int    `json:"max_evolution_level,omitempty"`
 }
 
 // AnalyzePlaystyle performs comprehensive playstyle analysis
@@ -243,9 +243,9 @@ func analyzeElixirDistribution(deck []clashroyale.Card) string {
 		return "No cards"
 	}
 
-	lowElixir := 0   // 1-2 elixir
-	medElixir := 0   // 3-4 elixir
-	highElixir := 0  // 5+ elixir
+	lowElixir := 0  // 1-2 elixir
+	medElixir := 0  // 3-4 elixir
+	highElixir := 0 // 5+ elixir
 
 	for _, card := range deck {
 		switch {

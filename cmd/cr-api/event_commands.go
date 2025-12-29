@@ -572,34 +572,6 @@ func displayEventStats(collection *events.EventDeckCollection) {
 	}
 }
 
-func displayIndividualDeck(deck *events.EventDeck) {
-	fmt.Printf("\n%s (%s)\n", deck.EventName, deck.EventType)
-	fmt.Printf("Battles: %d | Wins: %d | Win Rate: %.1f%%\n",
-		deck.Performance.TotalBattles(),
-		deck.Performance.Wins,
-		deck.Performance.WinRate*100)
-
-	fmt.Printf("Deck: ")
-	for i, card := range deck.Deck.Cards {
-		if i > 0 {
-			fmt.Printf(", ")
-		}
-		fmt.Printf("%s", card.Name)
-	}
-	fmt.Printf("\n")
-}
-
-// Helper functions for saving/loading data
-func saveEventDeckCollection(dataDir string, collection *events.EventDeckCollection) error {
-	eventDir := filepath.Join(dataDir, "event_decks")
-	if err := os.MkdirAll(eventDir, 0755); err != nil {
-		return fmt.Errorf("failed to create event_decks directory: %w", err)
-	}
-
-	// In a real implementation, marshal collection to JSON
-	return nil
-}
-
 func loadEventDeckCollection(dataDir, playerTag string) (*events.EventDeckCollection, error) {
 	// In a real implementation, unmarshal from JSON from:
 	// filepath.Join(dataDir, "event_decks", fmt.Sprintf("%s.json", playerTag))

@@ -10,10 +10,10 @@ import (
 
 func TestGetPlayer_WithEvolutionData(t *testing.T) {
 	tests := []struct {
-		name          string
-		responseJSON  string
-		checkFunc     func(t *testing.T, player *Player)
-		wantErr       bool
+		name         string
+		responseJSON string
+		checkFunc    func(t *testing.T, player *Player)
+		wantErr      bool
 	}{
 		{
 			name: "player with no evolution cards",
@@ -441,10 +441,10 @@ func TestGetCards_WithEvolutionData(t *testing.T) {
 
 func TestEvolutionJSON_Unmarshaling(t *testing.T) {
 	tests := []struct {
-		name     string
-		jsonData string
+		name      string
+		jsonData  string
 		checkFunc func(t *testing.T, card Card)
-		wantErr  bool
+		wantErr   bool
 	}{
 		{
 			name: "all evolution fields present",

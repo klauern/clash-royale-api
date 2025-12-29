@@ -75,8 +75,8 @@ func GetArchetypeConstraints() map[mulligan.Archetype]ArchetypeConstraints {
 			MaxElixir: 4.0,
 			RequiredRoles: map[deck.CardRole]int{
 				deck.RoleWinCondition: 1, // Must have X-Bow or Mortar
-				deck.RoleBuilding:      1, // Additional defensive building
-				deck.RoleCycle:         2, // Cycle cards
+				deck.RoleBuilding:     1, // Additional defensive building
+				deck.RoleCycle:        2, // Cycle cards
 			},
 			PreferredCards: []string{
 				"X-Bow", "Mortar", "Tesla", "Cannon",
@@ -124,7 +124,7 @@ func GetArchetypeConstraints() map[mulligan.Archetype]ArchetypeConstraints {
 				"Fireball", "Zap", "Log", "Arrows",
 			},
 			ExcludedCards: []string{},
-			Description: "Balanced deck with flexible offense and defense options",
+			Description:   "Balanced deck with flexible offense and defense options",
 		},
 
 		mulligan.ArchetypeSpawndeck: {

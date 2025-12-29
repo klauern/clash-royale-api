@@ -89,12 +89,12 @@ func TestEvolutionRecommender_Recommend(t *testing.T) {
 			MaxEvolutionLevel: 3,
 		},
 		{
-			Name:    "Giant",
-			Level:   14,
+			Name:     "Giant",
+			Level:    14,
 			MaxLevel: 14,
-			Rarity:  "Rare",
-			Elixir:  5,
-			Role:    &winConRole,
+			Rarity:   "Rare",
+			Elixir:   5,
+			Role:     &winConRole,
 			// No evolution capability
 			EvolutionLevel:    0,
 			MaxEvolutionLevel: 0,

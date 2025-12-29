@@ -641,9 +641,9 @@ func TestClassifyCardWithEvolution(t *testing.T) {
 // TestClassifyCardCandidateWithEvolution tests classifying a CardCandidate with evolution
 func TestClassifyCardCandidateWithEvolution(t *testing.T) {
 	tests := []struct {
-		name           string
-		candidate      CardCandidate
-		expectedRole   CardRole
+		name         string
+		candidate    CardCandidate
+		expectedRole CardRole
 	}{
 		{
 			name: "Evolved Valkyrie candidate",

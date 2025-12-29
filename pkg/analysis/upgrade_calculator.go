@@ -136,19 +136,16 @@ var maxLevels = map[string]int{
 
 var startingLevels = map[string]int{
 
-	"Common":    1,
+	"Common": 1,
 
-	"Rare":      3,
+	"Rare": 3,
 
-	"Epic":      6,
+	"Epic": 6,
 
 	"Legendary": 9,
 
-	"Champion":  11,
-
+	"Champion": 11,
 }
-
-
 
 // totalCardsPerRarity stores the actual count of cards per rarity in the game
 
@@ -156,19 +153,16 @@ var startingLevels = map[string]int{
 
 var totalCardsPerRarity = map[string]int{
 
-	"Common":    19, // Actual count as of 2024
+	"Common": 19, // Actual count as of 2024
 
-	"Rare":      20,
+	"Rare": 20,
 
-	"Epic":      12,
+	"Epic": 12,
 
 	"Legendary": 10,
 
-	"Champion":  6,
-
+	"Champion": 6,
 }
-
-
 
 // UpdateCardCounts updates the totalCardsPerRarity map with actual card counts
 
@@ -184,8 +178,6 @@ func UpdateCardCounts(cards []CardInfo) {
 
 	}
 
-
-
 	// Count cards by rarity
 
 	for _, card := range cards {
@@ -200,22 +192,19 @@ func UpdateCardCounts(cards []CardInfo) {
 
 	}
 
-
-
 	// Fallback to defaults if no cards were counted
 
 	for rarity, defaultValue := range map[string]int{
 
-		"Common":    19,
+		"Common": 19,
 
-		"Rare":      20,
+		"Rare": 20,
 
-		"Epic":      12,
+		"Epic": 12,
 
 		"Legendary": 10,
 
-		"Champion":  6,
-
+		"Champion": 6,
 	} {
 
 		if totalCardsPerRarity[rarity] == 0 {
@@ -228,8 +217,6 @@ func UpdateCardCounts(cards []CardInfo) {
 
 }
 
-
-
 // NewCardAdapter creates a CardInfo from a rarity string
 
 // This can be used when converting from external card types
@@ -239,8 +226,6 @@ func NewCardAdapter(rarity string) CardInfo {
 	return cardAdapter{rarity: rarity}
 
 }
-
-
 
 // GetTotalCardsByRarity returns the total number of cards for a given rarity
 
@@ -257,8 +242,6 @@ func GetTotalCardsByRarity(rarity string) int {
 	return 0
 
 }
-
-
 
 // CalculateCardsNeeded returns how many cards are needed to upgrade from currentLevel
 
@@ -278,8 +261,6 @@ func CalculateCardsNeeded(currentLevel int, rarity string) int {
 
 	}
 
-
-
 	// Check if level is below starting level for this rarity
 
 	startingLevel := GetStartingLevel(rarity)
@@ -290,8 +271,6 @@ func CalculateCardsNeeded(currentLevel int, rarity string) int {
 
 	}
 
-
-
 	costs, exists := upgradeCosts[rarity]
 
 	if !exists {
@@ -299,8 +278,6 @@ func CalculateCardsNeeded(currentLevel int, rarity string) int {
 		return 0 // Invalid rarity
 
 	}
-
-
 
 	cardsNeeded, exists := costs[currentLevel]
 
@@ -318,13 +295,9 @@ func CalculateCardsNeeded(currentLevel int, rarity string) int {
 
 	}
 
-
-
 	return cardsNeeded
 
 }
-
-
 
 // GetMaxLevel returns the maximum level for a given rarity
 
@@ -342,8 +315,6 @@ func GetMaxLevel(rarity string) int {
 
 }
 
-
-
 // GetStartingLevel returns the initial level when a card is first unlocked
 
 func GetStartingLevel(rarity string) int {
@@ -360,8 +331,6 @@ func GetStartingLevel(rarity string) int {
 
 }
 
-
-
 // IsMaxLevel checks if a card is at maximum level for its rarity
 
 func IsMaxLevel(currentLevel int, rarity string) bool {
@@ -371,8 +340,6 @@ func IsMaxLevel(currentLevel int, rarity string) bool {
 	return currentLevel >= GetMaxLevel(rarity)
 
 }
-
-
 
 // CalculateTotalCardsToMax calculates total cards needed from current level to max
 
@@ -388,8 +355,6 @@ func CalculateTotalCardsToMax(currentLevel int, rarity string) int {
 
 	}
 
-
-
 	costs, exists := upgradeCosts[rarity]
 
 	if !exists {
@@ -397,8 +362,6 @@ func CalculateTotalCardsToMax(currentLevel int, rarity string) int {
 		return 0
 
 	}
-
-
 
 	total := 0
 
@@ -418,13 +381,9 @@ func CalculateTotalCardsToMax(currentLevel int, rarity string) int {
 
 	}
 
-
-
 	return total
 
 }
-
-
 
 // CalculateUpgradeProgress calculates upgrade progress as a percentage (0-100)
 
@@ -436,8 +395,6 @@ func CalculateUpgradeProgress(cardsOwned, cardsNeeded int) float64 {
 
 	}
 
-
-
 	progress := (float64(cardsOwned) / float64(cardsNeeded)) * 100.0
 
 	if progress > 100.0 {
@@ -446,181 +403,157 @@ func CalculateUpgradeProgress(cardsOwned, cardsNeeded int) float64 {
 
 	}
 
-
-
 	return progress
 
 }
 
-
-
 // UpgradeInfo contains complete upgrade information for a card
 
 type UpgradeInfo struct {
+	CardName string `json:"card_name"`
 
-	CardName          string  `json:"card_name"`
+	Rarity string `json:"rarity"`
 
-	Rarity            string  `json:"rarity"`
+	ElixirCost int `json:"elixir_cost,omitempty"`
 
-	ElixirCost        int     `json:"elixir_cost,omitempty"`
+	CurrentLevel int `json:"current_level"`
 
-	CurrentLevel      int     `json:"current_level"`
+	MaxLevel int `json:"max_level"`
 
-	MaxLevel          int     `json:"max_level"`
+	EvolutionLevel int `json:"evolution_level,omitempty"`
 
-	EvolutionLevel    int     `json:"evolution_level,omitempty"`
+	IsMaxLevel bool `json:"is_max_level"`
 
-		IsMaxLevel        bool    `json:"is_max_level"`
+	CardsOwned int `json:"cards_owned"`
 
-		CardsOwned        int     `json:"cards_owned"`
+	CardsToNextLevel int `json:"cards_to_next_level"`
 
-		CardsToNextLevel  int     `json:"cards_to_next_level"`
+	CardsRemaining int `json:"cards_remaining"`
 
-		CardsRemaining    int     `json:"cards_remaining"`
+	ProgressPercent float64 `json:"progress_percent"`
 
-		ProgressPercent   float64 `json:"progress_percent"`
+	CanUpgradeNow bool `json:"can_upgrade_now"`
 
-		CanUpgradeNow     bool    `json:"can_upgrade_now"`
+	TotalToMax int `json:"total_to_max"`
 
-		TotalToMax        int     `json:"total_to_max"`
+	LevelsToMax int `json:"levels_to_max"`
 
-		LevelsToMax       int     `json:"levels_to_max"`
+	MaxEvolutionLevel int `json:"max_evolution_level,omitempty"`
+}
 
-		MaxEvolutionLevel int     `json:"max_evolution_level,omitempty"`
+// CalculateUpgradeInfo creates a complete UpgradeInfo for a card
+
+func CalculateUpgradeInfo(cardName string, rarity string, elixirCost int, currentLevel int, cardsOwned int, evolutionLevel int, maxEvolutionLevel int, apiMaxLevel int) UpgradeInfo {
+
+	rarity = NormalizeRarity(rarity)
+
+	maxLevel := apiMaxLevel
+
+	if maxLevel == 0 {
+
+		maxLevel = GetMaxLevel(rarity)
 
 	}
 
-	
+	isMaxLevel := currentLevel >= maxLevel
 
-	// CalculateUpgradeInfo creates a complete UpgradeInfo for a card
+	var cardsNeeded int
 
-	func CalculateUpgradeInfo(cardName string, rarity string, elixirCost int, currentLevel int, cardsOwned int, evolutionLevel int, maxEvolutionLevel int, apiMaxLevel int) UpgradeInfo {
+	if isMaxLevel {
 
-		rarity = NormalizeRarity(rarity)
+		cardsNeeded = 0
 
-		maxLevel := apiMaxLevel
+	} else {
 
-		if maxLevel == 0 {
+		// Use a local copy of GetMaxLevel/CalculateCardsNeeded logic that respects our dynamic maxLevel
 
-			maxLevel = GetMaxLevel(rarity)
+		cardsNeeded = CalculateCardsNeeded(currentLevel, rarity)
 
-		}
-
-		isMaxLevel := currentLevel >= maxLevel
-
-	
-
-		var cardsNeeded int
-
-		if isMaxLevel {
-
-			cardsNeeded = 0
-
-		} else {
-
-			// Use a local copy of GetMaxLevel/CalculateCardsNeeded logic that respects our dynamic maxLevel
-
-			cardsNeeded = CalculateCardsNeeded(currentLevel, rarity)
-
-			// If CalculateCardsNeeded thinks it's not max but our dynamic maxLevel says it is, override
-
-			if currentLevel >= maxLevel {
-
-				cardsNeeded = 0
-
-			}
-
-		}
-
-	
-
-		totalToMax := CalculateTotalCardsToMax(currentLevel, rarity)
+		// If CalculateCardsNeeded thinks it's not max but our dynamic maxLevel says it is, override
 
 		if currentLevel >= maxLevel {
 
-			totalToMax = 0
-
-		}
-
-	
-
-		cardsRemaining := cardsNeeded - cardsOwned
-
-		if cardsRemaining < 0 {
-
-			cardsRemaining = 0
-
-		}
-
-	
-
-		progress := CalculateUpgradeProgress(cardsOwned, cardsNeeded)
-
-		canUpgrade := cardsNeeded > 0 && cardsOwned >= cardsNeeded && !isMaxLevel
-
-	
-
-		return UpgradeInfo{
-
-			CardName:          cardName,
-
-			Rarity:            rarity,
-
-			ElixirCost:        elixirCost,
-
-			CurrentLevel:      currentLevel,
-
-			MaxLevel:          maxLevel,
-
-			EvolutionLevel:    evolutionLevel,
-
-			IsMaxLevel:        isMaxLevel,
-
-			CardsOwned:        cardsOwned,
-
-			CardsToNextLevel:  cardsNeeded,
-
-			CardsRemaining:    cardsRemaining,
-
-			ProgressPercent:   progress,
-
-			CanUpgradeNow:     canUpgrade,
-
-			TotalToMax:        totalToMax,
-
-			LevelsToMax:       maxLevel - currentLevel,
-
-			MaxEvolutionLevel: maxEvolutionLevel,
+			cardsNeeded = 0
 
 		}
 
 	}
 
+	totalToMax := CalculateTotalCardsToMax(currentLevel, rarity)
 
+	if currentLevel >= maxLevel {
+
+		totalToMax = 0
+
+	}
+
+	cardsRemaining := cardsNeeded - cardsOwned
+
+	if cardsRemaining < 0 {
+
+		cardsRemaining = 0
+
+	}
+
+	progress := CalculateUpgradeProgress(cardsOwned, cardsNeeded)
+
+	canUpgrade := cardsNeeded > 0 && cardsOwned >= cardsNeeded && !isMaxLevel
+
+	return UpgradeInfo{
+
+		CardName: cardName,
+
+		Rarity: rarity,
+
+		ElixirCost: elixirCost,
+
+		CurrentLevel: currentLevel,
+
+		MaxLevel: maxLevel,
+
+		EvolutionLevel: evolutionLevel,
+
+		IsMaxLevel: isMaxLevel,
+
+		CardsOwned: cardsOwned,
+
+		CardsToNextLevel: cardsNeeded,
+
+		CardsRemaining: cardsRemaining,
+
+		ProgressPercent: progress,
+
+		CanUpgradeNow: canUpgrade,
+
+		TotalToMax: totalToMax,
+
+		LevelsToMax: maxLevel - currentLevel,
+
+		MaxEvolutionLevel: maxEvolutionLevel,
+	}
+
+}
 
 // RarityUpgradeStats contains aggregate statistics for a rarity
 
 type RarityUpgradeStats struct {
+	Rarity string `json:"rarity"`
 
-	Rarity             string  `json:"rarity"`
+	TotalCards int `json:"total_cards"`
 
-	TotalCards         int     `json:"total_cards"`
+	MaxLevelCards int `json:"max_level_cards"`
 
-	MaxLevelCards      int     `json:"max_level_cards"`
+	UpgradableCards int `json:"upgradable_cards"`
 
-	UpgradableCards    int     `json:"upgradable_cards"`
-
-	AvgLevel           float64 `json:"avg_level"`
+	AvgLevel float64 `json:"avg_level"`
 
 	AvgProgressPercent float64 `json:"avg_progress_percent"`
 
-	TotalCardsNeeded   int     `json:"total_cards_needed"` // Total cards needed for all upgrades
+	TotalCardsNeeded int `json:"total_cards_needed"` // Total cards needed for all upgrades
 
-	CompletionPercent  float64 `json:"completion_percent"` // % of cards at max level
+	CompletionPercent float64 `json:"completion_percent"` // % of cards at max level
 
 }
-
-
 
 // CalculateRarityStats computes aggregate statistics for cards of a specific rarity
 
@@ -640,15 +573,11 @@ func CalculateRarityStats(cards []UpgradeInfo, rarity string) RarityUpgradeStats
 
 	}
 
-
-
 	if len(filtered) == 0 {
 
 		return RarityUpgradeStats{Rarity: rarity}
 
 	}
-
-
 
 	totalLevel := 0
 
@@ -660,15 +589,11 @@ func CalculateRarityStats(cards []UpgradeInfo, rarity string) RarityUpgradeStats
 
 	totalNeeded := 0
 
-
-
 	for _, card := range filtered {
 
 		totalLevel += card.CurrentLevel
 
 		totalProgress += card.ProgressPercent
-
-
 
 		if card.IsMaxLevel {
 
@@ -676,47 +601,38 @@ func CalculateRarityStats(cards []UpgradeInfo, rarity string) RarityUpgradeStats
 
 		}
 
-
-
 		if card.CanUpgradeNow {
 
 			upgradableCount++
 
 		}
 
-
-
 		totalNeeded += card.TotalToMax
 
 	}
-
-
 
 	cardCount := len(filtered)
 
 	return RarityUpgradeStats{
 
-		Rarity:             rarity,
+		Rarity: rarity,
 
-		TotalCards:        cardCount,
+		TotalCards: cardCount,
 
-		MaxLevelCards:      maxLevelCount,
+		MaxLevelCards: maxLevelCount,
 
-		UpgradableCards:    upgradableCount,
+		UpgradableCards: upgradableCount,
 
-		AvgLevel:           float64(totalLevel) / float64(cardCount),
+		AvgLevel: float64(totalLevel) / float64(cardCount),
 
 		AvgProgressPercent: totalProgress / float64(cardCount),
 
-		TotalCardsNeeded:   totalNeeded,
+		TotalCardsNeeded: totalNeeded,
 
-		CompletionPercent:  (float64(maxLevelCount) / float64(cardCount)) * 100.0,
-
+		CompletionPercent: (float64(maxLevelCount) / float64(cardCount)) * 100.0,
 	}
 
 }
-
-
 
 // CalculatePriorityScore computes an upgrade priority score (0-100)
 
@@ -742,13 +658,9 @@ func CalculatePriorityScore(info UpgradeInfo) float64 {
 
 	}
 
-
-
 	// Proximity to next level (0-100, higher if closer to upgrade)
 
 	proximityScore := info.ProgressPercent
-
-
 
 	// Level ratio (cards at higher levels are better to upgrade)
 
@@ -756,25 +668,20 @@ func CalculatePriorityScore(info UpgradeInfo) float64 {
 
 	levelScore := levelRatio * 100.0
 
-
-
 	// Rarity boost (prioritize harder-to-get cards)
 
 	rarityScores := map[string]float64{
 
-		"Common":    0.0,
+		"Common": 0.0,
 
-		"Rare":      20.0,
+		"Rare": 20.0,
 
-		"Epic":      40.0,
+		"Epic": 40.0,
 
 		"Legendary": 60.0,
 
-		"Champion":  80.0,
-
+		"Champion": 80.0,
 	}
-
-
 
 	rarityScore, exists := rarityScores[NormalizeRarity(info.Rarity)]
 
@@ -783,8 +690,6 @@ func CalculatePriorityScore(info UpgradeInfo) float64 {
 		rarityScore = 0.0
 
 	}
-
-
 
 	// Weighted combination (base score without evolution)
 	priorityScore := (proximityScore * 0.5) + (levelScore * 0.3) + (rarityScore * 0.2)

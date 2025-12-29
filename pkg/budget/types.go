@@ -162,15 +162,15 @@ type BudgetFinderResult struct {
 
 // BudgetSummary contains aggregate statistics for the analysis
 type BudgetSummary struct {
-	TotalDecksAnalyzed  int     `json:"total_decks_analyzed"`
-	ReadyDeckCount      int     `json:"ready_deck_count"`
-	QuickWinCount       int     `json:"quick_win_count"`
-	AverageCardsNeeded  int     `json:"average_cards_needed"`
-	AverageGoldNeeded   int     `json:"average_gold_needed"`
-	BestROI             float64 `json:"best_roi"`
-	BestCostEfficiency  float64 `json:"best_cost_efficiency"`
-	LowestCardsNeeded   int     `json:"lowest_cards_needed"`
-	PlayerAverageLevel  float64 `json:"player_average_level"`
+	TotalDecksAnalyzed int     `json:"total_decks_analyzed"`
+	ReadyDeckCount     int     `json:"ready_deck_count"`
+	QuickWinCount      int     `json:"quick_win_count"`
+	AverageCardsNeeded int     `json:"average_cards_needed"`
+	AverageGoldNeeded  int     `json:"average_gold_needed"`
+	BestROI            float64 `json:"best_roi"`
+	BestCostEfficiency float64 `json:"best_cost_efficiency"`
+	LowestCardsNeeded  int     `json:"lowest_cards_needed"`
+	PlayerAverageLevel float64 `json:"player_average_level"`
 }
 
 // DefaultOptions returns default options for budget finder

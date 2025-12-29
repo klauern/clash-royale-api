@@ -81,7 +81,7 @@ func TestAnalysisToDeckBuilderIntegration(t *testing.T) {
 
 	// Create card analysis in the format expected by deck builder
 	analysisData := deck.CardAnalysis{
-		CardLevels:  cardLevels,
+		CardLevels:   cardLevels,
 		AnalysisTime: time.Now().Format("2006-01-02T15:04:05Z"),
 	}
 

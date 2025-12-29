@@ -11,33 +11,33 @@ func createTestCardAnalysis() deck.CardAnalysis {
 	return deck.CardAnalysis{
 		CardLevels: map[string]deck.CardLevelData{
 			// Win conditions
-			"Hog Rider":    {Level: 13, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
-			"Royal Giant":  {Level: 11, MaxLevel: 14, Rarity: "Common", Elixir: 6},
-			"Giant":        {Level: 12, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Hog Rider":     {Level: 13, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Royal Giant":   {Level: 11, MaxLevel: 14, Rarity: "Common", Elixir: 6},
+			"Giant":         {Level: 12, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
 			"Goblin Barrel": {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 3},
 
 			// Buildings
-			"Cannon":       {Level: 13, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Cannon":        {Level: 13, MaxLevel: 14, Rarity: "Common", Elixir: 3},
 			"Inferno Tower": {Level: 11, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
-			"Bomb Tower":   {Level: 12, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Bomb Tower":    {Level: 12, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
 
 			// Spells
-			"Fireball":     {Level: 13, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
-			"Zap":          {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
-			"Arrows":       {Level: 13, MaxLevel: 14, Rarity: "Common", Elixir: 3},
-			"Log":          {Level: 12, MaxLevel: 14, Rarity: "Legendary", Elixir: 2},
+			"Fireball": {Level: 13, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Zap":      {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Arrows":   {Level: 13, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Log":      {Level: 12, MaxLevel: 14, Rarity: "Legendary", Elixir: 2},
 
 			// Support
-			"Musketeer":    {Level: 13, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
-			"Wizard":       {Level: 11, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
-			"Valkyrie":     {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
-			"Baby Dragon":  {Level: 12, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
+			"Musketeer":   {Level: 13, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Wizard":      {Level: 11, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Valkyrie":    {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Baby Dragon": {Level: 12, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
 
 			// Cycle
-			"Knight":       {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
-			"Ice Spirit":   {Level: 13, MaxLevel: 14, Rarity: "Common", Elixir: 1},
-			"Skeletons":    {Level: 12, MaxLevel: 14, Rarity: "Common", Elixir: 1},
-			"Bats":         {Level: 11, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Knight":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Ice Spirit": {Level: 13, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Skeletons":  {Level: 12, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Bats":       {Level: 11, MaxLevel: 14, Rarity: "Common", Elixir: 2},
 		},
 		AnalysisTime: "2024-01-01T12:00:00Z",
 	}

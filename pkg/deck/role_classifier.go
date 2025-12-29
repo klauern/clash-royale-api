@@ -141,12 +141,12 @@ var cycleTroops = map[string]bool{
 // Format: card name -> evolved role (nil means no special override)
 var evolutionRoleOverrides = map[string]CardRole{
 	// Cards that gain significant behavior changes when evolved
-	"Valkyrie":     RoleSupport, // Evolved: whirlwind pull makes it a control support card
-	"Knight":       RoleSupport, // Evolved: clone on death increases defensive value
-	"Royal Giant":  RoleWinCondition, // Evolved: anti-pushback improves win condition reliability
-	"Barbarian":    RoleSupport, // Evolved: 3 spawned barbarians act as support swarm
-	"Witch":        RoleSupport, // Evolved: faster skeleton spawn enhances support
-	"Golem":        RoleWinCondition, // Evolved: golemites spawn on death strengthens win condition
+	"Valkyrie":    RoleSupport,      // Evolved: whirlwind pull makes it a control support card
+	"Knight":      RoleSupport,      // Evolved: clone on death increases defensive value
+	"Royal Giant": RoleWinCondition, // Evolved: anti-pushback improves win condition reliability
+	"Barbarian":   RoleSupport,      // Evolved: 3 spawned barbarians act as support swarm
+	"Witch":       RoleSupport,      // Evolved: faster skeleton spawn enhances support
+	"Golem":       RoleWinCondition, // Evolved: golemites spawn on death strengthens win condition
 }
 
 // hasEvolutionOverride checks if a card has a special role when evolved

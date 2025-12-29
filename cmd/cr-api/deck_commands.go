@@ -685,17 +685,6 @@ func mustParseFloat(s string) float64 {
 	return 0
 }
 
-// Helper functions for deck operations
-func saveDeck(dataDir, playerTag string, options map[string]interface{}) error {
-	decksDir := filepath.Join(dataDir, "decks")
-	if err := os.MkdirAll(decksDir, 0755); err != nil {
-		return fmt.Errorf("failed to create decks directory: %w", err)
-	}
-
-	// In a real implementation, you'd marshal options to JSON
-	return nil
-}
-
 func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	maxCards := cmd.Int("max-cards")

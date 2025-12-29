@@ -4,7 +4,6 @@
 package analysis
 
 import (
-	"math"
 	"sort"
 	"time"
 )
@@ -15,31 +14,31 @@ type UpgradeImpactAnalysis struct {
 	PlayerName   string                `json:"player_name"`
 	AnalysisTime time.Time             `json:"analysis_time"`
 	CardImpacts  []CardUpgradeImpact   `json:"card_impacts"`
-	KeyCards     []KeyCardInfo         `json:"key_cards"`      // Cards that unlock multiple archetypes
-	UnlockTree   []ArchetypeUnlockInfo `json:"unlock_tree"`    // How upgrades open new deck options
-	TopImpacts   []CardUpgradeImpact   `json:"top_impacts"`    // Most impactful upgrades (top N)
+	KeyCards     []KeyCardInfo         `json:"key_cards"`   // Cards that unlock multiple archetypes
+	UnlockTree   []ArchetypeUnlockInfo `json:"unlock_tree"` // How upgrades open new deck options
+	TopImpacts   []CardUpgradeImpact   `json:"top_impacts"` // Most impactful upgrades (top N)
 	Summary      ImpactSummary         `json:"summary"`
 }
 
 // CardUpgradeImpact represents the impact analysis for upgrading a single card
 type CardUpgradeImpact struct {
-	CardName           string                `json:"card_name"`
-	Rarity             string                `json:"rarity"`
-	CurrentLevel       int                   `json:"current_level"`
-	MaxLevel           int                   `json:"max_level"`
-	UpgradedLevel      int                   `json:"upgraded_level"` // Level after +1 upgrade
-	Elixir             int                   `json:"elixir"`
-	Role               string                `json:"role,omitempty"`
-	ViableDecksCount   int                   `json:"viable_decks_count"`    // Number of viable decks containing this card
-	AvgScoreImprovement float64              `json:"avg_score_improvement"` // Average deck score improvement if upgraded
-	MaxScoreImprovement float64              `json:"max_score_improvement"` // Max improvement in any deck
-	UnlockPotential    int                   `json:"unlock_potential"`      // Decks that become viable with this upgrade
-	ImpactScore        float64               `json:"impact_score"`          // Overall impact ranking score
-	AffectedDecks      []DeckImpactSummary   `json:"affected_decks,omitempty"` // Decks affected by this upgrade
-	GoldCost           int                   `json:"gold_cost"`             // Gold needed for +1 upgrade
-	ValuePerGold       float64               `json:"value_per_gold"`        // Impact score per gold spent
-	IsKeyCard          bool                  `json:"is_key_card"`           // Unlocks multiple archetypes
-	UnlocksArchetypes  []string              `json:"unlocks_archetypes,omitempty"` // Which archetypes this upgrade helps
+	CardName            string              `json:"card_name"`
+	Rarity              string              `json:"rarity"`
+	CurrentLevel        int                 `json:"current_level"`
+	MaxLevel            int                 `json:"max_level"`
+	UpgradedLevel       int                 `json:"upgraded_level"` // Level after +1 upgrade
+	Elixir              int                 `json:"elixir"`
+	Role                string              `json:"role,omitempty"`
+	ViableDecksCount    int                 `json:"viable_decks_count"`           // Number of viable decks containing this card
+	AvgScoreImprovement float64             `json:"avg_score_improvement"`        // Average deck score improvement if upgraded
+	MaxScoreImprovement float64             `json:"max_score_improvement"`        // Max improvement in any deck
+	UnlockPotential     int                 `json:"unlock_potential"`             // Decks that become viable with this upgrade
+	ImpactScore         float64             `json:"impact_score"`                 // Overall impact ranking score
+	AffectedDecks       []DeckImpactSummary `json:"affected_decks,omitempty"`     // Decks affected by this upgrade
+	GoldCost            int                 `json:"gold_cost"`                    // Gold needed for +1 upgrade
+	ValuePerGold        float64             `json:"value_per_gold"`               // Impact score per gold spent
+	IsKeyCard           bool                `json:"is_key_card"`                  // Unlocks multiple archetypes
+	UnlocksArchetypes   []string            `json:"unlocks_archetypes,omitempty"` // Which archetypes this upgrade helps
 }
 
 // DeckImpactSummary represents how a card upgrade affects a specific deck
@@ -55,31 +54,31 @@ type DeckImpactSummary struct {
 
 // KeyCardInfo represents a card that is key to unlocking multiple deck archetypes
 type KeyCardInfo struct {
-	CardName          string   `json:"card_name"`
-	Rarity            string   `json:"rarity"`
-	CurrentLevel      int      `json:"current_level"`
+	CardName           string   `json:"card_name"`
+	Rarity             string   `json:"rarity"`
+	CurrentLevel       int      `json:"current_level"`
 	UnlockedArchetypes []string `json:"unlocked_archetypes"` // Archetypes enabled by this card
-	DeckUnlockCount   int      `json:"deck_unlock_count"`   // Number of decks this card unlocks
-	ImpactScore       float64  `json:"impact_score"`
+	DeckUnlockCount    int      `json:"deck_unlock_count"`   // Number of decks this card unlocks
+	ImpactScore        float64  `json:"impact_score"`
 }
 
 // ArchetypeUnlockInfo shows how upgrades open new deck archetypes
 type ArchetypeUnlockInfo struct {
-	Archetype       string   `json:"archetype"`
-	CurrentViability string  `json:"current_viability"` // "viable", "marginal", "blocked"
-	UpgradesNeeded  []string `json:"upgrades_needed"`   // Cards that need upgrading to unlock
-	PriorityUpgrade string   `json:"priority_upgrade"`  // Most impactful single upgrade
-	EstimatedGold   int      `json:"estimated_gold"`    // Gold to unlock this archetype
+	Archetype        string   `json:"archetype"`
+	CurrentViability string   `json:"current_viability"` // "viable", "marginal", "blocked"
+	UpgradesNeeded   []string `json:"upgrades_needed"`   // Cards that need upgrading to unlock
+	PriorityUpgrade  string   `json:"priority_upgrade"`  // Most impactful single upgrade
+	EstimatedGold    int      `json:"estimated_gold"`    // Gold to unlock this archetype
 }
 
 // ImpactSummary provides high-level overview of upgrade impact analysis
 type ImpactSummary struct {
-	TotalCardsAnalyzed  int     `json:"total_cards_analyzed"`
-	KeyCardsIdentified  int     `json:"key_cards_identified"`
-	AvgImpactScore      float64 `json:"avg_impact_score"`
-	MaxImpactScore      float64 `json:"max_impact_score"`
-	TotalViableDecks    int     `json:"total_viable_decks"`
-	PotentialUnlocks    int     `json:"potential_unlocks"` // Decks that could become viable
+	TotalCardsAnalyzed int     `json:"total_cards_analyzed"`
+	KeyCardsIdentified int     `json:"key_cards_identified"`
+	AvgImpactScore     float64 `json:"avg_impact_score"`
+	MaxImpactScore     float64 `json:"max_impact_score"`
+	TotalViableDecks   int     `json:"total_viable_decks"`
+	PotentialUnlocks   int     `json:"potential_unlocks"` // Decks that could become viable
 }
 
 // UpgradeImpactOptions configures the upgrade impact analysis
@@ -104,19 +103,19 @@ func DefaultUpgradeImpactOptions() UpgradeImpactOptions {
 
 // UpgradeImpactAnalyzer performs upgrade impact analysis
 type UpgradeImpactAnalyzer struct {
-	archetypes  []DeckArchetypeTemplate
-	options     UpgradeImpactOptions
-	dataDir     string
+	archetypes []DeckArchetypeTemplate
+	options    UpgradeImpactOptions
+	dataDir    string
 }
 
 // DeckArchetypeTemplate represents a deck archetype for analysis
 type DeckArchetypeTemplate struct {
-	Name         string   `json:"name"`
-	WinCondition string   `json:"win_condition"`
+	Name          string   `json:"name"`
+	WinCondition  string   `json:"win_condition"`
 	RequiredCards []string `json:"required_cards,omitempty"`
-	SupportCards []string `json:"support_cards,omitempty"`
-	MinElixir    float64  `json:"min_elixir"`
-	MaxElixir    float64  `json:"max_elixir"`
+	SupportCards  []string `json:"support_cards,omitempty"`
+	MinElixir     float64  `json:"min_elixir"`
+	MaxElixir     float64  `json:"max_elixir"`
 }
 
 // NewUpgradeImpactAnalyzer creates a new upgrade impact analyzer
@@ -327,23 +326,23 @@ func (a *UpgradeImpactAnalyzer) calculateCardImpact(
 	isKeyCard := len(unlocksArchetypes) >= 2
 
 	return CardUpgradeImpact{
-		CardName:           cardName,
-		Rarity:             cardInfo.Rarity,
-		CurrentLevel:       cardInfo.Level,
-		MaxLevel:           cardInfo.MaxLevel,
-		UpgradedLevel:      upgradedLevel,
-		Elixir:             cardInfo.Elixir,
-		Role:               role,
-		ViableDecksCount:   viableDeckCount,
+		CardName:            cardName,
+		Rarity:              cardInfo.Rarity,
+		CurrentLevel:        cardInfo.Level,
+		MaxLevel:            cardInfo.MaxLevel,
+		UpgradedLevel:       upgradedLevel,
+		Elixir:              cardInfo.Elixir,
+		Role:                role,
+		ViableDecksCount:    viableDeckCount,
 		AvgScoreImprovement: avgImprovement,
 		MaxScoreImprovement: maxImprovement,
-		UnlockPotential:    unlockPotential,
-		ImpactScore:        impactScore,
-		AffectedDecks:      affectedDecks,
-		GoldCost:           goldCost,
-		ValuePerGold:       valuePerGold,
-		IsKeyCard:          isKeyCard,
-		UnlocksArchetypes:  unlocksArchetypes,
+		UnlockPotential:     unlockPotential,
+		ImpactScore:         impactScore,
+		AffectedDecks:       affectedDecks,
+		GoldCost:            goldCost,
+		ValuePerGold:        valuePerGold,
+		IsKeyCard:           isKeyCard,
+		UnlocksArchetypes:   unlocksArchetypes,
 	}
 }
 
@@ -542,12 +541,12 @@ func (a *UpgradeImpactAnalyzer) identifyKeyCards(impacts []CardUpgradeImpact) []
 	for _, impact := range impacts {
 		if impact.IsKeyCard || len(impact.UnlocksArchetypes) >= 2 {
 			keyCards = append(keyCards, KeyCardInfo{
-				CardName:          impact.CardName,
-				Rarity:            impact.Rarity,
-				CurrentLevel:      impact.CurrentLevel,
+				CardName:           impact.CardName,
+				Rarity:             impact.Rarity,
+				CurrentLevel:       impact.CurrentLevel,
 				UnlockedArchetypes: impact.UnlocksArchetypes,
-				DeckUnlockCount:   impact.UnlockPotential,
-				ImpactScore:       impact.ImpactScore,
+				DeckUnlockCount:    impact.UnlockPotential,
+				ImpactScore:        impact.ImpactScore,
 			})
 		}
 	}
@@ -573,11 +572,11 @@ func (a *UpgradeImpactAnalyzer) buildUnlockTree(
 		cardInfo, exists := cardAnalysis.CardLevels[archetype.WinCondition]
 		if !exists {
 			unlockTree = append(unlockTree, ArchetypeUnlockInfo{
-				Archetype:       archetype.Name,
+				Archetype:        archetype.Name,
 				CurrentViability: "blocked",
-				UpgradesNeeded:  []string{archetype.WinCondition + " (not owned)"},
-				PriorityUpgrade: archetype.WinCondition,
-				EstimatedGold:   0,
+				UpgradesNeeded:   []string{archetype.WinCondition + " (not owned)"},
+				PriorityUpgrade:  archetype.WinCondition,
+				EstimatedGold:    0,
 			})
 			continue
 		}
@@ -633,11 +632,11 @@ func (a *UpgradeImpactAnalyzer) buildUnlockTree(
 		}
 
 		unlockTree = append(unlockTree, ArchetypeUnlockInfo{
-			Archetype:       archetype.Name,
+			Archetype:        archetype.Name,
 			CurrentViability: viability,
-			UpgradesNeeded:  upgradesNeeded,
-			PriorityUpgrade: priorityUpgrade,
-			EstimatedGold:   totalGold,
+			UpgradesNeeded:   upgradesNeeded,
+			PriorityUpgrade:  priorityUpgrade,
+			EstimatedGold:    totalGold,
 		})
 	}
 
@@ -780,20 +779,4 @@ func (a *UpgradeImpactAnalyzer) getGoldForSingleUpgrade(currentLevel int, rarity
 	}
 
 	return goldNeeded
-}
-
-// min returns the smaller of two integers
-func minInt(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// maxInt returns the larger of two integers - using max builtin in Go 1.21+
-// func maxInt(a, b int) int { ... } - not needed with Go 1.21+
-
-// roundToTwo rounds a float64 to two decimal places
-func roundImpactToTwo(value float64) float64 {
-	return math.Round(value*100) / 100
 }

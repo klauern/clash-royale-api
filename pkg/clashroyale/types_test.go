@@ -170,9 +170,9 @@ func TestCard_Validate_BoundaryConditions(t *testing.T) {
 
 func TestCard_Validate_StarLevel(t *testing.T) {
 	tests := []struct {
-		name     string
+		name      string
 		starLevel int
-		wantErr  bool
+		wantErr   bool
 	}{
 		{"star level 0", 0, false},
 		{"star level 1", 1, false},
@@ -335,4 +335,3 @@ func TestCard_Validate_NegativeValues(t *testing.T) {
 		})
 	}
 }
-

@@ -29,9 +29,9 @@ type CardUpgrade struct {
 	CurrentLevel int    `json:"current_level"`
 	TargetLevel  int    `json:"target_level"`
 	Rarity       string `json:"rarity"`
-	CardsNeeded  int    `json:"cards_needed"`  // Cards needed for upgrades
-	GoldNeeded   int    `json:"gold_needed"`   // Gold needed for upgrades
-	LevelGap     int    `json:"level_gap"`     // targetLevel - currentLevel
+	CardsNeeded  int    `json:"cards_needed"` // Cards needed for upgrades
+	GoldNeeded   int    `json:"gold_needed"`  // Gold needed for upgrades
+	LevelGap     int    `json:"level_gap"`    // targetLevel - currentLevel
 }
 
 // ArchetypeDeck represents a generated deck for a specific archetype

@@ -363,104 +363,104 @@ func TestBuilder_InferRole(t *testing.T) {
 
 func TestBuilder_CalculateEvolutionBonus(t *testing.T) {
 	tests := []struct {
-		name         string
-		cardName     string
-		level        int
-		maxLevel     int
-		maxEvoLevel  int
-		unlocked     map[string]bool
-		expectedMin  float64
-		expectedMax  float64
+		name        string
+		cardName    string
+		level       int
+		maxLevel    int
+		maxEvoLevel int
+		unlocked    map[string]bool
+		expectedMin float64
+		expectedMax float64
 	}{
 		{
-			name:         "evolution not unlocked",
-			cardName:     "Knight",
-			level:        14,
-			maxLevel:     14,
-			maxEvoLevel:  3,
-			unlocked:     map[string]bool{},
-			expectedMin:  0.0,
-			expectedMax:  0.0,
+			name:        "evolution not unlocked",
+			cardName:    "Knight",
+			level:       14,
+			maxLevel:    14,
+			maxEvoLevel: 3,
+			unlocked:    map[string]bool{},
+			expectedMin: 0.0,
+			expectedMax: 0.0,
 		},
 		{
-			name:         "no evolution support",
-			cardName:     "P.E.K.K.A",
-			level:        12,
-			maxLevel:     14,
-			maxEvoLevel:  0,
-			unlocked:     map[string]bool{"P.E.K.K.A": true},
-			expectedMin:  0.0,
-			expectedMax:  0.0,
+			name:        "no evolution support",
+			cardName:    "P.E.K.K.A",
+			level:       12,
+			maxLevel:    14,
+			maxEvoLevel: 0,
+			unlocked:    map[string]bool{"P.E.K.K.A": true},
+			expectedMin: 0.0,
+			expectedMax: 0.0,
 		},
 		{
-			name:         "single evolution at max level",
-			cardName:     "Archers",
-			level:        14,
-			maxLevel:     14,
-			maxEvoLevel:  1,
-			unlocked:     map[string]bool{"Archers": true},
-			expectedMin:  0.24,
-			expectedMax:  0.26,
+			name:        "single evolution at max level",
+			cardName:    "Archers",
+			level:       14,
+			maxLevel:    14,
+			maxEvoLevel: 1,
+			unlocked:    map[string]bool{"Archers": true},
+			expectedMin: 0.24,
+			expectedMax: 0.26,
 		},
 		{
-			name:         "single evolution at mid level",
-			cardName:     "Bomber",
-			level:        11,
-			maxLevel:     14,
-			maxEvoLevel:  1,
-			unlocked:     map[string]bool{"Bomber": true},
-			expectedMin:  0.17,
-			expectedMax:  0.18,
+			name:        "single evolution at mid level",
+			cardName:    "Bomber",
+			level:       11,
+			maxLevel:    14,
+			maxEvoLevel: 1,
+			unlocked:    map[string]bool{"Bomber": true},
+			expectedMin: 0.17,
+			expectedMax: 0.18,
 		},
 		{
-			name:         "multi-evolution (3 levels) at max level",
-			cardName:     "Knight",
-			level:        14,
-			maxLevel:     14,
-			maxEvoLevel:  3,
-			unlocked:     map[string]bool{"Knight": true},
-			expectedMin:  0.37, // Updated for 10% role override bonus: 0.35 * 1.1 = 0.385
-			expectedMax:  0.39,
+			name:        "multi-evolution (3 levels) at max level",
+			cardName:    "Knight",
+			level:       14,
+			maxLevel:    14,
+			maxEvoLevel: 3,
+			unlocked:    map[string]bool{"Knight": true},
+			expectedMin: 0.37, // Updated for 10% role override bonus: 0.35 * 1.1 = 0.385
+			expectedMax: 0.39,
 		},
 		{
-			name:         "multi-evolution (3 levels) at level 10",
-			cardName:     "Musketeer",
-			level:        10,
-			maxLevel:     14,
-			maxEvoLevel:  3,
-			unlocked:     map[string]bool{"Musketeer": true},
-			expectedMin:  0.21,
-			expectedMax:  0.22,
+			name:        "multi-evolution (3 levels) at level 10",
+			cardName:    "Musketeer",
+			level:       10,
+			maxLevel:    14,
+			maxEvoLevel: 3,
+			unlocked:    map[string]bool{"Musketeer": true},
+			expectedMin: 0.21,
+			expectedMax: 0.22,
 		},
 		{
-			name:         "multi-evolution (2 levels) at max level",
-			cardName:     "Giant",
-			level:        14,
-			maxLevel:     14,
-			maxEvoLevel:  2,
-			unlocked:     map[string]bool{"Giant": true},
-			expectedMin:  0.29,
-			expectedMax:  0.31,
+			name:        "multi-evolution (2 levels) at max level",
+			cardName:    "Giant",
+			level:       14,
+			maxLevel:    14,
+			maxEvoLevel: 2,
+			unlocked:    map[string]bool{"Giant": true},
+			expectedMin: 0.29,
+			expectedMax: 0.31,
 		},
 		{
-			name:         "evolution at very low level",
-			cardName:     "Knight",
-			level:        1,
-			maxLevel:     14,
-			maxEvoLevel:  3,
-			unlocked:     map[string]bool{"Knight": true},
-			expectedMin:  0.00,
-			expectedMax:  0.02,
+			name:        "evolution at very low level",
+			cardName:    "Knight",
+			level:       1,
+			maxLevel:    14,
+			maxEvoLevel: 3,
+			unlocked:    map[string]bool{"Knight": true},
+			expectedMin: 0.00,
+			expectedMax: 0.02,
 		},
 		{
-			name:         "evolution at level 0",
-			cardName:     "Test",
-			level:        0,
-			maxLevel:     14,
-			maxEvoLevel:  1,
-			unlocked:     map[string]bool{"Test": true},
-			expectedMin:  0.0,
-			expectedMax:  0.0,
+			name:        "evolution at level 0",
+			cardName:    "Test",
+			level:       0,
+			maxLevel:    14,
+			maxEvoLevel: 1,
+			unlocked:    map[string]bool{"Test": true},
+			expectedMin: 0.0,
+			expectedMax: 0.0,
 		},
 	}
 
@@ -654,7 +654,7 @@ func TestCardCandidate_LevelRatio(t *testing.T) {
 			maxLevel:          14,
 			evolutionLevel:    2,
 			maxEvolutionLevel: 3,
-			expected:          (1.0 * 0.7) + (2.0/3.0 * 0.3), // ~0.90
+			expected:          (1.0 * 0.7) + (2.0 / 3.0 * 0.3), // ~0.90
 			tolerance:         0.01,
 		},
 		{
@@ -672,7 +672,7 @@ func TestCardCandidate_LevelRatio(t *testing.T) {
 			maxLevel:          14,
 			evolutionLevel:    1,
 			maxEvolutionLevel: 3,
-			expected:          (10.0/14.0 * 0.7) + (1.0/3.0 * 0.3), // ~0.60
+			expected:          (10.0 / 14.0 * 0.7) + (1.0 / 3.0 * 0.3), // ~0.60
 			tolerance:         0.01,
 		},
 		{
@@ -681,7 +681,7 @@ func TestCardCandidate_LevelRatio(t *testing.T) {
 			maxLevel:          14,
 			evolutionLevel:    2,
 			maxEvolutionLevel: 2,
-			expected:          (5.0/14.0 * 0.7) + (1.0 * 0.3), // ~0.55
+			expected:          (5.0 / 14.0 * 0.7) + (1.0 * 0.3), // ~0.55
 			tolerance:         0.01,
 		},
 		{
@@ -1037,11 +1037,11 @@ func TestBuilder_EvolutionMultiSlot(t *testing.T) {
 			"Knight":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 3},
 			"Archers":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 1},
 			"Valkyrie":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4, MaxEvolutionLevel: 3},
-			"Hog Rider":   {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 4},
-			"Musketeer":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
-			"Log":         {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
-			"Ice Spirit":  {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
-			"Cannon":      {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Hog Rider":  {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 4},
+			"Musketeer":  {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Log":        {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
+			"Ice Spirit": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Cannon":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
 		},
 		AnalysisTime: "2024-01-15T10:30:00Z",
 	}
@@ -1070,12 +1070,12 @@ func TestBuilder_EvolutionNoUnlocked(t *testing.T) {
 		CardLevels: map[string]CardLevelData{
 			"Knight":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 3},
 			"Archers":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 1},
-			"Hog Rider":   {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 4},
-			"Musketeer":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
-			"Log":         {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
-			"Ice Spirit":  {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
-			"Cannon":      {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
-			"Zap":         {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Hog Rider":  {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 4},
+			"Musketeer":  {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Log":        {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
+			"Ice Spirit": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Cannon":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Zap":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
 		},
 		AnalysisTime: "2024-01-15T10:30:00Z",
 	}

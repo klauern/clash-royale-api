@@ -51,7 +51,7 @@ func TestCalculateCardsNeeded(t *testing.T) {
 		{"Legendary below starting level 1", 1, "Legendary", 0},
 		{"Legendary below starting level 8", 8, "Legendary", 0},
 		{"Champion below starting level 1", 1, "Champion", 0},
-		{"Champion below starting level 10", 10, "Champion", 0}, 
+		{"Champion below starting level 10", 10, "Champion", 0},
 
 		// All rarities at max level (16)
 		{"Common at max level 16", 16, "Common", 0},
@@ -487,11 +487,11 @@ func BenchmarkCalculatePriorityScore(b *testing.B) {
 // TestCalculatePriorityScore_EvolutionBonus tests evolution-specific priority bonuses
 func TestCalculatePriorityScore_EvolutionBonus(t *testing.T) {
 	tests := []struct {
-		name              string
-		info              UpgradeInfo
-		wantMinScore      float64
-		wantMaxScore      float64
-		exceedsNonEvoBy   float64 // How much more than non-evo equivalent
+		name            string
+		info            UpgradeInfo
+		wantMinScore    float64
+		wantMaxScore    float64
+		exceedsNonEvoBy float64 // How much more than non-evo equivalent
 	}{
 		{
 			name: "Evolution-capable card at low level gets base bonus",
@@ -555,7 +555,7 @@ func TestCalculatePriorityScore_EvolutionBonus(t *testing.T) {
 			},
 			wantMinScore:    80.0, // Base score only: 50*0.5 + 71.4*0.3 = 71.4 * 1.2 = ~85.7
 			wantMaxScore:    100.0,
-			exceedsNonEvoBy: 0.0,  // No bonus expected
+			exceedsNonEvoBy: 0.0, // No bonus expected
 		},
 		{
 			name: "Max level card with partial evolution",
