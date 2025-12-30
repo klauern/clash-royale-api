@@ -24,6 +24,8 @@ type Builder struct {
 	fallbackElixir     map[string]int
 	rarityWeights      map[string]float64
 	statsRegistry      *clashroyale.CardStatsRegistry
+	strategy           Strategy
+	strategyConfig     StrategyConfig
 }
 
 // NewBuilder creates a new deck builder instance
@@ -103,6 +105,10 @@ func NewBuilder(dataDir string) *Builder {
 		// fmt.Fprintf(os.Stderr, "Warning: Failed to load card stats from %s: %v\n", statsPath, err)
 	}
 
+	// Initialize with balanced strategy by default
+	builder.strategy = StrategyBalanced
+	builder.strategyConfig = GetStrategyConfig(StrategyBalanced)
+
 	return builder
 }
 
@@ -136,38 +142,74 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	used := make(map[string]bool)
 	notes := make([]string, 0)
 
+	// Apply composition overrides if present (e.g., spell strategy)
+	override := b.strategyConfig.CompositionOverrides
+
 	// Core roles: win condition, building, two spells
-	if winCondition := b.pickBest(RoleWinCondition, candidates, used); winCondition != nil {
-		deck = append(deck, winCondition)
-		used[winCondition.Name] = true
-	} else {
-		notes = append(notes, "No win condition found; selected highest power cards instead.")
+	// Use override counts if specified, otherwise use defaults
+	winConditionCount := 1
+	if override != nil && override.WinConditions != nil {
+		winConditionCount = *override.WinConditions
+	}
+	for i := 0; i < winConditionCount; i++ {
+		if winCondition := b.pickBest(RoleWinCondition, candidates, used); winCondition != nil {
+			deck = append(deck, winCondition)
+			used[winCondition.Name] = true
+		} else if i == 0 {
+			notes = append(notes, "No win condition found; selected highest power cards instead.")
+		}
 	}
 
-	if building := b.pickBest(RoleBuilding, candidates, used); building != nil {
-		deck = append(deck, building)
-		used[building.Name] = true
+	buildingCount := 1
+	if override != nil && override.Buildings != nil {
+		buildingCount = *override.Buildings
+	}
+	for i := 0; i < buildingCount; i++ {
+		if building := b.pickBest(RoleBuilding, candidates, used); building != nil {
+			deck = append(deck, building)
+			used[building.Name] = true
+		}
 	}
 
-	if bigSpell := b.pickBest(RoleSpellBig, candidates, used); bigSpell != nil {
-		deck = append(deck, bigSpell)
-		used[bigSpell.Name] = true
+	bigSpellCount := 1
+	if override != nil && override.BigSpells != nil {
+		bigSpellCount = *override.BigSpells
+	}
+	for i := 0; i < bigSpellCount; i++ {
+		if bigSpell := b.pickBest(RoleSpellBig, candidates, used); bigSpell != nil {
+			deck = append(deck, bigSpell)
+			used[bigSpell.Name] = true
+		}
 	}
 
-	if smallSpell := b.pickBest(RoleSpellSmall, candidates, used); smallSpell != nil {
-		deck = append(deck, smallSpell)
-		used[smallSpell.Name] = true
+	smallSpellCount := 1
+	if override != nil && override.SmallSpells != nil {
+		smallSpellCount = *override.SmallSpells
+	}
+	for i := 0; i < smallSpellCount; i++ {
+		if smallSpell := b.pickBest(RoleSpellSmall, candidates, used); smallSpell != nil {
+			deck = append(deck, smallSpell)
+			used[smallSpell.Name] = true
+		}
 	}
 
-	// Support backbone (2 cards)
-	supportCards := b.pickMany(RoleSupport, candidates, used, 2)
+	// Support backbone (2 cards, or override count if specified)
+	supportCount := 2
+	if override != nil && override.Support != nil {
+		supportCount = *override.Support
+	}
+	supportCards := b.pickMany(RoleSupport, candidates, used, supportCount)
 	deck = append(deck, supportCards...)
 	for _, card := range supportCards {
 		used[card.Name] = true
 	}
 
-	// Cheap cycle fillers (2 cards)
-	cycleCards := b.pickMany(RoleCycle, candidates, used, 2)
+	// Cheap cycle fillers (2 cards, or override count if specified)
+	cycleCount := 2
+	if override != nil && override.Cycle != nil {
+		cycleCount = *override.Cycle
+	}
+	cycleCards := b.pickMany(RoleCycle, candidates, used, cycleCount)
 	deck = append(deck, cycleCards...)
 	for _, card := range cycleCards {
 		used[card.Name] = true
@@ -667,4 +709,15 @@ func (b *Builder) SetEvolutionSlotLimit(limit int) {
 	if limit > 0 {
 		b.evolutionSlotLimit = limit
 	}
+}
+
+// SetStrategy updates the builder's strategy and loads the corresponding configuration
+func (b *Builder) SetStrategy(strategy Strategy) error {
+	if err := strategy.Validate(); err != nil {
+		return err
+	}
+
+	b.strategy = strategy
+	b.strategyConfig = GetStrategyConfig(strategy)
+	return nil
 }

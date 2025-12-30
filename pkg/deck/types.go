@@ -4,6 +4,7 @@ package deck
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
@@ -34,6 +35,72 @@ const (
 // String returns the string representation of the card role
 func (cr CardRole) String() string {
 	return string(cr)
+}
+
+// Strategy represents a deck building strategy that influences card selection
+type Strategy string
+
+const (
+	// StrategyBalanced is the default strategy with neutral preferences
+	StrategyBalanced Strategy = "balanced"
+
+	// StrategyAggro focuses on high-damage win conditions and offensive play
+	StrategyAggro Strategy = "aggro"
+
+	// StrategyControl emphasizes defensive structures and big spells
+	StrategyControl Strategy = "control"
+
+	// StrategyCycle builds fast-cycling decks with low elixir costs
+	StrategyCycle Strategy = "cycle"
+
+	// StrategySplash focuses on area-of-effect damage cards
+	StrategySplash Strategy = "splash"
+
+	// StrategySpell builds spell-heavy decks with multiple big spells
+	StrategySpell Strategy = "spell"
+)
+
+// ParseStrategy converts a string to a Strategy type with case-insensitive parsing
+func ParseStrategy(s string) (Strategy, error) {
+	normalized := strings.ToLower(strings.TrimSpace(s))
+
+	switch normalized {
+	case "balanced":
+		return StrategyBalanced, nil
+	case "aggro":
+		return StrategyAggro, nil
+	case "control":
+		return StrategyControl, nil
+	case "cycle":
+		return StrategyCycle, nil
+	case "splash":
+		return StrategySplash, nil
+	case "spell":
+		return StrategySpell, nil
+	default:
+		return "", &DeckError{
+			Code:    "INVALID_STRATEGY",
+			Message: fmt.Sprintf("invalid strategy '%s': must be one of [balanced, aggro, control, cycle, splash, spell]", s),
+		}
+	}
+}
+
+// Validate checks if the strategy is one of the valid predefined strategies
+func (s Strategy) Validate() error {
+	switch s {
+	case StrategyBalanced, StrategyAggro, StrategyControl, StrategyCycle, StrategySplash, StrategySpell:
+		return nil
+	default:
+		return &DeckError{
+			Code:    "INVALID_STRATEGY",
+			Message: fmt.Sprintf("invalid strategy '%s': must be one of [balanced, aggro, control, cycle, splash, spell]", s),
+		}
+	}
+}
+
+// String returns the string representation of the strategy
+func (s Strategy) String() string {
+	return string(s)
 }
 
 // CardCandidate represents a card being considered for deck building
