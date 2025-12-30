@@ -384,6 +384,20 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		builder.SetEvolutionSlotLimit(slots)
 	}
 
+	// Parse and set strategy if provided
+	if strategy != "" {
+		parsedStrategy, err := deck.ParseStrategy(strategy)
+		if err != nil {
+			return fmt.Errorf("invalid strategy: %w", err)
+		}
+		if err := builder.SetStrategy(parsedStrategy); err != nil {
+			return fmt.Errorf("failed to set strategy: %w", err)
+		}
+		if verbose {
+			fmt.Printf("Using deck building strategy: %s\n", parsedStrategy)
+		}
+	}
+
 	var deckCardAnalysis deck.CardAnalysis
 	var playerName, playerTag string
 
@@ -433,7 +447,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		client := clashroyale.NewClient(apiToken)
 
 		if verbose {
-			fmt.Printf("Building deck for player %s with strategy: %s\n", tag, strategy)
+			fmt.Printf("Building deck for player %s\n", tag)
 		}
 
 		// Get player information
