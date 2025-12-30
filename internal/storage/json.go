@@ -60,7 +60,7 @@ func FileExists(filePath string) bool {
 // DirectoryExists checks if a directory exists at the given path
 func DirectoryExists(dirPath string) bool {
 	info, err := os.Stat(dirPath)
-	if os.IsNotExist(err) {
+	if err != nil {
 		return false
 	}
 	return info.IsDir()
