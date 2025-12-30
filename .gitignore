@@ -133,10 +133,11 @@ dmypy.json
 .ruff_cache/
 .uv-cache/
 
-# Data directories (but track example config)
+# Data directories (but track example config and static data)
 data/*
 !data/upgrade_plan_example.json
 !data/evolution_shards.example.json
+!data/static/cards_stats.json
 
 # IDEs
 .vscode/
