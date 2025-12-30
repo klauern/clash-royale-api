@@ -62,10 +62,10 @@ func TestLoadRealStatsFile(t *testing.T) {
 	// This assumes the test is run from the project root or the package directory
 	// We'll try a few common paths
 	paths := []string{
-		"../../data/static/cards_stats.json",  // From package dir (go pkg structure)
-		"data/static/cards_stats.json",        // From project root
-		"../../../data/cards_stats.json",       // Legacy path
-		"data/cards_stats.json",                // Legacy path
+		"../../data/static/cards_stats.json", // From package dir (go pkg structure)
+		"data/static/cards_stats.json",       // From project root
+		"../../../data/cards_stats.json",     // Legacy path
+		"data/cards_stats.json",              // Legacy path
 	}
 
 	var foundPath string

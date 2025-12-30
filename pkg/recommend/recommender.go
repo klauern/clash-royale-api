@@ -11,19 +11,19 @@ import (
 
 // Recommender generates deck recommendations combining archetype matches with custom variations
 type Recommender struct {
-	archetypeAnalyzer *archetypes.Analyzer
-	scorer            *Scorer
+	archetypeAnalyzer  *archetypes.Analyzer
+	scorer             *Scorer
 	variationGenerator *VariationGenerator
-	options           RecommenderOptions
+	options            RecommenderOptions
 }
 
 // NewRecommender creates a new deck recommender
 func NewRecommender(dataDir string, options RecommenderOptions) *Recommender {
 	return &Recommender{
-		archetypeAnalyzer: archetypes.NewAnalyzer(dataDir),
-		scorer:            NewScorer(),
+		archetypeAnalyzer:  archetypes.NewAnalyzer(dataDir),
+		scorer:             NewScorer(),
 		variationGenerator: NewVariationGenerator(),
-		options:           options,
+		options:            options,
 	}
 }
 

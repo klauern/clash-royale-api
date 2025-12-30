@@ -23,10 +23,10 @@ func NewVariationGenerator() *VariationGenerator {
 
 // WeakCard identifies a card that could be replaced
 type WeakCard struct {
-	Name         string
-	LevelRatio   float64
-	Role         string
-	CardIndex    int // Index in deck
+	Name       string
+	LevelRatio float64
+	Role       string
+	CardIndex  int // Index in deck
 }
 
 // GenerateVariations creates custom deck variations by swapping weak cards

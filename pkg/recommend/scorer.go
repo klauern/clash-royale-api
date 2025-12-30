@@ -24,7 +24,7 @@ const (
 // Rarity weights for compatibility scoring
 // Common cards are easier to max than rarer cards
 var rarityWeights = map[string]float64{
-	"Common":    1.0,  // Easiest to max, full weight
+	"Common":    1.0, // Easiest to max, full weight
 	"Rare":      1.0,
 	"Epic":      0.95,
 	"Legendary": 0.90,
