@@ -16,6 +16,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
+	"github.com/klauer/clash-royale-api/go/pkg/recommend"
 	"github.com/urfave/cli/v3"
 )
 
@@ -221,6 +222,19 @@ func addDeckCommands() *cli.Command {
 					&cli.BoolFlag{
 						Name:  "export-csv",
 						Usage: "Export recommendations to CSV",
+					},
+					&cli.BoolFlag{
+						Name:    "from-analysis",
+						Aliases: []string{"a"},
+						Usage:   "Enable offline mode: load analysis from JSON file instead of fetching from API",
+					},
+					&cli.StringFlag{
+						Name:  "analysis-dir",
+						Usage: "Directory containing analysis JSON files (default: data/analysis)",
+					},
+					&cli.StringFlag{
+						Name:  "analysis-file",
+						Usage: "Specific analysis file path (overrides --analysis-dir lookup)",
 					},
 				},
 				Action: deckRecommendCommand,
@@ -546,17 +560,266 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	limit := cmd.Int("limit")
+	arena := cmd.String("arena")
+	league := cmd.String("league")
+	exportCSV := cmd.Bool("export-csv")
 	apiToken := cmd.String("api-token")
+	dataDir := cmd.String("data-dir")
+	verbose := cmd.Bool("verbose")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required")
+	// Offline mode flags
+	fromAnalysis := cmd.Bool("from-analysis")
+	analysisDir := cmd.String("analysis-dir")
+	analysisFile := cmd.String("analysis-file")
+
+	var deckCardAnalysis deck.CardAnalysis
+	var playerName, playerTag string
+
+	if fromAnalysis {
+		// OFFLINE MODE: Load from existing analysis JSON
+		if verbose {
+			fmt.Printf("Generating recommendations from offline analysis for player %s\n", tag)
+		}
+
+		// Default analysis dir to data/analysis if not specified
+		if analysisDir == "" {
+			analysisDir = filepath.Join(dataDir, "analysis")
+		}
+
+		builder := deck.NewBuilder(dataDir)
+		var loadedAnalysis *deck.CardAnalysis
+		var err error
+
+		if analysisFile != "" {
+			// Load from explicit file path
+			loadedAnalysis, err = builder.LoadAnalysis(analysisFile)
+			if err != nil {
+				return fmt.Errorf("failed to load analysis file %s: %w", analysisFile, err)
+			}
+			if verbose {
+				fmt.Printf("Loaded analysis from: %s\n", analysisFile)
+			}
+		} else {
+			// Load latest analysis for player tag
+			loadedAnalysis, err = builder.LoadLatestAnalysis(tag, analysisDir)
+			if err != nil {
+				return fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+			}
+			if verbose {
+				fmt.Printf("Loaded latest analysis from: %s\n", analysisDir)
+			}
+		}
+
+		deckCardAnalysis = *loadedAnalysis
+		playerTag = tag
+		playerName = tag // Use tag as name in offline mode
+	} else {
+		// ONLINE MODE: Fetch from API
+		if apiToken == "" {
+			return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
+		}
+
+		client := clashroyale.NewClient(apiToken)
+
+		if verbose {
+			fmt.Printf("Generating recommendations for player %s\n", tag)
+		}
+
+		// Get player information
+		player, err := client.GetPlayer(tag)
+		if err != nil {
+			return fmt.Errorf("failed to get player: %w", err)
+		}
+
+		playerName = player.Name
+		playerTag = player.Tag
+
+		if verbose {
+			fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+			fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+		}
+
+		// Perform card collection analysis
+		analysisOptions := analysis.DefaultAnalysisOptions()
+		cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
+		if err != nil {
+			return fmt.Errorf("failed to analyze card collection: %w", err)
+		}
+
+		// Convert analysis.CardAnalysis to deck.CardAnalysis
+		deckCardAnalysis = deck.CardAnalysis{
+			CardLevels:   make(map[string]deck.CardLevelData),
+			AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+		}
+
+		for cardName, cardInfo := range cardAnalysis.CardLevels {
+			deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
+				Level:             cardInfo.Level,
+				MaxLevel:          cardInfo.MaxLevel,
+				Rarity:            cardInfo.Rarity,
+				Elixir:            cardInfo.Elixir,
+				EvolutionLevel:    cardInfo.EvolutionLevel,
+				MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
+			}
+		}
 	}
 
-	fmt.Printf("Getting deck recommendations for player %s\n", tag)
-	fmt.Printf("Limit: %d recommendations\n", limit)
-	fmt.Println("Note: Deck recommendations not yet implemented")
+	// Create recommender with options
+	options := recommend.DefaultOptions()
+	options.Limit = limit
+	options.Arena = arena
+	options.League = league
+
+	recommender := recommend.NewRecommender(dataDir, options)
+
+	// Generate recommendations
+	result, err := recommender.GenerateRecommendations(playerTag, playerName, deckCardAnalysis)
+	if err != nil {
+		return fmt.Errorf("failed to generate recommendations: %w", err)
+	}
+
+	// Display results
+	displayRecommendations(result, verbose)
+
+	// Export to CSV if requested
+	if exportCSV {
+		if err := exportRecommendationsToCSV(dataDir, result); err != nil {
+			return fmt.Errorf("failed to export CSV: %w", err)
+		}
+		fmt.Printf("\nExported to CSV: %s\n", getRecommendationsCSVPath(dataDir, playerTag))
+	}
 
 	return nil
+}
+
+// displayRecommendations displays deck recommendations in a formatted table
+func displayRecommendations(result *recommend.RecommendationResult, verbose bool) {
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║              DECK RECOMMENDATIONS                                  ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	fmt.Printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
+	if result.TopArchetype != "" {
+		fmt.Printf("Top Archetype Match: %s\n", result.TopArchetype)
+	}
+	fmt.Printf("Generated: %s\n", result.GeneratedAt)
+	fmt.Printf("\n")
+
+	if len(result.Recommendations) == 0 {
+		fmt.Println("No recommendations found. Your card collection may be too limited.")
+		return
+	}
+
+	for i, rec := range result.Recommendations {
+		displaySingleRecommendation(i+1, rec, verbose)
+		fmt.Println()
+	}
+}
+
+// displaySingleRecommendation displays a single deck recommendation
+func displaySingleRecommendation(rank int, rec *recommend.DeckRecommendation, verbose bool) {
+	typeLabel := "Meta"
+	if rec.Type == recommend.TypeCustomVariation {
+		typeLabel = "Custom"
+	}
+
+	fmt.Printf("Deck #%d [%s - %s]\n", rank, rec.ArchetypeName, typeLabel)
+	fmt.Printf("─────────────────────────────────────────────────────\n")
+	fmt.Printf("Compatibility: %.1f%% | Synergy: %.1f%% | Overall: %.1f%%\n",
+		rec.CompatibilityScore, rec.SynergyScore, rec.OverallScore)
+	fmt.Printf("Avg Elixir: %.2f\n", rec.Deck.AvgElixir)
+
+	// Display cards in table format
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "Card\t\tLevel\tElixir\n")
+	for _, card := range rec.Deck.DeckDetail {
+		fmt.Fprintf(w, "%s\t\t%d\t%d\n", card.Name, card.Level, card.Elixir)
+	}
+	w.Flush()
+
+	// Display evolution slots if any
+	if len(rec.Deck.EvolutionSlots) > 0 {
+		fmt.Printf("Evolution Slots: %s\n", strings.Join(rec.Deck.EvolutionSlots, ", "))
+	}
+
+	// Display reasons
+	if len(rec.Reasons) > 0 {
+		fmt.Printf("\nWhy Recommended:\n")
+		for _, reason := range rec.Reasons {
+			fmt.Printf("  • %s\n", reason)
+		}
+	}
+
+	if verbose {
+		// Display upgrade cost if available
+		if rec.UpgradeCost.CardsNeeded > 0 {
+			fmt.Printf("\nUpgrade to level %d: %d cards, %d gold\n",
+				rec.UpgradeCost.CardsNeeded, rec.UpgradeCost.GoldNeeded)
+		}
+
+		// Display notes
+		if len(rec.Deck.Notes) > 0 {
+			fmt.Printf("\nNotes:\n")
+			for _, note := range rec.Deck.Notes {
+				fmt.Printf("  • %s\n", note)
+			}
+		}
+	}
+}
+
+// exportRecommendationsToCSV exports recommendations to CSV file
+func exportRecommendationsToCSV(dataDir string, result *recommend.RecommendationResult) error {
+	csvDir := filepath.Join(dataDir, "csv")
+	if err := os.MkdirAll(csvDir, 0755); err != nil {
+		return fmt.Errorf("failed to create CSV directory: %w", err)
+	}
+
+	csvPath := getRecommendationsCSVPath(dataDir, result.PlayerTag)
+
+	file, err := os.Create(csvPath)
+	if err != nil {
+		return fmt.Errorf("failed to create CSV file: %w", err)
+	}
+	defer file.Close()
+
+	// Write header
+	header := []string{
+		"Rank", "Archetype", "Type", "Compatibility", "Synergy", "Overall",
+		"AvgElixir", "Cards", "EvolutionSlots", "Reasons",
+	}
+	if _, err := file.WriteString(strings.Join(header, ",") + "\n"); err != nil {
+		return fmt.Errorf("failed to write header: %w", err)
+	}
+
+	// Write rows
+	for i, rec := range result.Recommendations {
+		cardsStr := strings.Join(rec.Deck.Deck, ";")
+		evoSlotsStr := strings.Join(rec.Deck.EvolutionSlots, ";")
+		reasonsStr := strings.Join(rec.Reasons, "; ")
+
+		row := []string{
+			strconv.Itoa(i + 1),
+			rec.ArchetypeName,
+			string(rec.Type),
+			fmt.Sprintf("%.1f", rec.CompatibilityScore),
+			fmt.Sprintf("%.1f", rec.SynergyScore),
+			fmt.Sprintf("%.1f", rec.OverallScore),
+			fmt.Sprintf("%.2f", rec.Deck.AvgElixir),
+			cardsStr,
+			evoSlotsStr,
+			reasonsStr,
+		}
+		if _, err := file.WriteString(strings.Join(row, ",") + "\n"); err != nil {
+			return fmt.Errorf("failed to write row: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// getRecommendationsCSVPath returns the CSV file path for recommendations
+func getRecommendationsCSVPath(dataDir, playerTag string) string {
+	return filepath.Join(dataDir, "csv", fmt.Sprintf("recommendations_%s.csv", playerTag))
 }
 
 func deckMulliganCommand(ctx context.Context, cmd *cli.Command) error {
