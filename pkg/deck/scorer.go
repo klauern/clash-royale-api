@@ -68,11 +68,9 @@ func ScoreCard(level, maxLevel int, rarity string, elixir int, role *CardRole) f
 //
 // Score range: typically 0.0 to ~1.65, higher is better
 func ScoreCardWithEvolution(level, maxLevel int, rarity string, elixir int, role *CardRole, evolutionLevel, maxEvolutionLevel int) float64 {
-	// Calculate level ratio (0.0 to 1.0)
-	levelRatio := 0.0
-	if maxLevel > 0 {
-		levelRatio = float64(level) / float64(maxLevel)
-	}
+	// Calculate level ratio using legacy linear calculation for backward compatibility
+	// In Phase 2, this will be replaced with curve-based calculation
+	levelRatio := calculateLevelRatio(level, maxLevel)
 
 	// Get rarity boost multiplier
 	rarityBoost, exists := rarityWeights[rarity]
@@ -101,6 +99,17 @@ func ScoreCardWithEvolution(level, maxLevel int, rarity string, elixir int, role
 		evolutionBonus
 
 	return score
+}
+
+// calculateLevelRatio calculates the level ratio for a card
+// Uses legacy linear calculation for backward compatibility
+// TODO(clash-royale-api-gv5): Replace with curve-based calculation in Phase 2
+func calculateLevelRatio(level, maxLevel int) float64 {
+	levelRatio := 0.0
+	if maxLevel > 0 {
+		levelRatio = float64(level) / float64(maxLevel)
+	}
+	return levelRatio
 }
 
 // calculateEvolutionLevelBonus calculates the evolution level bonus for a card.
