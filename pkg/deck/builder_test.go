@@ -1090,3 +1090,226 @@ func TestBuilder_EvolutionNoUnlocked(t *testing.T) {
 		t.Errorf("Expected 0 evolution slots when none unlocked, got %d", len(deck.EvolutionSlots))
 	}
 }
+
+// TestBuilder_SetStrategy tests setting strategy on builder
+func TestBuilder_SetStrategy(t *testing.T) {
+	builder := NewBuilder("testdata")
+
+	// Test valid strategies
+	validStrategies := []Strategy{
+		StrategyBalanced,
+		StrategyAggro,
+		StrategyControl,
+		StrategyCycle,
+		StrategySplash,
+		StrategySpell,
+	}
+
+	for _, strategy := range validStrategies {
+		err := builder.SetStrategy(strategy)
+		if err != nil {
+			t.Errorf("SetStrategy(%v) unexpected error: %v", strategy, err)
+		}
+	}
+
+	// Test invalid strategy
+	invalidStrategy := Strategy("invalid")
+	err := builder.SetStrategy(invalidStrategy)
+	if err == nil {
+		t.Error("SetStrategy(invalid) expected error, got nil")
+	}
+}
+
+// TestBuilder_StrategyElixirTargeting tests that different strategies produce decks with different average elixir costs
+func TestBuilder_StrategyElixirTargeting(t *testing.T) {
+	// Create analysis with variety of card costs
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			// Win conditions (various costs)
+			"Hog Rider":     {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Royal Giant":   {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 6},
+			"Goblin Barrel": {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 3},
+			// Buildings
+			"Cannon":       {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Inferno Tower": {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			// Spells (big)
+			"Fireball":  {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Lightning": {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 6},
+			// Spells (small)
+			"Zap":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Log":    {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 2},
+			"Arrows": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			// Support (various costs)
+			"Archers":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Musketeer":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Wizard":      {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Baby Dragon": {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
+			// Cycle (low cost)
+			"Skeletons":   {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Ice Spirit":  {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Knight":      {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Bats":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Spear Goblins": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+		},
+	}
+
+	tests := []struct {
+		strategy           Strategy
+		expectedMinElixir  float64
+		expectedMaxElixir  float64
+		tolerance          float64
+	}{
+		{StrategyCycle, 2.5, 3.2, 0.3},      // Cycle should be very low
+		{StrategyBalanced, 2.8, 3.7, 0.3},   // Balanced in the middle
+		{StrategyControl, 3.3, 4.3, 0.3},    // Control can be higher
+		{StrategyAggro, 3.3, 4.2, 0.3},      // Aggro medium-high
+	}
+
+	for _, tt := range tests {
+		t.Run(string(tt.strategy), func(t *testing.T) {
+			builder := NewBuilder("testdata")
+			err := builder.SetStrategy(tt.strategy)
+			if err != nil {
+				t.Fatalf("SetStrategy failed: %v", err)
+			}
+
+			deck, err := builder.BuildDeckFromAnalysis(analysis)
+			if err != nil {
+				t.Fatalf("BuildDeckFromAnalysis failed: %v", err)
+			}
+
+			// Check that average elixir is in expected range
+			if deck.AvgElixir < tt.expectedMinElixir-tt.tolerance || deck.AvgElixir > tt.expectedMaxElixir+tt.tolerance {
+				t.Errorf("%s strategy: AvgElixir = %.2f, expected range %.2f-%.2f (±%.1f)",
+					tt.strategy, deck.AvgElixir, tt.expectedMinElixir, tt.expectedMaxElixir, tt.tolerance)
+			}
+		})
+	}
+}
+
+// TestBuilder_SpellStrategyComposition tests that spell strategy produces 2 big spells and 0 buildings
+func TestBuilder_SpellStrategyComposition(t *testing.T) {
+	builder := NewBuilder("testdata")
+	err := builder.SetStrategy(StrategySpell)
+	if err != nil {
+		t.Fatalf("SetStrategy failed: %v", err)
+	}
+
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Hog Rider":     {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Cannon":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Inferno Tower": {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Fireball":      {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Lightning":     {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 6},
+			"Poison":        {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
+			"Rocket":        {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 6},
+			"Zap":           {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Log":           {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 2},
+			"Archers":       {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Musketeer":     {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Knight":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Skeletons":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Ice Spirit":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+		},
+	}
+
+	deck, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("BuildDeckFromAnalysis failed: %v", err)
+	}
+
+	// Count big spells and buildings
+	bigSpellCount := 0
+	buildingCount := 0
+
+	for _, card := range deck.DeckDetail {
+		switch card.Role {
+		case string(RoleSpellBig):
+			bigSpellCount++
+		case string(RoleBuilding):
+			buildingCount++
+		}
+	}
+
+	// Spell strategy should have 2 big spells and 0 buildings
+	if bigSpellCount != 2 {
+		t.Errorf("Spell strategy: expected 2 big spells, got %d", bigSpellCount)
+	}
+	if buildingCount != 0 {
+		t.Errorf("Spell strategy: expected 0 buildings, got %d", buildingCount)
+	}
+}
+
+// TestBuilder_DifferentStrategiesProduceDifferentDecks tests that strategies actually affect deck composition
+func TestBuilder_DifferentStrategiesProduceDifferentDecks(t *testing.T) {
+	// Use same analysis for all strategies
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Hog Rider":     {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Royal Giant":   {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 6},
+			"Cannon":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Inferno Tower": {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Fireball":      {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Lightning":     {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 6},
+			"Zap":           {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Log":           {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 2},
+			"Archers":       {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Musketeer":     {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Wizard":        {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Knight":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Skeletons":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Ice Spirit":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+		},
+	}
+
+	// Build decks with different strategies
+	strategies := []Strategy{StrategyBalanced, StrategyCycle, StrategySpell}
+	decks := make(map[Strategy][]string)
+
+	for _, strategy := range strategies {
+		builder := NewBuilder("testdata")
+		err := builder.SetStrategy(strategy)
+		if err != nil {
+			t.Fatalf("SetStrategy(%v) failed: %v", strategy, err)
+		}
+
+		deck, err := builder.BuildDeckFromAnalysis(analysis)
+		if err != nil {
+			t.Fatalf("BuildDeckFromAnalysis with %v failed: %v", strategy, err)
+		}
+
+		decks[strategy] = deck.Deck
+	}
+
+	// Compare decks - they should be different
+	balancedDeck := decks[StrategyBalanced]
+	cycleDeck := decks[StrategyCycle]
+	spellDeck := decks[StrategySpell]
+
+	// Check that not all decks are identical
+	if deckEquals(balancedDeck, cycleDeck) && deckEquals(balancedDeck, spellDeck) {
+		t.Error("All strategies produced identical decks - strategies are not affecting deck composition")
+	}
+}
+
+// Helper function to check if two decks are equal
+func deckEquals(deck1, deck2 []string) bool {
+	if len(deck1) != len(deck2) {
+		return false
+	}
+
+	// Create maps for easier comparison
+	map1 := make(map[string]bool)
+	for _, card := range deck1 {
+		map1[card] = true
+	}
+
+	for _, card := range deck2 {
+		if !map1[card] {
+			return false
+		}
+	}
+
+	return true
+}
