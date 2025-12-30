@@ -94,6 +94,19 @@ func addDeckCommands() *cli.Command {
 						Name:  "disable-combat-stats",
 						Usage: "Disable combat stats completely (use traditional scoring only)",
 					},
+					&cli.BoolFlag{
+						Name:    "from-analysis",
+						Aliases: []string{"a"},
+						Usage:   "Enable offline mode: load analysis from JSON file instead of fetching from API",
+					},
+					&cli.StringFlag{
+						Name:  "analysis-dir",
+						Usage: "Directory containing analysis JSON files (default: data/analysis)",
+					},
+					&cli.StringFlag{
+						Name:  "analysis-file",
+						Usage: "Specific analysis file path (overrides --analysis-dir lookup)",
+					},
 				},
 				Action: deckBuildCommand,
 			},
@@ -326,9 +339,10 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	disableCombatStats := cmd.Bool("disable-combat-stats")
 	excludeCards := cmd.StringSlice("exclude-cards")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
-	}
+	// Offline mode flags
+	fromAnalysis := cmd.Bool("from-analysis")
+	analysisDir := cmd.String("analysis-dir")
+	analysisFile := cmd.String("analysis-file")
 
 	// Configure combat stats weight
 	if disableCombatStats {
@@ -341,30 +355,6 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		if verbose {
 			fmt.Printf("Combat stats weight set to: %.2f\n", combatStatsWeight)
 		}
-	}
-
-	client := clashroyale.NewClient(apiToken)
-
-	if verbose {
-		fmt.Printf("Building deck for player %s with strategy: %s\n", tag, strategy)
-	}
-
-	// Get player information
-	player, err := client.GetPlayer(tag)
-	if err != nil {
-		return fmt.Errorf("failed to get player: %w", err)
-	}
-
-	if verbose {
-		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-		fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
-	}
-
-	// Perform card collection analysis
-	analysisOptions := analysis.DefaultAnalysisOptions()
-	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
-	if err != nil {
-		return fmt.Errorf("failed to analyze card collection: %w", err)
 	}
 
 	// Create deck builder
@@ -380,12 +370,97 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		builder.SetEvolutionSlotLimit(slots)
 	}
 
-	// Convert analysis.CardAnalysis to deck.CardAnalysis
-	deckCardAnalysis := deck.CardAnalysis{
-		CardLevels:   make(map[string]deck.CardLevelData),
-		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+	var deckCardAnalysis deck.CardAnalysis
+	var playerName, playerTag string
+
+	if fromAnalysis {
+		// OFFLINE MODE: Load from existing analysis JSON
+		if verbose {
+			fmt.Printf("Building deck from offline analysis for player %s\n", tag)
+		}
+
+		// Default analysis dir to data/analysis if not specified
+		if analysisDir == "" {
+			analysisDir = filepath.Join(dataDir, "analysis")
+		}
+
+		var loadedAnalysis *deck.CardAnalysis
+		var err error
+
+		if analysisFile != "" {
+			// Load from explicit file path
+			loadedAnalysis, err = builder.LoadAnalysis(analysisFile)
+			if err != nil {
+				return fmt.Errorf("failed to load analysis file %s: %w", analysisFile, err)
+			}
+			if verbose {
+				fmt.Printf("Loaded analysis from: %s\n", analysisFile)
+			}
+		} else {
+			// Load latest analysis for player tag
+			loadedAnalysis, err = builder.LoadLatestAnalysis(tag, analysisDir)
+			if err != nil {
+				return fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+			}
+			if verbose {
+				fmt.Printf("Loaded latest analysis from: %s\n", analysisDir)
+			}
+		}
+
+		deckCardAnalysis = *loadedAnalysis
+		playerTag = tag
+		playerName = tag // Use tag as name in offline mode
+	} else {
+		// ONLINE MODE: Fetch from API
+		if apiToken == "" {
+			return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
+		}
+
+		client := clashroyale.NewClient(apiToken)
+
+		if verbose {
+			fmt.Printf("Building deck for player %s with strategy: %s\n", tag, strategy)
+		}
+
+		// Get player information
+		player, err := client.GetPlayer(tag)
+		if err != nil {
+			return fmt.Errorf("failed to get player: %w", err)
+		}
+
+		playerName = player.Name
+		playerTag = player.Tag
+
+		if verbose {
+			fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+			fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+		}
+
+		// Perform card collection analysis
+		analysisOptions := analysis.DefaultAnalysisOptions()
+		cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
+		if err != nil {
+			return fmt.Errorf("failed to analyze card collection: %w", err)
+		}
+
+		// Convert analysis.CardAnalysis to deck.CardAnalysis
+		deckCardAnalysis = deck.CardAnalysis{
+			CardLevels:   make(map[string]deck.CardLevelData),
+			AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+		}
+
+		for cardName, cardInfo := range cardAnalysis.CardLevels {
+			deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
+				Level:             cardInfo.Level,
+				MaxLevel:          cardInfo.MaxLevel,
+				Rarity:            cardInfo.Rarity,
+				Elixir:            cardInfo.Elixir,
+				MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
+			}
+		}
 	}
 
+	// Apply exclude filter (works for both modes)
 	excludeMap := make(map[string]bool)
 	for _, card := range excludeCards {
 		trimmed := strings.TrimSpace(card)
@@ -394,17 +469,14 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	for cardName, cardInfo := range cardAnalysis.CardLevels {
-		if excludeMap[strings.ToLower(cardName)] {
-			continue
+	if len(excludeMap) > 0 {
+		filteredLevels := make(map[string]deck.CardLevelData)
+		for cardName, cardInfo := range deckCardAnalysis.CardLevels {
+			if !excludeMap[strings.ToLower(cardName)] {
+				filteredLevels[cardName] = cardInfo
+			}
 		}
-		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
-			Level:             cardInfo.Level,
-			MaxLevel:          cardInfo.MaxLevel,
-			Rarity:            cardInfo.Rarity,
-			Elixir:            cardInfo.Elixir,
-			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
-		}
+		deckCardAnalysis.CardLevels = filteredLevels
 	}
 
 	// Build deck from analysis
@@ -420,14 +492,14 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Display deck recommendation
-	displayDeckRecommendation(deckRec, player)
+	displayDeckRecommendationOffline(deckRec, playerName, playerTag)
 
 	// Save deck if requested
 	if saveData {
 		if verbose {
 			fmt.Printf("\nSaving deck to: %s\n", dataDir)
 		}
-		deckPath, err := builder.SaveDeck(deckRec, "", player.Tag)
+		deckPath, err := builder.SaveDeck(deckRec, "", playerTag)
 		if err != nil {
 			fmt.Printf("Warning: Failed to save deck: %v\n", err)
 		} else {
@@ -633,6 +705,58 @@ func displayDeckRecommendation(rec *deck.DeckRecommendation, player *clashroyale
 	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
 	fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+	fmt.Printf("Average Elixir: %.2f\n", rec.AvgElixir)
+
+	// Display combat stats information if available
+	if combatWeight := os.Getenv("COMBAT_STATS_WEIGHT"); combatWeight != "" {
+		if combatWeight == "0" {
+			fmt.Printf("Scoring: Traditional only (combat stats disabled)\n")
+		} else {
+			fmt.Printf("Scoring: %.0f%% traditional, %.0f%% combat stats\n",
+				(1-mustParseFloat(combatWeight))*100,
+				mustParseFloat(combatWeight)*100)
+		}
+	}
+	fmt.Printf("\n")
+
+	// Display deck cards in a table
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
+	fmt.Fprintf(w, "─\t────\t─────\t\t──────\t────\n")
+
+	for i, card := range rec.DeckDetail {
+		evoBadge := deck.FormatEvolutionBadge(card.EvolutionLevel)
+		levelStr := fmt.Sprintf("%d/%d", card.Level, card.MaxLevel)
+		if evoBadge != "" {
+			levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
+		}
+		fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
+			i+1,
+			card.Name,
+			levelStr,
+			card.Elixir,
+			card.Role)
+	}
+	w.Flush()
+
+	// Display strategic notes
+	if len(rec.Notes) > 0 {
+		fmt.Printf("\nStrategic Notes:\n")
+		fmt.Printf("════════════════\n")
+		for _, note := range rec.Notes {
+			fmt.Printf("• %s\n", note)
+		}
+	}
+}
+
+// displayDeckRecommendationOffline displays a formatted deck recommendation without full player object
+// Used for offline mode where we only have player name and tag as strings
+func displayDeckRecommendationOffline(rec *deck.DeckRecommendation, playerName, playerTag string) {
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║              RECOMMENDED 1v1 LADDER DECK                           ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	fmt.Printf("Player: %s (%s)\n", playerName, playerTag)
 	fmt.Printf("Average Elixir: %.2f\n", rec.AvgElixir)
 
 	// Display combat stats information if available
