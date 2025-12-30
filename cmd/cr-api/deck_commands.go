@@ -753,7 +753,7 @@ func displaySingleRecommendation(rank int, rec *recommend.DeckRecommendation, ve
 	if verbose {
 		// Display upgrade cost if available
 		if rec.UpgradeCost.CardsNeeded > 0 {
-			fmt.Printf("\nUpgrade to level %d: %d cards, %d gold\n",
+			fmt.Printf("\nUpgrade needed: %d cards, %d gold\n",
 				rec.UpgradeCost.CardsNeeded, rec.UpgradeCost.GoldNeeded)
 		}
 
