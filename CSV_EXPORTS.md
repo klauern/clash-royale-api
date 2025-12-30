@@ -142,49 +142,6 @@ task scan-events -- '#PLAYERTAG'
 task export-events -- '#PLAYERTAG'
 ```
 
-### Go API Usage
-
-```go
-package main
-
-import (
-    "context"
-    "log"
-    "github.com/klauer/clash-royale-api/go/internal/exporter/csv"
-    "github.com/klauer/clash-royale-api/go/pkg/clashroyale"
-)
-
-func main() {
-    // Create API client
-    client := clashroyale.NewClient("your-api-token")
-
-    // Get player data
-    player, err := client.GetPlayer("#PLAYERTAG")
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Create player exporter
-    playerExporter := csv.NewPlayerExporter()
-    err = playerExporter.Export("data", player)
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Get all cards
-    cards, err := client.GetAllCards()
-    if err != nil {
-        log.Fatal(err)
-    }
-
-    // Create cards exporter
-    cardsExporter := csv.NewCardsExporter()
-    err = cardsExporter.Export("data", cards)
-    if err != nil {
-        log.Fatal(err)
-    }
-}
-```
 
 ## CSV Format Standards
 
@@ -223,25 +180,16 @@ All timestamps use ISO 8601 format: `YYYY-MM-DD HH:MM:SS`
 
 ### Excel/Google Sheets
 
-1. Import CSV using "Import from file" option
-2. Use first row as headers
-3. Set delimiter to comma
-4. Encoding: UTF-8
-5. Date columns: Format as Date/Time
+Import CSV files using "Import from file" with these settings:
+- Delimiter: comma
+- Encoding: UTF-8
+- First row as headers
 
-### Pandas (Python)
+### Python/Pandas
 
 ```python
 import pandas as pd
-
-# Load player data
 df = pd.read_csv('data/csv/players/player_20240115_123456.csv')
-
-# Calculate win rate
-df['Win Rate'] = df['Wins'] / (df['Wins'] + df['Losses'])
-
-# Export to Excel
-df.to_excel('players.xlsx', index=False)
 ```
 
 ## Performance Considerations
