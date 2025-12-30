@@ -64,6 +64,260 @@
       "rarityBonus": 0.02,
       "type": "champion"
     },
+    "Hog_Rider": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Miner": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Poison": {
+      "growthRate": 0.08,
+      "type": "spell_duration"
+    },
+    "Fireball": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
+    "The_Log": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
+    "Zap": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
+    "Lightning": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
+    "Rocket": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
+    "Arrows": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
+    "Tornado": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
+    "Princess": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Ice_Wizard": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Electro_Wizard": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Bandit": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Royal_Ghost": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Night_Witch": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Magic_Archer": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Lumberjack": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Mega_Knight": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Bowler": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Inferno_Dragon": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Ram_Rider": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Goblin_Giant": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Electro_Giant": {
+      "growthRate": 0.10,
+      "rarityBonus": 0.02,
+      "type": "standard"
+    },
+    "Goblin_Cage": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Tesla": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Inferno_Tower": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Cannon": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Tombstone": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Furnace": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Goblin_Hut": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Elixir_Collector": {
+      "growthRate": 0.08,
+      "type": "spell_duration"
+    },
+    "Barbarian_Hut": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Merchant_Hut": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Zappies": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Flying_Machine": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Cannon_Cart": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Battle_Ram": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Goblin_Gang": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Spear_Goblins": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Goblins": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Bats": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Minions": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Minion_Horde": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Skeletons": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Skeleton_Army": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Ice_Spirit": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Fire_Spirit": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Electro_Spirit": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Heal_Spirit": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Royal_Giant": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Barbarians": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Elite_Barbarians": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Wall_Breakers": {
+      "growthRate": 0.10,
+      "type": "standard"
+    },
+    "Barbarian_Barrel": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
+    "Goblin_Barrel": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
+    "Skeleton_Barrel": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
+    "Clone": {
+      "growthRate": 0.08,
+      "type": "spell_duration"
+    },
+    "Freeze": {
+      "growthRate": 0.08,
+      "type": "spell_duration"
+    },
+    "Mirror": {
+      "growthRate": 0.08,
+      "type": "spell_damage"
+    },
     "Rage": {
       "growthRate": 0.08,
       "levelOverrides": {
