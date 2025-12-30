@@ -1,0 +1,1193 @@
+{
+  "stats": {
+    "Knight": {
+      "hitpoints": 1766,
+      "damage": 202,
+      "damagePerSecond": 168,
+      "hitSpeed": 1.2,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0
+    },
+    "Archers": {
+      "hitpoints": 304,
+      "damage": 112,
+      "damagePerSecond": 248,
+      "hitSpeed": 0.9,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 6.5,
+      "spawnCount": 2
+    },
+    "Goblins": {
+      "hitpoints": 202,
+      "damage": 120,
+      "damagePerSecond": 436,
+      "hitSpeed": 0.55,
+      "speed": "Very Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "spawnCount": 3
+    },
+    "Giant": {
+      "hitpoints": 3387,
+      "damage": 209,
+      "damagePerSecond": 139,
+      "hitSpeed": 1.5,
+      "speed": "Slow",
+      "targets": "Buildings",
+      "range": 0.0
+    },
+    "P.E.K.K.A": {
+      "hitpoints": 2350,
+      "damage": 510,
+      "damagePerSecond": 283,
+      "hitSpeed": 1.8,
+      "speed": "Slow",
+      "targets": "Ground",
+      "range": 0.0
+    },
+    "Minions": {
+      "hitpoints": 230,
+      "damage": 107,
+      "damagePerSecond": 291,
+      "hitSpeed": 1.1,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 0.0,
+      "spawnCount": 3
+    },
+    "Balloon": {
+      "hitpoints": 1049,
+      "damage": 400,
+      "damagePerSecond": 200,
+      "hitSpeed": 2.0,
+      "speed": "Medium",
+      "targets": "Buildings",
+      "range": 0.0,
+      "deathDamage": 400
+    },
+    "Witch": {
+      "hitpoints": 524,
+      "damage": 84,
+      "damagePerSecond": 76,
+      "hitSpeed": 1.1,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 5.5
+    },
+    "Barbarians": {
+      "hitpoints": 670,
+      "damage": 192,
+      "damagePerSecond": 735,
+      "hitSpeed": 0.78,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "spawnCount": 5
+    },
+    "Golem": {
+      "hitpoints": 3200,
+      "damage": 195,
+      "damagePerSecond": 78,
+      "hitSpeed": 2.5,
+      "speed": "Slow",
+      "targets": "Buildings",
+      "range": 0.0,
+      "deathDamage": 390
+    },
+    "Skeletons": {
+      "hitpoints": 81,
+      "damage": 81,
+      "damagePerSecond": 219,
+      "hitSpeed": 0.74,
+      "speed": "Very Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "spawnCount": 3
+    },
+    "Valkyrie": {
+      "hitpoints": 1579,
+      "damage": 220,
+      "damagePerSecond": 146,
+      "hitSpeed": 1.5,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "radius": 2.5
+    },
+    "Skeleton Army": {
+      "hitpoints": 405,
+      "damage": 81,
+      "damagePerSecond": 219,
+      "hitSpeed": 0.74,
+      "speed": "Very Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "spawnCount": 15
+    },
+    "Bomber": {
+      "hitpoints": 304,
+      "damage": 225,
+      "damagePerSecond": 125,
+      "hitSpeed": 1.8,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 5.0,
+      "radius": 2.0
+    },
+    "Musketeer": {
+      "hitpoints": 597,
+      "damage": 180,
+      "damagePerSecond": 180,
+      "hitSpeed": 1.0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 6.5
+    },
+    "Baby Dragon": {
+      "hitpoints": 720,
+      "damage": 100,
+      "damagePerSecond": 66,
+      "hitSpeed": 1.5,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 3.5,
+      "radius": 2.0
+    },
+    "Prince": {
+      "hitpoints": 1200,
+      "damage": 244,
+      "damagePerSecond": 174,
+      "hitSpeed": 1.4,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "dashDamage": 488
+    },
+    "Wizard": {
+      "hitpoints": 625,
+      "damage": 233,
+      "damagePerSecond": 166,
+      "hitSpeed": 1.4,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 5.5,
+      "radius": 1.5
+    },
+    "Mini P.E.K.K.A": {
+      "hitpoints": 1182,
+      "damage": 625,
+      "damagePerSecond": 390,
+      "hitSpeed": 1.6,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 0.0
+    },
+    "Spear Goblins": {
+      "hitpoints": 133,
+      "damage": 81,
+      "damagePerSecond": 141,
+      "hitSpeed": 1.15,
+      "speed": "Very Fast",
+      "targets": "Air & Ground",
+      "range": 6.5,
+      "spawnCount": 3
+    },
+    "Giant Skeleton": {
+      "hitpoints": 2260,
+      "damage": 172,
+      "damagePerSecond": 122,
+      "hitSpeed": 1.4,
+      "speed": "Slow",
+      "targets": "Buildings",
+      "range": 0.0,
+      "deathDamage": 1032
+    },
+    "Hog Rider": {
+      "hitpoints": 1405,
+      "damage": 262,
+      "damagePerSecond": 163,
+      "hitSpeed": 1.6,
+      "speed": "Very Fast",
+      "targets": "Buildings",
+      "range": 0.0
+    },
+    "Minion Horde": {
+      "hitpoints": 690,
+      "damage": 107,
+      "damagePerSecond": 291,
+      "hitSpeed": 1.1,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 0.0,
+      "spawnCount": 6
+    },
+    "Ice Wizard": {
+      "hitpoints": 325,
+      "damage": 42,
+      "damagePerSecond": 24,
+      "hitSpeed": 1.75,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 5.5,
+      "radius": 2.0
+    },
+    "Royal Giant": {
+      "hitpoints": 3164,
+      "damage": 307,
+      "damagePerSecond": 180,
+      "hitSpeed": 1.7,
+      "speed": "Medium",
+      "targets": "Buildings",
+      "range": 6.5
+    },
+    "Guards": {
+      "hitpoints": 153,
+      "damage": 73,
+      "damagePerSecond": 219,
+      "hitSpeed": 0.67,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 0.0,
+      "spawnCount": 3
+    },
+    "Princess": {
+      "hitpoints": 123,
+      "damage": 79,
+      "damagePerSecond": 26,
+      "hitSpeed": 3.0,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 11.5,
+      "radius": 2.5
+    },
+    "Dark Prince": {
+      "hitpoints": 750,
+      "damage": 166,
+      "damagePerSecond": 127,
+      "hitSpeed": 1.3,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "radius": 2.0
+    },
+    "Three Musketeers": {
+      "hitpoints": 731,
+      "damage": 169,
+      "damagePerSecond": 420,
+      "hitSpeed": 1.2,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 6.5,
+      "spawnCount": 3
+    },
+    "Lava Hound": {
+      "hitpoints": 1692,
+      "damage": 25,
+      "damagePerSecond": 19,
+      "hitSpeed": 1.3,
+      "speed": "Slow",
+      "targets": "Buildings",
+      "range": 0.0,
+      "deathDamage": 408
+    },
+    "Ice Spirit": {
+      "hitpoints": 230,
+      "damage": 110,
+      "damagePerSecond": 110,
+      "hitSpeed": 1.0,
+      "speed": "Very Fast",
+      "targets": "Air & Ground",
+      "range": 2.5
+    },
+    "Fire Spirit": {
+      "hitpoints": 230,
+      "damage": 207,
+      "damagePerSecond": 207,
+      "hitSpeed": 1.0,
+      "speed": "Very Fast",
+      "targets": "Air & Ground",
+      "range": 2.5,
+      "radius": 2.0
+    },
+    "Miner": {
+      "hitpoints": 572,
+      "damage": 91,
+      "damagePerSecond": 70,
+      "hitSpeed": 1.3,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 0.0
+    },
+    "Sparky": {
+      "hitpoints": 686,
+      "damage": 629,
+      "damagePerSecond": 157,
+      "hitSpeed": 4.0,
+      "speed": "Slow",
+      "targets": "Air & Ground",
+      "range": 5.0,
+      "radius": 2.0
+    },
+    "Bowler": {
+      "hitpoints": 1300,
+      "damage": 180,
+      "damagePerSecond": 72,
+      "hitSpeed": 2.5,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "radius": 3.5
+    },
+    "Lumberjack": {
+      "hitpoints": 606,
+      "damage": 121,
+      "damagePerSecond": 151,
+      "hitSpeed": 0.8,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "deathDamage": 242,
+      "radius": 3.0
+    },
+    "Battle Ram": {
+      "hitpoints": 801,
+      "damage": 237,
+      "damagePerSecond": 237,
+      "hitSpeed": 1.0,
+      "speed": "Very Fast",
+      "targets": "Buildings",
+      "range": 0.0,
+      "dashDamage": 474
+    },
+    "Inferno Dragon": {
+      "hitpoints": 612,
+      "damage": 32,
+      "damagePerSecond": 128,
+      "hitSpeed": 0.25,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 4.0
+    },
+    "Ice Golem": {
+      "hitpoints": 1091,
+      "damage": 69,
+      "damagePerSecond": 27,
+      "hitSpeed": 2.5,
+      "speed": "Slow",
+      "targets": "Buildings",
+      "range": 0.0,
+      "deathDamage": 138
+    },
+    "Mega Minion": {
+      "hitpoints": 693,
+      "damage": 258,
+      "damagePerSecond": 172,
+      "hitSpeed": 1.5,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 0.0
+    },
+    "Dart Goblin": {
+      "hitpoints": 216,
+      "damage": 129,
+      "damagePerSecond": 161,
+      "hitSpeed": 0.8,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 6.5
+    },
+    "Goblin Gang": {
+      "hitpoints": 202,
+      "damage": 120,
+      "damagePerSecond": 436,
+      "hitSpeed": 0.55,
+      "speed": "Very Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "spawnCount": 3
+    },
+    "Electro Wizard": {
+      "hitpoints": 337,
+      "damage": 111,
+      "damagePerSecond": 61,
+      "hitSpeed": 1.8,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 5.0
+    },
+    "Elite Barbarians": {
+      "hitpoints": 1341,
+      "damage": 384,
+      "damagePerSecond": 548,
+      "hitSpeed": 1.4,
+      "speed": "Very Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "spawnCount": 2
+    },
+    "Hunter": {
+      "hitpoints": 553,
+      "damage": 520,
+      "damagePerSecond": 236,
+      "hitSpeed": 2.2,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 6.0,
+      "radius": 1.5
+    },
+    "Executioner": {
+      "hitpoints": 800,
+      "damage": 105,
+      "damagePerSecond": 43,
+      "hitSpeed": 2.4,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 5.5,
+      "radius": 3.0
+    },
+    "Bandit": {
+      "hitpoints": 428,
+      "damage": 91,
+      "damagePerSecond": 91,
+      "hitSpeed": 1.0,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "dashDamage": 182
+    },
+    "Royal Recruits": {
+      "hitpoints": 547,
+      "damage": 133,
+      "damagePerSecond": 612,
+      "hitSpeed": 1.3,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "spawnCount": 6
+    },
+    "Night Witch": {
+      "hitpoints": 428,
+      "damage": 148,
+      "damagePerSecond": 113,
+      "hitSpeed": 1.3,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 0.0
+    },
+    "Bats": {
+      "hitpoints": 81,
+      "damage": 81,
+      "damagePerSecond": 310,
+      "hitSpeed": 0.78,
+      "speed": "Very Fast",
+      "targets": "Air & Ground",
+      "range": 0.0,
+      "spawnCount": 5
+    },
+    "Royal Ghost": {
+      "hitpoints": 572,
+      "damage": 123,
+      "damagePerSecond": 68,
+      "hitSpeed": 1.8,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 0.0
+    },
+    "Ram Rider": {
+      "hitpoints": 802,
+      "damage": 118,
+      "damagePerSecond": 65,
+      "hitSpeed": 1.8,
+      "speed": "Fast",
+      "targets": "Buildings",
+      "range": 0.0,
+      "dashDamage": 236,
+      "radius": 3.0
+    },
+    "Zappies": {
+      "hitpoints": 438,
+      "damage": 97,
+      "damagePerSecond": 138,
+      "hitSpeed": 0.7,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 4.5,
+      "spawnCount": 3
+    },
+    "Rascals": {
+      "hitpoints": 405,
+      "damage": 78,
+      "damagePerSecond": 119,
+      "hitSpeed": 1.3,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 6.5,
+      "spawnCount": 3
+    },
+    "Cannon Cart": {
+      "hitpoints": 1131,
+      "damage": 132,
+      "damagePerSecond": 146,
+      "hitSpeed": 0.9,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 6.5
+    },
+    "Mega Knight": {
+      "hitpoints": 1887,
+      "damage": 127,
+      "damagePerSecond": 74,
+      "hitSpeed": 1.7,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "radius": 4.0
+    },
+    "Skeleton Barrel": {
+      "hitpoints": 532,
+      "damage": 81,
+      "damagePerSecond": 219,
+      "hitSpeed": 0.74,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "deathDamage": 81,
+      "spawnCount": 8
+    },
+    "Flying Machine": {
+      "hitpoints": 508,
+      "damage": 142,
+      "damagePerSecond": 129,
+      "hitSpeed": 1.1,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 7.0
+    },
+    "Wall Breakers": {
+      "hitpoints": 206,
+      "damage": 244,
+      "damagePerSecond": 488,
+      "hitSpeed": 0.5,
+      "speed": "Very Fast",
+      "targets": "Buildings",
+      "range": 0.0,
+      "deathDamage": 366,
+      "spawnCount": 2
+    },
+    "Royal Hogs": {
+      "hitpoints": 693,
+      "damage": 61,
+      "damagePerSecond": 200,
+      "hitSpeed": 0.92,
+      "speed": "Very Fast",
+      "targets": "Buildings",
+      "range": 0.0,
+      "spawnCount": 4
+    },
+    "Goblin Giant": {
+      "hitpoints": 1888,
+      "damage": 110,
+      "damagePerSecond": 73,
+      "hitSpeed": 1.5,
+      "speed": "Slow",
+      "targets": "Buildings",
+      "range": 0.0
+    },
+    "Fisherman": {
+      "hitpoints": 411,
+      "damage": 91,
+      "damagePerSecond": 70,
+      "hitSpeed": 1.3,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 4.5
+    },
+    "Magic Archer": {
+      "hitpoints": 250,
+      "damage": 67,
+      "damagePerSecond": 60,
+      "hitSpeed": 1.1,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 11.0
+    },
+    "Electro Dragon": {
+      "hitpoints": 593,
+      "damage": 120,
+      "damagePerSecond": 57,
+      "hitSpeed": 2.1,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 3.5,
+      "radius": 2.0
+    },
+    "Firecracker": {
+      "hitpoints": 304,
+      "damage": 320,
+      "damagePerSecond": 106,
+      "hitSpeed": 3.0,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 11.5,
+      "radius": 2.0
+    },
+    "Mighty Miner": {
+      "hitpoints": 879,
+      "damage": 16,
+      "damagePerSecond": 40,
+      "hitSpeed": 0.4,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 1.5,
+      "radius": 2.5
+    },
+    "Elixir Golem": {
+      "hitpoints": 1299,
+      "damage": 209,
+      "damagePerSecond": 189,
+      "hitSpeed": 1.1,
+      "speed": "Medium",
+      "targets": "Buildings",
+      "range": 0.0,
+      "deathDamage": 209
+    },
+    "Battle Healer": {
+      "hitpoints": 1422,
+      "damage": 122,
+      "damagePerSecond": 81,
+      "hitSpeed": 1.5,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 0.0,
+      "radius": 3.5
+    },
+    "Skeleton King": {
+      "hitpoints": 898,
+      "damage": 80,
+      "damagePerSecond": 50,
+      "hitSpeed": 1.6,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0
+    },
+    "Archer Queen": {
+      "hitpoints": 391,
+      "damage": 88,
+      "damagePerSecond": 73,
+      "hitSpeed": 1.2,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 7.0
+    },
+    "Golden Knight": {
+      "hitpoints": 703,
+      "damage": 63,
+      "damagePerSecond": 70,
+      "hitSpeed": 0.9,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "dashDamage": 126
+    },
+    "Monk": {
+      "hitpoints": 865,
+      "damage": 55,
+      "damagePerSecond": 68,
+      "hitSpeed": 0.8,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 0.0
+    },
+    "Skeleton Dragons": {
+      "hitpoints": 560,
+      "damage": 161,
+      "damagePerSecond": 168,
+      "hitSpeed": 0.96,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 3.5,
+      "spawnCount": 2
+    },
+    "Mother Witch": {
+      "hitpoints": 250,
+      "damage": 62,
+      "damagePerSecond": 62,
+      "hitSpeed": 1.0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 5.5,
+      "radius": 2.0
+    },
+    "Electro Spirit": {
+      "hitpoints": 230,
+      "damage": 99,
+      "damagePerSecond": 99,
+      "hitSpeed": 1.0,
+      "speed": "Very Fast",
+      "targets": "Air & Ground",
+      "range": 2.5,
+      "radius": 2.0
+    },
+    "Electro Giant": {
+      "hitpoints": 2409,
+      "damage": 102,
+      "damagePerSecond": 48,
+      "hitSpeed": 2.1,
+      "speed": "Slow",
+      "targets": "Buildings",
+      "range": 0.0,
+      "radius": 2.5
+    },
+    "Phoenix": {
+      "hitpoints": 497,
+      "damage": 102,
+      "damagePerSecond": 102,
+      "hitSpeed": 1.0,
+      "speed": "Fast",
+      "targets": "Air & Ground",
+      "range": 0.0,
+      "deathDamage": 204,
+      "radius": 3.0
+    },
+    "Little Prince": {
+      "hitpoints": 273,
+      "damage": 40,
+      "damagePerSecond": 33,
+      "hitSpeed": 1.2,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 6.5,
+      "radius": 2.5
+    },
+    "Goblin Demolisher": {
+      "hitpoints": 1076,
+      "damage": 154,
+      "damagePerSecond": 140,
+      "hitSpeed": 1.1,
+      "speed": "Medium",
+      "targets": "Buildings",
+      "range": 5.0
+    },
+    "Goblin Machine": {
+      "hitpoints": 1016,
+      "damage": 100,
+      "damagePerSecond": 83,
+      "hitSpeed": 1.2,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "deathDamage": 200
+    },
+    "Suspicious Bush": {
+      "hitpoints": 67,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 1.0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0
+    },
+    "Goblinstein": {
+      "hitpoints": 2400,
+      "damage": 140,
+      "damagePerSecond": 156,
+      "hitSpeed": 0.9,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0
+    },
+    "Rune Giant": {
+      "hitpoints": 1664,
+      "damage": 75,
+      "damagePerSecond": 50,
+      "hitSpeed": 1.5,
+      "speed": "Slow",
+      "targets": "Buildings",
+      "range": 0.0,
+      "radius": 2.5
+    },
+    "Berserker": {
+      "hitpoints": 896,
+      "damage": 102,
+      "damagePerSecond": 170,
+      "hitSpeed": 0.6,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 0.0
+    },
+    "Boss Bandit": {
+      "hitpoints": 1025,
+      "damage": 105,
+      "damagePerSecond": 87,
+      "hitSpeed": 1.2,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "dashDamage": 210
+    },
+    "Cannon": {
+      "hitpoints": 824,
+      "damage": 212,
+      "damagePerSecond": 212,
+      "hitSpeed": 1.0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 7.0,
+      "lifetime": 30.0
+    },
+    "Goblin Hut": {
+      "hitpoints": 977,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "lifetime": 40.0
+    },
+    "Mortar": {
+      "hitpoints": 1369,
+      "damage": 266,
+      "damagePerSecond": 53,
+      "hitSpeed": 5.0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 12.5,
+      "lifetime": 30.0,
+      "radius": 2.5
+    },
+    "Inferno Tower": {
+      "hitpoints": 1447,
+      "damage": 32,
+      "damagePerSecond": 128,
+      "hitSpeed": 0.25,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 7.0,
+      "lifetime": 35.0
+    },
+    "Bomb Tower": {
+      "hitpoints": 1123,
+      "damage": 184,
+      "damagePerSecond": 102,
+      "hitSpeed": 1.8,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 6.5,
+      "lifetime": 40.0,
+      "deathDamage": 368,
+      "radius": 3.0
+    },
+    "Barbarian Hut": {
+      "hitpoints": 964,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "lifetime": 50.0
+    },
+    "Tesla": {
+      "hitpoints": 1152,
+      "damage": 220,
+      "damagePerSecond": 199,
+      "hitSpeed": 1.1,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 6.5,
+      "lifetime": 40.0
+    },
+    "Elixir Collector": {
+      "hitpoints": 886,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "lifetime": 70.0
+    },
+    "X-Bow": {
+      "hitpoints": 1000,
+      "damage": 27,
+      "damagePerSecond": 90,
+      "hitSpeed": 0.3,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 13.0,
+      "lifetime": 25.0
+    },
+    "Tombstone": {
+      "hitpoints": 438,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "lifetime": 40.0,
+      "deathDamage": 49
+    },
+    "Furnace": {
+      "hitpoints": 742,
+      "damage": 112,
+      "damagePerSecond": 62,
+      "hitSpeed": 1.8,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 0.0,
+      "lifetime": 40.0,
+      "radius": 2.5
+    },
+    "Goblin Cage": {
+      "hitpoints": 646,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "lifetime": 25.0
+    },
+    "Goblin Drill": {
+      "hitpoints": 820,
+      "damage": 52,
+      "damagePerSecond": 52,
+      "hitSpeed": 1.0,
+      "speed": "Fast",
+      "targets": "Ground",
+      "range": 0.0,
+      "radius": 2.0
+    },
+    "Fireball": {
+      "hitpoints": 0,
+      "damage": 688,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 6.5,
+      "radius": 2.5
+    },
+    "Arrows": {
+      "hitpoints": 0,
+      "damage": 366,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 10.0,
+      "radius": 3.5
+    },
+    "Rage": {
+      "hitpoints": 0,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 5.0,
+      "radius": 3.0
+    },
+    "Rocket": {
+      "hitpoints": 0,
+      "damage": 1484,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 10.5,
+      "radius": 3.0
+    },
+    "Goblin Barrel": {
+      "hitpoints": 0,
+      "damage": 244,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 11.5,
+      "spawnCount": 3
+    },
+    "Freeze": {
+      "hitpoints": 0,
+      "damage": 148,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 6.5,
+      "radius": 3.0
+    },
+    "Mirror": {
+      "hitpoints": 0,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 0.0
+    },
+    "Lightning": {
+      "hitpoints": 0,
+      "damage": 1057,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 7.5
+    },
+    "Zap": {
+      "hitpoints": 0,
+      "damage": 192,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 4.0,
+      "radius": 2.5
+    },
+    "Poison": {
+      "hitpoints": 0,
+      "damage": 736,
+      "damagePerSecond": 92,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 6.5,
+      "radius": 3.5
+    },
+    "Graveyard": {
+      "hitpoints": 0,
+      "damage": 63,
+      "damagePerSecond": 63,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 8.0,
+      "lifetime": 4.0
+    },
+    "The Log": {
+      "hitpoints": 0,
+      "damage": 268,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 11.5,
+      "radius": 0.5
+    },
+    "Tornado": {
+      "hitpoints": 0,
+      "damage": 84,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 7.5,
+      "radius": 3.5
+    },
+    "Clone": {
+      "hitpoints": 0,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 5.0,
+      "radius": 3.5
+    },
+    "Earthquake": {
+      "hitpoints": 0,
+      "damage": 292,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 5.5,
+      "radius": 3.5
+    },
+    "Barbarian Barrel": {
+      "hitpoints": 0,
+      "damage": 230,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 9.0,
+      "radius": 2.5
+    },
+    "Heal Spirit": {
+      "hitpoints": 190,
+      "damage": 91,
+      "damagePerSecond": 91,
+      "hitSpeed": 1.0,
+      "speed": "Very Fast",
+      "targets": "Air & Ground",
+      "range": 2.5
+    },
+    "Giant Snowball": {
+      "hitpoints": 0,
+      "damage": 192,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 8.5,
+      "radius": 2.5
+    },
+    "Royal Delivery": {
+      "hitpoints": 0,
+      "damage": 230,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 9.0,
+      "radius": 2.5
+    },
+    "Void": {
+      "hitpoints": 0,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 4.0,
+      "radius": 3.0
+    },
+    "Goblin Curse": {
+      "hitpoints": 0,
+      "damage": 105,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 9.5,
+      "spawnCount": 5
+    },
+    "Spirit Empress": {
+      "hitpoints": 563,
+      "damage": 145,
+      "damagePerSecond": 103,
+      "hitSpeed": 1.4,
+      "speed": "Medium",
+      "targets": "Air & Ground",
+      "range": 6.5,
+      "radius": 2.0
+    },
+    "Vines": {
+      "hitpoints": 600,
+      "damage": 0,
+      "damagePerSecond": 0,
+      "hitSpeed": 0,
+      "speed": "Medium",
+      "targets": "Ground",
+      "range": 0.0,
+      "lifetime": 20.0
+    }
+  }
+}
