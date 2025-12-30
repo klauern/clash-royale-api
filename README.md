@@ -39,8 +39,7 @@ clash-royale-api/
 ├── .env.example               # Example configuration
 ├── Taskfile.yml              # Task runner configuration
 ├── cmd/                      # Command-line applications
-│   ├── cr-api/              # Main CLI application
-│   └── deckbuilder/         # Standalone deck builder
+│   └── cr-api/              # Main CLI application
 ├── pkg/                      # Go libraries
 │   ├── clashroyale/          # API client
 │   ├── analysis/             # Collection analysis & playstyle
@@ -92,13 +91,13 @@ Download pre-built binaries from the [Releases page](https://github.com/klauern/
    Expand-Archive clash-royale-api_vX.X.X_windows_amd64.zip
    ```
 
-3. **Install** binaries to your PATH:
+3. **Install** binary to your PATH:
    ```bash
    # Unix/macOS (system-wide)
-   sudo mv cr-api deckbuilder /usr/local/bin/
+   sudo mv cr-api /usr/local/bin/
 
    # Unix/macOS (user-only)
-   mv cr-api deckbuilder ~/.local/bin/
+   mv cr-api ~/.local/bin/
 
    # Windows: Add directory to PATH via System Properties
    ```
@@ -107,20 +106,18 @@ Download pre-built binaries from the [Releases page](https://github.com/klauern/
    ```bash
    # Bash
    cp completions/cr-api.bash ~/.local/share/bash-completion/completions/cr-api
-   cp completions/deckbuilder.bash ~/.local/share/bash-completion/completions/deckbuilder
 
    # Zsh
    mkdir -p ~/.zsh/completions
-   cp completions/*.zsh ~/.zsh/completions/
+   cp completions/cr-api.zsh ~/.zsh/completions/
 
    # Fish
-   cp completions/*.fish ~/.config/fish/completions/
+   cp completions/cr-api.fish ~/.config/fish/completions/
    ```
 
 5. **Verify installation**:
    ```bash
    cr-api --version
-   deckbuilder --version
    ```
 
 ### Build from Source
@@ -451,8 +448,8 @@ To use upgrade projections with wildcards, create an `upgrade_plan.json` file:
   --plan ./data/upgrade_plan.json \
   --tag PLAYER_TAG
 
-# 3. Build deck from projected analysis
-./bin/deckbuilder --tag PLAYER_TAG --analysis-file PROJECTED_FILE.json
+# 3. Build deck from projected analysis (offline mode)
+./bin/cr-api deck build --tag PLAYER_TAG --from-analysis PROJECTED_FILE.json
 ```
 
 ### Options
@@ -752,7 +749,7 @@ go build -o bin/cr-api ./cmd/cr-api
 
 **Solution**:
 ```bash
-chmod +x bin/cr-api bin/deckbuilder
+chmod +x bin/cr-api
 ```
 
 ## Changelog

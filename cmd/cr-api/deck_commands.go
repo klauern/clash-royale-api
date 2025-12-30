@@ -698,57 +698,6 @@ func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
 	return nil
 }
 
-// displayDeckRecommendation displays a formatted deck recommendation
-func displayDeckRecommendation(rec *deck.DeckRecommendation, player *clashroyale.Player) {
-	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	fmt.Printf("║              RECOMMENDED 1v1 LADDER DECK                           ║\n")
-	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
-
-	fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-	fmt.Printf("Average Elixir: %.2f\n", rec.AvgElixir)
-
-	// Display combat stats information if available
-	if combatWeight := os.Getenv("COMBAT_STATS_WEIGHT"); combatWeight != "" {
-		if combatWeight == "0" {
-			fmt.Printf("Scoring: Traditional only (combat stats disabled)\n")
-		} else {
-			fmt.Printf("Scoring: %.0f%% traditional, %.0f%% combat stats\n",
-				(1-mustParseFloat(combatWeight))*100,
-				mustParseFloat(combatWeight)*100)
-		}
-	}
-	fmt.Printf("\n")
-
-	// Display deck cards in a table
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
-	fmt.Fprintf(w, "─\t────\t─────\t\t──────\t────\n")
-
-	for i, card := range rec.DeckDetail {
-		evoBadge := deck.FormatEvolutionBadge(card.EvolutionLevel)
-		levelStr := fmt.Sprintf("%d/%d", card.Level, card.MaxLevel)
-		if evoBadge != "" {
-			levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
-		}
-		fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
-			i+1,
-			card.Name,
-			levelStr,
-			card.Elixir,
-			card.Role)
-	}
-	w.Flush()
-
-	// Display strategic notes
-	if len(rec.Notes) > 0 {
-		fmt.Printf("\nStrategic Notes:\n")
-		fmt.Printf("════════════════\n")
-		for _, note := range rec.Notes {
-			fmt.Printf("• %s\n", note)
-		}
-	}
-}
-
 // displayDeckRecommendationOffline displays a formatted deck recommendation without full player object
 // Used for offline mode where we only have player name and tag as strings
 func displayDeckRecommendationOffline(rec *deck.DeckRecommendation, playerName, playerTag string) {

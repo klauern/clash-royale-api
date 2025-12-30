@@ -29,26 +29,6 @@ builds:
       - -X main.buildTime={{.Date}}
     mod_timestamp: '{{ .CommitTimestamp }}'
 
-  # Build deckbuilder binary
-  - id: deckbuilder
-    main: ./cmd/deckbuilder
-    binary: deckbuilder
-    env:
-      - CGO_ENABLED=0
-    goos:
-      - linux
-      - darwin
-      - windows
-    goarch:
-      - amd64
-      - arm64
-    ldflags:
-      - -s -w
-      - -X main.version={{.Version}}
-      - -X main.commit={{.Commit}}
-      - -X main.buildTime={{.Date}}
-    mod_timestamp: '{{ .CommitTimestamp }}'
-
 archives:
   - id: default
     formats: ["tar.gz"]
@@ -121,7 +101,7 @@ release:
 
     ### Installation
 
-    Download the appropriate archive for your platform, extract it, and add the binaries to your PATH.
+    Download the appropriate archive for your platform, extract it, and add the binary to your PATH.
 
     ### Shell Completions
 

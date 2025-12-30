@@ -83,7 +83,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--analysis", required=True, help="Path to analysis JSON (from ./bin/cr-api analyze --save)")
     parser.add_argument("--plan", required=True, help="Path to upgrade plan JSON")
     parser.add_argument("--output", help="Output path for projected analysis JSON")
-    parser.add_argument("--tag", help="Player tag (used only for printing a deckbuilder command)")
+    parser.add_argument("--tag", help="Player tag (used only for printing a cr-api deck build command)")
     parser.add_argument(
         "--unbounded",
         action="store_true",
@@ -273,7 +273,7 @@ def main() -> int:
     print(f"Projected analysis saved to {output_path}")
 
     if args.tag:
-        print(f"Deckbuilder command: ./bin/deckbuilder --tag {args.tag} --analysis-file {output_path}")
+        print(f"Deck build command: ./bin/cr-api deck build --tag {args.tag} --from-analysis {output_path}")
 
     return 0
 

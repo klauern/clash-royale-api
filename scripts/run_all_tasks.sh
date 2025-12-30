@@ -86,9 +86,9 @@ fi
 echo "✅ API token configured in .env" | tee -a "${DEBUG_LIST}"
 
 # 5. Go binaries exist
-if [ ! -x "go/bin/cr-api" ] || [ ! -x "go/bin/deckbuilder" ]; then
-    echo "⚠️  Go binaries not found or not executable. Some tasks may fail." | tee -a "${DEBUG_LIST}"
-    echo "   Run 'task build-go' to build them." | tee -a "${DEBUG_LIST}"
+if [ ! -x "go/bin/cr-api" ] && [ ! -x "bin/cr-api" ]; then
+    echo "⚠️  cr-api binary not found or not executable. Some tasks may fail." | tee -a "${DEBUG_LIST}"
+    echo "   Run 'task build' to build it." | tee -a "${DEBUG_LIST}"
 fi
 echo "✅ Go binaries check completed" | tee -a "${DEBUG_LIST}"
 

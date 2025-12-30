@@ -27,7 +27,7 @@ jobs:
       - name: Generate shell completions
         run: |
           mkdir -p dist/completion
-          touch dist/completion/{cr-api,deckbuilder}.{bash,zsh,fish}
+          touch dist/completion/cr-api.{bash,zsh,fish}
 
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6

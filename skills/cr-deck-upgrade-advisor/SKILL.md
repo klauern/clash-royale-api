@@ -1,6 +1,6 @@
 ---
 name: cr-deck-upgrade-advisor
-description: Deck building and upgrade projection guidance for this Clash Royale Go repo. Use when asked to build best decks (1v1 or war lineups), suggest upgrades or archetype shifts, or simulate "within reach" decks using ./bin/cr-api, ./bin/deckbuilder, or a projected analysis file.
+description: Deck building and upgrade projection guidance for this Clash Royale Go repo. Use when asked to build best decks (1v1 or war lineups), suggest upgrades or archetype shifts, or simulate "within reach" decks using ./bin/cr-api or a projected analysis file.
 ---
 
 # CR Deck Upgrade Advisor
@@ -134,7 +134,7 @@ EOF
 - Ask: "How many wildcards do you have for each rarity? (Common, Rare, Epic, Legendary, Champion)"
 - Or skip affordability checks with `--unbounded` (labels projection as "unbounded")
 
-3) Build a deck from the projected analysis using `./bin/deckbuilder --analysis-file`.
+3) Build a deck from the projected analysis using `./bin/cr-api deck build --from-analysis <file>`.
 4) Compare current vs projected decks and call out the minimal upgrades that unlock the better option.
 
 **See**: `data/upgrade_plan_example.json` for a complete template.

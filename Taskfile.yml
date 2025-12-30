@@ -8,7 +8,6 @@ vars:
   DATA_DIR: data
   TEST_PLAYER_TAG: '#PLAYERTAG'
   CR_API_BIN: bin/cr-api
-  DECKBUILDER_BIN: bin/deckbuilder
 
 dotenv: ['.env']
 
@@ -51,11 +50,7 @@ tasks:
         go build \
           -ldflags="-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.buildTime=$BUILD_TIME" \
           -o bin/cr-api ./cmd/cr-api
-
-        go build \
-          -ldflags="-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.buildTime=$BUILD_TIME" \
-          -o bin/deckbuilder ./cmd/deckbuilder
-      - echo "✅ Go binaries built successfully!"
+      - echo "✅ Go binary built successfully!"
 
   run:
     desc: Analyze a player's collection using the Go CLI
@@ -167,7 +162,7 @@ tasks:
         msg: "cr-api binary not found. Build it with: task build"
 
   build-deck:
-    desc: Build an optimized 1v1 ladder deck from the latest analysis using Go binaries
+    desc: Build an optimized 1v1 ladder deck from the latest analysis
     summary: |
       Runs card analysis (saved) and then builds a recommended 1v1 ladder deck.
 
@@ -197,12 +192,10 @@ tasks:
         fi
 
         echo "Building optimized 1v1 deck from latest analysis..."
-        {{.DECKBUILDER_BIN}} -tag "$CLEAN_TAG" -data-dir "{{.DATA_DIR}}" -analysis-file "$ANALYSIS_FILE"
+        {{.CR_API_BIN}} deck build --from-analysis "$ANALYSIS_FILE"
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
         msg: "cr-api binary not found. Build it with: task build"
-      - sh: test -x {{.DECKBUILDER_BIN}}
-        msg: "deckbuilder binary not found. Build it with: task build"
 
   war-decks:
     desc: Build a 4-deck war lineup with no repeated cards
@@ -675,9 +668,6 @@ tasks:
         touch dist/completion/cr-api.bash
         touch dist/completion/cr-api.zsh
         touch dist/completion/cr-api.fish
-        touch dist/completion/deckbuilder.bash
-        touch dist/completion/deckbuilder.zsh
-        touch dist/completion/deckbuilder.fish
 
         echo "✅ Completion placeholders created in dist/completion/"
         echo "TODO: Implement actual shell completions"

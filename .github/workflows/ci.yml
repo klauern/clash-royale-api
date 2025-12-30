@@ -86,6 +86,3 @@ jobs:
         run: |
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
           go build -ldflags="-s -w" -o /dev/null ./cmd/cr-api
-
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} \
-          go build -ldflags="-s -w" -o /dev/null ./cmd/deckbuilder
