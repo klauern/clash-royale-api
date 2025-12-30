@@ -387,37 +387,32 @@ func (b *Builder) buildCandidate(name string, data CardLevelData) *CardCandidate
 		stats = b.statsRegistry.GetStats(name)
 	}
 
-	// Use combat-enhanced scoring if stats are available
-	var score float64
-	if stats != nil {
-		// Calculate custom evolution bonus and add to combat-enhanced score
-		evolutionBonus := b.calculateEvolutionBonus(name, level, maxLevel, data.MaxEvolutionLevel)
-		combatScore := ScoreCardWithCombat(level, maxLevel, rarity, elixir, role, stats)
-		score = combatScore + evolutionBonus
-	} else {
-		// Fall back to traditional scoring if no combat stats available
-		score = b.scoreCard(name, level, maxLevel, rarity, elixir, role, data.MaxEvolutionLevel)
-	}
-
-	// Apply archetype-preferred card boost (if any)
-	if data.ScoreBoost > 0 {
-		score *= (1 + data.ScoreBoost)
-	}
-
-	return &CardCandidate{
+	// Create candidate first (score will be calculated next)
+	candidate := &CardCandidate{
 		Name:              name,
 		Level:             level,
 		MaxLevel:          maxLevel,
 		Rarity:            rarity,
 		Elixir:            elixir,
 		Role:              role,
-		Score:             score,
+		Score:             0, // Will be calculated below
 		HasEvolution:      hasEvolution,
 		EvolutionPriority: evoPriority,
 		EvolutionLevel:    data.EvolutionLevel,
 		MaxEvolutionLevel: data.MaxEvolutionLevel,
 		Stats:             stats,
 	}
+
+	// Calculate score using strategy-aware scoring
+	score := ScoreCardWithStrategy(candidate, role, b.strategyConfig)
+
+	// Apply archetype-preferred card boost (if any)
+	if data.ScoreBoost > 0 {
+		score *= (1 + data.ScoreBoost)
+	}
+
+	candidate.Score = score
+	return candidate
 }
 
 func (b *Builder) resolveElixir(name string, data CardLevelData) int {

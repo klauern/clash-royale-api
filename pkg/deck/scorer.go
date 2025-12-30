@@ -381,3 +381,81 @@ func ScoreAllCandidatesWithCombat(candidates []CardCandidate) {
 		ScoreCardCandidateWithCombat(&candidates[i])
 	}
 }
+
+// ScoreCardWithStrategy calculates enhanced score using strategy configuration
+// Applies role multipliers and elixir targeting adjustments based on the strategy
+func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyConfig) float64 {
+	// Start with base score (using existing scoring logic)
+	var baseScore float64
+	if card.Stats != nil {
+		// Use combat-enhanced scoring if stats available
+		baseScore = ScoreCardWithCombatAndEvolution(
+			card.Level,
+			card.MaxLevel,
+			card.Rarity,
+			card.Elixir,
+			role,
+			card.Stats,
+			card.EvolutionLevel,
+			card.MaxEvolutionLevel,
+		)
+	} else {
+		// Fall back to traditional scoring
+		baseScore = ScoreCardWithEvolution(
+			card.Level,
+			card.MaxLevel,
+			card.Rarity,
+			card.Elixir,
+			role,
+			card.EvolutionLevel,
+			card.MaxEvolutionLevel,
+		)
+	}
+
+	// Apply role multiplier from strategy config
+	roleMultiplier := 1.0
+	if role != nil {
+		if mult, exists := config.RoleMultipliers[*role]; exists {
+			roleMultiplier = mult
+		}
+	}
+
+	// Apply elixir targeting adjustment
+	elixirAdjustment := calculateElixirAdjustment(card.Elixir, config)
+
+	// Combine: base score × role multiplier + elixir adjustment
+	finalScore := (baseScore * roleMultiplier) + elixirAdjustment
+
+	return finalScore
+}
+
+// calculateElixirAdjustment calculates score adjustment based on strategy's elixir targets
+// Penalizes cards outside the target elixir range, especially for cycle strategy
+func calculateElixirAdjustment(elixir int, config StrategyConfig) float64 {
+	elixirCost := float64(elixir)
+	targetMin := config.TargetElixirMin
+	targetMax := config.TargetElixirMax
+
+	// If within target range, no penalty
+	if elixirCost >= targetMin && elixirCost <= targetMax {
+		return 0.0
+	}
+
+	// Calculate distance from target range
+	var distance float64
+	if elixirCost < targetMin {
+		distance = targetMin - elixirCost
+	} else {
+		distance = elixirCost - targetMax
+	}
+
+	// For cycle strategy (low elixir target), heavily penalize high-cost cards
+	// This is particularly important to keep the deck fast
+	if targetMax <= 3.0 && elixirCost > 4.0 {
+		// Extra penalty for cards that would push average too high
+		return -0.3 * distance
+	}
+
+	// Standard penalty for cards outside target range
+	return -0.15 * distance
+}
