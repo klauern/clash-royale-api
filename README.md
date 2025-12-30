@@ -101,9 +101,12 @@ task build
 # Common commands (use --help for all options)
 ./bin/cr-api player --tag PLAYER_TAG [--chests] [--save] [--export-csv]
 ./bin/cr-api analyze --tag PLAYER_TAG [--save] [--export-csv]
-./bin/cr-api deck build --tag PLAYER_TAG [--verbose]
+./bin/cr-api deck build --tag PLAYER_TAG [--strategy STRATEGY] [--verbose]
 ./bin/cr-api events scan --tag PLAYER_TAG
 ./bin/cr-api cards [--export-csv]
+
+# Deck building strategies: balanced (default), aggro, control, cycle, splash, spell
+./bin/cr-api deck build --tag PLAYER_TAG --strategy cycle --verbose
 
 # Task runner (recommended)
 task                     # Show all tasks
