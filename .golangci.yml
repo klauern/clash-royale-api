@@ -10,22 +10,20 @@ linters:
     - unused
     - misspell
     - ineffassign
+  settings:
+    misspell:
+      locale: US
+  exclusions:
+    rules:
+      - path: _test\.go
+        linters:
+          - errcheck
 
 formatters:
   enable:
     - gofmt
     - goimports
-
-linters-settings:
-  misspell:
-    locale: US
-
-formatters-settings:
-  goimports:
-    local-prefixes: github.com/klauern
-
-issues:
-  exclude-rules:
-    - path: _test\.go
-      linters:
-        - errcheck
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/klauern
