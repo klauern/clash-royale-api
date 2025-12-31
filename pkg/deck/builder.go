@@ -27,6 +27,9 @@ type Builder struct {
 	strategy           Strategy
 	strategyConfig     StrategyConfig
 	levelCurve         *LevelCurve
+	synergyDB          *SynergyDatabase
+	synergyEnabled     bool
+	synergyWeight      float64
 }
 
 // NewBuilder creates a new deck builder instance
@@ -121,6 +124,11 @@ func NewBuilder(dataDir string) *Builder {
 	builder.strategy = StrategyBalanced
 	builder.strategyConfig = GetStrategyConfig(StrategyBalanced)
 
+	// Initialize synergy database
+	builder.synergyDB = NewSynergyDatabase()
+	builder.synergyEnabled = false // Disabled by default, enabled via CLI flag
+	builder.synergyWeight = 0.15   // Default: 15% of total score from synergy
+
 	return builder
 }
 
@@ -164,7 +172,7 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 		winConditionCount = *override.WinConditions
 	}
 	for i := 0; i < winConditionCount; i++ {
-		if winCondition := b.pickBest(RoleWinCondition, candidates, used); winCondition != nil {
+		if winCondition := b.pickBest(RoleWinCondition, candidates, used, deck); winCondition != nil {
 			deck = append(deck, winCondition)
 			used[winCondition.Name] = true
 		} else if i == 0 {
@@ -177,7 +185,7 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 		buildingCount = *override.Buildings
 	}
 	for i := 0; i < buildingCount; i++ {
-		if building := b.pickBest(RoleBuilding, candidates, used); building != nil {
+		if building := b.pickBest(RoleBuilding, candidates, used, deck); building != nil {
 			deck = append(deck, building)
 			used[building.Name] = true
 		}
@@ -188,7 +196,7 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 		bigSpellCount = *override.BigSpells
 	}
 	for i := 0; i < bigSpellCount; i++ {
-		if bigSpell := b.pickBest(RoleSpellBig, candidates, used); bigSpell != nil {
+		if bigSpell := b.pickBest(RoleSpellBig, candidates, used, deck); bigSpell != nil {
 			deck = append(deck, bigSpell)
 			used[bigSpell.Name] = true
 		}
@@ -199,7 +207,7 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 		smallSpellCount = *override.SmallSpells
 	}
 	for i := 0; i < smallSpellCount; i++ {
-		if smallSpell := b.pickBest(RoleSpellSmall, candidates, used); smallSpell != nil {
+		if smallSpell := b.pickBest(RoleSpellSmall, candidates, used, deck); smallSpell != nil {
 			deck = append(deck, smallSpell)
 			used[smallSpell.Name] = true
 		}
@@ -210,7 +218,7 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	if override != nil && override.Support != nil {
 		supportCount = *override.Support
 	}
-	supportCards := b.pickMany(RoleSupport, candidates, used, supportCount)
+	supportCards := b.pickMany(RoleSupport, candidates, used, supportCount, deck)
 	deck = append(deck, supportCards...)
 	for _, card := range supportCards {
 		used[card.Name] = true
@@ -221,7 +229,7 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	if override != nil && override.Cycle != nil {
 		cycleCount = *override.Cycle
 	}
-	cycleCards := b.pickMany(RoleCycle, candidates, used, cycleCount)
+	cycleCards := b.pickMany(RoleCycle, candidates, used, cycleCount, deck)
 	deck = append(deck, cycleCards...)
 	for _, card := range cycleCards {
 		used[card.Name] = true
@@ -557,7 +565,38 @@ func (b *Builder) selectEvolutionSlots(deck []*CardCandidate) []string {
 	return slots
 }
 
-func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[string]bool) *CardCandidate {
+// calculateSynergyScore computes the synergy bonus for a card based on its synergies
+// with cards already in the deck. Returns a score between 0.0 and 1.0 where:
+// - 0.0 means no synergies with current deck
+// - 1.0 means perfect synergies (average score of 1.0 with all deck cards)
+//
+// The score is calculated as the average synergy score across all pairs between
+// the candidate card and cards currently in the deck.
+func (b *Builder) calculateSynergyScore(cardName string, deck []*CardCandidate) float64 {
+	if b.synergyDB == nil || len(deck) == 0 {
+		return 0.0
+	}
+
+	totalSynergy := 0.0
+	synergyCount := 0
+
+	// Check synergy with each card in the current deck
+	for _, deckCard := range deck {
+		if synergyScore := b.synergyDB.GetSynergy(cardName, deckCard.Name); synergyScore > 0 {
+			totalSynergy += synergyScore
+			synergyCount++
+		}
+	}
+
+	// Return average synergy score (0.0 if no synergies found)
+	if synergyCount == 0 {
+		return 0.0
+	}
+
+	return totalSynergy / float64(synergyCount)
+}
+
+func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[string]bool, currentDeck []*CardCandidate) *CardCandidate {
 	roleCards, exists := b.roleGroups[role]
 	if !exists {
 		return nil
@@ -574,6 +613,14 @@ func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[
 		return nil
 	}
 
+	// Apply synergy bonuses if enabled
+	if b.synergyEnabled && len(currentDeck) > 0 {
+		for _, candidate := range pool {
+			synergyBonus := b.calculateSynergyScore(candidate.Name, currentDeck)
+			candidate.Score += synergyBonus * b.synergyWeight
+		}
+	}
+
 	// Return highest scoring card
 	sort.Slice(pool, func(i, j int) bool {
 		return pool[i].Score > pool[j].Score
@@ -582,7 +629,7 @@ func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[
 	return pool[0]
 }
 
-func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[string]bool, count int) []*CardCandidate {
+func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[string]bool, count int, currentDeck []*CardCandidate) []*CardCandidate {
 	roleCards, exists := b.roleGroups[role]
 	if !exists {
 		return nil
@@ -592,6 +639,14 @@ func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[
 	for _, candidate := range candidates {
 		if !used[candidate.Name] && b.contains(roleCards, candidate.Name) {
 			pool = append(pool, candidate)
+		}
+	}
+
+	// Apply synergy bonuses if enabled
+	if b.synergyEnabled && len(currentDeck) > 0 {
+		for _, candidate := range pool {
+			synergyBonus := b.calculateSynergyScore(candidate.Name, currentDeck)
+			candidate.Score += synergyBonus * b.synergyWeight
 		}
 	}
 
@@ -727,4 +782,22 @@ func (b *Builder) SetStrategy(strategy Strategy) error {
 	b.strategy = strategy
 	b.strategyConfig = GetStrategyConfig(strategy)
 	return nil
+}
+
+// SetSynergyEnabled enables or disables synergy scoring in deck building
+func (b *Builder) SetSynergyEnabled(enabled bool) {
+	b.synergyEnabled = enabled
+}
+
+// SetSynergyWeight sets the weight for synergy scoring (0.0 to 1.0)
+// Default is 0.15 (15% of total score from synergy)
+// Higher values give more importance to synergies
+func (b *Builder) SetSynergyWeight(weight float64) {
+	if weight < 0.0 {
+		weight = 0.0
+	}
+	if weight > 1.0 {
+		weight = 1.0
+	}
+	b.synergyWeight = weight
 }

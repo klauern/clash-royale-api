@@ -165,6 +165,43 @@ The deck builder blends traditional scoring (level, rarity, cost) with combat st
 - **0.0-0.2**: Focus on highest-level cards (ladder pushing)
 ```
 
+## Synergy Scoring
+
+The deck builder includes an optional synergy system that considers card interactions and combos when selecting cards. The system uses a database of 188 known synergy pairs covering various archetypes (tank+support, spell combos, bait, cycle, etc.).
+
+**How it works:**
+- Synergy database contains pre-defined synergy pairs with scores (0.0-1.0)
+- When building a deck, each candidate card is scored based on synergies with already-selected cards
+- Synergy bonus is added to the card's base score: `finalScore = baseScore + (synergyScore × weight)`
+- Cards that synergize well with the current deck get higher priority
+
+**Configuration:**
+
+**CLI options:**
+```bash
+./bin/cr-api deck build --tag <TAG> --enable-synergy                      # Enable with default weight (15%)
+./bin/cr-api deck build --tag <TAG> --enable-synergy --synergy-weight 0.25  # Enable with 25% weight
+```
+
+**Weight guidance:**
+- **0.10-0.15** (default): Subtle synergy influence, card levels still matter most
+- **0.20-0.30**: Moderate synergy emphasis, good balance for most players
+- **0.40-0.50**: Strong synergy focus, prioritizes combos over individual card strength
+
+**Synergy categories:**
+- **Tank + Support**: Giant/Witch, Golem/Night Witch, Lava Hound/Balloon, etc.
+- **Spell Combos**: Hog/Fireball, Tornado/Executioner, Freeze/Balloon, etc.
+- **Bait**: Goblin Barrel/Princess, Log bait variations, spell bait pressure
+- **Win Conditions**: Hog/Ice Golem, X-Bow/Tesla, Miner/Poison, etc.
+- **Defensive**: Cannon/Ice Spirit, Inferno Tower/Tornado, Tesla defense, etc.
+- **Cycle**: Ice Spirit/Skeletons, fast rotation combos, cheap cycling
+- **Bridge Spam**: PEKKA/Battle Ram, Bandit/Royal Ghost, dual-lane pressure
+
+**Technical details:**
+- Database location: `pkg/deck/synergy.go`
+- Coverage: 188 synergy pairs, ~45 cards
+- Integration: Applied during card selection in builder (`pkg/deck/builder.go`)
+
 ## Testing
 
 ```bash

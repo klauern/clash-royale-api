@@ -108,6 +108,15 @@ func addDeckCommands() *cli.Command {
 						Name:  "analysis-file",
 						Usage: "Specific analysis file path (overrides --analysis-dir lookup)",
 					},
+					&cli.BoolFlag{
+						Name:  "enable-synergy",
+						Usage: "Enable synergy-based card selection (considers card interactions and combos)",
+					},
+					&cli.Float64Flag{
+						Name:  "synergy-weight",
+						Value: 0.15,
+						Usage: "Weight for synergy scoring (0.0-1.0, default 0.15 = 15%)",
+					},
 				},
 				Action: deckBuildCommand,
 			},
@@ -395,6 +404,17 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 		if verbose {
 			fmt.Printf("Using deck building strategy: %s\n", parsedStrategy)
+		}
+	}
+
+	// Configure synergy system if enabled
+	if enableSynergy := cmd.Bool("enable-synergy"); enableSynergy {
+		builder.SetSynergyEnabled(true)
+		if synergyWeight := cmd.Float64("synergy-weight"); synergyWeight > 0 {
+			builder.SetSynergyWeight(synergyWeight)
+		}
+		if verbose {
+			fmt.Printf("Synergy scoring enabled (weight: %.2f)\n", cmd.Float64("synergy-weight"))
 		}
 	}
 

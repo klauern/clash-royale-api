@@ -252,9 +252,10 @@ func TestBuilder_PickBest(t *testing.T) {
 	}
 
 	used := make(map[string]bool)
+	currentDeck := make([]*CardCandidate, 0)
 
 	// Test picking win condition
-	winCondition := builder.pickBest(RoleWinCondition, candidates, used)
+	winCondition := builder.pickBest(RoleWinCondition, candidates, used, currentDeck)
 	if winCondition == nil {
 		t.Error("Expected to find win condition")
 	}
@@ -264,9 +265,10 @@ func TestBuilder_PickBest(t *testing.T) {
 	}
 
 	used["Hog Rider"] = true
+	currentDeck = append(currentDeck, winCondition)
 
 	// Test picking building
-	building := builder.pickBest(RoleBuilding, candidates, used)
+	building := builder.pickBest(RoleBuilding, candidates, used, currentDeck)
 	if building == nil {
 		t.Error("Expected to find building")
 	}
@@ -1312,4 +1314,143 @@ func deckEquals(deck1, deck2 []string) bool {
 	}
 
 	return true
+}
+
+// TestBuilder_SynergyScoring tests the synergy scoring functionality
+func TestBuilder_SynergyScoring(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.SetSynergyEnabled(true)
+
+	// Create test deck with known synergy pairs
+	deck := []*CardCandidate{
+		{Name: "Giant", Level: 10, MaxLevel: 13},
+		{Name: "Witch", Level: 8, MaxLevel: 11},
+	}
+
+	// Test synergy score for a card that synergizes well with Giant
+	synergyScore := builder.calculateSynergyScore("Sparky", deck)
+	if synergyScore <= 0 {
+		t.Errorf("Expected positive synergy score for Sparky with Giant, got %.2f", synergyScore)
+	}
+
+	// Test synergy score for a card with no known synergies
+	nonSynergyScore := builder.calculateSynergyScore("RandomCard", deck)
+	if nonSynergyScore != 0 {
+		t.Errorf("Expected zero synergy score for card with no synergies, got %.2f", nonSynergyScore)
+	}
+
+	// Test with empty deck
+	emptyDeckScore := builder.calculateSynergyScore("Giant", []*CardCandidate{})
+	if emptyDeckScore != 0 {
+		t.Errorf("Expected zero synergy score for empty deck, got %.2f", emptyDeckScore)
+	}
+}
+
+// TestBuilder_SynergyEnabledDeckBuilding tests deck building with synergy enabled
+func TestBuilder_SynergyEnabledDeckBuilding(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.SetSynergyEnabled(true)
+	builder.SetSynergyWeight(0.15)
+
+	// Create test analysis with cards that have known synergies
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Giant": {Level: 10, MaxLevel: 13, Rarity: "Rare", Elixir: 5},
+			"Witch": {Level: 8, MaxLevel: 11, Rarity: "Epic", Elixir: 5},
+			"Sparky": {Level: 7, MaxLevel: 11, Rarity: "Legendary", Elixir: 6},
+			"Musketeer": {Level: 10, MaxLevel: 13, Rarity: "Rare", Elixir: 4},
+			"Zap": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 2},
+			"Fireball": {Level: 7, MaxLevel: 11, Rarity: "Rare", Elixir: 4},
+			"Cannon": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 3},
+			"Skeletons": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 1},
+			"Knight": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 3},
+			"Ice Spirit": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 1},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	deck, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build deck with synergy enabled: %v", err)
+	}
+
+	// Validate deck structure
+	if len(deck.Deck) != 8 {
+		t.Errorf("Expected 8 cards in deck, got %d", len(deck.Deck))
+	}
+
+	if deck.AvgElixir <= 0 || deck.AvgElixir > 10 {
+		t.Errorf("Invalid average elixir: %f", deck.AvgElixir)
+	}
+}
+
+// TestBuilder_SetSynergyEnabled tests synergy enable/disable functionality
+func TestBuilder_SetSynergyEnabled(t *testing.T) {
+	builder := NewBuilder("testdata")
+
+	// Default should be disabled
+	if builder.synergyEnabled {
+		t.Error("Expected synergy to be disabled by default")
+	}
+
+	// Enable synergy
+	builder.SetSynergyEnabled(true)
+	if !builder.synergyEnabled {
+		t.Error("Expected synergy to be enabled after SetSynergyEnabled(true)")
+	}
+
+	// Disable synergy
+	builder.SetSynergyEnabled(false)
+	if builder.synergyEnabled {
+		t.Error("Expected synergy to be disabled after SetSynergyEnabled(false)")
+	}
+}
+
+// TestBuilder_SetSynergyWeight tests synergy weight configuration
+func TestBuilder_SetSynergyWeight(t *testing.T) {
+	builder := NewBuilder("testdata")
+
+	// Default weight should be 0.15
+	expectedDefault := 0.15
+	if builder.synergyWeight != expectedDefault {
+		t.Errorf("Expected default synergy weight to be %.2f, got %.2f", expectedDefault, builder.synergyWeight)
+	}
+
+	// Set valid weight
+	builder.SetSynergyWeight(0.30)
+	if builder.synergyWeight != 0.30 {
+		t.Errorf("Expected synergy weight to be 0.30, got %.2f", builder.synergyWeight)
+	}
+
+	// Test bounds: negative values should be clamped to 0
+	builder.SetSynergyWeight(-0.5)
+	if builder.synergyWeight != 0.0 {
+		t.Errorf("Expected synergy weight to be clamped to 0.0, got %.2f", builder.synergyWeight)
+	}
+
+	// Test bounds: values > 1.0 should be clamped to 1.0
+	builder.SetSynergyWeight(1.5)
+	if builder.synergyWeight != 1.0 {
+		t.Errorf("Expected synergy weight to be clamped to 1.0, got %.2f", builder.synergyWeight)
+	}
+}
+
+// TestBuilder_SynergyDatabaseLoaded tests that synergy database is properly loaded
+func TestBuilder_SynergyDatabaseLoaded(t *testing.T) {
+	builder := NewBuilder("testdata")
+
+	if builder.synergyDB == nil {
+		t.Fatal("Synergy database should be loaded on builder initialization")
+	}
+
+	// Test that the database contains expected pairs
+	if len(builder.synergyDB.Pairs) == 0 {
+		t.Error("Synergy database should contain synergy pairs")
+	}
+
+	// Verify a known synergy exists
+	synergy := builder.synergyDB.GetSynergy("Giant", "Witch")
+	if synergy == 0 {
+		t.Error("Expected Giant+Witch to have a synergy score > 0")
+	}
 }
