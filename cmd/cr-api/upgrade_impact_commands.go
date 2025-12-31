@@ -65,10 +65,14 @@ func addUpgradeImpactCommands() *cli.Command {
 				Name:  "save",
 				Usage: "Save analysis to file",
 			},
-		&cli.BoolFlag{
-			Name:  "use-combat-stats",
-			Usage: "Include combat stats (DPS/HP) in impact scoring",
-		},
+			&cli.BoolFlag{
+				Name:  "use-combat-stats",
+				Usage: "Include combat stats (DPS/HP) in impact scoring",
+			},
+			&cli.StringFlag{
+				Name:  "archetypes-file",
+				Usage: "Path to custom archetypes JSON file (uses embedded defaults if empty)",
+			},
 		},
 		Action: upgradeImpactCommand,
 	}
@@ -86,6 +90,7 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 	jsonOutput := cmd.Bool("json")
 	saveData := cmd.Bool("save")
 	useCombatStats := cmd.Bool("use-combat-stats")
+	archetypesFile := cmd.String("archetypes-file")
 	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
@@ -128,8 +133,11 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 		UseCombatStats:     useCombatStats,
 	}
 
-	// Create analyzer and run analysis
-	analyzer := analysis.NewUpgradeImpactAnalyzer(dataDir, impactOptions)
+	// Create analyzer and run analysis (now returns error)
+	analyzer, err := analysis.NewUpgradeImpactAnalyzer(dataDir, archetypesFile, impactOptions)
+	if err != nil {
+		return fmt.Errorf("failed to create analyzer: %w", err)
+	}
 	impactAnalysis, err := analyzer.AnalyzeUpgradeImpact(cardAnalysis)
 	if err != nil {
 		return fmt.Errorf("failed to analyze upgrade impact: %w", err)
