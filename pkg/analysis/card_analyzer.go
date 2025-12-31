@@ -128,7 +128,15 @@ func buildCardLevelsMap(infos []UpgradeInfo) map[string]CardLevelInfo {
 }
 
 // calculateRarityBreakdown calculates rarity statistics from UpgradeInfo slice
+// Uses default card count config for backward compatibility
 func calculateRarityBreakdown(infos []UpgradeInfo) map[string]RarityStats {
+	// Use the config-based implementation with default config
+	return calculateRarityBreakdownWithConfig(infos, DefaultCardCountConfig())
+}
+
+// calculateRarityBreakdownWithConfig calculates rarity statistics using a config
+// This is the preferred method for better testability and thread-safety
+func calculateRarityBreakdownWithConfig(infos []UpgradeInfo, config *CardCountConfig) map[string]RarityStats {
 	// Group cards by rarity
 	rarityGroups := make(map[string][]UpgradeInfo)
 	for _, info := range infos {
@@ -163,10 +171,17 @@ func calculateRarityBreakdown(infos []UpgradeInfo) map[string]RarityStats {
 		}
 
 		cardCount := len(cards)
+
+		// Use config instead of global variable
+		totalPossible := 0
+		if config != nil {
+			totalPossible = config.GetTotalCards(rarity)
+		}
+
 		breakdown[rarity] = RarityStats{
 			Rarity:            rarity,
 			TotalCards:        cardCount,
-			TotalPossible:     totalCardsPerRarity[rarity],
+			TotalPossible:     totalPossible,
 			MaxLevelCards:     maxLevelCount,
 			AvgLevel:          float64(totalLevel) / float64(cardCount),
 			AvgLevelRatio:     totalLevelRatio / float64(cardCount),

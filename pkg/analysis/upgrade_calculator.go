@@ -147,100 +147,10 @@ var startingLevels = map[string]int{
 	"Champion": 11,
 }
 
-// totalCardsPerRarity stores the actual count of cards per rarity in the game
-
-// Updated dynamically when card data is available
-
-var totalCardsPerRarity = map[string]int{
-
-	"Common": 19, // Actual count as of 2024
-
-	"Rare": 20,
-
-	"Epic": 12,
-
-	"Legendary": 10,
-
-	"Champion": 6,
-}
-
-// UpdateCardCounts updates the totalCardsPerRarity map with actual card counts
-
-// from the card database or API response
-
-func UpdateCardCounts(cards []CardInfo) {
-
-	// Reset counts
-
-	for rarity := range totalCardsPerRarity {
-
-		totalCardsPerRarity[rarity] = 0
-
-	}
-
-	// Count cards by rarity
-
-	for _, card := range cards {
-
-		rarity := NormalizeRarity(card.GetRarity())
-
-		if _, exists := totalCardsPerRarity[rarity]; exists {
-
-			totalCardsPerRarity[rarity]++
-
-		}
-
-	}
-
-	// Fallback to defaults if no cards were counted
-
-	for rarity, defaultValue := range map[string]int{
-
-		"Common": 19,
-
-		"Rare": 20,
-
-		"Epic": 12,
-
-		"Legendary": 10,
-
-		"Champion": 6,
-	} {
-
-		if totalCardsPerRarity[rarity] == 0 {
-
-			totalCardsPerRarity[rarity] = defaultValue
-
-		}
-
-	}
-
-}
-
 // NewCardAdapter creates a CardInfo from a rarity string
-
 // This can be used when converting from external card types
-
 func NewCardAdapter(rarity string) CardInfo {
-
 	return cardAdapter{rarity: rarity}
-
-}
-
-// GetTotalCardsByRarity returns the total number of cards for a given rarity
-
-func GetTotalCardsByRarity(rarity string) int {
-
-	rarity = NormalizeRarity(rarity)
-
-	if count, exists := totalCardsPerRarity[rarity]; exists {
-
-		return count
-
-	}
-
-	return 0
-
 }
 
 // CalculateCardsNeeded returns how many cards are needed to upgrade from currentLevel
@@ -753,4 +663,70 @@ func GetUpgradePriorities(cards []UpgradeInfo, minScore float64, topN int) []Upg
 	}
 
 	return filtered
+}
+
+// CardCountConfig provides immutable card count configuration
+// This replaces the global mutable totalCardsPerRarity map for better testability
+type CardCountConfig struct {
+	cardCounts map[string]int
+}
+
+// NewCardCountConfig creates a config from actual card data
+// Counts cards by rarity and applies defaults for rarities with zero cards
+func NewCardCountConfig(cards []CardInfo) *CardCountConfig {
+	counts := make(map[string]int)
+
+	// Count cards by rarity
+	for _, card := range cards {
+		rarity := NormalizeRarity(card.GetRarity())
+		if rarity != "" {
+			counts[rarity]++
+		}
+	}
+
+	// Apply defaults for missing rarities (fallback to game defaults)
+	defaults := map[string]int{
+		"Common":    19,
+		"Rare":      20,
+		"Epic":      12,
+		"Legendary": 10,
+		"Champion":  6,
+	}
+
+	for rarity, defaultVal := range defaults {
+		if counts[rarity] == 0 {
+			counts[rarity] = defaultVal
+		}
+	}
+
+	return &CardCountConfig{cardCounts: counts}
+}
+
+// DefaultCardCountConfig returns a config with game default card counts
+// Use this when actual card data is not available
+func DefaultCardCountConfig() *CardCountConfig {
+	return &CardCountConfig{
+		cardCounts: map[string]int{
+			"Common":    19,
+			"Rare":      20,
+			"Epic":      12,
+			"Legendary": 10,
+			"Champion":  6,
+		},
+	}
+}
+
+// GetTotalCards returns the total number of cards for a given rarity
+// This method is thread-safe for concurrent read access
+func (c *CardCountConfig) GetTotalCards(rarity string) int {
+	if c == nil {
+		return 0
+	}
+
+	normalized := NormalizeRarity(rarity)
+	if count, ok := c.cardCounts[normalized]; ok {
+		return count
+	}
+
+	return 0
 }
