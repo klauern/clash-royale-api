@@ -117,6 +117,15 @@ func addDeckCommands() *cli.Command {
 						Value: 0.15,
 						Usage: "Weight for synergy scoring (0.0-1.0, default 0.15 = 15%)",
 					},
+					&cli.BoolFlag{
+						Name:  "suggest-upgrades",
+						Usage: "Show upgrade recommendations for the built deck",
+					},
+					&cli.IntFlag{
+						Name:  "upgrade-count",
+						Value: 5,
+						Usage: "Number of upgrade recommendations to show (default 5)",
+					},
 				},
 				Action: deckBuildCommand,
 			},
@@ -362,6 +371,10 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	disableCombatStats := cmd.Bool("disable-combat-stats")
 	excludeCards := cmd.StringSlice("exclude-cards")
 
+	// Upgrade recommendations flags
+	suggestUpgrades := cmd.Bool("suggest-upgrades")
+	upgradeCount := cmd.Int("upgrade-count")
+
 	// Offline mode flags
 	fromAnalysis := cmd.Bool("from-analysis")
 	analysisDir := cmd.String("analysis-dir")
@@ -546,6 +559,19 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Display deck recommendation
 	displayDeckRecommendationOffline(deckRec, playerName, playerTag)
+
+	// Display upgrade recommendations if requested
+	if suggestUpgrades {
+		fmt.Printf("\n")
+		upgrades, err := builder.GetUpgradeRecommendations(deckCardAnalysis, deckRec, upgradeCount)
+		if err != nil {
+			if verbose {
+				fmt.Printf("Warning: Failed to generate upgrade recommendations: %v\n", err)
+			}
+		} else {
+			displayUpgradeRecommendations(upgrades)
+		}
+	}
 
 	// Save deck if requested
 	if saveData {
@@ -1049,6 +1075,54 @@ func displayDeckRecommendationOffline(rec *deck.DeckRecommendation, playerName, 
 		for _, note := range rec.Notes {
 			fmt.Printf("• %s\n", note)
 		}
+	}
+}
+
+// displayUpgradeRecommendations displays upgrade recommendations in a formatted table
+func displayUpgradeRecommendations(upgrades *deck.UpgradeRecommendations) {
+	fmt.Printf("╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║              UPGRADE RECOMMENDATIONS                                ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	if len(upgrades.Recommendations) == 0 {
+		fmt.Println("No upgrade recommendations - all cards are at max level!")
+		return
+	}
+
+	fmt.Printf("Total Gold Needed: %d\n\n", upgrades.TotalGoldNeeded)
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "#\tCard\t\tLevel\t\tRarity\t\tImpact\tGold\t\tValue/1k\n")
+	fmt.Fprintf(w, "─\t────\t\t─────\t\t──────\t\t──────\t────\t\t────────\n")
+
+	for i, rec := range upgrades.Recommendations {
+		goldDisplay := fmt.Sprintf("%dk", rec.GoldCost/1000)
+		if rec.GoldCost < 1000 {
+			goldDisplay = fmt.Sprintf("%d", rec.GoldCost)
+		}
+
+		fmt.Fprintf(w, "%d\t%s\t\t%d->%d\t\t%s\t\t%.1f\t%s\t\t%.2f\n",
+			i+1,
+			rec.CardName,
+			rec.CurrentLevel,
+			rec.TargetLevel,
+			rec.Rarity,
+			rec.ImpactScore,
+			goldDisplay,
+			rec.ValuePerGold,
+		)
+	}
+	w.Flush()
+
+	// Display reasons
+	fmt.Printf("\nWhy These Upgrades:\n")
+	fmt.Printf("──────────────────\n")
+	for i, rec := range upgrades.Recommendations {
+		if i >= 3 {
+			fmt.Printf("... and %d more\n", len(upgrades.Recommendations)-3)
+			break
+		}
+		fmt.Printf("%d. %s: %s\n", i+1, rec.CardName, rec.Reason)
 	}
 }
 

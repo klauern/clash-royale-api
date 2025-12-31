@@ -232,3 +232,26 @@ type DeckError struct {
 func (e *DeckError) Error() string {
 	return e.Message
 }
+
+// UpgradeRecommendation represents a single card upgrade recommendation
+type UpgradeRecommendation struct {
+	CardName     string  `json:"card_name"`
+	CurrentLevel int     `json:"current_level"`
+	TargetLevel  int     `json:"target_level"`
+	Rarity       string  `json:"rarity"`
+	Elixir       int     `json:"elixir"`
+	Role         string  `json:"role,omitempty"`
+	ImpactScore  float64 `json:"impact_score"`
+	GoldCost     int     `json:"gold_cost"`
+	ValuePerGold float64 `json:"value_per_gold"`
+	Reason       string  `json:"reason"`
+}
+
+// UpgradeRecommendations represents upgrade suggestions for a deck
+type UpgradeRecommendations struct {
+	PlayerTag       string                  `json:"player_tag,omitempty"`
+	DeckName        string                  `json:"deck_name,omitempty"`
+	TotalGoldNeeded int                     `json:"total_gold_needed"`
+	Recommendations []UpgradeRecommendation `json:"recommendations"`
+	GeneratedAt     string                  `json:"generated_at,omitempty"`
+}

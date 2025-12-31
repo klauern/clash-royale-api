@@ -801,3 +801,264 @@ func (b *Builder) SetSynergyWeight(weight float64) {
 	}
 	b.synergyWeight = weight
 }
+
+// GetUpgradeRecommendations generates upgrade recommendations for a deck.
+// Analyzes the card collection and identifies cards whose upgrades would have
+// the most impact on deck performance.
+func (b *Builder) GetUpgradeRecommendations(analysis CardAnalysis, deck *DeckRecommendation, topN int) (*UpgradeRecommendations, error) {
+	if deck == nil {
+		return nil, fmt.Errorf("deck recommendation is required")
+	}
+
+	if topN <= 0 {
+		topN = 5 // Default to top 5 recommendations
+	}
+
+	// Collect upgrade candidates from the deck
+	candidates := b.getUpgradeCandidates(deck, analysis.CardLevels)
+
+	// Sort by impact score (descending)
+	sort.Slice(candidates, func(i, j int) bool {
+		// First sort by impact score
+		if candidates[i].ImpactScore != candidates[j].ImpactScore {
+			return candidates[i].ImpactScore > candidates[j].ImpactScore
+		}
+		// Then by value per gold for efficiency
+		return candidates[i].ValuePerGold > candidates[j].ValuePerGold
+	})
+
+	// Limit to top N
+	if len(candidates) > topN {
+		candidates = candidates[:topN]
+	}
+
+	// Calculate total gold needed
+	totalGold := 0
+	for _, c := range candidates {
+		totalGold += c.GoldCost
+	}
+
+	recommendations := &UpgradeRecommendations{
+		DeckName:        strings.Join(deck.Deck[:min(3, len(deck.Deck))], ", ") + "...",
+		TotalGoldNeeded: totalGold,
+		Recommendations: candidates,
+		GeneratedAt:     time.Now().Format(time.RFC3339),
+	}
+
+	return recommendations, nil
+}
+
+// getUpgradeCandidates analyzes deck cards and generates upgrade recommendations
+func (b *Builder) getUpgradeCandidates(deck *DeckRecommendation, cardLevels map[string]CardLevelData) []UpgradeRecommendation {
+	candidates := make([]UpgradeRecommendation, 0)
+
+	for _, card := range deck.DeckDetail {
+		// Skip if card is not in collection (shouldn't happen)
+		_, exists := cardLevels[card.Name]
+		if !exists {
+			continue
+		}
+
+		// Skip if already at max level
+		if card.Level >= card.MaxLevel {
+			continue
+		}
+
+		// Calculate current and upgraded scores
+		role := b.inferRole(card.Name)
+		currentScore := ScoreCardWithStrategy(
+			&CardCandidate{
+				Name:              card.Name,
+				Level:             card.Level,
+				MaxLevel:          card.MaxLevel,
+				Rarity:            card.Rarity,
+				Elixir:            card.Elixir,
+				Role:              role,
+				EvolutionLevel:    card.EvolutionLevel,
+				MaxEvolutionLevel: card.MaxEvolutionLevel,
+				Stats:             b.getStatsForCard(card.Name),
+			},
+			role,
+			b.strategyConfig,
+		)
+
+		targetLevel := card.Level + 1
+		if targetLevel > card.MaxLevel {
+			targetLevel = card.MaxLevel
+		}
+
+		upgradedScore := ScoreCardWithStrategy(
+			&CardCandidate{
+				Name:              card.Name,
+				Level:             targetLevel,
+				MaxLevel:          card.MaxLevel,
+				Rarity:            card.Rarity,
+				Elixir:            card.Elixir,
+				Role:              role,
+				EvolutionLevel:    card.EvolutionLevel,
+				MaxEvolutionLevel: card.MaxEvolutionLevel,
+				Stats:             b.getStatsForCard(card.Name),
+			},
+			role,
+			b.strategyConfig,
+		)
+
+		scoreDelta := upgradedScore - currentScore
+
+		// Calculate gold cost for this upgrade
+		goldCost := b.getGoldCost(card.Level, card.Rarity)
+
+		// Calculate impact score:
+		// - Score delta contribution (70%)
+		// - Role importance (20%)
+		// - Rarity bonus (10% - rarer cards get priority)
+		roleImportance := b.getRoleImportance(role)
+		rarityBonus := b.getRarityBonus(card.Rarity)
+
+		impactScore := (scoreDelta * 1000) + // Scale up for meaningful comparison
+			(roleImportance * 20) +
+			(rarityBonus * 10)
+
+		// Value per gold (impact per 1000 gold)
+		valuePerGold := 0.0
+		if goldCost > 0 {
+			valuePerGold = impactScore / float64(goldCost) * 1000
+		}
+
+		// Generate reason for the recommendation
+		reason := b.generateUpgradeReason(card, scoreDelta, role)
+
+		candidates = append(candidates, UpgradeRecommendation{
+			CardName:     card.Name,
+			CurrentLevel: card.Level,
+			TargetLevel:  targetLevel,
+			Rarity:       card.Rarity,
+			Elixir:       card.Elixir,
+			Role:         getRoleString(role),
+			ImpactScore:  impactScore,
+			GoldCost:     goldCost,
+			ValuePerGold: valuePerGold,
+			Reason:       reason,
+		})
+	}
+
+	return candidates
+}
+
+// getStatsForCard returns combat stats for a card if available
+func (b *Builder) getStatsForCard(cardName string) *clashroyale.CombatStats {
+	if b.statsRegistry != nil {
+		return b.statsRegistry.GetStats(cardName)
+	}
+	return nil
+}
+
+// getGoldCost returns the gold needed to upgrade a card from its current level
+func (b *Builder) getGoldCost(currentLevel int, rarity string) int {
+	// Gold costs by rarity and level
+	goldCosts := map[string]map[int]int{
+		"Common": {
+			1: 5, 2: 20, 3: 50, 4: 150, 5: 400, 6: 1000, 7: 2000,
+			8: 4000, 9: 8000, 10: 20000, 11: 50000, 12: 100000, 13: 100000,
+		},
+		"Rare": {
+			3: 50, 4: 150, 5: 400, 6: 1000, 7: 2000,
+			8: 4000, 9: 8000, 10: 20000, 11: 50000, 12: 100000, 13: 100000,
+		},
+		"Epic": {
+			6: 400, 7: 2000, 8: 4000, 9: 8000, 10: 20000, 11: 50000, 12: 100000, 13: 100000,
+		},
+		"Legendary": {
+			9: 5000, 10: 20000, 11: 50000, 12: 100000, 13: 100000,
+		},
+		"Champion": {
+			11: 50000, 12: 100000, 13: 100000,
+		},
+	}
+
+	costs, exists := goldCosts[rarity]
+	if !exists {
+		return 0
+	}
+
+	goldNeeded, exists := costs[currentLevel]
+	if !exists {
+		return 0
+	}
+
+	return goldNeeded
+}
+
+// getRoleImportance returns a score representing how important a card role is
+func (b *Builder) getRoleImportance(role *CardRole) float64 {
+	if role == nil {
+		return 0.4
+	}
+
+	switch *role {
+	case RoleWinCondition:
+		return 1.0 // Most important
+	case RoleBuilding:
+		return 0.7
+	case RoleSpellBig:
+		return 0.6
+	case RoleSupport:
+		return 0.5
+	case RoleSpellSmall:
+		return 0.4
+	case RoleCycle:
+		return 0.3
+	default:
+		return 0.4
+	}
+}
+
+// getRarityBonus returns a bonus score for rarer cards (harder to upgrade)
+func (b *Builder) getRarityBonus(rarity string) float64 {
+	switch rarity {
+	case "Champion":
+		return 5.0
+	case "Legendary":
+		return 4.0
+	case "Epic":
+		return 3.0
+	case "Rare":
+		return 2.0
+	case "Common":
+		return 1.0
+	default:
+		return 1.0
+	}
+}
+
+// getRoleString converts CardRole pointer to string
+func getRoleString(role *CardRole) string {
+	if role == nil {
+		return ""
+	}
+	return string(*role)
+}
+
+// generateUpgradeReason creates a human-readable reason for the upgrade recommendation
+func (b *Builder) generateUpgradeReason(card CardDetail, scoreDelta float64, role *CardRole) string {
+	roleStr := "card"
+	if role != nil {
+		roleStr = string(*role)
+	}
+
+	if scoreDelta > 0.05 {
+		return fmt.Sprintf("Significant score boost (+%.3f) for this key %s", scoreDelta, roleStr)
+	} else if scoreDelta > 0.02 {
+		return fmt.Sprintf("Moderate score boost (+%.3f) for this %s", scoreDelta, roleStr)
+	} else {
+		return fmt.Sprintf("Minor improvement (+%.3f) for this %s", scoreDelta, roleStr)
+	}
+}
+
+// min returns the minimum of two integers
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
