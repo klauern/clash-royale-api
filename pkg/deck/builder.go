@@ -113,8 +113,6 @@ func NewBuilder(dataDir string) *Builder {
 	levelCurvePath := "config/card_level_curves.json"
 	if lc, err := NewLevelCurve(levelCurvePath); err == nil {
 		builder.levelCurve = lc
-		// Set the global level curve for scorer functions
-		SetGlobalLevelCurve(lc)
 	} else {
 		// Log error if needed, for now just silent failure
 		// fmt.Fprintf(os.Stderr, "Warning: Failed to load level curves from %s: %v\n", levelCurvePath, err)
@@ -424,7 +422,7 @@ func (b *Builder) buildCandidate(name string, data CardLevelData) *CardCandidate
 	}
 
 	// Calculate score using strategy-aware scoring
-	score := ScoreCardWithStrategy(candidate, role, b.strategyConfig)
+	score := ScoreCardWithStrategy(candidate, role, b.strategyConfig, b.levelCurve)
 
 	// Apply archetype-preferred card boost (if any)
 	if data.ScoreBoost > 0 {
@@ -880,6 +878,7 @@ func (b *Builder) getUpgradeCandidates(deck *DeckRecommendation, cardLevels map[
 			},
 			role,
 			b.strategyConfig,
+			b.levelCurve,
 		)
 
 		targetLevel := card.Level + 1
@@ -901,6 +900,7 @@ func (b *Builder) getUpgradeCandidates(deck *DeckRecommendation, cardLevels map[
 			},
 			role,
 			b.strategyConfig,
+			b.levelCurve,
 		)
 
 		scoreDelta := upgradedScore - currentScore

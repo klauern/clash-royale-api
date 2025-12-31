@@ -11,15 +11,6 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
-// Package-level level curve instance (set by Builder)
-var globalLevelCurve *LevelCurve
-
-// SetGlobalLevelCurve sets the package-level level curve instance
-// This should be called by Builder during initialization
-func SetGlobalLevelCurve(lc *LevelCurve) {
-	globalLevelCurve = lc
-}
-
 // Rarity weights boost scores for higher rarity cards since they're harder to level up
 // Common cards (easiest to upgrade) get no boost, Champions get the highest boost
 var rarityWeights = map[string]float64{
@@ -81,7 +72,7 @@ func ScoreCard(level, maxLevel int, rarity string, elixir int, role *CardRole) f
 // card name is not available. For curve-based calculation, use ScoreCardCandidateWithCombat.
 func ScoreCardWithEvolution(level, maxLevel int, rarity string, elixir int, role *CardRole, evolutionLevel, maxEvolutionLevel int) float64 {
 	// Calculate level ratio using linear calculation (no card name available in this signature)
-	levelRatio := calculateLevelRatio("", level, maxLevel)
+	levelRatio := calculateLevelRatio("", level, maxLevel, nil)
 
 	// Get rarity boost multiplier
 	rarityBoost, exists := rarityWeights[rarity]
@@ -113,16 +104,16 @@ func ScoreCardWithEvolution(level, maxLevel int, rarity string, elixir int, role
 }
 
 // calculateLevelRatio calculates the level ratio for a card
-// Uses curve-based calculation when globalLevelCurve is available and cardName is provided.
+// Uses curve-based calculation when levelCurve is available and cardName is provided.
 // Falls back to linear calculation for backward compatibility.
-func calculateLevelRatio(cardName string, level, maxLevel int) float64 {
+func calculateLevelRatio(cardName string, level, maxLevel int, levelCurve *LevelCurve) float64 {
 	if maxLevel <= 0 {
 		return 0.0
 	}
 
 	// Use curve-based calculation if available and card name provided
-	if globalLevelCurve != nil && cardName != "" {
-		return globalLevelCurve.GetRelativeLevelRatio(cardName, level, maxLevel)
+	if levelCurve != nil && cardName != "" {
+		return levelCurve.GetRelativeLevelRatio(cardName, level, maxLevel)
 	}
 
 	// Fall back to linear calculation
@@ -164,6 +155,7 @@ func ScoreCardCandidate(candidate *CardCandidate) float64 {
 		candidate.Role,
 		candidate.EvolutionLevel,
 		candidate.MaxEvolutionLevel,
+		nil, // No level curve available in this context
 	)
 	candidate.Score = score
 	return score
@@ -398,6 +390,7 @@ func ScoreCardCandidateWithCombat(candidate *CardCandidate) float64 {
 		candidate.Stats,
 		candidate.EvolutionLevel,
 		candidate.MaxEvolutionLevel,
+		nil, // No level curve available in this context
 	)
 	candidate.Score = score
 	return score
@@ -405,9 +398,9 @@ func ScoreCardCandidateWithCombat(candidate *CardCandidate) float64 {
 
 // scoreCardWithCombatAndEvolutionInternal is the internal implementation that accepts cardName
 // for curve-based level calculation
-func scoreCardWithCombatAndEvolutionInternal(cardName string, level, maxLevel int, rarity string, elixir int, role *CardRole, stats *clashroyale.CombatStats, evolutionLevel, maxEvolutionLevel int) float64 {
+func scoreCardWithCombatAndEvolutionInternal(cardName string, level, maxLevel int, rarity string, elixir int, role *CardRole, stats *clashroyale.CombatStats, evolutionLevel, maxEvolutionLevel int, levelCurve *LevelCurve) float64 {
 	// Calculate base score using curve-based level ratio
-	baseScore := scoreCardWithEvolutionInternal(cardName, level, maxLevel, rarity, elixir, role, evolutionLevel, maxEvolutionLevel)
+	baseScore := scoreCardWithEvolutionInternal(cardName, level, maxLevel, rarity, elixir, role, evolutionLevel, maxEvolutionLevel, levelCurve)
 
 	// Get combat weight from environment (default 0.25)
 	combatWeight := getCombatWeight()
@@ -430,9 +423,9 @@ func scoreCardWithCombatAndEvolutionInternal(cardName string, level, maxLevel in
 
 // scoreCardWithEvolutionInternal is the internal implementation that accepts cardName
 // for curve-based level calculation
-func scoreCardWithEvolutionInternal(cardName string, level, maxLevel int, rarity string, elixir int, role *CardRole, evolutionLevel, maxEvolutionLevel int) float64 {
+func scoreCardWithEvolutionInternal(cardName string, level, maxLevel int, rarity string, elixir int, role *CardRole, evolutionLevel, maxEvolutionLevel int, levelCurve *LevelCurve) float64 {
 	// Calculate level ratio using curve-based calculation when card name is available
-	levelRatio := calculateLevelRatio(cardName, level, maxLevel)
+	levelRatio := calculateLevelRatio(cardName, level, maxLevel, levelCurve)
 
 	// Get rarity boost multiplier
 	rarityBoost, exists := rarityWeights[rarity]
@@ -473,7 +466,7 @@ func ScoreAllCandidatesWithCombat(candidates []CardCandidate) {
 // ScoreCardWithStrategy calculates enhanced score using strategy configuration
 // Applies role multipliers and elixir targeting adjustments based on the strategy
 // Uses curve-based level calculation when available
-func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyConfig) float64 {
+func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyConfig, levelCurve *LevelCurve) float64 {
 	// Start with base score using curve-based calculation (via internal functions with card name)
 	var baseScore float64
 	if card.Stats != nil {
@@ -488,6 +481,7 @@ func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyC
 			card.Stats,
 			card.EvolutionLevel,
 			card.MaxEvolutionLevel,
+			levelCurve,
 		)
 	} else {
 		// Fall back to traditional scoring (but still with curve-based level calculation)
@@ -500,6 +494,7 @@ func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyC
 			role,
 			card.EvolutionLevel,
 			card.MaxEvolutionLevel,
+			levelCurve,
 		)
 	}
 
