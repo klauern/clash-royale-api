@@ -1210,6 +1210,9 @@ func TestBuilder_SpellStrategyComposition(t *testing.T) {
 			"Log":           {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 2},
 			"Archers":       {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
 			"Musketeer":     {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Wizard":        {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Valkyrie":      {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Baby Dragon":   {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
 			"Knight":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
 			"Skeletons":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
 			"Ice Spirit":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
@@ -1577,5 +1580,142 @@ func TestBuilder_AllStrategiesProduceDifferentDecks(t *testing.T) {
 	}
 	if bigSpellCount != 2 {
 		t.Errorf("Spell strategy should have exactly 2 big spells, got %d", bigSpellCount)
+	}
+}
+
+// TestBuilder_StrategyCompositionOverrides tests that each strategy produces
+// decks with the expected composition (card counts per role)
+func TestBuilder_StrategyCompositionOverrides(t *testing.T) {
+	// Create analysis with varied cards across all roles to support any strategy
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			// Win conditions
+			"Hog Rider":     {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Royal Giant":   {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 6},
+			"Giant":         {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Goblin Barrel": {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 3},
+			// Buildings
+			"Cannon":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Inferno Tower": {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Bomb Tower":    {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			// Big spells
+			"Fireball":      {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Poison":        {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
+			"Lightning":     {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 6},
+			"Rocket":        {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 6},
+			// Small spells
+			"Zap":           {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Log":           {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 2},
+			"Arrows":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			// Support
+			"Archers":       {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Musketeer":     {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Wizard":        {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Valkyrie":      {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Baby Dragon":   {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
+			// Cycle
+			"Knight":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Skeletons":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Goblin Gang":   {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Minions":       {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+		},
+	}
+
+	tests := []struct {
+		name                string
+		strategy            Strategy
+		expectedWinCond     int
+		expectedBuildings   int
+		expectedBigSpells   int
+		expectedSmallSpells int
+	}{
+		{
+			name:                "Aggro strategy",
+			strategy:            StrategyAggro,
+			expectedWinCond:     2,
+			expectedBuildings:   0,
+			expectedBigSpells:   1,
+			expectedSmallSpells: 1,
+		},
+		{
+			name:                "Control strategy",
+			strategy:            StrategyControl,
+			expectedWinCond:     1,
+			expectedBuildings:   2,
+			expectedBigSpells:   2,
+			expectedSmallSpells: 0,
+		},
+		{
+			name:                "Cycle strategy",
+			strategy:            StrategyCycle,
+			expectedWinCond:     1,
+			expectedBuildings:   1,
+			expectedBigSpells:   0,
+			expectedSmallSpells: 1,
+		},
+		{
+			name:                "Spell strategy",
+			strategy:            StrategySpell,
+			expectedWinCond:     1,
+			expectedBuildings:   0,
+			expectedBigSpells:   2,
+			expectedSmallSpells: 1,
+		},
+		{
+			name:                "Balanced strategy",
+			strategy:            StrategyBalanced,
+			expectedWinCond:     1,
+			expectedBuildings:   1,
+			expectedBigSpells:   1,
+			expectedSmallSpells: 1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			builder := NewBuilder("testdata")
+			err := builder.SetStrategy(tt.strategy)
+			if err != nil {
+				t.Fatalf("SetStrategy(%v) failed: %v", tt.strategy, err)
+			}
+
+			deck, err := builder.BuildDeckFromAnalysis(analysis)
+			if err != nil {
+				t.Fatalf("BuildDeckFromAnalysis failed: %v", err)
+			}
+
+			// Count cards by role
+			winCondCount := 0
+			buildingCount := 0
+			bigSpellCount := 0
+			smallSpellCount := 0
+
+			for _, card := range deck.DeckDetail {
+				switch card.Role {
+				case string(RoleWinCondition):
+					winCondCount++
+				case string(RoleBuilding):
+					buildingCount++
+				case string(RoleSpellBig):
+					bigSpellCount++
+				case string(RoleSpellSmall):
+					smallSpellCount++
+				}
+			}
+
+			// Verify composition matches expectations
+			if winCondCount != tt.expectedWinCond {
+				t.Errorf("%s: expected %d win conditions, got %d", tt.name, tt.expectedWinCond, winCondCount)
+			}
+			if buildingCount != tt.expectedBuildings {
+				t.Errorf("%s: expected %d buildings, got %d", tt.name, tt.expectedBuildings, buildingCount)
+			}
+			if bigSpellCount != tt.expectedBigSpells {
+				t.Errorf("%s: expected %d big spells, got %d", tt.name, tt.expectedBigSpells, bigSpellCount)
+			}
+			if smallSpellCount != tt.expectedSmallSpells {
+				t.Errorf("%s: expected %d small spells, got %d", tt.name, tt.expectedSmallSpells, smallSpellCount)
+			}
+		})
 	}
 }

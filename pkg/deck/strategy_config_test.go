@@ -102,10 +102,11 @@ func TestGetStrategyConfig(t *testing.T) {
 			expectedElixirMin: 3.5,
 			expectedElixirMax: 4.0,
 			expectedMultipliers: map[CardRole]float64{
-				RoleWinCondition: 1.3,
-				RoleSupport:      1.1,
+				RoleWinCondition: 2.0,
+				RoleSupport:      1.2,
+				RoleBuilding:     0.3,
 			},
-			hasOverrides: false,
+			hasOverrides: true,
 		},
 		{
 			name:              "Control strategy",
@@ -113,10 +114,13 @@ func TestGetStrategyConfig(t *testing.T) {
 			expectedElixirMin: 3.5,
 			expectedElixirMax: 4.2,
 			expectedMultipliers: map[CardRole]float64{
-				RoleBuilding: 1.3,
-				RoleSpellBig: 1.2,
+				RoleBuilding:   2.0,
+				RoleSpellBig:   1.5,
+				RoleSpellSmall: 0.3,
+				RoleWinCondition: 0.5,
+				RoleCycle:      0.5,
 			},
-			hasOverrides: false,
+			hasOverrides: true,
 		},
 		{
 			name:              "Cycle strategy",
@@ -124,11 +128,11 @@ func TestGetStrategyConfig(t *testing.T) {
 			expectedElixirMin: 2.5,
 			expectedElixirMax: 3.0,
 			expectedMultipliers: map[CardRole]float64{
-				RoleCycle:      1.4,
-				RoleSpellBig:   0.8,
-				RoleSpellSmall: 1.1,
+				RoleCycle:      2.0,
+				RoleSpellSmall: 1.2,
+				RoleSpellBig:   0.3,
 			},
-			hasOverrides: false,
+			hasOverrides: true,
 		},
 		{
 			name:              "Splash strategy",
@@ -136,9 +140,11 @@ func TestGetStrategyConfig(t *testing.T) {
 			expectedElixirMin: 3.2,
 			expectedElixirMax: 3.8,
 			expectedMultipliers: map[CardRole]float64{
-				RoleSupport: 1.3,
+				RoleSupport:   2.0,
+				RoleSpellBig:  1.2,
+				RoleCycle:     0.5,
 			},
-			hasOverrides: false,
+			hasOverrides: true,
 		},
 		{
 			name:              "Spell strategy",
@@ -146,9 +152,9 @@ func TestGetStrategyConfig(t *testing.T) {
 			expectedElixirMin: 3.2,
 			expectedElixirMax: 3.8,
 			expectedMultipliers: map[CardRole]float64{
-				RoleSpellBig:   1.5,
-				RoleSpellSmall: 1.2,
-				RoleBuilding:   0.5,
+				RoleSpellBig:   2.0,
+				RoleSpellSmall: 1.5,
+				RoleBuilding:   0.1,
 			},
 			hasOverrides: true,
 		},
@@ -178,17 +184,6 @@ func TestGetStrategyConfig(t *testing.T) {
 			if tt.hasOverrides {
 				if config.CompositionOverrides == nil {
 					t.Error("Expected CompositionOverrides, got nil")
-				} else {
-					// Spell strategy should have 2 big spells, 0 buildings, 1 small spell
-					if config.CompositionOverrides.BigSpells == nil || *config.CompositionOverrides.BigSpells != 2 {
-						t.Errorf("Expected BigSpells override = 2")
-					}
-					if config.CompositionOverrides.Buildings == nil || *config.CompositionOverrides.Buildings != 0 {
-						t.Errorf("Expected Buildings override = 0")
-					}
-					if config.CompositionOverrides.SmallSpells == nil || *config.CompositionOverrides.SmallSpells != 1 {
-						t.Errorf("Expected SmallSpells override = 1")
-					}
 				}
 			} else {
 				if config.CompositionOverrides != nil {

@@ -61,7 +61,7 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 		buildings := 2
 		bigSpells := 2
 		smallSpells := 0
-		support := 1
+		support := 2
 		cycle := 1
 
 		return StrategyConfig{
@@ -72,7 +72,7 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleSpellBig:     1.5,  // Favor big spells for area control
 				RoleSpellSmall:   0.3,  // Disfavor small spells
 				RoleSupport:      1.0,
-				RoleCycle:        1.0,
+				RoleCycle:        0.5,  // Disfavor cheap cycle cards
 				RoleWinCondition: 0.5,  // Disfavor pure offensive win conditions
 			},
 			CompositionOverrides: &CompositionOverride{
@@ -135,7 +135,7 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 		bigSpells := 2
 		buildings := 0
 		smallSpells := 1
-		support := 2
+		support := 3
 		cycle := 1
 
 		return StrategyConfig{
