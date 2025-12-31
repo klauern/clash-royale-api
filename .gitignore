@@ -139,6 +139,9 @@ data/*
 !data/evolution_shards.example.json
 !data/static/cards_stats.json
 
+# AI planning documents (ephemeral)
+history/
+
 # IDEs
 .vscode/
 .idea/
