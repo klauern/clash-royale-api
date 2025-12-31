@@ -65,6 +65,10 @@ func addUpgradeImpactCommands() *cli.Command {
 				Name:  "save",
 				Usage: "Save analysis to file",
 			},
+		&cli.BoolFlag{
+			Name:  "use-combat-stats",
+			Usage: "Include combat stats (DPS/HP) in impact scoring",
+		},
 		},
 		Action: upgradeImpactCommand,
 	}
@@ -81,6 +85,7 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 	showUnlockTree := cmd.Bool("show-unlock-tree")
 	jsonOutput := cmd.Bool("json")
 	saveData := cmd.Bool("save")
+	useCombatStats := cmd.Bool("use-combat-stats")
 	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
@@ -120,6 +125,7 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 		IncludeMaxLevel:    includeMaxLevel,
 		FocusRarities:      focusRarities,
 		ExcludeCards:       excludeCards,
+		UseCombatStats:     useCombatStats,
 	}
 
 	// Create analyzer and run analysis

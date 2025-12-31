@@ -88,6 +88,7 @@ type UpgradeImpactOptions struct {
 	IncludeMaxLevel    bool     `json:"include_max_level"`   // Include already-maxed cards
 	FocusRarities      []string `json:"focus_rarities"`      // Filter to specific rarities
 	ExcludeCards       []string `json:"exclude_cards"`       // Cards to exclude from analysis
+	UseCombatStats     bool     `json:"use_combat_stats"`    // Enable combat stats integration (DPS/HP scoring)
 }
 
 // DefaultUpgradeImpactOptions returns sensible defaults for upgrade impact analysis
@@ -264,9 +265,9 @@ func (a *UpgradeImpactAnalyzer) calculateCardImpact(
 		upgradedLevel = cardInfo.MaxLevel
 	}
 
-	// Calculate current and upgraded card scores
-	currentScore := a.calculateCardScore(cardInfo.Level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir)
-	upgradedScore := a.calculateCardScore(upgradedLevel, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir)
+	// Calculate current and upgraded card scores (evolution-aware)
+	currentScore := a.scoreCard(cardName, cardInfo.Level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir, cardInfo.EvolutionLevel, cardInfo.MaxEvolutionLevel)
+	upgradedScore := a.scoreCard(cardName, upgradedLevel, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir, cardInfo.EvolutionLevel, cardInfo.MaxEvolutionLevel)
 	scoreDelta := upgradedScore - currentScore
 
 	// Analyze affected decks
@@ -346,8 +347,21 @@ func (a *UpgradeImpactAnalyzer) calculateCardImpact(
 	}
 }
 
-// calculateCardScore calculates a score for a card based on level ratio and other factors
-func (a *UpgradeImpactAnalyzer) calculateCardScore(level, maxLevel int, rarity string, elixir int) float64 {
+// scoreCard calculates card score with evolution awareness.
+// This provides more accurate scoring than the legacy calculateCardScore by considering evolution levels.
+func (a *UpgradeImpactAnalyzer) scoreCard(cardName string, level, maxLevel int, rarity string, elixir int, evolutionLevel, maxEvolutionLevel int) float64 {
+	//  Base score calculation (same as before)
+	baseScore := a.fallbackScore(level, maxLevel, rarity, elixir)
+
+	// Add evolution bonus if applicable
+	evolutionBonus := a.calculateEvolutionBonus(evolutionLevel, maxEvolutionLevel)
+
+	return baseScore + evolutionBonus
+}
+
+// fallbackScore provides basic scoring when scorer unavailable.
+// This preserves the original calculateCardScore logic for backward compatibility.
+func (a *UpgradeImpactAnalyzer) fallbackScore(level, maxLevel int, rarity string, elixir int) float64 {
 	if maxLevel == 0 {
 		maxLevel = 14
 	}
@@ -371,6 +385,29 @@ func (a *UpgradeImpactAnalyzer) calculateCardScore(level, maxLevel int, rarity s
 	elixirWeight := 1.0 - float64(max(elixir-3, 0))/9.0
 
 	return (levelRatio * 1.2 * rarityBoost) + (elixirWeight * 0.15)
+}
+
+// calculateEvolutionBonus calculates the evolution level bonus for a card.
+// The bonus is proportional to the evolution progress (evolutionLevel/maxEvolutionLevel).
+// This matches the deck builder's evolution bonus calculation for consistency.
+func (a *UpgradeImpactAnalyzer) calculateEvolutionBonus(evolutionLevel, maxEvolutionLevel int) float64 {
+	if maxEvolutionLevel <= 0 || evolutionLevel <= 0 {
+		return 0.0
+	}
+
+	// Calculate evolution ratio (0.0 to 1.0)
+	evolutionRatio := float64(evolutionLevel) / float64(maxEvolutionLevel)
+
+	// Clamp ratio to valid range
+	if evolutionRatio > 1.0 {
+		evolutionRatio = 1.0
+	}
+
+	// Evolution bonus weight (matches deck builder: 0.15 max bonus)
+	const evolutionBonusWeight = 0.15
+
+	// Apply evolution bonus weight
+	return evolutionBonusWeight * evolutionRatio
 }
 
 // analyzeAffectedDecks analyzes how upgrading a card affects various deck archetypes
@@ -444,7 +481,7 @@ func (a *UpgradeImpactAnalyzer) calculateArchetypeScore(
 	// Win condition contributes 40% of score
 	winConScore := 0.0
 	if cardInfo, exists := cardAnalysis.CardLevels[archetype.WinCondition]; exists {
-		winConScore = a.calculateCardScore(cardInfo.Level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir)
+		winConScore = a.scoreCard(archetype.WinCondition, cardInfo.Level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir, cardInfo.EvolutionLevel, cardInfo.MaxEvolutionLevel)
 	}
 
 	// Support cards contribute 60% of score
@@ -452,7 +489,7 @@ func (a *UpgradeImpactAnalyzer) calculateArchetypeScore(
 	supportCount := 0
 	for _, supportCard := range archetype.SupportCards {
 		if cardInfo, exists := cardAnalysis.CardLevels[supportCard]; exists {
-			supportScore += a.calculateCardScore(cardInfo.Level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir)
+			supportScore += a.scoreCard(supportCard, cardInfo.Level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir, cardInfo.EvolutionLevel, cardInfo.MaxEvolutionLevel)
 			supportCount++
 		}
 	}
@@ -477,7 +514,7 @@ func (a *UpgradeImpactAnalyzer) calculateArchetypeScoreWithUpgrade(
 		if archetype.WinCondition == upgradedCard {
 			level = min(newLevel, cardInfo.MaxLevel)
 		}
-		winConScore = a.calculateCardScore(level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir)
+		winConScore = a.scoreCard(archetype.WinCondition, level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir, cardInfo.EvolutionLevel, cardInfo.MaxEvolutionLevel)
 	}
 
 	// Support cards contribute 60% of score
@@ -489,7 +526,7 @@ func (a *UpgradeImpactAnalyzer) calculateArchetypeScoreWithUpgrade(
 			if supportCard == upgradedCard {
 				level = min(newLevel, cardInfo.MaxLevel)
 			}
-			supportScore += a.calculateCardScore(level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir)
+			supportScore += a.scoreCard(supportCard, level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir, cardInfo.EvolutionLevel, cardInfo.MaxEvolutionLevel)
 			supportCount++
 		}
 	}
