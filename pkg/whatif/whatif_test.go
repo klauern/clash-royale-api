@@ -344,46 +344,46 @@ func TestGenerateRecommendation(t *testing.T) {
 	analyzer := &WhatIfAnalyzer{}
 
 	tests := []struct {
-		name               string
-		scoreDelta         float64
+		name                 string
+		scoreDelta           float64
 		viabilityImprovement float64
-		totalGold          int
-		wantSubstring      string
+		totalGold            int
+		wantSubstring        string
 	}{
 		{
-			name:               "negative delta",
-			scoreDelta:         -0.5,
+			name:                 "negative delta",
+			scoreDelta:           -0.5,
 			viabilityImprovement: -6.0,
-			totalGold:          1000,
-			wantSubstring:      "not recommended",
+			totalGold:            1000,
+			wantSubstring:        "not recommended",
 		},
 		{
-			name:               "high improvement",
-			scoreDelta:         0.9,
+			name:                 "high improvement",
+			scoreDelta:           0.9,
 			viabilityImprovement: 12.0,
-			totalGold:          1100,
-			wantSubstring:      "Highly recommended",
+			totalGold:            1100,
+			wantSubstring:        "Highly recommended",
 		},
 		{
-			name:               "moderate improvement",
-			scoreDelta:         0.5,
+			name:                 "moderate improvement",
+			scoreDelta:           0.5,
 			viabilityImprovement: 7.0,
-			totalGold:          600,
-			wantSubstring:      "Recommended",
+			totalGold:            600,
+			wantSubstring:        "Recommended",
 		},
 		{
-			name:               "minor improvement",
-			scoreDelta:         0.2,
+			name:                 "minor improvement",
+			scoreDelta:           0.2,
 			viabilityImprovement: 3.0,
-			totalGold:          500,
-			wantSubstring:      "Minor improvement",
+			totalGold:            500,
+			wantSubstring:        "Minor improvement",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			impact := &SimulationImpact{
-				DeckScoreDelta:      tt.scoreDelta,
+				DeckScoreDelta:       tt.scoreDelta,
 				ViabilityImprovement: tt.viabilityImprovement,
 			}
 

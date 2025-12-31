@@ -15,7 +15,7 @@ var defaultArchetypesJSON []byte
 
 // ArchetypeConfig represents the JSON configuration structure for deck archetypes
 type ArchetypeConfig struct {
-	Version    int                    `json:"version"`
+	Version    int                     `json:"version"`
 	Archetypes []DeckArchetypeTemplate `json:"archetypes"`
 }
 

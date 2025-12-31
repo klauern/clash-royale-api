@@ -6,7 +6,11 @@ import (
 	"math"
 
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
+	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
+
+// CardRole is an alias for deck.CardRole for convenience
+type CardRole = deck.CardRole
 
 // CombatScorer implements the Scorer interface using combat statistics.
 // It evaluates card effectiveness based on DPS per elixir, HP per elixir,

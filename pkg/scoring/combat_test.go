@@ -8,9 +8,6 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
-// CardRole is an alias for deck.CardRole for convenience
-type CardRole = deck.CardRole
-
 const (
 	RoleWinCondition CardRole = deck.RoleWinCondition
 	RoleBuilding     CardRole = deck.RoleBuilding

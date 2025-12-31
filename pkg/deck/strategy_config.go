@@ -41,12 +41,12 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 			TargetElixirMin: 3.5,
 			TargetElixirMax: 4.0,
 			RoleMultipliers: map[CardRole]float64{
-				RoleWinCondition: 2.0,  // Strongly favor win conditions
-				RoleSupport:      1.2,  // Favor support for offensive pressure
+				RoleWinCondition: 2.0, // Strongly favor win conditions
+				RoleSupport:      1.2, // Favor support for offensive pressure
 				RoleCycle:        1.0,
 				RoleSpellBig:     1.0,
 				RoleSpellSmall:   1.0,
-				RoleBuilding:     0.3,  // Disfavor defensive buildings
+				RoleBuilding:     0.3, // Disfavor defensive buildings
 			},
 			CompositionOverrides: &CompositionOverride{
 				WinConditions: &winConditions,
@@ -68,12 +68,12 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 			TargetElixirMin: 3.5,
 			TargetElixirMax: 4.2,
 			RoleMultipliers: map[CardRole]float64{
-				RoleBuilding:     2.0,  // Strongly favor defensive buildings
-				RoleSpellBig:     1.5,  // Favor big spells for area control
-				RoleSpellSmall:   0.3,  // Disfavor small spells
+				RoleBuilding:     2.0, // Strongly favor defensive buildings
+				RoleSpellBig:     1.5, // Favor big spells for area control
+				RoleSpellSmall:   0.3, // Disfavor small spells
 				RoleSupport:      1.0,
-				RoleCycle:        0.5,  // Disfavor cheap cycle cards
-				RoleWinCondition: 0.5,  // Disfavor pure offensive win conditions
+				RoleCycle:        0.5, // Disfavor cheap cycle cards
+				RoleWinCondition: 0.5, // Disfavor pure offensive win conditions
 			},
 			CompositionOverrides: &CompositionOverride{
 				Buildings:   &buildings,
@@ -94,12 +94,12 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 			TargetElixirMin: 2.5,
 			TargetElixirMax: 3.0,
 			RoleMultipliers: map[CardRole]float64{
-				RoleCycle:        2.0,  // Strongly favor cycle cards
-				RoleSpellSmall:   1.2,  // Favor small spells
+				RoleCycle:        2.0, // Strongly favor cycle cards
+				RoleSpellSmall:   1.2, // Favor small spells
 				RoleWinCondition: 1.0,
 				RoleSupport:      1.0,
 				RoleBuilding:     1.0,
-				RoleSpellBig:     0.3,  // Strongly disfavor big spells (high cost)
+				RoleSpellBig:     0.3, // Strongly disfavor big spells (high cost)
 			},
 			CompositionOverrides: &CompositionOverride{
 				BigSpells: &bigSpells,
@@ -117,12 +117,12 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 			TargetElixirMin: 3.2,
 			TargetElixirMax: 3.8,
 			RoleMultipliers: map[CardRole]float64{
-				RoleSupport:      2.0,  // Strongly favor splash support troops
-				RoleSpellBig:     1.2,  // Favor big splash spells
+				RoleSupport:      2.0, // Strongly favor splash support troops
+				RoleSpellBig:     1.2, // Favor big splash spells
 				RoleWinCondition: 1.0,
 				RoleBuilding:     1.0,
 				RoleSpellSmall:   1.0,
-				RoleCycle:        0.5,  // Disfavor cheap cycle cards
+				RoleCycle:        0.5, // Disfavor cheap cycle cards
 			},
 			CompositionOverrides: &CompositionOverride{
 				Support: &support,
@@ -142,11 +142,11 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 			TargetElixirMin: 3.2,
 			TargetElixirMax: 3.8,
 			RoleMultipliers: map[CardRole]float64{
-				RoleSpellBig:     2.0,  // Strongly favor big spells
-				RoleSpellSmall:   1.5,  // Favor small spells
+				RoleSpellBig:     2.0, // Strongly favor big spells
+				RoleSpellSmall:   1.5, // Favor small spells
 				RoleWinCondition: 1.0,
 				RoleSupport:      1.0,
-				RoleBuilding:     0.1,  // Strongly disfavor buildings (override to 0)
+				RoleBuilding:     0.1, // Strongly disfavor buildings (override to 0)
 				RoleCycle:        1.0,
 			},
 			CompositionOverrides: &CompositionOverride{

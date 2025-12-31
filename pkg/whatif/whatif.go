@@ -30,11 +30,11 @@ type WhatIfScenario struct {
 
 // SimulationImpact quantifies the effect of upgrades on deck performance
 type SimulationImpact struct {
-	DeckScoreDelta      float64
-	NewCardsInDeck      []string
-	RemovedCards        []string
+	DeckScoreDelta       float64
+	NewCardsInDeck       []string
+	RemovedCards         []string
 	ViabilityImprovement float64
-	Recommendation      string
+	Recommendation       string
 }
 
 // WhatIfAnalyzer performs what-if analysis on card upgrades

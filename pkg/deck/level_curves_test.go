@@ -59,11 +59,11 @@ func TestLevelCurve_GetLevelMultiplier(t *testing.T) {
 	}
 
 	tests := []struct {
-		name        string
-		cardName    string
-		level       int
-		wantMin     float64 // Minimum expected multiplier
-		wantMax     float64 // Maximum expected multiplier
+		name     string
+		cardName string
+		level    int
+		wantMin  float64 // Minimum expected multiplier
+		wantMax  float64 // Maximum expected multiplier
 	}{
 		{
 			name:     "Knight level 1",
@@ -142,12 +142,12 @@ func TestLevelCurve_GetRelativeLevelRatio(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		cardName  string
-		level     int
-		maxLevel  int
-		wantMin   float64 // Minimum expected ratio
-		wantMax   float64 // Maximum expected ratio
+		name     string
+		cardName string
+		level    int
+		maxLevel int
+		wantMin  float64 // Minimum expected ratio
+		wantMax  float64 // Maximum expected ratio
 	}{
 		{
 			name:     "Knight level 1 of 15",
@@ -227,10 +227,10 @@ func TestLevelCurve_ValidateCard(t *testing.T) {
 			name:     "Knight standard curve validation",
 			cardName: "Knight",
 			validationPoints: map[int]float64{
-				1: 1.0,   // Base level
-				2: 1.1,   // +10%
-				3: 1.21,  // +10% compounded
-				4: 1.33,  // +10% compounded
+				1: 1.0,  // Base level
+				2: 1.1,  // +10%
+				3: 1.21, // +10% compounded
+				4: 1.33, // +10% compounded
 				5: 1.46,
 				6: 1.60,
 				7: 1.76,
@@ -423,15 +423,15 @@ func TestLevelCurve_MathematicalAccuracy(t *testing.T) {
 			name:     "Knight - Standard Common scaling",
 			cardName: "Knight",
 			validationPoints: map[int]float64{
-				1: 1.00,
-				2: 1.10,
-				3: 1.21,
-				4: 1.33,
-				5: 1.46,
-				6: 1.60,
-				7: 1.76,
-				8: 1.93,
-				9: 2.12, // Tournament standard
+				1:  1.00,
+				2:  1.10,
+				3:  1.21,
+				4:  1.33,
+				5:  1.46,
+				6:  1.60,
+				7:  1.76,
+				8:  1.93,
+				9:  2.12, // Tournament standard
 				11: 2.56,
 				13: 3.09,
 				15: 3.72,
@@ -442,9 +442,9 @@ func TestLevelCurve_MathematicalAccuracy(t *testing.T) {
 			name:     "Archers - Standard Common scaling",
 			cardName: "Archers",
 			validationPoints: map[int]float64{
-				1: 1.00,
-				5: 1.46,
-				9: 2.12,
+				1:  1.00,
+				5:  1.46,
+				9:  2.12,
 				11: 2.56,
 				15: 3.72,
 			},
@@ -454,10 +454,10 @@ func TestLevelCurve_MathematicalAccuracy(t *testing.T) {
 			name:     "Giant - Standard Rare scaling",
 			cardName: "Giant",
 			validationPoints: map[int]float64{
-				1: 1.00,
-				3: 1.21,
-				6: 1.60,
-				9: 2.12,
+				1:  1.00,
+				3:  1.21,
+				6:  1.60,
+				9:  2.12,
 				11: 2.56,
 				15: 3.72,
 			},
@@ -467,8 +467,8 @@ func TestLevelCurve_MathematicalAccuracy(t *testing.T) {
 			name:     "Musketeer - Standard Rare scaling",
 			cardName: "Musketeer",
 			validationPoints: map[int]float64{
-				1: 1.00,
-				9: 2.12,
+				1:  1.00,
+				9:  2.12,
 				13: 3.09,
 			},
 			isException: false,
@@ -477,9 +477,9 @@ func TestLevelCurve_MathematicalAccuracy(t *testing.T) {
 			name:     "Hog Rider - Standard Rare scaling",
 			cardName: "Hog_Rider",
 			validationPoints: map[int]float64{
-				1: 1.00,
-				7: 1.76,
-				9: 2.12,
+				1:  1.00,
+				7:  1.76,
+				9:  2.12,
 				11: 2.56,
 			},
 			isException: false,
@@ -507,8 +507,8 @@ func TestLevelCurve_MathematicalAccuracy(t *testing.T) {
 			name:     "Golem - Epic with rarity bonus",
 			cardName: "Golem",
 			validationPoints: map[int]float64{
-				1: 1.00,
-				9: 2.16,
+				1:  1.00,
+				9:  2.16,
 				15: 3.79,
 			},
 			isException: true, // Different due to rarity bonus
@@ -813,10 +813,7 @@ func TestLevelCurve_DeckBuildingImpact(t *testing.T) {
 		t.Skip("CLASH_ROYALE_API_TOKEN not set, skipping integration test")
 	}
 
-	playerTag := os.Getenv("DEFAULT_PLAYER_TAG")
-	if playerTag == "" {
-		playerTag = "#2QJ2U82C" // Default test tag
-	}
+	_ = os.Getenv("DEFAULT_PLAYER_TAG") // Read from environment but not used in integration tests
 
 	// Create test analysis data
 	analysisData := setupTestAnalysisData()

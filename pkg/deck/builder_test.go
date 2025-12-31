@@ -1132,7 +1132,7 @@ func TestBuilder_StrategyElixirTargeting(t *testing.T) {
 			"Royal Giant":   {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 6},
 			"Goblin Barrel": {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 3},
 			// Buildings
-			"Cannon":       {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Cannon":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
 			"Inferno Tower": {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
 			// Spells (big)
 			"Fireball":  {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
@@ -1147,24 +1147,24 @@ func TestBuilder_StrategyElixirTargeting(t *testing.T) {
 			"Wizard":      {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
 			"Baby Dragon": {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
 			// Cycle (low cost)
-			"Skeletons":   {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
-			"Ice Spirit":  {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
-			"Knight":      {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
-			"Bats":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Skeletons":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Ice Spirit":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Knight":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Bats":          {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
 			"Spear Goblins": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
 		},
 	}
 
 	tests := []struct {
-		strategy           Strategy
-		expectedMinElixir  float64
-		expectedMaxElixir  float64
-		tolerance          float64
+		strategy          Strategy
+		expectedMinElixir float64
+		expectedMaxElixir float64
+		tolerance         float64
 	}{
-		{StrategyCycle, 2.5, 3.2, 0.3},      // Cycle should be very low
-		{StrategyBalanced, 2.8, 3.7, 0.3},   // Balanced in the middle
-		{StrategyControl, 3.3, 4.3, 0.3},    // Control can be higher
-		{StrategyAggro, 3.3, 4.2, 0.3},      // Aggro medium-high
+		{StrategyCycle, 2.5, 3.2, 0.3},    // Cycle should be very low
+		{StrategyBalanced, 2.8, 3.7, 0.3}, // Balanced in the middle
+		{StrategyControl, 3.3, 4.3, 0.3},  // Control can be higher
+		{StrategyAggro, 3.3, 4.2, 0.3},    // Aggro medium-high
 	}
 
 	for _, tt := range tests {
@@ -1358,15 +1358,15 @@ func TestBuilder_SynergyEnabledDeckBuilding(t *testing.T) {
 	// Create test analysis with cards that have known synergies
 	analysis := CardAnalysis{
 		CardLevels: map[string]CardLevelData{
-			"Giant": {Level: 10, MaxLevel: 13, Rarity: "Rare", Elixir: 5},
-			"Witch": {Level: 8, MaxLevel: 11, Rarity: "Epic", Elixir: 5},
-			"Sparky": {Level: 7, MaxLevel: 11, Rarity: "Legendary", Elixir: 6},
-			"Musketeer": {Level: 10, MaxLevel: 13, Rarity: "Rare", Elixir: 4},
-			"Zap": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 2},
-			"Fireball": {Level: 7, MaxLevel: 11, Rarity: "Rare", Elixir: 4},
-			"Cannon": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 3},
-			"Skeletons": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 1},
-			"Knight": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 3},
+			"Giant":      {Level: 10, MaxLevel: 13, Rarity: "Rare", Elixir: 5},
+			"Witch":      {Level: 8, MaxLevel: 11, Rarity: "Epic", Elixir: 5},
+			"Sparky":     {Level: 7, MaxLevel: 11, Rarity: "Legendary", Elixir: 6},
+			"Musketeer":  {Level: 10, MaxLevel: 13, Rarity: "Rare", Elixir: 4},
+			"Zap":        {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 2},
+			"Fireball":   {Level: 7, MaxLevel: 11, Rarity: "Rare", Elixir: 4},
+			"Cannon":     {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 3},
+			"Skeletons":  {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 1},
+			"Knight":     {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 3},
 			"Ice Spirit": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 1},
 		},
 		AnalysisTime: "2024-01-15T10:30:00Z",
@@ -1463,26 +1463,26 @@ func TestBuilder_AllStrategies(t *testing.T) {
 	// Create test card analysis with sufficient cards
 	analysis := CardAnalysis{
 		CardLevels: map[string]CardLevelData{
-			"Giant":           {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
-			"Wizard":          {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
-			"Goblin Barrel":   {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 3},
-			"Arrows":          {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Fireball":        {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 4},
-			"Cannon":          {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Archers":         {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Knight":          {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Goblin Gang":     {Level: 11, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Minions":         {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Spear Goblins":   {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 2},
-			"Baby Dragon":     {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 4},
-			"Skeleton Army":   {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 3},
-			"Goblin Hut":      {Level: 11, MaxLevel: 16, Rarity: "rare", Elixir: 4},
-			"Poison":          {Level: 9, MaxLevel: 16, Rarity: "epic", Elixir: 4},
-			"Tesla":           {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 4},
-			"Musketeer":       {Level: 9, MaxLevel: 16, Rarity: "rare", Elixir: 4},
-			"Mini P.E.K.K.A":  {Level: 9, MaxLevel: 16, Rarity: "rare", Elixir: 4},
-			"Hog Rider":       {Level: 9, MaxLevel: 16, Rarity: "rare", Elixir: 4},
-			"Valkyrie":        {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Giant":          {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
+			"Wizard":         {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
+			"Goblin Barrel":  {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 3},
+			"Arrows":         {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Fireball":       {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Cannon":         {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Archers":        {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Knight":         {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Goblin Gang":    {Level: 11, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Minions":        {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Spear Goblins":  {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 2},
+			"Baby Dragon":    {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 4},
+			"Skeleton Army":  {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 3},
+			"Goblin Hut":     {Level: 11, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Poison":         {Level: 9, MaxLevel: 16, Rarity: "epic", Elixir: 4},
+			"Tesla":          {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 4},
+			"Musketeer":      {Level: 9, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Mini P.E.K.K.A": {Level: 9, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Hog Rider":      {Level: 9, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Valkyrie":       {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 4},
 		},
 	}
 
@@ -1534,21 +1534,21 @@ func TestBuilder_AllStrategiesProduceDifferentDecks(t *testing.T) {
 	// Create test card analysis with diverse cards
 	analysis := CardAnalysis{
 		CardLevels: map[string]CardLevelData{
-			"Giant":           {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
-			"Wizard":          {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
-			"Goblin Barrel":   {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 3},
-			"Arrows":          {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Fireball":        {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 4},
-			"Cannon":          {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Archers":         {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Knight":          {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Goblin Gang":     {Level: 11, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Minions":         {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
-			"Spear Goblins":   {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 2},
-			"Baby Dragon":     {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 4},
-			"Poison":          {Level: 9, MaxLevel: 16, Rarity: "epic", Elixir: 4},
-			"Goblin Hut":      {Level: 11, MaxLevel: 16, Rarity: "rare", Elixir: 4},
-			"Tesla":           {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 4},
+			"Giant":         {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
+			"Wizard":        {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
+			"Goblin Barrel": {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 3},
+			"Arrows":        {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Fireball":      {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Cannon":        {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Archers":       {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Knight":        {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Goblin Gang":   {Level: 11, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Minions":       {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Spear Goblins": {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 2},
+			"Baby Dragon":   {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 4},
+			"Poison":        {Level: 9, MaxLevel: 16, Rarity: "epic", Elixir: 4},
+			"Goblin Hut":    {Level: 11, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Tesla":         {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 4},
 		},
 	}
 
@@ -1599,25 +1599,25 @@ func TestBuilder_StrategyCompositionOverrides(t *testing.T) {
 			"Inferno Tower": {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
 			"Bomb Tower":    {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
 			// Big spells
-			"Fireball":      {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
-			"Poison":        {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
-			"Lightning":     {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 6},
-			"Rocket":        {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 6},
+			"Fireball":  {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Poison":    {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
+			"Lightning": {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 6},
+			"Rocket":    {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 6},
 			// Small spells
-			"Zap":           {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
-			"Log":           {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 2},
-			"Arrows":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Zap":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Log":    {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 2},
+			"Arrows": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
 			// Support
-			"Archers":       {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
-			"Musketeer":     {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
-			"Wizard":        {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
-			"Valkyrie":      {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
-			"Baby Dragon":   {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
+			"Archers":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Musketeer":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Wizard":      {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 5},
+			"Valkyrie":    {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Baby Dragon": {Level: 14, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
 			// Cycle
-			"Knight":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
-			"Skeletons":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
-			"Goblin Gang":   {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
-			"Minions":       {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Knight":      {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Skeletons":   {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Goblin Gang": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Minions":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
 		},
 	}
 

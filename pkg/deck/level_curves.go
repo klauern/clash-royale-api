@@ -25,10 +25,10 @@ type CardLevelCurvesConfig struct {
 // CardLevelConfig defines the curve parameters for a specific card
 type CardLevelConfig struct {
 	// Curve parameters (values are percentages, e.g., 100 = 1.0x)
-	BaseScale   float64 `json:"baseScale"`   // Base scaling factor (typically 100)
-	GrowthRate  float64 `json:"growthRate"`  // Per-level growth rate (typically 0.10)
-	MinScale    float64 `json:"minScale"`    // Minimum multiplier (level 0) - often 0.0
-	MaxScale    float64 `json:"maxScale"`    // Maximum multiplier (level 15+) - for clamping
+	BaseScale  float64 `json:"baseScale"`  // Base scaling factor (typically 100)
+	GrowthRate float64 `json:"growthRate"` // Per-level growth rate (typically 0.10)
+	MinScale   float64 `json:"minScale"`   // Minimum multiplier (level 0) - often 0.0
+	MaxScale   float64 `json:"maxScale"`   // Maximum multiplier (level 15+) - for clamping
 
 	// Special adjustments
 	Type        string  `json:"type"`        // "standard", "spell_duration", "tower", "champion"
