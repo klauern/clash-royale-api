@@ -65,6 +65,7 @@ func main() {
 			addEventCommands(),
 			addExportCommands(),
 			addUpgradeImpactCommands(),
+			addWhatIfCommands(),
 			{
 				Name:  "player",
 				Usage: "Get player information",

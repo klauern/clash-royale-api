@@ -74,9 +74,74 @@ Build: `cd go && go build -o bin/cr-api ./cmd/cr-api`
 ./bin/cr-api deck build --tag <TAG> [--combat-stats-weight 0.25] [--disable-combat-stats]
 ./bin/cr-api events scan --tag <TAG>
 ./bin/cr-api playstyle --tag <TAG> [--recommend-decks] [--save]
+./bin/cr-api what-if --tag <TAG> --upgrade "CardName:ToLevel" [--show-decks]
 
 cd go && go test ./...              # Run all tests
 cd go && go test ./pkg/deck/... -v  # Test specific package
+```
+
+### What-If Analysis
+
+Simulate the impact of upgrading specific cards on deck composition and viability.
+
+**Basic Usage:**
+```bash
+# Simulate upgrading Archers to level 15 and Knight to level 15
+./bin/cr-api what-if --tag <TAG> --upgrade "Archers:15" --upgrade "Knight:15" --show-decks
+
+# Use offline mode with existing analysis file
+./bin/cr-api what-if --tag <TAG> --from-analysis data/analysis/<file>.json \
+  --upgrade "Archers:9:15" --save --json
+
+# Specify different deck building strategy
+./bin/cr-api what-if --tag <TAG> --upgrade "Goblin Barrel:14" \
+  --strategy aggro --show-decks
+```
+
+**Upgrade Format:**
+- `CardName:ToLevel` - Upgrades from current level to specified level
+- `CardName:FromLevel:ToLevel` - Explicit from→to upgrade path
+
+**Flags:**
+- `--from-analysis <file>` - Use cached analysis (offline mode, no API call)
+- `--show-decks` - Display full deck compositions before/after
+- `--save` - Save scenario to `data/whatif/`
+- `--json` - Output in JSON format
+- `--strategy <name>` - Deck building strategy (balanced, aggro, control, cycle, splash, spell)
+
+**Output:**
+- Upgrade costs (gold per card)
+- Deck score delta
+- Viability improvement percentage
+- New/removed cards in recommended deck
+- Recommendation (highly recommended / recommended / minor improvement / not recommended)
+
+**Example Output:**
+```
+============================================================================
+                        WHAT-IF ANALYSIS
+============================================================================
+
+Scenario: Upgrade 2 cards: Archers, Knight
+What-if analysis for Player (#TAG)
+
+Upgrades Simulated
+-------------------
+Card     From  To  Gold
+----     ----  --  ----
+Archers  10    15  500
+Knight   9     15  600
+
+Total Gold Cost: 1100
+
+Impact Analysis
+---------------
+Deck Score Delta:     +0.888000
+Viability Change:     +12.0%
+
+Recommendation
+-------------
+Highly recommended! These upgrades (1100 gold) significantly improve your deck viability by 12.0%.
 ```
 
 ## Release Process
