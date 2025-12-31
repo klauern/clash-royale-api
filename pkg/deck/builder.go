@@ -26,6 +26,7 @@ type Builder struct {
 	statsRegistry      *clashroyale.CardStatsRegistry
 	strategy           Strategy
 	strategyConfig     StrategyConfig
+	levelCurve         *LevelCurve
 }
 
 // NewBuilder creates a new deck builder instance
@@ -103,6 +104,17 @@ func NewBuilder(dataDir string) *Builder {
 	} else {
 		// Log error if needed, for now just silent failure or maybe print to stderr
 		// fmt.Fprintf(os.Stderr, "Warning: Failed to load card stats from %s: %v\n", statsPath, err)
+	}
+
+	// Initialize level curve framework
+	levelCurvePath := "config/card_level_curves.json"
+	if lc, err := NewLevelCurve(levelCurvePath); err == nil {
+		builder.levelCurve = lc
+		// Set the global level curve for scorer functions
+		SetGlobalLevelCurve(lc)
+	} else {
+		// Log error if needed, for now just silent failure
+		// fmt.Fprintf(os.Stderr, "Warning: Failed to load level curves from %s: %v\n", levelCurvePath, err)
 	}
 
 	// Initialize with balanced strategy by default
