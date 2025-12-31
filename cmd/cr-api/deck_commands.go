@@ -40,7 +40,7 @@ func addDeckCommands() *cli.Command {
 						Name:    "strategy",
 						Aliases: []string{"s"},
 						Value:   "balanced",
-						Usage:   "Deck building strategy: balanced, aggro, control, cycle, splash, spell",
+						Usage:   "Deck building strategy: balanced, aggro, control, cycle, splash, spell, all",
 					},
 					&cli.Float64Flag{
 						Name:  "min-elixir",
@@ -393,8 +393,8 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		builder.SetEvolutionSlotLimit(slots)
 	}
 
-	// Parse and set strategy if provided
-	if strategy != "" {
+	// Parse and set strategy if provided (skip for "all" which is handled later)
+	if strategy != "" && strings.ToLower(strings.TrimSpace(strategy)) != "all" {
 		parsedStrategy, err := deck.ParseStrategy(strategy)
 		if err != nil {
 			return fmt.Errorf("invalid strategy: %w", err)
@@ -525,6 +525,11 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 			}
 		}
 		deckCardAnalysis.CardLevels = filteredLevels
+	}
+
+	// Handle --strategy all
+	if strings.ToLower(strings.TrimSpace(strategy)) == "all" {
+		return buildAllStrategies(ctx, cmd, builder, deckCardAnalysis, playerName, playerTag)
 	}
 
 	// Build deck from analysis
@@ -1053,6 +1058,123 @@ func mustParseFloat(s string) float64 {
 		return val
 	}
 	return 0
+}
+
+// buildAllStrategies builds decks using all available strategies and displays them for comparison
+func buildAllStrategies(ctx context.Context, cmd *cli.Command, builder *deck.Builder, cardAnalysis deck.CardAnalysis, playerName, playerTag string) error {
+	verbose := cmd.Bool("verbose")
+	excludeCards := cmd.StringSlice("exclude-cards")
+
+	// All available strategies
+	strategies := []deck.Strategy{
+		deck.StrategyBalanced,
+		deck.StrategyAggro,
+		deck.StrategyControl,
+		deck.StrategyCycle,
+		deck.StrategySplash,
+		deck.StrategySpell,
+	}
+
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║              ALL DECK BUILDING STRATEGIES                          ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	fmt.Printf("Player: %s (%s)\n\n", playerName, playerTag)
+
+	// Build a deck for each strategy
+	for i, strategy := range strategies {
+		// Create a new builder for this strategy
+		strategyBuilder := deck.NewBuilder(cmd.String("data-dir"))
+
+		// Copy builder configuration
+		if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
+			strategyBuilder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+		}
+		if slots := cmd.Int("evolution-slots"); slots > 0 {
+			strategyBuilder.SetEvolutionSlotLimit(slots)
+		}
+		if enableSynergy := cmd.Bool("enable-synergy"); enableSynergy {
+			strategyBuilder.SetSynergyEnabled(true)
+			if synergyWeight := cmd.Float64("synergy-weight"); synergyWeight > 0 {
+				strategyBuilder.SetSynergyWeight(synergyWeight)
+			}
+		}
+
+		// Set the strategy
+		if err := strategyBuilder.SetStrategy(strategy); err != nil {
+			fmt.Printf("⚠ Failed to set strategy %s: %v\n\n", strategy, err)
+			continue
+		}
+
+		// Apply exclude filter
+		filteredAnalysis := cardAnalysis
+		if len(excludeCards) > 0 {
+			excludeMap := make(map[string]bool)
+			for _, card := range excludeCards {
+				trimmed := strings.TrimSpace(card)
+				if trimmed != "" {
+					excludeMap[strings.ToLower(trimmed)] = true
+				}
+			}
+
+			filteredLevels := make(map[string]deck.CardLevelData)
+			for cardName, cardInfo := range cardAnalysis.CardLevels {
+				if !excludeMap[strings.ToLower(cardName)] {
+					filteredLevels[cardName] = cardInfo
+				}
+			}
+			filteredAnalysis.CardLevels = filteredLevels
+		}
+
+		// Build deck
+		deckRec, err := strategyBuilder.BuildDeckFromAnalysis(filteredAnalysis)
+		if err != nil {
+			fmt.Printf("⚠ Failed to build deck for strategy %s: %v\n\n", strategy, err)
+			continue
+		}
+
+		// Display the deck with strategy label
+		displayStrategyDeck(i+1, strategy, deckRec, verbose)
+	}
+
+	return nil
+}
+
+// displayStrategyDeck displays a single deck with its strategy label
+func displayStrategyDeck(rank int, strategy deck.Strategy, rec *deck.DeckRecommendation, verbose bool) {
+	fmt.Printf("Strategy #%d: %s\n", rank, strings.ToUpper(string(strategy)))
+	fmt.Printf("═══════════════════════════════════════════════════════════════════\n")
+	fmt.Printf("Average Elixir: %.2f\n\n", rec.AvgElixir)
+
+	// Display deck cards in a table
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
+	fmt.Fprintf(w, "─\t────\t─────\t\t──────\t────\n")
+
+	for i, card := range rec.DeckDetail {
+		evoBadge := deck.FormatEvolutionBadge(card.EvolutionLevel)
+		levelStr := fmt.Sprintf("%d/%d", card.Level, card.MaxLevel)
+		if evoBadge != "" {
+			levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
+		}
+		fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
+			i+1,
+			card.Name,
+			levelStr,
+			card.Elixir,
+			card.Role)
+	}
+	w.Flush()
+
+	// Display strategic notes if verbose
+	if verbose && len(rec.Notes) > 0 {
+		fmt.Printf("\nStrategic Notes:\n")
+		for _, note := range rec.Notes {
+			fmt.Printf("• %s\n", note)
+		}
+	}
+
+	fmt.Printf("\n")
 }
 
 func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {

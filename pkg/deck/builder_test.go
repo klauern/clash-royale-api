@@ -1454,3 +1454,128 @@ func TestBuilder_SynergyDatabaseLoaded(t *testing.T) {
 		t.Error("Expected Giant+Witch to have a synergy score > 0")
 	}
 }
+
+// TestBuilder_AllStrategies tests that all strategies can be applied and produce valid decks
+func TestBuilder_AllStrategies(t *testing.T) {
+	// Create test card analysis with sufficient cards
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Giant":           {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
+			"Wizard":          {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
+			"Goblin Barrel":   {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 3},
+			"Arrows":          {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Fireball":        {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Cannon":          {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Archers":         {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Knight":          {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Goblin Gang":     {Level: 11, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Minions":         {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Spear Goblins":   {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 2},
+			"Baby Dragon":     {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 4},
+			"Skeleton Army":   {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 3},
+			"Goblin Hut":      {Level: 11, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Poison":          {Level: 9, MaxLevel: 16, Rarity: "epic", Elixir: 4},
+			"Tesla":           {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 4},
+			"Musketeer":       {Level: 9, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Mini P.E.K.K.A":  {Level: 9, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Hog Rider":       {Level: 9, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Valkyrie":        {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+		},
+	}
+
+	// All available strategies
+	strategies := []Strategy{
+		StrategyBalanced,
+		StrategyAggro,
+		StrategyControl,
+		StrategyCycle,
+		StrategySplash,
+		StrategySpell,
+	}
+
+	// Test each strategy
+	for _, strategy := range strategies {
+		t.Run(string(strategy), func(t *testing.T) {
+			builder := NewBuilder("testdata")
+
+			// Set the strategy
+			if err := builder.SetStrategy(strategy); err != nil {
+				t.Fatalf("Failed to set strategy %s: %v", strategy, err)
+			}
+
+			// Build deck
+			deck, err := builder.BuildDeckFromAnalysis(analysis)
+			if err != nil {
+				t.Fatalf("Failed to build deck for strategy %s: %v", strategy, err)
+			}
+
+			// Validate deck
+			if len(deck.Deck) != 8 {
+				t.Errorf("Strategy %s: Expected 8 cards, got %d", strategy, len(deck.Deck))
+			}
+
+			if len(deck.DeckDetail) != 8 {
+				t.Errorf("Strategy %s: Expected 8 card details, got %d", strategy, len(deck.DeckDetail))
+			}
+
+			// Verify deck has reasonable elixir cost
+			if deck.AvgElixir < 2.0 || deck.AvgElixir > 5.0 {
+				t.Errorf("Strategy %s: Average elixir %.2f is outside reasonable range (2.0-5.0)", strategy, deck.AvgElixir)
+			}
+		})
+	}
+}
+
+// TestBuilder_AllStrategiesProduceDifferentDecks tests that different strategies produce meaningfully different decks
+func TestBuilder_AllStrategiesProduceDifferentDecks(t *testing.T) {
+	// Create test card analysis with diverse cards
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Giant":           {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
+			"Wizard":          {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 5},
+			"Goblin Barrel":   {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 3},
+			"Arrows":          {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Fireball":        {Level: 10, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Cannon":          {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Archers":         {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Knight":          {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Goblin Gang":     {Level: 11, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Minions":         {Level: 9, MaxLevel: 16, Rarity: "common", Elixir: 3},
+			"Spear Goblins":   {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 2},
+			"Baby Dragon":     {Level: 10, MaxLevel: 16, Rarity: "epic", Elixir: 4},
+			"Poison":          {Level: 9, MaxLevel: 16, Rarity: "epic", Elixir: 4},
+			"Goblin Hut":      {Level: 11, MaxLevel: 16, Rarity: "rare", Elixir: 4},
+			"Tesla":           {Level: 10, MaxLevel: 16, Rarity: "common", Elixir: 4},
+		},
+	}
+
+	// Build decks for all strategies
+	decks := make(map[Strategy]*DeckRecommendation)
+	for _, strategy := range []Strategy{StrategyBalanced, StrategyAggro, StrategyControl, StrategyCycle, StrategySplash, StrategySpell} {
+		builder := NewBuilder("testdata")
+		builder.SetStrategy(strategy)
+		deck, err := builder.BuildDeckFromAnalysis(analysis)
+		if err != nil {
+			t.Fatalf("Failed to build deck for strategy %s: %v", strategy, err)
+		}
+		decks[strategy] = deck
+	}
+
+	// Verify Cycle deck has lower elixir than Aggro
+	if decks[StrategyCycle].AvgElixir >= decks[StrategyAggro].AvgElixir {
+		t.Errorf("Cycle deck (%.2f) should have lower elixir than Aggro deck (%.2f)",
+			decks[StrategyCycle].AvgElixir, decks[StrategyAggro].AvgElixir)
+	}
+
+	// Verify Spell deck has 2 big spells (composition override)
+	spellDeck := decks[StrategySpell]
+	bigSpellCount := 0
+	for _, card := range spellDeck.DeckDetail {
+		if card.Role == "spells_big" {
+			bigSpellCount++
+		}
+	}
+	if bigSpellCount != 2 {
+		t.Errorf("Spell strategy should have exactly 2 big spells, got %d", bigSpellCount)
+	}
+}
