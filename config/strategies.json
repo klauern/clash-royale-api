@@ -1,0 +1,245 @@
+{
+  "strategies": {
+    "balanced": {
+      "name": "Balanced",
+      "description": "Default strategy with neutral preferences across all card roles",
+      "target_elixir_min": 3.0,
+      "target_elixir_max": 3.5,
+      "role_multipliers": {
+        "win_condition": 1.0,
+        "building": 1.0,
+        "spell_big": 1.0,
+        "spell_small": 1.0,
+        "support": 1.0,
+        "cycle": 1.0
+      },
+      "role_bonuses": {
+        "win_condition": 0.0,
+        "building": 0.0,
+        "spell_big": 0.0,
+        "spell_small": 0.0,
+        "support": 0.0,
+        "cycle": 0.0
+      },
+      "archetype_affinity": {}
+    },
+    "aggro": {
+      "name": "Aggro",
+      "description": "Focuses on high-damage win conditions and offensive play with 2 win conditions, 0 buildings",
+      "target_elixir_min": 3.5,
+      "target_elixir_max": 4.0,
+      "role_multipliers": {
+        "win_condition": 2.0,
+        "support": 1.2,
+        "cycle": 1.0,
+        "spell_big": 1.0,
+        "spell_small": 1.0,
+        "building": 0.3
+      },
+      "role_bonuses": {
+        "win_condition": 0.4,
+        "support": 0.15,
+        "cycle": 0.0,
+        "spell_big": 0.0,
+        "spell_small": 0.0,
+        "building": -0.3
+      },
+      "archetype_affinity": {
+        "Hog Rider": 0.25,
+        "Royal Hogs": 0.25,
+        "Ram Rider": 0.25,
+        "Battle Ram": 0.25,
+        "Balloon": 0.25,
+        "Elite Barbarians": 0.2,
+        "Royal Giant": 0.2,
+        "Mini PEKKA": 0.2,
+        "Prince": 0.2,
+        "Dark Prince": 0.2,
+        "Lumberjack": 0.2,
+        "Bandit": 0.2,
+        "Electro Giant": 0.15,
+        "Goblin Giant": 0.15,
+        "Rage": 0.15,
+        "Clone": 0.15
+      },
+      "composition_overrides": {
+        "win_conditions": 2,
+        "buildings": 0,
+        "support": 3,
+        "cycle": 1
+      }
+    },
+    "control": {
+      "name": "Control",
+      "description": "Emphasizes defensive structures and big spells with 2 buildings, 2 big spells, 0 small spells",
+      "target_elixir_min": 3.5,
+      "target_elixir_max": 4.2,
+      "role_multipliers": {
+        "building": 2.0,
+        "spell_big": 1.5,
+        "spell_small": 0.3,
+        "support": 1.0,
+        "cycle": 0.5,
+        "win_condition": 0.5
+      },
+      "role_bonuses": {
+        "building": 0.4,
+        "spell_big": 0.25,
+        "spell_small": -0.2,
+        "support": 0.1,
+        "cycle": -0.15,
+        "win_condition": -0.3
+      },
+      "archetype_affinity": {
+        "X-Bow": 0.25,
+        "Mortar": 0.25,
+        "Graveyard": 0.2,
+        "Miner": 0.2,
+        "Inferno Tower": 0.25,
+        "Tesla": 0.25,
+        "Bomb Tower": 0.2,
+        "Tombstone": 0.2,
+        "Furnace": 0.2,
+        "Ice Wizard": 0.25,
+        "Electro Wizard": 0.25,
+        "Bowler": 0.2,
+        "Executioner": 0.2,
+        "Tornado": 0.25,
+        "Freeze": 0.15,
+        "Poison": 0.2,
+        "Earthquake": 0.2,
+        "Rocket": 0.15
+      },
+      "composition_overrides": {
+        "buildings": 2,
+        "big_spells": 2,
+        "small_spells": 0,
+        "support": 2,
+        "cycle": 1
+      }
+    },
+    "cycle": {
+      "name": "Cycle",
+      "description": "Fast-cycling decks with low elixir costs, 4 cycle cards, 0 big spells",
+      "target_elixir_min": 2.5,
+      "target_elixir_max": 3.0,
+      "role_multipliers": {
+        "cycle": 2.0,
+        "spell_small": 1.2,
+        "win_condition": 1.0,
+        "support": 1.0,
+        "building": 1.0,
+        "spell_big": 0.3
+      },
+      "role_bonuses": {
+        "cycle": 0.35,
+        "spell_small": 0.15,
+        "win_condition": 0.1,
+        "support": 0.0,
+        "building": 0.0,
+        "spell_big": -0.3
+      },
+      "archetype_affinity": {
+        "Skeletons": 0.3,
+        "Ice Spirit": 0.3,
+        "Electro Spirit": 0.3,
+        "Fire Spirit": 0.3,
+        "Bats": 0.25,
+        "Spear Goblins": 0.25,
+        "Archers": 0.2,
+        "Knight": 0.2,
+        "Ice Golem": 0.2,
+        "Zap": 0.2,
+        "Log": 0.2,
+        "Snowball": 0.2
+      },
+      "composition_overrides": {
+        "cycle": 4,
+        "big_spells": 0,
+        "support": 1
+      }
+    },
+    "splash": {
+      "name": "Splash",
+      "description": "Area-of-effect damage focus with 3 splash support cards",
+      "target_elixir_min": 3.2,
+      "target_elixir_max": 3.8,
+      "role_multipliers": {
+        "support": 2.0,
+        "spell_big": 1.2,
+        "win_condition": 1.0,
+        "building": 1.0,
+        "spell_small": 1.0,
+        "cycle": 0.5
+      },
+      "role_bonuses": {
+        "support": 0.4,
+        "spell_big": 0.15,
+        "win_condition": 0.0,
+        "building": -0.1,
+        "spell_small": 0.0,
+        "cycle": -0.15
+      },
+      "archetype_affinity": {
+        "Baby Dragon": 0.25,
+        "Valkyrie": 0.25,
+        "Wizard": 0.25,
+        "Executioner": 0.25,
+        "Bowler": 0.25,
+        "Bomber": 0.25,
+        "Skeleton Dragons": 0.2,
+        "Fire Spirit": 0.2,
+        "Phoenix": 0.2,
+        "Fireball": 0.15,
+        "Poison": 0.15,
+        "Lightning": 0.15
+      },
+      "composition_overrides": {
+        "support": 3,
+        "cycle": 1
+      }
+    },
+    "spell": {
+      "name": "Spell",
+      "description": "Spell-heavy decks with 2 big spells, 0 buildings, 1 small spell",
+      "target_elixir_min": 3.2,
+      "target_elixir_max": 3.8,
+      "role_multipliers": {
+        "spell_big": 2.0,
+        "spell_small": 1.5,
+        "win_condition": 1.0,
+        "support": 1.0,
+        "building": 0.1,
+        "cycle": 1.0
+      },
+      "role_bonuses": {
+        "spell_big": 0.4,
+        "spell_small": 0.25,
+        "win_condition": 0.1,
+        "support": 0.1,
+        "building": -0.35,
+        "cycle": 0.0
+      },
+      "archetype_affinity": {
+        "Rocket": 0.25,
+        "Lightning": 0.25,
+        "Fireball": 0.25,
+        "Poison": 0.2,
+        "Earthquake": 0.2,
+        "Log": 0.2,
+        "Zap": 0.2,
+        "Snowball": 0.2,
+        "Arrows": 0.2,
+        "Miner": 0.2,
+        "Goblin Barrel": 0.15
+      },
+      "composition_overrides": {
+        "big_spells": 2,
+        "buildings": 0,
+        "small_spells": 1,
+        "support": 3,
+        "cycle": 1
+      }
+    }
+  }
+}
