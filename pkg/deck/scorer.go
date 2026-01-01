@@ -449,7 +449,7 @@ func ScoreAllCandidatesWithCombat(candidates []CardCandidate) {
 }
 
 // ScoreCardWithStrategy calculates enhanced score using strategy configuration
-// Applies role multipliers and elixir targeting adjustments based on the strategy
+// Applies role bonuses and elixir targeting adjustments based on the strategy
 // Uses curve-based level calculation when available
 func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyConfig, levelCurve *LevelCurve) float64 {
 	// Start with base score using curve-based calculation (via internal functions with card name)
@@ -483,19 +483,30 @@ func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyC
 		)
 	}
 
-	// Apply role multiplier from strategy config
-	roleMultiplier := 1.0
+	// Apply strategy bonus (additive, level-agnostic)
+	// Prefer additive bonuses over legacy multipliers for better differentiation
+	strategyBonus := 0.0
 	if role != nil {
-		if mult, exists := config.RoleMultipliers[*role]; exists {
-			roleMultiplier = mult
+		// Try additive bonuses first (new system)
+		if bonus, exists := config.RoleBonuses[*role]; exists {
+			strategyBonus = bonus * GetStrategyScaling()
+		} else if config.RoleMultipliers != nil {
+			// Fallback to legacy multiplier system for backward compatibility
+			if mult, exists := config.RoleMultipliers[*role]; exists {
+				if mult > 1.0 {
+					strategyBonus = baseScore * (mult - 1.0)
+				} else if mult < 1.0 {
+					strategyBonus = baseScore * (mult - 1.0) // Negative value
+				}
+			}
 		}
 	}
 
 	// Apply elixir targeting adjustment
 	elixirAdjustment := calculateElixirAdjustment(card.Elixir, config)
 
-	// Combine: base score × role multiplier + elixir adjustment
-	finalScore := (baseScore * roleMultiplier) + elixirAdjustment
+	// Combine: base score + strategy bonus + elixir adjustment
+	finalScore := baseScore + strategyBonus + elixirAdjustment
 
 	return finalScore
 }

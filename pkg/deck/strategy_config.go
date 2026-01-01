@@ -1,5 +1,10 @@
 package deck
 
+import (
+	"os"
+	"strconv"
+)
+
 // StrategyConfig defines the parameters for a deck building strategy
 type StrategyConfig struct {
 	// TargetElixirMin is the minimum target average elixir cost
@@ -10,7 +15,14 @@ type StrategyConfig struct {
 
 	// RoleMultipliers defines scoring multipliers for each card role
 	// A multiplier > 1.0 increases preference, < 1.0 decreases preference
+	// DEPRECATED: Use RoleBonuses instead for better strategy differentiation
 	RoleMultipliers map[CardRole]float64
+
+	// RoleBonuses provides additive score adjustments for each card role
+	// Positive values (0 to +0.5) increase preference, negative values (-0.5 to 0) decrease preference
+	// This is level-agnostic, unlike multipliers which scale with card level
+	// Additive bonuses allow on-strategy cards to compete regardless of level
+	RoleBonuses map[CardRole]float64
 
 	// CompositionOverrides allows forcing specific role counts
 	// nil map means use default composition logic
@@ -48,6 +60,14 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleSpellSmall:   1.0,
 				RoleBuilding:     0.3, // Disfavor defensive buildings
 			},
+			RoleBonuses: map[CardRole]float64{
+				RoleWinCondition: 0.40,  // Strong favor
+				RoleSupport:      0.15,  // Moderate favor
+				RoleCycle:        0.0,   // Neutral
+				RoleSpellBig:     0.0,   // Neutral
+				RoleSpellSmall:   0.0,   // Neutral
+				RoleBuilding:    -0.30,  // Strong disfavor
+			},
 			CompositionOverrides: &CompositionOverride{
 				WinConditions: &winConditions,
 				Buildings:     &buildings,
@@ -75,6 +95,14 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleCycle:        0.5, // Disfavor cheap cycle cards
 				RoleWinCondition: 0.5, // Disfavor pure offensive win conditions
 			},
+			RoleBonuses: map[CardRole]float64{
+				RoleBuilding:     0.40,  // Strong favor
+				RoleSpellBig:     0.25,  // Moderate favor
+				RoleSpellSmall:  -0.20,  // Disfavor
+				RoleSupport:      0.10,  // Slight favor
+				RoleCycle:       -0.15,  // Disfavor
+				RoleWinCondition: -0.30, // Strong disfavor
+			},
 			CompositionOverrides: &CompositionOverride{
 				Buildings:   &buildings,
 				BigSpells:   &bigSpells,
@@ -101,6 +129,14 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleBuilding:     1.0,
 				RoleSpellBig:     0.3, // Strongly disfavor big spells (high cost)
 			},
+			RoleBonuses: map[CardRole]float64{
+				RoleCycle:        0.35,  // Strong favor
+				RoleSpellSmall:   0.15,  // Moderate favor
+				RoleWinCondition: 0.10,  // Slight favor
+				RoleSupport:      0.0,   // Neutral
+				RoleBuilding:     0.0,   // Neutral
+				RoleSpellBig:    -0.30,  // Strong disfavor
+			},
 			CompositionOverrides: &CompositionOverride{
 				BigSpells: &bigSpells,
 				Cycle:     &cycle,
@@ -123,6 +159,14 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleBuilding:     1.0,
 				RoleSpellSmall:   1.0,
 				RoleCycle:        0.5, // Disfavor cheap cycle cards
+			},
+			RoleBonuses: map[CardRole]float64{
+				RoleSupport:      0.40,  // Strong favor
+				RoleSpellBig:     0.15,  // Moderate favor
+				RoleWinCondition: 0.0,   // Neutral
+				RoleBuilding:    -0.10,  // Slight disfavor
+				RoleSpellSmall:   0.0,   // Neutral
+				RoleCycle:       -0.15,  // Disfavor
 			},
 			CompositionOverrides: &CompositionOverride{
 				Support: &support,
@@ -149,6 +193,14 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleBuilding:     0.1, // Strongly disfavor buildings (override to 0)
 				RoleCycle:        1.0,
 			},
+			RoleBonuses: map[CardRole]float64{
+				RoleSpellBig:     0.40,  // Strong favor
+				RoleSpellSmall:   0.25,  // Moderate favor
+				RoleWinCondition: 0.10,  // Slight favor
+				RoleSupport:      0.10,  // Slight favor
+				RoleBuilding:    -0.35,  // Strong disfavor
+				RoleCycle:        0.0,   // Neutral
+			},
 			CompositionOverrides: &CompositionOverride{
 				BigSpells:   &bigSpells,
 				Buildings:   &buildings,
@@ -172,6 +224,33 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleSupport:      1.0,
 				RoleCycle:        1.0,
 			},
+			RoleBonuses: map[CardRole]float64{
+				RoleWinCondition: 0.0,
+				RoleBuilding:     0.0,
+				RoleSpellBig:     0.0,
+				RoleSpellSmall:   0.0,
+				RoleSupport:      0.0,
+				RoleCycle:        0.0,
+			},
 		}
 	}
+}
+
+// GetStrategyScaling returns global strategy bonus scaling from environment variable.
+// STRATEGY_BONUS_SCALE=1.0 (default), 0.0 to disable, 2.0 for extreme differentiation.
+// This allows runtime tuning of strategy effectiveness without code changes.
+func GetStrategyScaling() float64 {
+	if scaleStr := os.Getenv("STRATEGY_BONUS_SCALE"); scaleStr != "" {
+		if scale, err := strconv.ParseFloat(scaleStr, 64); err == nil {
+			// Clamp to reasonable range (0.0 to 2.0)
+			if scale < 0 {
+				return 0
+			}
+			if scale > 2.0 {
+				return 2.0
+			}
+			return scale
+		}
+	}
+	return 1.0 // Default scaling
 }
