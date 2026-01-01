@@ -3,23 +3,11 @@ package recommend
 import (
 	"fmt"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
-// Scoring weights for overall score calculation
-const (
-	// WeightCompatibility is the weight for card level compatibility (60%)
-	// Card levels matter most for ladder viability
-	WeightCompatibility = 0.60
-
-	// WeightSynergy is the weight for card pair synergy (25%)
-	// Synergy improves win rate but levels matter more
-	WeightSynergy = 0.25
-
-	// WeightArchetypeFit is the weight for how well a deck matches its archetype (15%)
-	// Following proven patterns has value but less than card strength
-	WeightArchetypeFit = 0.15
-)
+// Scoring weights for overall score calculation have been moved to internal/config/constants.go
 
 // Rarity weights for compatibility scoring
 // Common cards are easier to max than rarer cards
@@ -101,9 +89,9 @@ func (s *Scorer) CalculateSynergy(deckNames []string) float64 {
 // CalculateOverallScore combines all scoring factors into a single score (0-100)
 // Formula: 60% compatibility + 25% synergy + 15% archetype fit
 func (s *Scorer) CalculateOverallScore(compatibility, synergy, archetypeFit float64) float64 {
-	return (compatibility * WeightCompatibility) +
-		(synergy * WeightSynergy) +
-		(archetypeFit * WeightArchetypeFit)
+	return (compatibility * config.RecommendationWeightCompatibility) +
+		(synergy * config.RecommendationWeightSynergy) +
+		(archetypeFit * config.RecommendationWeightArchetypeFit)
 }
 
 // GenerateReasons creates human-readable reasons for why a deck is recommended

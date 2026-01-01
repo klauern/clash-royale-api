@@ -409,7 +409,7 @@ func (b *Builder) scoreCard(name string, level, maxLevel int, rarity string, eli
 	// Encourage cheaper cards slightly to keep cycle tight
 	elixirWeight := 1.0 - float64(max(elixir-3, 0))/9.0
 
-	roleBonus := 0.05
+	roleBonus := config.RoleBonusValue
 	if role == nil {
 		roleBonus = 0
 	}
@@ -417,11 +417,11 @@ func (b *Builder) scoreCard(name string, level, maxLevel int, rarity string, eli
 	// Use level-scaled evolution bonus
 	evolutionBonus := b.calculateEvolutionBonus(name, level, maxLevel, maxEvolutionLevel)
 
-	return (levelRatio * 1.2 * rarityBoost) + (elixirWeight * 0.15) + roleBonus + evolutionBonus
+	return (levelRatio * config.LevelWeightFactor * rarityBoost) + (elixirWeight * config.ElixirWeightFactor) + roleBonus + evolutionBonus
 }
 
 // calculateEvolutionBonus returns level-scaled evolution bonus
-// Formula: baseBonus * (level/maxLevel)^1.5 * (1 + 0.2*(maxEvoLevel-1))
+// Formula: EvolutionBaseBonus * (level/maxLevel)^1.5 * (1 + 0.2*(maxEvoLevel-1))
 // Additional bonus for cards with evolution-specific role overrides
 // This rewards using higher-level cards and accounts for multi-evolution cards
 func (b *Builder) calculateEvolutionBonus(cardName string, level, maxLevel, maxEvoLevel int) float64 {
@@ -430,14 +430,13 @@ func (b *Builder) calculateEvolutionBonus(cardName string, level, maxLevel, maxE
 		return 0.0
 	}
 
-	const baseBonus = 0.25
 	levelRatio := float64(level) / float64(maxLevel)
 	scaledRatio := math.Pow(levelRatio, 1.5)
 
 	// Bonus multiplier for multi-evolution cards (e.g., Knight with evo level 3)
 	evoMultiplier := 1.0 + (0.2 * float64(maxEvoLevel-1))
 
-	bonus := baseBonus * scaledRatio * evoMultiplier
+	bonus := config.EvolutionBaseBonus * scaledRatio * evoMultiplier
 
 	// Additional bonus for cards with evolution-specific role overrides
 	// These cards have their strategic role changed by evolution, making them

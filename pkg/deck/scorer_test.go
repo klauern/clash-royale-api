@@ -5,6 +5,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
@@ -750,7 +751,7 @@ func TestScoreCardCandidateWithEvolution(t *testing.T) {
 	}
 
 	// The difference should be approximately the evolution bonus weight (0.15)
-	expectedDiff := evolutionBonusWeight
+	expectedDiff := config.EvolutionBonusWeight
 	actualDiff := scoreFullEvo - scoreNoEvo
 	if math.Abs(actualDiff-expectedDiff) > 0.01 {
 		t.Errorf("Score difference (%v) should be approximately %v", actualDiff, expectedDiff)
@@ -860,7 +861,7 @@ func TestEvolutionBonusClampedToMax(t *testing.T) {
 	bonus := calculateEvolutionLevelBonus(5, 3)
 
 	// Should be clamped to max bonus
-	expectedMax := evolutionBonusWeight
+	expectedMax := config.EvolutionBonusWeight
 	if bonus > expectedMax+0.001 {
 		t.Errorf("Evolution bonus (%v) should be clamped to max (%v)", bonus, expectedMax)
 	}

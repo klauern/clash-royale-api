@@ -14,20 +14,7 @@ import (
 
 // Elixir sweet spot is 3-4 elixir (most versatile cards)
 // Higher cost cards get penalized slightly, very low cost cards also penalized
-const (
-	levelWeightFactor = 1.2
-	roleBonusValue    = 0.05
-
-	// Combat stats integration weights
-	defaultCombatWeight = 0.25 // 25% combat stats, 75% base scoring
-	combatDPSWeight     = 0.4  // 40% of combat score from DPS efficiency
-	combatHPWeight      = 0.4  // 40% of combat score from HP efficiency
-	combatRoleWeight    = 0.2  // 20% of combat score from role-specific effectiveness
-
-	// Evolution level bonus weights
-	// Evolution level provides additional score boost based on how far the card is evolved
-	evolutionBonusWeight = 0.15 // Base weight for evolution bonus (0.15 = up to +0.15 score at max evo)
-)
+// All magic numbers have been moved to internal/config/constants.go
 
 // ScoreCard calculates a comprehensive score for a card based on multiple factors:
 //
@@ -74,14 +61,14 @@ func ScoreCardWithEvolution(level, maxLevel int, rarity string, elixir int, role
 	// Add role bonus if card has defined strategic role
 	roleBonus := 0.0
 	if role != nil {
-		roleBonus = roleBonusValue
+		roleBonus = config.RoleBonusValue
 	}
 
 	// Calculate evolution level bonus
 	evolutionBonus := calculateEvolutionLevelBonus(evolutionLevel, maxEvolutionLevel)
 
 	// Combine all factors into final score
-	score := (levelRatio * levelWeightFactor * rarityBoost) +
+	score := (levelRatio * config.LevelWeightFactor * rarityBoost) +
 		(elixirWeight * config.ElixirWeightFactor) +
 		roleBonus +
 		evolutionBonus
@@ -126,7 +113,7 @@ func calculateEvolutionLevelBonus(evolutionLevel, maxEvolutionLevel int) float64
 	}
 
 	// Apply evolution bonus weight
-	return evolutionBonusWeight * evolutionRatio
+	return config.EvolutionBonusWeight * evolutionRatio
 }
 
 // ScoreCardCandidate calculates score for a CardCandidate and updates its Score field.
@@ -279,7 +266,7 @@ func getCombatWeight() float64 {
 			return weight
 		}
 	}
-	return defaultCombatWeight
+	return config.DefaultCombatWeight
 }
 
 // roleToString converts CardRole to string for combat stats integration
@@ -322,9 +309,9 @@ func calculateCombatScore(stats *clashroyale.CombatStats, elixir int, role strin
 	hpNormalized := math.Min(hpEfficiency/400.0, 1.0)  // ~400 HP/elixir as excellent
 
 	// Combine combat factors with weights
-	combatScore := (dpsNormalized * combatDPSWeight) +
-		(hpNormalized * combatHPWeight) +
-		(roleEffectiveness * combatRoleWeight)
+	combatScore := (dpsNormalized * config.CombatDPSWeight) +
+		(hpNormalized * config.CombatHPWeight) +
+		(roleEffectiveness * config.CombatRoleWeight)
 
 	return math.Max(0, math.Min(1, combatScore)) // Clamp to 0-1 range
 }
@@ -424,14 +411,14 @@ func scoreCardWithEvolutionInternal(cardName string, level, maxLevel int, rarity
 	// Add role bonus if card has defined strategic role
 	roleBonus := 0.0
 	if role != nil {
-		roleBonus = roleBonusValue
+		roleBonus = config.RoleBonusValue
 	}
 
 	// Calculate evolution level bonus
 	evolutionBonus := calculateEvolutionLevelBonus(evolutionLevel, maxEvolutionLevel)
 
 	// Combine all factors into final score
-	score := (levelRatio * levelWeightFactor * rarityBoost) +
+	score := (levelRatio * config.LevelWeightFactor * rarityBoost) +
 		(elixirWeight * config.ElixirWeightFactor) +
 		roleBonus +
 		evolutionBonus
