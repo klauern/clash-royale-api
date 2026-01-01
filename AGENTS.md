@@ -1,513 +1,124 @@
 # AGENTS.md
 
-**Note**: This project uses [bd (beads)](https://github.com/steveyegge/beads)
-for issue tracking. Use `bd` commands instead of markdown TODOs.
-
 This file provides guidance to AI agents (Claude Code, etc.) when working with this repository.
 
-## Repository Overview
+## Project Overview
 
-This is a Go-only Clash Royale API client and analysis tool. The Go implementation provides comprehensive functionality for analyzing player data, building decks, tracking event performance, and exporting data.
+Go-only Clash Royale API client for analyzing player data, building decks, tracking events, and exporting data.
 
-Key features:
-- Uses the official Clash Royale API (developer.clashroyale.com)
-- Implements rate limiting (1 req/sec default)
+**Key features:**
+- Official API integration with rate limiting (1 req/sec default)
 - Clean architecture: API client → Data models → Analysis → Export
-- Stores data in the `data/` directory
-- Follows beads task management workflow
 - Type-safe with comprehensive error handling
+- Beads task management workflow
 
-## Project Architecture
+## Repository Structure
 
-### Go Implementation
+```
+clash-royale-api/
+├── cmd/cr-api/          # Main CLI application
+├── pkg/
+│   ├── clashroyale/     # API client
+│   ├── deck/            # Deck building algorithms
+│   ├── analysis/        # Collection analysis
+│   └── events/          # Event deck tracking
+├── internal/
+│   ├── exporter/csv/    # CSV export
+│   └── storage/         # Data persistence
+├── data/                # Local-only (gitignored)
+└── docs/                # Feature documentation
+```
 
-**Structure:**
-- `cmd/cr-api/main.go` - Main CLI application using `urfave/cli/v3`
-- `pkg/clashroyale/` - API client library (independent implementation)
-- `pkg/events/` - Event deck tracking and analysis
-- `pkg/deck/` - Intelligent deck building with role-based selection
-- `pkg/analysis/` - Card collection analysis and upgrade priorities
-- `internal/exporter/csv/` - CSV export functionality
-- `internal/storage/` - Data persistence and organization
-- `internal/utils/` - Common utilities and helpers
-
-**Current Status:**
-- Production-ready with comprehensive testing
-- High performance with type safety
-- Complete feature set with comprehensive functionality
-
-**Go Architecture Patterns:**
-- Clean package structure (`pkg/` for libraries, `internal/` for internals)
-- Type-safe enums for card roles and constants
-- Interface-based design for testability and extensibility
-- Comprehensive error types with specific error codes
-- Builder pattern for deck construction
-
-## Development Commands
-
-### Task Runner (Recommended)
-
-Install: `./scripts/install-task.sh` or from https://taskfile.dev
+## Quick Start
 
 ```bash
-task              # Show all tasks
-task setup        # Set up env (.env, deps, build)
+task setup        # Configure environment (.env)
 task build        # Build binaries
-task run -- '#TAG'        # Analyze player
-task run-with-save -- '#TAG'    # Analyze + save JSON
-task export-csv -- '#TAG'       # Export to CSV
-task scan-events -- '#TAG'      # Scan event decks
-task test         # Run tests with coverage
-task lint         # Run golangci-lint
-task snapshot     # Test release locally
-task release      # Create release (requires GITHUB_TOKEN)
+task test         # Run tests
 ```
 
-### Direct CLI Usage
-
-Build: `cd go && go build -o bin/cr-api ./cmd/cr-api`
-
-```bash
-./bin/cr-api player --tag <TAG> [--chests] [--save] [--export-csv]
-./bin/cr-api cards [--export-csv]
-./bin/cr-api analyze --tag <TAG> [--save] [--export-csv]
-./bin/cr-api deck build --tag <TAG> [--combat-stats-weight 0.25] [--disable-combat-stats]
-./bin/cr-api events scan --tag <TAG>
-./bin/cr-api playstyle --tag <TAG> [--recommend-decks] [--save]
-./bin/cr-api what-if --tag <TAG> --upgrade "CardName:ToLevel" [--show-decks]
-
-cd go && go test ./...              # Run all tests
-cd go && go test ./pkg/deck/... -v  # Test specific package
-```
-
-### What-If Analysis
-
-Simulate the impact of upgrading specific cards on deck composition and viability.
-
-**Basic Usage:**
-```bash
-# Simulate upgrading Archers to level 15 and Knight to level 15
-./bin/cr-api what-if --tag <TAG> --upgrade "Archers:15" --upgrade "Knight:15" --show-decks
-
-# Use offline mode with existing analysis file
-./bin/cr-api what-if --tag <TAG> --from-analysis data/analysis/<file>.json \
-  --upgrade "Archers:9:15" --save --json
-
-# Specify different deck building strategy
-./bin/cr-api what-if --tag <TAG> --upgrade "Goblin Barrel:14" \
-  --strategy aggro --show-decks
-```
-
-**Upgrade Format:**
-- `CardName:ToLevel` - Upgrades from current level to specified level
-- `CardName:FromLevel:ToLevel` - Explicit from→to upgrade path
-
-**Flags:**
-- `--from-analysis <file>` - Use cached analysis (offline mode, no API call)
-- `--show-decks` - Display full deck compositions before/after
-- `--save` - Save scenario to `data/whatif/`
-- `--json` - Output in JSON format
-- `--strategy <name>` - Deck building strategy (balanced, aggro, control, cycle, splash, spell)
-
-**Output:**
-- Upgrade costs (gold per card)
-- Deck score delta
-- Viability improvement percentage
-- New/removed cards in recommended deck
-- Recommendation (highly recommended / recommended / minor improvement / not recommended)
-
-**Example Output:**
-```
-============================================================================
-                        WHAT-IF ANALYSIS
-============================================================================
-
-Scenario: Upgrade 2 cards: Archers, Knight
-What-if analysis for Player (#TAG)
-
-Upgrades Simulated
--------------------
-Card     From  To  Gold
-----     ----  --  ----
-Archers  10    15  500
-Knight   9     15  600
-
-Total Gold Cost: 1100
-
-Impact Analysis
----------------
-Deck Score Delta:     +0.888000
-Viability Change:     +12.0%
-
-Recommendation
--------------
-Highly recommended! These upgrades (1100 gold) significantly improve your deck viability by 12.0%.
-```
-
-## Release Process
-
-1. **Ensure tests pass**: `task test && task lint`
-2. **Test locally**: `task snapshot && ls dist/`
-3. **Create and push tag**:
-   ```bash
-   git tag -a v1.0.0 -m "Release v1.0.0: Description"
-   git push origin v1.0.0
-   ```
-4. **GitHub Actions** builds all platforms and publishes to GitHub Releases
-
-**Versioning**: Semantic versioning (Major.Minor.Patch)
-- `feat:` → Features, `fix:` → Bug Fixes, `perf:`/`refactor:` → Improvements
-- `test:` → Tests, `chore:`/`docs:`/`ci:` → Excluded from changelog
-
-**Manual release** (if needed): `export GITHUB_TOKEN=... && task release`
-
-## Configuration
-
-**⚠️ Security**: Copy `.env.example` to `.env` and add your actual values. Never commit `.env` to version control.
-
-**Required Environment Variables (.env):**
-```env
-CLASH_ROYALE_API_TOKEN=your_token_here
-```
-
-**Optional Configuration:**
-```env
-DEFAULT_PLAYER_TAG=#TAG          # Allows running tasks without arguments
-DATA_DIR=./data                  # Data storage location
-REQUEST_DELAY=1                  # Seconds between API requests
-MAX_RETRIES=3                    # API retry attempts
-CSV_DIR=./data/csv               # CSV export directory
-COMBAT_STATS_WEIGHT=0.25         # Combat stats weight for deck building (0.0-1.0)
-```
-
-**Configuration Priority:**
-1. CLI arguments (highest)
-2. Environment variables
-3. Default values (lowest)
-
-## Evolution Tracking
-
-The deck builder tracks unlocked evolutions (API doesn't provide this). Configure in `.env`:
-
-```env
-UNLOCKED_EVOLUTIONS="Archers,Knight,Musketeer"
-```
-
-**CLI override**: `./bin/cr-api deck build --tag <TAG> --unlocked-evolutions "Archers,Bomber" --evolution-slots 2`
-
-**How it works:**
-1. **Bonus scaling**: Level-scaled bonus via formula `0.25 * (level/maxLevel)^1.5 * (1 + 0.2*(maxEvoLevel-1))`
-2. **Role overrides**: Evolved cards may change role (e.g., Valkyrie: Cycle → Support)
-3. **Slot priority**: Top 2 evolved cards (by role priority + score) get evolution slots
-
-**Recommendations**: `./bin/cr-api evolutions recommend --tag <TAG> [--top 5] [--verbose]`
-
-See [EVOLUTION.md](docs/EVOLUTION.md) for complete documentation including:
-- Evolution level mechanics (evolutionLevel vs maxEvolutionLevel)
-- Shard management and inventory tracking
-- Evolution recommendation scoring factors
-- Role override details and upgrade priorities
-
-## Combat Stats Integration
-
-The deck builder blends traditional scoring (level, rarity, cost) with combat stats (DPS/elixir, HP/elixir, role effectiveness):
-
-`finalScore = (traditional × (1-weight)) + (combat × weight)`
-
-**Configuration**: Set `COMBAT_STATS_WEIGHT` in `.env` (default: 0.25, range: 0.0-1.0)
-
-**CLI options**:
-```bash
-./bin/cr-api deck build --tag <TAG>                              # 25% weight (default)
-./bin/cr-api deck build --tag <TAG> --combat-stats-weight 0.6   # 60% weight
-./bin/cr-api deck build --tag <TAG> --disable-combat-stats       # 0% weight (traditional only)
-./bin/cr-api deck build --from-analysis <file>                   # Offline mode
-```
-
-**Weight guidance**:
-- **0.5-0.8**: Prioritize statistically strong cards (theory-crafting)
-- **0.25** (default): Balanced, recommended for most
-- **0.0-0.2**: Focus on highest-level cards (ladder pushing)
-```
-
-## Synergy Scoring
-
-The deck builder includes an optional synergy system that considers card interactions and combos when selecting cards. The system uses a database of 188 known synergy pairs covering various archetypes (tank+support, spell combos, bait, cycle, etc.).
-
-**How it works:**
-- Synergy database contains pre-defined synergy pairs with scores (0.0-1.0)
-- When building a deck, each candidate card is scored based on synergies with already-selected cards
-- Synergy bonus is added to the card's base score: `finalScore = baseScore + (synergyScore × weight)`
-- Cards that synergize well with the current deck get higher priority
-
-**Configuration:**
-
-**CLI options:**
-```bash
-./bin/cr-api deck build --tag <TAG> --enable-synergy                      # Enable with default weight (15%)
-./bin/cr-api deck build --tag <TAG> --enable-synergy --synergy-weight 0.25  # Enable with 25% weight
-```
-
-**Weight guidance:**
-- **0.10-0.15** (default): Subtle synergy influence, card levels still matter most
-- **0.20-0.30**: Moderate synergy emphasis, good balance for most players
-- **0.40-0.50**: Strong synergy focus, prioritizes combos over individual card strength
-
-**Synergy categories:**
-- **Tank + Support**: Giant/Witch, Golem/Night Witch, Lava Hound/Balloon, etc.
-- **Spell Combos**: Hog/Fireball, Tornado/Executioner, Freeze/Balloon, etc.
-- **Bait**: Goblin Barrel/Princess, Log bait variations, spell bait pressure
-- **Win Conditions**: Hog/Ice Golem, X-Bow/Tesla, Miner/Poison, etc.
-- **Defensive**: Cannon/Ice Spirit, Inferno Tower/Tornado, Tesla defense, etc.
-- **Cycle**: Ice Spirit/Skeletons, fast rotation combos, cheap cycling
-- **Bridge Spam**: PEKKA/Battle Ram, Bandit/Royal Ghost, dual-lane pressure
-
-**Technical details:**
-- Database location: `pkg/deck/synergy.go`
-- Coverage: 188 synergy pairs, ~45 cards
-- Integration: Applied during card selection in builder (`pkg/deck/builder.go`)
-
-## Testing
-
-```bash
-# Go
-task test                        # Run all tests
-task test-go                     # Run all Go tests
-task test-go-coverage           # Run with coverage report
-cd go && go test ./pkg/deck/... -v  # Test specific package with verbose output
-
-# Integration
-cd go && go test -tags=integration ./...  # Full integration tests (requires API token)
-```
-
-## Data Storage Structure
-
-**Note**: The `data/` directory is gitignored and contains local-only artifacts (cached API responses, analysis results, CSV exports). It is excluded from version control.
-
-```
-data/
-├── static/          # Static game data (cards, etc.)
-├── players/         # Player profiles (JSON)
-├── analysis/        # Collection analysis results
-├── csv/
-│   ├── players/     # Player CSV exports
-│   ├── reference/   # Card database
-│   └── analysis/    # Analytical reports
-└── event_decks/     # Event deck tracking data
-```
-
-Files are timestamped: `YYYYMMDD_HHMMSS_type_PLAYERTAG.json`
-
-## Scripts and Automation
-
-Located in `scripts/`:
-- `install-task.sh` - Automated Task installer
-- `run_all_tasks.sh` - Execute all Taskfile tasks with detailed logging
-
-## Dependencies
-
-**Go:**
-- `urfave/cli/v3` - CLI framework
-- `go.uber.org/ratelimit` - Rate limiting
-- Go 1.22+ required
+**Required:** Copy `.env.example` to `.env` and add `CLASH_ROYALE_API_TOKEN` from [developer.clashroyale.com](https://developer.clashroyale.com/)
 
 ## Development Workflow
 
-1. **Setup**: Run `task setup` to configure environment
-2. **Development**: Use `bd ready` to find tasks, claim with `bd update`
-3. **Testing**: Run `task test` or `task test-go` for comprehensive testing
-4. **Code Quality**: Use `task lint` and `task format` for Go code
-5. **Data Management**: All data persists in `data/` directory
-6. **Task Completion**: Close tasks with `bd close`, then `bd sync --from-main` and commit
+1. **Find work**: `bd ready` shows unblocked issues
+2. **Claim task**: `bd update <id> --status in_progress`
+3. **Implement**: Edit code, run `task test` and `task lint`
+4. **Complete**: `bd close <id>` and commit changes with `.beads/issues.jsonl`
 
-## API Rate Limiting
+## Task-Specific Documentation
 
-The Go implementation respects API limits:
-- Default: 1 request/second
-- Automatic retry with exponential backoff
-- Configurable via `REQUEST_DELAY` environment variable
+This file contains only universally applicable information. For task-specific details, refer to:
 
-## Issue Tracking with bd (beads)
+| Topic | Document |
+|--------|----------|
+| Complete CLI commands | [docs/CLI_REFERENCE.md](docs/CLI_REFERENCE.md) |
+| Testing strategies | [docs/TESTING.md](docs/TESTING.md) |
+| Release process | [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) |
+| Deck building algorithms | [docs/DECK_BUILDER.md](docs/DECK_BUILDER.md) |
+| Evolution mechanics | [docs/EVOLUTION.md](docs/EVOLUTION.md) |
+| Event tracking | [docs/EVENT_TRACKING.md](docs/EVENT_TRACKING.md) |
+| CSV exports | [docs/CSV_EXPORTS.md](docs/CSV_EXPORTS.md) |
 
-**IMPORTANT**: This project uses **bd (beads)** for ALL issue tracking. Do NOT use markdown TODOs, task lists, or other tracking methods.
+**Tip:** When working on a specific task, read the relevant documentation first for detailed context.
 
-### Why bd?
+## Beads Issue Tracking
 
-- Dependency-aware: Track blockers and relationships between issues
-- Git-friendly: Auto-syncs to JSONL for version control
-- Agent-optimized: JSON output, ready work detection, discovered-from links
-- Prevents duplicate tracking systems and confusion
+This project uses [bd (beads)](https://github.com/steveyegge/beads) for ALL task tracking.
 
-### Quick Start
+**Why bd?**
+- Dependency-aware: Tracks blockers and relationships
+- Git-friendly: Auto-syncs to `.beads/issues.jsonl`
+- Agent-optimized: JSON output, ready work detection
 
-**Check for ready work:**
+**Essential commands:**
 ```bash
-bd ready --json
+bd ready                           # Find unblocked work
+bd create "Title" -t task -p 1     # Create issue
+bd update <id> --status in_progress # Claim work
+bd close <id> --reason "Done"      # Complete work
 ```
 
-**Create new issues:**
-```bash
-bd create "Issue title" -t bug|feature|task -p 0-4 --json
-bd create "Issue title" -p 1 --deps discovered-from:bd-123 --json
-bd create "Subtask" --parent <epic-id> --json  # Hierarchical subtask (gets ID like epic-id.1)
-```
+**Issue types:** `bug`, `feature`, `task`, `epic`, `chore`
+**Priorities:** `0` (critical) → `4` (backlog)
 
-**Claim and update:**
-```bash
-bd update bd-42 --status in_progress --json
-bd update bd-42 --priority 1 --json
-```
+**Writing self-contained issues:**
+- Summary: What and why (1-2 sentences)
+- Files: Exact paths with line numbers
+- Steps: Numbered implementation actions
+- Example: Before → after transformation
 
-**Complete work:**
-```bash
-bd close bd-42 --reason "Completed" --json
-```
+**Dependencies:** `bd dep add X Y` means "X needs Y" (Y blocks X)
+**Verify:** `bd blocked` shows blocked tasks
 
-### Issue Types
+## Code Conventions
 
-- `bug` - Something broken
-- `feature` - New functionality
-- `task` - Work item (tests, docs, refactoring)
-- `epic` - Large feature with subtasks
-- `chore` - Maintenance (dependencies, tooling)
+- Use `task` runner instead of direct `make` or `go` commands
+- Use `fd` instead of `find`, `rg` instead of `grep`
+- Use `gh` for GitHub operations
+- All data persists in `data/` directory (gitignored)
+- Store AI planning docs in `history/` directory
 
-### Priorities
+## Architecture Patterns
 
-- `0` - Critical (security, data loss, broken builds)
-- `1` - High (major features, important bugs)
-- `2` - Medium (default, nice-to-have)
-- `3` - Low (polish, optimization)
-- `4` - Backlog (future ideas)
+- **Clean package structure:** `pkg/` (libraries), `internal/` (internals)
+- **Type-safe enums:** Card roles, constants
+- **Interface-based design:** Testability and extensibility
+- **Builder pattern:** Deck construction
+- **Error types:** Specific error codes with context
 
-### Workflow for AI Agents
+## Common Pitfalls
 
-1. **Check ready work**: `bd ready` shows unblocked issues
-2. **Claim your task**: `bd update <id> --status in_progress`
-3. **Work on it**: Implement, test, document
-4. **Discover new work?** Create linked issue:
-   - `bd create "Found bug" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
-6. **Commit together**: Always commit the `.beads/issues.jsonl` file together with the code changes so issue state stays in sync with code state
+- ❌ Don't commit `.env` or `data/` (gitignored)
+- ❌ Don't use markdown TODOs (use bd instead)
+- ❌ Don't skip `task lint` before committing
+- ❌ Don't forget to commit `.beads/issues.jsonl` with code changes
+- ✅ Always run tests before claiming completion
+- ✅ Check for broken links after moving documentation
 
-### Writing Self-Contained Issues
+## Getting Help
 
-Issues must be fully self-contained - readable without any external context (plans, chat history, etc.). A future session should understand the issue completely from its description alone.
-
-**Required elements:**
-- **Summary**: What and why in 1-2 sentences
-- **Files to modify**: Exact paths (with line numbers if relevant)
-- **Implementation steps**: Numbered, specific actions
-- **Example**: Show before → after transformation when applicable
-
-**Optional but helpful:**
-- Edge cases or gotchas to watch for
-- Test references (point to test files or test_data examples)
-- Dependencies on other issues
-
-**Bad example:**
-```
-Implement the refactoring from the plan
-```
-
-**Good example:**
-```
-Add timeout parameter to fetchUser() in src/api/users.ts
-
-1. Add optional timeout param (default 5000ms)
-2. Pass to underlying fetch() call
-3. Update tests in src/api/users.test.ts
-
-Example: fetchUser(id) → fetchUser(id, { timeout: 3000 })
-Depends on: bd-abc123 (fetch wrapper refactor)
-```
-
-### Dependencies: Think "Needs", Not "Before"
-
-`bd dep add X Y` = "X needs Y" = Y blocks X
-
-**TRAP**: Temporal words ("Phase 1", "before", "first") invert your thinking!
-```
-WRONG: "Phase 1 before Phase 2" → bd dep add phase1 phase2
-RIGHT: "Phase 2 needs Phase 1" → bd dep add phase2 phase1
-```
-**Verify**: `bd blocked` - tasks blocked by prerequisites, not dependents.
-
-### Auto-Sync
-
-bd automatically syncs with git:
-- Exports to `.beads/issues.jsonl` after changes (5s debounce)
-- Imports from JSONL when newer (e.g., after `git pull`)
-- No manual export/import needed!
-
-### GitHub Copilot Integration
-
-If using GitHub Copilot, also create `.github/copilot-instructions.md` for automatic instruction loading.
-Run `bd onboard` to get the content, or see step 2 of the onboard instructions.
-
-### MCP Server (Recommended)
-
-If using Claude or MCP-compatible clients, install the beads MCP server:
-
-```bash
-pip install beads-mcp
-```
-
-Add to MCP config (e.g., `~/.config/claude/config.json`):
-```json
-{
-  "beads": {
-    "command": "beads-mcp",
-    "args": []
-  }
-}
-```
-
-Then use `mcp__beads__*` functions instead of CLI commands.
-
-### Managing AI-Generated Planning Documents
-
-AI assistants often create planning and design documents during development:
-- PLAN.md, IMPLEMENTATION.md, ARCHITECTURE.md
-- DESIGN.md, CODEBASE_SUMMARY.md, INTEGRATION_PLAN.md
-- TESTING_GUIDE.md, TECHNICAL_DESIGN.md, and similar files
-
-**Best Practice: Use a dedicated directory for these ephemeral files**
-
-**Recommended approach:**
-- Create a `history/` directory in the project root
-- Store ALL AI-generated planning/design docs in `history/`
-- Keep the repository root clean and focused on permanent project files
-- Only access `history/` when explicitly asked to review past planning
-
-**Example .gitignore entry (optional):**
-```
-# AI planning documents (ephemeral)
-history/
-```
-
-**Benefits:**
-- ✅ Clean repository root
-- ✅ Clear separation between ephemeral and permanent documentation
-- ✅ Easy to exclude from version control if desired
-- ✅ Preserves planning history for archeological research
-- ✅ Reduces noise when browsing the project
-
-### CLI Help
-
-Run `bd <command> --help` to see all available flags for any command.
-For example: `bd create --help` shows `--parent`, `--deps`, `--assignee`, etc.
-
-### Important Rules
-
-- ✅ Use bd for ALL task tracking
-- ✅ Always use `--json` flag for programmatic use
-- ✅ Link discovered work with discovered-from dependencies
-- ✅ Check `bd ready` before asking "what should I work on?"
-- ✅ Store AI planning docs in `history/` directory
-- ✅ Run `bd <cmd> --help` to discover available flags
-- ❌ Do NOT create markdown TODO lists
-- ❌ Do NOT use external issue trackers
-- ❌ Do NOT duplicate tracking systems
-- ❌ Do NOT clutter repo root with planning documents
-
-For more details, see README.md and QUICKSTART.md.
+- `task` - Show all available tasks
+- `bd <command> --help` - Show bd command options
+- `./bin/cr-api --help` - Show CLI options
+- `bd ready` - Find work to do

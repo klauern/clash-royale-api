@@ -34,11 +34,11 @@ cp .env.example .env
 
 ## Documentation
 
-- **[Deck Building](DECK_BUILDER.md)** - Algorithm details and Go API examples
-- **[Evolution System](EVOLUTION.md)** - Evolution mechanics and configuration
-- **[Event Tracking](EVENT_TRACKING.md)** - Event deck analysis
-- **[CSV Exports](CSV_EXPORTS.md)** - Export functionality
-- **[Deck Strategies](DECK_STRATEGIES.md)** - Playstyle analysis and recommendations
+- **[Deck Building](docs/DECK_BUILDER.md)** - Algorithm details and Go API examples
+- **[Evolution System](docs/EVOLUTION.md)** - Evolution mechanics and configuration
+- **[Event Tracking](docs/EVENT_TRACKING.md)** - Event deck analysis
+- **[CSV Exports](docs/CSV_EXPORTS.md)** - Export functionality
+- **[Deck Strategies](docs/DECK_STRATEGIES.md)** - Playstyle analysis and recommendations
 
 ## Project Structure
 
@@ -79,21 +79,13 @@ The `.env` file contains sensitive credentials and is **gitignored** by design. 
 
 ## Installation
 
-**Binary Releases** (Recommended): Download from [Releases page](https://github.com/klauern/clash-royale-api/releases) for Linux, macOS, or Windows. Extract and move `cr-api` to your PATH.
+**Binary Releases** (Recommended): Download from [Releases page](https://github.com/klauern/clash-royale-api/releases).
 
-**Build from Source**: Requires Go 1.22+
+**Build from Source** (Go 1.22+):
 ```bash
 git clone https://github.com/klauern/clash-royale-api.git
-cd clash-royale-api
-task build
+cd clash-royale-api && task build
 ```
-
-## Quick Start
-
-1. Get API token from [developer.clashroyale.com](https://developer.clashroyale.com)
-2. Create `.env` file: `cp .env.example .env` and add your token
-3. Build: `task build`
-4. Run: `./bin/cr-api analyze --tag YOUR_TAG`
 
 ## CLI Usage
 
@@ -174,38 +166,7 @@ Unit tests run in CI. Integration tests connect to the live API and are excluded
 
 ## CI/CD Limitations
 
-### Clash Royale API IP Restrictions
-
-The official Clash Royale API has significant limitations that affect CI/CD integration:
-
-**IP Whitelisting Requirements:**
-- **Maximum 5 IP addresses** per API key
-- **Static IPs only** - must be pre-allowlisted at [developer.clashroyale.com](https://developer.clashroyale.com/)
-- **No "allow all" option** - dynamic IPs cannot be used
-
-**Rate Limits (Undocumented):**
-- Exact limits are not publicly disclosed by Supercell
-- Community reports suggest **10-20 requests/second** may trigger blocking
-- Exceeding limits can result in **24-hour IP bans**
-
-**GitHub Actions Compatibility:**
-| Runner Type | Static IP | Viable for CR API |
-|-------------|-----------|-------------------|
-| Standard (`ubuntu-latest`) | ❌ Dynamic | No |
-| Standard (`windows-latest`) | ❌ Dynamic | No |
-| Standard (`macos-latest`) | ❌ Dynamic | No |
-| Larger Runners (Enterprise) | ✅ Configurable | Yes (requires Enterprise) |
-| Self-Hosted | ✅ Your IP | Yes |
-
-### Current Strategy
-
-CI runs unit tests only. Integration tests require manual execution (`task test-integration`) due to IP restrictions. Options for automation: self-hosted runners (static IP), GitHub Enterprise larger runners, or proxy services.
-
-**Sources:**
-- [About GitHub's IP addresses](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/about-githubs-ip-addresses)
-- [Larger runners reference](https://docs.github.com/en/actions/reference/runners/larger-runners)
-- [GitHub Actions IP discussion](https://github.com/orgs/community/discussions/26442)
-- [Clash Royale Developer Portal](https://developer.clashroyale.com/)
+The Clash Royale API requires static IP whitelisting (max 5 IPs per key). GitHub Actions standard runners use dynamic IPs and cannot access the live API. CI runs unit tests only; integration tests require manual execution (`task test-integration`). Automation options: self-hosted runners or GitHub Enterprise larger runners with static IPs.
 
 ## Releases
 
