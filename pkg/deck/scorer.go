@@ -15,10 +15,8 @@ import (
 // Elixir sweet spot is 3-4 elixir (most versatile cards)
 // Higher cost cards get penalized slightly, very low cost cards also penalized
 const (
-	elixirOptimal      = 3.0
-	elixirWeightFactor = 0.15
-	levelWeightFactor  = 1.2
-	roleBonusValue     = 0.05
+	levelWeightFactor = 1.2
+	roleBonusValue    = 0.05
 
 	// Combat stats integration weights
 	defaultCombatWeight = 0.25 // 25% combat stats, 75% base scoring
@@ -70,8 +68,8 @@ func ScoreCardWithEvolution(level, maxLevel int, rarity string, elixir int, role
 
 	// Calculate elixir efficiency weight
 	// Penalize cards far from optimal elixir cost (3)
-	elixirDiff := math.Abs(float64(elixir) - elixirOptimal)
-	elixirWeight := 1.0 - (elixirDiff / 9.0) // 9 is max meaningful diff
+	elixirDiff := math.Abs(float64(elixir) - config.ElixirOptimal)
+	elixirWeight := 1.0 - (elixirDiff / config.ElixirMaxDiff)
 
 	// Add role bonus if card has defined strategic role
 	roleBonus := 0.0
@@ -84,7 +82,7 @@ func ScoreCardWithEvolution(level, maxLevel int, rarity string, elixir int, role
 
 	// Combine all factors into final score
 	score := (levelRatio * levelWeightFactor * rarityBoost) +
-		(elixirWeight * elixirWeightFactor) +
+		(elixirWeight * config.ElixirWeightFactor) +
 		roleBonus +
 		evolutionBonus
 
@@ -420,8 +418,8 @@ func scoreCardWithEvolutionInternal(cardName string, level, maxLevel int, rarity
 
 	// Calculate elixir efficiency weight
 	// Penalize cards far from optimal elixir cost (3)
-	elixirDiff := math.Abs(float64(elixir) - elixirOptimal)
-	elixirWeight := 1.0 - (elixirDiff / 9.0) // 9 is max meaningful diff
+	elixirDiff := math.Abs(float64(elixir) - config.ElixirOptimal)
+	elixirWeight := 1.0 - (elixirDiff / config.ElixirMaxDiff)
 
 	// Add role bonus if card has defined strategic role
 	roleBonus := 0.0
@@ -434,7 +432,7 @@ func scoreCardWithEvolutionInternal(cardName string, level, maxLevel int, rarity
 
 	// Combine all factors into final score
 	score := (levelRatio * levelWeightFactor * rarityBoost) +
-		(elixirWeight * elixirWeightFactor) +
+		(elixirWeight * config.ElixirWeightFactor) +
 		roleBonus +
 		evolutionBonus
 
@@ -451,7 +449,7 @@ func ScoreAllCandidatesWithCombat(candidates []CardCandidate) {
 // ScoreCardWithStrategy calculates enhanced score using strategy configuration
 // Applies role bonuses and elixir targeting adjustments based on the strategy
 // Uses curve-based level calculation when available
-func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyConfig, levelCurve *LevelCurve) float64 {
+func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, strategyConfig StrategyConfig, levelCurve *LevelCurve) float64 {
 	// Start with base score using curve-based calculation (via internal functions with card name)
 	var baseScore float64
 	if card.Stats != nil {
@@ -488,11 +486,11 @@ func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyC
 	strategyBonus := 0.0
 	if role != nil {
 		// Try additive bonuses first (new system)
-		if bonus, exists := config.RoleBonuses[*role]; exists {
+		if bonus, exists := strategyConfig.RoleBonuses[*role]; exists {
 			strategyBonus = bonus * GetStrategyScaling()
-		} else if config.RoleMultipliers != nil {
+		} else if strategyConfig.RoleMultipliers != nil {
 			// Fallback to legacy multiplier system for backward compatibility
-			if mult, exists := config.RoleMultipliers[*role]; exists {
+			if mult, exists := strategyConfig.RoleMultipliers[*role]; exists {
 				if mult > 1.0 {
 					strategyBonus = baseScore * (mult - 1.0)
 				} else if mult < 1.0 {
@@ -503,7 +501,7 @@ func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyC
 	}
 
 	// Apply elixir targeting adjustment
-	elixirAdjustment := calculateElixirAdjustment(card.Elixir, config)
+	elixirAdjustment := calculateElixirAdjustment(card.Elixir, strategyConfig)
 
 	// Combine: base score + strategy bonus + elixir adjustment
 	finalScore := baseScore + strategyBonus + elixirAdjustment
@@ -513,10 +511,10 @@ func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, config StrategyC
 
 // calculateElixirAdjustment calculates score adjustment based on strategy's elixir targets
 // Penalizes cards outside the target elixir range, especially for cycle strategy
-func calculateElixirAdjustment(elixir int, config StrategyConfig) float64 {
+func calculateElixirAdjustment(elixir int, strategyConfig StrategyConfig) float64 {
 	elixirCost := float64(elixir)
-	targetMin := config.TargetElixirMin
-	targetMax := config.TargetElixirMax
+	targetMin := strategyConfig.TargetElixirMin
+	targetMax := strategyConfig.TargetElixirMax
 
 	// If within target range, no penalty
 	if elixirCost >= targetMin && elixirCost <= targetMax {
@@ -533,7 +531,7 @@ func calculateElixirAdjustment(elixir int, config StrategyConfig) float64 {
 
 	// For cycle strategy (low elixir target), heavily penalize high-cost cards
 	// This is particularly important to keep the deck fast
-	if targetMax <= 3.0 && elixirCost > 4.0 {
+	if targetMax <= config.ElixirOptimal && elixirCost > config.ElixirCyclePenaltyThreshold {
 		// Extra penalty for cards that would push average too high
 		return -0.3 * distance
 	}

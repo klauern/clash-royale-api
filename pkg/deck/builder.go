@@ -21,8 +21,6 @@ type Builder struct {
 	dataDir            string
 	unlockedEvolutions map[string]bool
 	evolutionSlotLimit int
-	roleGroups         map[CardRole][]string
-	fallbackElixir     map[string]int
 	statsRegistry      *clashroyale.CardStatsRegistry
 	strategy           Strategy
 	strategyConfig     StrategyConfig
@@ -53,44 +51,6 @@ func NewBuilder(dataDir string) *Builder {
 		dataDir:            dataDir,
 		unlockedEvolutions: unlockedEvos,
 		evolutionSlotLimit: 2,
-		roleGroups: map[CardRole][]string{
-			RoleWinCondition: {
-				"Royal Giant", "Hog Rider", "Giant", "P.E.K.K.A", "Giant Skeleton",
-				"Goblin Barrel", "Mortar", "X-Bow", "Royal Hogs",
-			},
-			RoleBuilding: {
-				"Cannon", "Goblin Cage", "Inferno Tower", "Bomb Tower", "Tombstone",
-				"Goblin Hut", "Barbarian Hut",
-			},
-			RoleSpellBig: {
-				"Fireball", "Poison", "Lightning", "Rocket",
-			},
-			RoleSpellSmall: {
-				"Zap", "Arrows", "Giant Snowball", "Barbarian Barrel",
-				"Freeze", "Log",
-			},
-			RoleSupport: {
-				"Archers", "Bomber", "Musketeer", "Wizard", "Mega Minion",
-				"Valkyrie", "Baby Dragon", "Skeleton Dragons",
-			},
-			RoleCycle: {
-				"Knight", "Skeletons", "Ice Spirit", "Electro Spirit",
-				"Fire Spirit", "Bats", "Spear Goblins", "Goblin Gang", "Minions",
-			},
-		},
-		fallbackElixir: map[string]int{
-			"Royal Giant": 6, "Hog Rider": 4, "Giant": 5, "P.E.K.K.A": 7,
-			"Giant Skeleton": 6, "Goblin Barrel": 3, "Mortar": 4, "X-Bow": 6,
-			"Royal Hogs": 5, "Cannon": 3, "Goblin Cage": 4, "Inferno Tower": 5,
-			"Bomb Tower": 4, "Tombstone": 3, "Goblin Hut": 5, "Barbarian Hut": 6,
-			"Fireball": 4, "Poison": 4, "Lightning": 6, "Rocket": 6,
-			"Zap": 2, "Arrows": 3, "Giant Snowball": 2, "Barbarian Barrel": 2,
-			"Freeze": 4, "Log": 2, "Archers": 3, "Bomber": 2,
-			"Musketeer": 4, "Wizard": 5, "Mega Minion": 3, "Valkyrie": 4,
-			"Baby Dragon": 4, "Skeleton Dragons": 4, "Knight": 3,
-			"Skeletons": 1, "Ice Spirit": 1, "Electro Spirit": 1, "Fire Spirit": 1,
-			"Bats": 2, "Spear Goblins": 2, "Goblin Gang": 3, "Minions": 3,
-		},
 	}
 
 	// Try to load combat stats
@@ -427,22 +387,17 @@ func (b *Builder) buildCandidate(name string, data CardLevelData) *CardCandidate
 }
 
 func (b *Builder) resolveElixir(name string, data CardLevelData) int {
-	if data.Elixir > 0 {
-		return data.Elixir
-	}
-	if elixir, exists := b.fallbackElixir[name]; exists {
-		return elixir
-	}
-	return 4 // Default fallback
+	// Use config package to resolve elixir cost
+	return config.GetCardElixir(name, data.Elixir)
 }
 
 func (b *Builder) inferRole(name string) *CardRole {
-	for role, names := range b.roleGroups {
-		for _, cardName := range names {
-			if cardName == name {
-				return &role
-			}
-		}
+	// Use config package to get card role
+	configRole := config.GetCardRole(name)
+	if configRole != "" {
+		// Convert config.CardRole to deck.CardRole (both are string types)
+		deckRole := CardRole(configRole)
+		return &deckRole
 	}
 	return nil
 }
@@ -585,8 +540,9 @@ func (b *Builder) calculateSynergyScore(cardName string, deck []*CardCandidate) 
 }
 
 func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[string]bool, currentDeck []*CardCandidate) *CardCandidate {
-	roleCards, exists := b.roleGroups[role]
-	if !exists {
+	// Convert deck.CardRole to config.CardRole
+	roleCards := config.GetRoleCards(config.CardRole(role))
+	if roleCards == nil {
 		return nil
 	}
 
@@ -618,8 +574,9 @@ func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[
 }
 
 func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[string]bool, count int, currentDeck []*CardCandidate) []*CardCandidate {
-	roleCards, exists := b.roleGroups[role]
-	if !exists {
+	// Convert deck.CardRole to config.CardRole
+	roleCards := config.GetRoleCards(config.CardRole(role))
+	if roleCards == nil {
 		return nil
 	}
 
