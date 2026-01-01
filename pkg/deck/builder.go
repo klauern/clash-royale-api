@@ -937,11 +937,26 @@ func (b *Builder) getGoldCost(currentLevel int, rarity string) int {
 }
 
 // getRoleImportance returns a score representing how important a card role is
+// Uses strategy-specific role bonuses to prioritize upgrades that fit the strategy
 func (b *Builder) getRoleImportance(role *CardRole) float64 {
 	if role == nil {
 		return 0.4
 	}
 
+	// Use strategy-specific role bonuses for upgrade prioritization
+	// Strategy bonuses range from -0.5 to +0.5
+	// Convert to importance score (0.0 to 1.5 range)
+	baseImportance := 0.5
+	if b.strategyConfig.RoleBonuses != nil {
+		bonus, exists := b.strategyConfig.RoleBonuses[*role]
+		if exists {
+			// Convert bonus (-0.5 to +0.5) to importance (0.0 to 1.5)
+			// Positive bonuses increase importance, negative bonuses decrease it
+			return baseImportance + bonus*2.0
+		}
+	}
+
+	// Fallback to default importance if no strategy config
 	switch *role {
 	case RoleWinCondition:
 		return 1.0 // Most important

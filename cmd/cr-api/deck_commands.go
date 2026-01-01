@@ -126,6 +126,10 @@ func addDeckCommands() *cli.Command {
 						Value: 5,
 						Usage: "Number of upgrade recommendations to show (default 5)",
 					},
+					&cli.BoolFlag{
+						Name:  "ideal-deck",
+						Usage: "Show ideal deck composition after applying recommended upgrades",
+					},
 				},
 				Action: deckBuildCommand,
 			},
@@ -374,6 +378,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	// Upgrade recommendations flags
 	noSuggestUpgrades := cmd.Bool("no-suggest-upgrades")
 	upgradeCount := cmd.Int("upgrade-count")
+	idealDeck := cmd.Bool("ideal-deck")
 
 	// Offline mode flags
 	fromAnalysis := cmd.Bool("from-analysis")
@@ -561,15 +566,100 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	displayDeckRecommendationOffline(deckRec, playerName, playerTag)
 
 	// Display upgrade recommendations by default (unless disabled)
+	var upgrades *deck.UpgradeRecommendations
 	if !noSuggestUpgrades {
 		fmt.Printf("\n")
-		upgrades, err := builder.GetUpgradeRecommendations(deckCardAnalysis, deckRec, upgradeCount)
+		var err error
+		upgrades, err = builder.GetUpgradeRecommendations(deckCardAnalysis, deckRec, upgradeCount)
 		if err != nil {
 			if verbose {
 				fmt.Printf("Warning: Failed to generate upgrade recommendations: %v\n", err)
 			}
 		} else {
 			displayUpgradeRecommendations(upgrades)
+		}
+	}
+
+	// Show ideal deck with recommended upgrades applied
+	if idealDeck && upgrades != nil && len(upgrades.Recommendations) > 0 {
+		fmt.Printf("\n")
+		fmt.Printf("============================================================================\n")
+		fmt.Printf("                        IDEAL DECK (WITH UPGRADES)\n")
+		fmt.Printf("============================================================================\n\n")
+
+		// Create a copy of the card analysis with simulated upgrades
+		idealAnalysis := deck.CardAnalysis{
+			CardLevels:   make(map[string]deck.CardLevelData),
+			AnalysisTime: deckCardAnalysis.AnalysisTime,
+		}
+
+		// Copy all card levels
+		for cardName, cardData := range deckCardAnalysis.CardLevels {
+			idealAnalysis.CardLevels[cardName] = cardData
+		}
+
+		// Apply upgrades
+		fmt.Printf("Simulating upgrades:\n")
+		for _, rec := range upgrades.Recommendations {
+			if cardData, exists := idealAnalysis.CardLevels[rec.CardName]; exists {
+				oldLevel := cardData.Level
+				cardData.Level = rec.TargetLevel
+				idealAnalysis.CardLevels[rec.CardName] = cardData
+				fmt.Printf("  • %s: Level %d → %d\n", rec.CardName, oldLevel, rec.TargetLevel)
+			}
+		}
+		fmt.Printf("\n")
+
+		// Build ideal deck with upgraded cards
+		idealDeckRec, err := builder.BuildDeckFromAnalysis(idealAnalysis)
+		if err != nil {
+			fmt.Printf("Warning: Failed to build ideal deck: %v\n", err)
+		} else {
+			displayDeckRecommendationOffline(idealDeckRec, playerName, playerTag)
+
+			// Show comparison
+			fmt.Printf("\n")
+			fmt.Printf("Comparison:\n")
+			fmt.Printf("  Current Deck:  %.2f avg elixir\n", deckRec.AvgElixir)
+			fmt.Printf("  Ideal Deck:    %.2f avg elixir\n", idealDeckRec.AvgElixir)
+
+			// Show cards that changed
+			currentCards := make(map[string]bool)
+			for _, card := range deckRec.Deck {
+				currentCards[card] = true
+			}
+
+			idealCards := make(map[string]bool)
+			for _, card := range idealDeckRec.Deck {
+				idealCards[card] = true
+			}
+
+			addedCards := []string{}
+			removedCards := []string{}
+
+			for card := range idealCards {
+				if !currentCards[card] {
+					addedCards = append(addedCards, card)
+				}
+			}
+
+			for card := range currentCards {
+				if !idealCards[card] {
+					removedCards = append(removedCards, card)
+				}
+			}
+
+			if len(addedCards) > 0 || len(removedCards) > 0 {
+				fmt.Printf("\n  Deck Changes:\n")
+				if len(removedCards) > 0 {
+					fmt.Printf("    Removed: %s\n", strings.Join(removedCards, ", "))
+				}
+				if len(addedCards) > 0 {
+					fmt.Printf("    Added:   %s\n", strings.Join(addedCards, ", "))
+				}
+			} else {
+				fmt.Printf("\n  Deck composition remains the same (upgrades strengthen existing cards)\n")
+			}
 		}
 	}
 
