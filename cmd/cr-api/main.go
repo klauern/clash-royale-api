@@ -66,6 +66,7 @@ func main() {
 			addExportCommands(),
 			addUpgradeImpactCommands(),
 			addWhatIfCommands(),
+			addOnboardCommand(),
 			{
 				Name:  "player",
 				Usage: "Get player information",
