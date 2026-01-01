@@ -500,11 +500,17 @@ func ScoreCardWithStrategy(card *CardCandidate, role *CardRole, strategyConfig S
 		}
 	}
 
+	// Apply archetype affinity bonus (helps on-archetype cards compete with higher-level cards)
+	archetypeBonus := 0.0
+	if affinityBonus, exists := strategyConfig.ArchetypeAffinity[card.Name]; exists {
+		archetypeBonus = affinityBonus * GetStrategyScaling()
+	}
+
 	// Apply elixir targeting adjustment
 	elixirAdjustment := calculateElixirAdjustment(card.Elixir, strategyConfig)
 
-	// Combine: base score + strategy bonus + elixir adjustment
-	finalScore := baseScore + strategyBonus + elixirAdjustment
+	// Combine: base score + strategy bonus + archetype bonus + elixir adjustment
+	finalScore := baseScore + strategyBonus + archetypeBonus + elixirAdjustment
 
 	return finalScore
 }

@@ -24,6 +24,11 @@ type StrategyConfig struct {
 	// Additive bonuses allow on-strategy cards to compete regardless of level
 	RoleBonuses map[CardRole]float64
 
+	// ArchetypeAffinity provides extra bonuses for specific cards that naturally fit the strategy
+	// This helps archetype-appropriate cards compete with higher-level off-archetype cards
+	// Key: card name, Value: bonus score (typically +0.15 to +0.30)
+	ArchetypeAffinity map[string]float64
+
 	// CompositionOverrides allows forcing specific role counts
 	// nil map means use default composition logic
 	CompositionOverrides *CompositionOverride
@@ -68,6 +73,27 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleSpellSmall:   0.0,   // Neutral
 				RoleBuilding:    -0.30,  // Strong disfavor
 			},
+			ArchetypeAffinity: map[string]float64{
+				// Aggressive win conditions (fast, direct damage)
+				"Hog Rider":         0.25,
+				"Royal Hogs":        0.25,
+				"Ram Rider":         0.25,
+				"Battle Ram":        0.25,
+				"Balloon":           0.25,
+				"Elite Barbarians":  0.20,
+				"Royal Giant":       0.20,
+				// Aggressive support (high damage, offensive pressure)
+				"Mini PEKKA":        0.20,
+				"Prince":            0.20,
+				"Dark Prince":       0.20,
+				"Lumberjack":        0.20,
+				"Bandit":            0.20,
+				"Electro Giant":     0.15,
+				"Goblin Giant":      0.15,
+				// Offensive spells
+				"Rage":              0.15,
+				"Clone":             0.15,
+			},
 			CompositionOverrides: &CompositionOverride{
 				WinConditions: &winConditions,
 				Buildings:     &buildings,
@@ -103,6 +129,30 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleCycle:       -0.15,  // Disfavor
 				RoleWinCondition: -0.30, // Strong disfavor
 			},
+			ArchetypeAffinity: map[string]float64{
+				// Defensive/siege win conditions
+				"X-Bow":            0.25,
+				"Mortar":           0.25,
+				"Graveyard":        0.20,
+				"Miner":            0.20,
+				// Defensive buildings
+				"Inferno Tower":    0.25,
+				"Tesla":            0.25,
+				"Bomb Tower":       0.20,
+				"Tombstone":        0.20,
+				"Furnace":          0.20,
+				// Defensive support (area control, slowing)
+				"Ice Wizard":       0.25,
+				"Electro Wizard":   0.25,
+				"Bowler":           0.20,
+				"Executioner":      0.20,
+				"Tornado":          0.25,
+				"Freeze":           0.15,
+				// Area damage spells
+				"Poison":           0.20,
+				"Earthquake":       0.20,
+				"Rocket":           0.15,
+			},
 			CompositionOverrides: &CompositionOverride{
 				Buildings:   &buildings,
 				BigSpells:   &bigSpells,
@@ -137,6 +187,23 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleBuilding:     0.0,   // Neutral
 				RoleSpellBig:    -0.30,  // Strong disfavor
 			},
+			ArchetypeAffinity: map[string]float64{
+				// Low-cost cycle cards
+				"Skeletons":      0.30,
+				"Ice Spirit":     0.30,
+				"Electro Spirit": 0.30,
+				"Fire Spirit":    0.30,
+				"Bats":           0.25,
+				"Spear Goblins":  0.25,
+				// Fast cycle support
+				"Archers":        0.20,
+				"Knight":         0.20,
+				"Ice Golem":      0.20,
+				// Low-cost spells
+				"Zap":            0.20,
+				"Log":            0.20,
+				"Snowball":       0.20,
+			},
 			CompositionOverrides: &CompositionOverride{
 				BigSpells: &bigSpells,
 				Cycle:     &cycle,
@@ -167,6 +234,22 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleBuilding:    -0.10,  // Slight disfavor
 				RoleSpellSmall:   0.0,   // Neutral
 				RoleCycle:       -0.15,  // Disfavor
+			},
+			ArchetypeAffinity: map[string]float64{
+				// Splash support troops
+				"Baby Dragon":       0.25,
+				"Valkyrie":          0.25,
+				"Wizard":            0.25,
+				"Executioner":       0.25,
+				"Bowler":            0.25,
+				"Bomber":            0.25,
+				"Skeleton Dragons":  0.20,
+				"Fire Spirit":       0.20,
+				"Phoenix":           0.20,
+				// Splash spells
+				"Fireball":          0.15,
+				"Poison":            0.15,
+				"Lightning":         0.15,
 			},
 			CompositionOverrides: &CompositionOverride{
 				Support: &support,
@@ -201,6 +284,22 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleBuilding:    -0.35,  // Strong disfavor
 				RoleCycle:        0.0,   // Neutral
 			},
+			ArchetypeAffinity: map[string]float64{
+				// Direct damage spells
+				"Rocket":      0.25,
+				"Lightning":   0.25,
+				"Fireball":    0.25,
+				"Poison":      0.20,
+				"Earthquake":  0.20,
+				// Small spells
+				"Log":         0.20,
+				"Zap":         0.20,
+				"Snowball":    0.20,
+				"Arrows":      0.20,
+				// Spell-synergy support
+				"Miner":       0.20, // Pairs well with spell chip
+				"Goblin Barrel": 0.15, // Spell bait element
+			},
 			CompositionOverrides: &CompositionOverride{
 				BigSpells:   &bigSpells,
 				Buildings:   &buildings,
@@ -232,6 +331,7 @@ func GetStrategyConfig(strategy Strategy) StrategyConfig {
 				RoleSupport:      0.0,
 				RoleCycle:        0.0,
 			},
+			ArchetypeAffinity: map[string]float64{}, // No archetype preference for balanced
 		}
 	}
 }
