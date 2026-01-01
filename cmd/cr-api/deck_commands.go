@@ -118,8 +118,8 @@ func addDeckCommands() *cli.Command {
 						Usage: "Weight for synergy scoring (0.0-1.0, default 0.15 = 15%)",
 					},
 					&cli.BoolFlag{
-						Name:  "suggest-upgrades",
-						Usage: "Show upgrade recommendations for the built deck",
+						Name:  "no-suggest-upgrades",
+						Usage: "Disable upgrade recommendations for the built deck (recommendations are shown by default)",
 					},
 					&cli.IntFlag{
 						Name:  "upgrade-count",
@@ -372,7 +372,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	excludeCards := cmd.StringSlice("exclude-cards")
 
 	// Upgrade recommendations flags
-	suggestUpgrades := cmd.Bool("suggest-upgrades")
+	noSuggestUpgrades := cmd.Bool("no-suggest-upgrades")
 	upgradeCount := cmd.Int("upgrade-count")
 
 	// Offline mode flags
@@ -560,8 +560,8 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	// Display deck recommendation
 	displayDeckRecommendationOffline(deckRec, playerName, playerTag)
 
-	// Display upgrade recommendations if requested
-	if suggestUpgrades {
+	// Display upgrade recommendations by default (unless disabled)
+	if !noSuggestUpgrades {
 		fmt.Printf("\n")
 		upgrades, err := builder.GetUpgradeRecommendations(deckCardAnalysis, deckRec, upgradeCount)
 		if err != nil {
