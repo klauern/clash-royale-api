@@ -3,7 +3,12 @@
 // across multiple packages (deck, analysis, scoring).
 package config
 
-import "strings"
+import (
+	"strings"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+)
 
 // Rarity weights for deck scoring (1.0-1.2 scale)
 // Higher rarity cards get higher weights since they're harder to level up
@@ -78,7 +83,7 @@ func NormalizeRarity(rarity string) string {
 			return ""
 		}
 		// For unknown rarities, return TitleCase version
-		return strings.Title(strings.ToLower(trimmed))
+		return cases.Title(language.English).String(strings.ToLower(trimmed))
 	}
 }
 

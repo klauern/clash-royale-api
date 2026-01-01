@@ -58,7 +58,7 @@ type ProjectionComparison struct {
 
 // NewProjection creates a deck projection from card candidates
 func NewProjection(deck []*CardCandidate, policy TargetLevelPolicy, customLevels map[string]int) *DeckProjection {
-	if deck == nil || len(deck) == 0 {
+	if len(deck) == 0 {
 		return nil
 	}
 

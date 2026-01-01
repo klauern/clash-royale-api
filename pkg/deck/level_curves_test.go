@@ -890,7 +890,7 @@ func TestLevelCurve_ConfigCoverage(t *testing.T) {
 		if config.Type != defaultConfig.Type {
 			isNonStandard = true
 		}
-		if config.LevelOverrides != nil && len(config.LevelOverrides) > 0 {
+		if len(config.LevelOverrides) > 0 {
 			isNonStandard = true
 		}
 

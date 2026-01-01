@@ -10,6 +10,9 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
 	"github.com/klauer/clash-royale-api/go/internal/exporter/csv"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes"
@@ -217,7 +220,7 @@ func displayArchetypeComparison(result *archetypes.ArchetypeAnalysisResult, verb
 
 	for _, arch := range result.Archetypes {
 		fmt.Printf("\n")
-		fmt.Printf("%s (%.1f elixir)\n", strings.Title(string(arch.Archetype)), arch.AvgElixir)
+		fmt.Printf("%s (%.1f elixir)\n", cases.Title(language.English).String(string(arch.Archetype)), arch.AvgElixir)
 		fmt.Printf("├─ Win Condition: %s\n", findCardByRole(arch.DeckDetail, string(deck.RoleWinCondition)))
 		fmt.Printf("├─ Spells: %s\n", findSpells(arch.DeckDetail))
 		fmt.Printf("├─ Support: %s\n", findCardsByRole(arch.DeckDetail, string(deck.RoleSupport)))

@@ -55,7 +55,7 @@ func (d *DynamicArchetypeDetector) calculateStrategyAffinity(
 	template DeckArchetypeTemplate,
 	config StrategyConfig,
 ) float64 {
-	if config.ArchetypeAffinity == nil || len(config.ArchetypeAffinity) == 0 {
+	if len(config.ArchetypeAffinity) == 0 {
 		return 50 // Neutral if no affinity defined
 	}
 

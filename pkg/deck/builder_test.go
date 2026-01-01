@@ -222,7 +222,7 @@ func TestBuilder_ScoreCard(t *testing.T) {
 			rarity:   "Legendary",
 			elixir:   5,
 			role:     &winConditionRole,
-			expected: 0.2*1.2*1.15 + (1.0-2/9)*0.15 + 0.05, // ~0.53
+			expected: 0.2*1.2*1.15 + (1.0-2.0/9.0)*0.15 + 0.05, // ~0.53
 		},
 	}
 
@@ -257,7 +257,7 @@ func TestBuilder_PickBest(t *testing.T) {
 	// Test picking win condition
 	winCondition := builder.pickBest(RoleWinCondition, candidates, used, currentDeck)
 	if winCondition == nil {
-		t.Error("Expected to find win condition")
+		t.Fatal("Expected to find win condition")
 	}
 
 	if winCondition.Name != "Hog Rider" {
@@ -270,7 +270,7 @@ func TestBuilder_PickBest(t *testing.T) {
 	// Test picking building
 	building := builder.pickBest(RoleBuilding, candidates, used, currentDeck)
 	if building == nil {
-		t.Error("Expected to find building")
+		t.Fatal("Expected to find building")
 	}
 
 	if building.Name != "Cannon" {
