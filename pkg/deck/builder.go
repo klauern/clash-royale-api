@@ -901,38 +901,7 @@ func (b *Builder) getStatsForCard(cardName string) *clashroyale.CombatStats {
 
 // getGoldCost returns the gold needed to upgrade a card from its current level
 func (b *Builder) getGoldCost(currentLevel int, rarity string) int {
-	// Gold costs by rarity and level
-	goldCosts := map[string]map[int]int{
-		"Common": {
-			1: 5, 2: 20, 3: 50, 4: 150, 5: 400, 6: 1000, 7: 2000,
-			8: 4000, 9: 8000, 10: 20000, 11: 50000, 12: 100000, 13: 100000,
-		},
-		"Rare": {
-			3: 50, 4: 150, 5: 400, 6: 1000, 7: 2000,
-			8: 4000, 9: 8000, 10: 20000, 11: 50000, 12: 100000, 13: 100000,
-		},
-		"Epic": {
-			6: 400, 7: 2000, 8: 4000, 9: 8000, 10: 20000, 11: 50000, 12: 100000, 13: 100000,
-		},
-		"Legendary": {
-			9: 5000, 10: 20000, 11: 50000, 12: 100000, 13: 100000,
-		},
-		"Champion": {
-			11: 50000, 12: 100000, 13: 100000,
-		},
-	}
-
-	costs, exists := goldCosts[rarity]
-	if !exists {
-		return 0
-	}
-
-	goldNeeded, exists := costs[currentLevel]
-	if !exists {
-		return 0
-	}
-
-	return goldNeeded
+	return config.GetGoldCost(currentLevel, rarity)
 }
 
 // getRoleImportance returns a score representing how important a card role is

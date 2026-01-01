@@ -21,88 +21,6 @@ func (c cardAdapter) GetRarity() string {
 	return c.rarity
 }
 
-// Upgrade costs define how many cards are needed to upgrade from each level
-// Maps: rarity -> currentLevel -> cardsNeeded
-// Note: Level 14 is max, so there are no upgrade costs for level 14
-var upgradeCosts = map[string]map[int]int{
-	"Common": {
-		1:  2,
-		2:  4,
-		3:  10,
-		4:  20,
-		5:  50,
-		6:  100,
-		7:  200,
-		8:  400,
-		9:  800,
-		10: 1000,
-		11: 2000,
-		12: 3000,
-		13: 2500, // Updated 2025
-		14: 3500, // Updated 2025
-		15: 5500, // Updated 2025
-	},
-	"Rare": {
-		1:  2, // Fallback for low levels
-		2:  2,
-		3:  2,
-		4:  4,
-		5:  10,
-		6:  20,
-		7:  50,
-		8:  100,
-		9:  200,
-		10: 300,  // Updated 2025
-		11: 400,  // Updated 2025
-		12: 400,  // Updated 2025
-		13: 550,  // Updated 2025
-		14: 750,  // Updated 2025
-		15: 1000, // Updated 2025
-	},
-	"Epic": {
-		1:  2, // Fallback for low levels
-		2:  2,
-		3:  2,
-		4:  2,
-		5:  2,
-		6:  2,
-		7:  4,
-		8:  10,
-		9:  20,
-		10: 50,
-		11: 30,  // Updated 2025
-		12: 40,  // Updated 2025
-		13: 70,  // Updated 2025
-		14: 100, // Updated 2025
-		15: 140, // Updated 2025
-	},
-	"Legendary": {
-		1:  2, // Fallback for low levels
-		2:  2,
-		3:  2,
-		4:  2,
-		5:  2,
-		6:  2,
-		7:  2,
-		8:  2,
-		9:  2,
-		10: 4,
-		11: 10,
-		12: 20,
-		13: 10, // Updated 2025
-		14: 12, // Updated 2025
-		15: 15, // Updated 2025
-	},
-	"Champion": {
-		1:  2, // Fallback for low levels
-		11: 2,
-		12: 4,
-		13: 8,  // Updated 2025
-		14: 10, // Updated 2025
-		15: 12, // Updated 2025
-	},
-}
-
 // NewCardAdapter creates a CardInfo from a rarity string
 // This can be used when converting from external card types
 func NewCardAdapter(rarity string) CardInfo {
@@ -137,31 +55,8 @@ func CalculateCardsNeeded(currentLevel int, rarity string) int {
 
 	}
 
-	costs, exists := upgradeCosts[rarity]
-
-	if !exists {
-
-		return 0 // Invalid rarity
-
-	}
-
-	cardsNeeded, exists := costs[currentLevel]
-
-	if !exists {
-
-		// If below max but no entry, return 2 as a safe default for low levels
-
-		if currentLevel < maxLevel {
-
-			return 2
-
-		}
-
-		return 0
-
-	}
-
-	return cardsNeeded
+	// Use centralized config package for upgrade costs
+	return config.GetUpgradeCost(currentLevel, rarity)
 
 }
 
@@ -181,41 +76,8 @@ func CalculateTotalCardsToMax(currentLevel int, rarity string) int {
 
 	rarity = config.NormalizeRarity(rarity)
 
-	maxLevel := config.GetMaxLevel(rarity)
-
-	if currentLevel >= maxLevel {
-
-		return 0
-
-	}
-
-	costs, exists := upgradeCosts[rarity]
-
-	if !exists {
-
-		return 0
-
-	}
-
-	total := 0
-
-	for level := currentLevel; level < maxLevel; level++ {
-
-		if cardsNeeded, exists := costs[level]; exists {
-
-			total += cardsNeeded
-
-		} else {
-
-			// If below max but no entry, assume 2 for low levels
-
-			total += 2
-
-		}
-
-	}
-
-	return total
+	// Use centralized config package for calculating total cards to max
+	return config.CalculateTotalCardsToMax(currentLevel, rarity)
 
 }
 

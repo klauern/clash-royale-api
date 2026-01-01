@@ -12,11 +12,11 @@ import (
 // Rarity weights for compatibility scoring
 // Common cards are easier to max than rarer cards
 var rarityWeights = map[string]float64{
-	"Common":    1.0, // Easiest to max, full weight
-	"Rare":      1.0,
-	"Epic":      0.95,
-	"Legendary": 0.90,
-	"Champion":  0.85, // Hardest to max, reduced weight
+	"Common":    config.GetRarityWeight("Common"),
+	"Rare":      config.GetRarityWeight("Rare"),
+	"Epic":      config.GetRarityWeight("Epic"),
+	"Legendary": config.GetRarityWeight("Legendary"),
+	"Champion":  config.GetRarityWeight("Champion"),
 }
 
 // Scorer handles scoring of deck recommendations
