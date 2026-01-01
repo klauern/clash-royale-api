@@ -619,11 +619,11 @@ func formatStrategies(strategies []analysis.StrategyRecommendation) string {
 	}
 
 	var parts []string
-	for i, strat := range strategies {
+	for i, strategy := range strategies {
 		if i >= 3 {
 			break // Limit to top 3
 		}
-		parts = append(parts, fmt.Sprintf("%s (%.0f%%)", strat.Strategy, strat.CompatibilityScore))
+		parts = append(parts, fmt.Sprintf("%s (%.0f%%)", strategy.Strategy, strategy.CompatibilityScore))
 	}
 
 	return strings.Join(parts, ", ")

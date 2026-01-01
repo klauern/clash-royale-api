@@ -4,10 +4,10 @@ import "testing"
 
 func TestGetUpgradeCost(t *testing.T) {
 	tests := []struct {
-		name          string
-		currentLevel  int
-		rarity        string
-		expectedCost  int
+		name         string
+		currentLevel int
+		rarity       string
+		expectedCost int
 	}{
 		// Common rarity
 		{"Common level 1", 1, "Common", 2},
@@ -56,10 +56,10 @@ func TestGetUpgradeCost(t *testing.T) {
 
 func TestGetGoldCost(t *testing.T) {
 	tests := []struct {
-		name          string
-		currentLevel  int
-		rarity        string
-		expectedCost  int
+		name         string
+		currentLevel int
+		rarity       string
+		expectedCost int
 	}{
 		// Common rarity
 		{"Common level 1", 1, "Common", 5},
@@ -116,29 +116,29 @@ func TestCalculateTotalCardsToMax(t *testing.T) {
 		expectedTotal int
 	}{
 		// Common rarity
-		{"Common from level 1", 1, "Common", 2+4+10+20+50+100+200+400+800+1000+2000+3000+2500+3500+5500},
-		{"Common from level 10", 10, "Common", 1000+2000+3000+2500+3500+5500},
+		{"Common from level 1", 1, "Common", 2 + 4 + 10 + 20 + 50 + 100 + 200 + 400 + 800 + 1000 + 2000 + 3000 + 2500 + 3500 + 5500},
+		{"Common from level 10", 10, "Common", 1000 + 2000 + 3000 + 2500 + 3500 + 5500},
 		{"Common from level 15", 15, "Common", 5500},
 		{"Common at max", 16, "Common", 0},
-		{"Common lowercase", 10, "common", 1000+2000+3000+2500+3500+5500},
+		{"Common lowercase", 10, "common", 1000 + 2000 + 3000 + 2500 + 3500 + 5500},
 
 		// Rare rarity
-		{"Rare from level 10", 10, "Rare", 300+400+400+550+750+1000},
+		{"Rare from level 10", 10, "Rare", 300 + 400 + 400 + 550 + 750 + 1000},
 		{"Rare from level 15", 15, "Rare", 1000},
 		{"Rare at max", 16, "Rare", 0},
 
 		// Epic rarity
-		{"Epic from level 10", 10, "Epic", 50+30+40+70+100+140},
+		{"Epic from level 10", 10, "Epic", 50 + 30 + 40 + 70 + 100 + 140},
 		{"Epic from level 15", 15, "Epic", 140},
 		{"Epic at max", 16, "Epic", 0},
 
 		// Legendary rarity
-		{"Legendary from level 10", 10, "Legendary", 4+10+20+10+12+15},
+		{"Legendary from level 10", 10, "Legendary", 4 + 10 + 20 + 10 + 12 + 15},
 		{"Legendary from level 15", 15, "Legendary", 15},
 		{"Legendary at max", 16, "Legendary", 0},
 
 		// Champion rarity
-		{"Champion from level 11", 11, "Champion", 2+4+8+10+12},
+		{"Champion from level 11", 11, "Champion", 2 + 4 + 8 + 10 + 12},
 		{"Champion from level 15", 15, "Champion", 12},
 		{"Champion at max", 16, "Champion", 0},
 

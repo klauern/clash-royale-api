@@ -25,24 +25,24 @@ const (
 // Note: The actual elixir cost should come from the API when available.
 var fallbackElixir = map[string]int{
 	// Win Conditions (3-7 elixir)
-	"Royal Giant":     6,
-	"Hog Rider":       4,
-	"Giant":           5,
-	"P.E.K.K.A":       7,
-	"Giant Skeleton":  6,
-	"Goblin Barrel":   3,
-	"Mortar":          4,
-	"X-Bow":           6,
-	"Royal Hogs":      5,
+	"Royal Giant":    6,
+	"Hog Rider":      4,
+	"Giant":          5,
+	"P.E.K.K.A":      7,
+	"Giant Skeleton": 6,
+	"Goblin Barrel":  3,
+	"Mortar":         4,
+	"X-Bow":          6,
+	"Royal Hogs":     5,
 
 	// Buildings (3-6 elixir)
-	"Cannon":         3,
-	"Goblin Cage":    4,
-	"Inferno Tower":  5,
-	"Bomb Tower":     4,
-	"Tombstone":      3,
-	"Goblin Hut":     5,
-	"Barbarian Hut":  6,
+	"Cannon":        3,
+	"Goblin Cage":   4,
+	"Inferno Tower": 5,
+	"Bomb Tower":    4,
+	"Tombstone":     3,
+	"Goblin Hut":    5,
+	"Barbarian Hut": 6,
 
 	// Big Spells (4-6 elixir)
 	"Fireball":  4,

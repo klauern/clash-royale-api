@@ -24,11 +24,11 @@ func TestBuilder_StrategyArchetypeAffinity(t *testing.T) {
 			"Zap":      {Level: 10, MaxLevel: 14, Rarity: "Common", Elixir: 2},
 			"Arrows":   {Level: 9, MaxLevel: 14, Rarity: "Common", Elixir: 3},
 			// Support
-			"Archers":        {Level: 10, MaxLevel: 14, Rarity: "Common", Elixir: 3},
-			"Musketeer":      {Level: 10, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
-			"Baby Dragon":    {Level: 10, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
-			"Ice Wizard":     {Level: 7, MaxLevel: 14, Rarity: "Legendary", Elixir: 3},
-			"Mini PEKKA":     {Level: 8, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Archers":     {Level: 10, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Musketeer":   {Level: 10, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Baby Dragon": {Level: 10, MaxLevel: 14, Rarity: "Epic", Elixir: 4},
+			"Ice Wizard":  {Level: 7, MaxLevel: 14, Rarity: "Legendary", Elixir: 3},
+			"Mini PEKKA":  {Level: 8, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
 			// Cycle
 			"Knight":      {Level: 11, MaxLevel: 14, Rarity: "Common", Elixir: 3},
 			"Skeletons":   {Level: 9, MaxLevel: 14, Rarity: "Common", Elixir: 1},

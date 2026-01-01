@@ -53,8 +53,8 @@ type DetectedArchetype struct {
 	// Card analysis
 	WinConditionLevel int      `json:"win_condition_level"`
 	WinConditionMax   int      `json:"win_condition_max"`
-	SupportCardsAvg   float64  `json:"support_cards_avg"`         // Average level of support cards
-	MissingCards      []string `json:"missing_cards,omitempty"`  // Cards player doesn't own
+	SupportCardsAvg   float64  `json:"support_cards_avg"`            // Average level of support cards
+	MissingCards      []string `json:"missing_cards,omitempty"`      // Cards player doesn't own
 	UnderleveledCards []string `json:"underleveled_cards,omitempty"` // Cards below 50% max level
 
 	// Synergy analysis
@@ -76,10 +76,10 @@ type DetectedArchetype struct {
 
 // StrategyRecommendation maps an archetype to a deck builder strategy
 type StrategyRecommendation struct {
-	Strategy           Strategy `json:"strategy"`             // "cycle", "aggro", "control", etc.
-	CompatibilityScore float64  `json:"compatibility_score"`  // 0-100
-	Reason             string   `json:"reason"`               // Human-readable explanation
-	ArchetypeAffinity  float64  `json:"archetype_affinity"`   // Affinity score from strategy config
+	Strategy           Strategy `json:"strategy"`            // "cycle", "aggro", "control", etc.
+	CompatibilityScore float64  `json:"compatibility_score"` // 0-100
+	Reason             string   `json:"reason"`              // Human-readable explanation
+	ArchetypeAffinity  float64  `json:"archetype_affinity"`  // Affinity score from strategy config
 }
 
 // ArchetypeUpgrade suggests a specific card upgrade to improve archetype viability
@@ -97,15 +97,15 @@ type CardArchetypeImpact struct {
 	CardName           string   `json:"card_name"`
 	CurrentLevel       int      `json:"current_level"`
 	GoldCost           int      `json:"gold_cost"`
-	AffectedArchetypes []string `json:"affected_archetypes"` // Archetype names affected
+	AffectedArchetypes []string `json:"affected_archetypes"`  // Archetype names affected
 	TotalViabilityGain float64  `json:"total_viability_gain"` // Sum of viability gains
-	ArchetypesUnlocked int      `json:"archetypes_unlocked"` // Count crossing into competitive tier
+	ArchetypesUnlocked int      `json:"archetypes_unlocked"`  // Count crossing into competitive tier
 }
 
 // DynamicArchetypeAnalysis represents the complete dynamic archetype detection result
 type DynamicArchetypeAnalysis struct {
-	PlayerTag  string    `json:"player_tag"`
-	PlayerName string    `json:"player_name,omitempty"`
+	PlayerTag    string    `json:"player_tag"`
+	PlayerName   string    `json:"player_name,omitempty"`
 	AnalysisTime time.Time `json:"analysis_time"`
 
 	// All detected archetypes (sorted by viability score descending)
@@ -123,23 +123,23 @@ type DynamicArchetypeAnalysis struct {
 
 // DetectionOptions configures dynamic archetype detection behavior
 type DetectionOptions struct {
-	MinViability       float64  `json:"min_viability"`       // Minimum viability score to include (0-100)
-	IncludeStrategies  bool     `json:"include_strategies"`  // Include strategy recommendations
-	IncludeUpgrades    bool     `json:"include_upgrades"`    // Include upgrade recommendations
-	TopUpgradesPerArch int      `json:"top_upgrades_per_arch"` // Number of top upgrades per archetype
-	TopCrossArchUpgrades int    `json:"top_cross_arch_upgrades"` // Number of cross-archetype upgrades
-	ExcludeCards       []string `json:"exclude_cards"`       // Cards to exclude from recommendations
+	MinViability         float64  `json:"min_viability"`           // Minimum viability score to include (0-100)
+	IncludeStrategies    bool     `json:"include_strategies"`      // Include strategy recommendations
+	IncludeUpgrades      bool     `json:"include_upgrades"`        // Include upgrade recommendations
+	TopUpgradesPerArch   int      `json:"top_upgrades_per_arch"`   // Number of top upgrades per archetype
+	TopCrossArchUpgrades int      `json:"top_cross_arch_upgrades"` // Number of cross-archetype upgrades
+	ExcludeCards         []string `json:"exclude_cards"`           // Cards to exclude from recommendations
 }
 
 // DefaultDetectionOptions returns sensible defaults for archetype detection
 func DefaultDetectionOptions() DetectionOptions {
 	return DetectionOptions{
-		MinViability:       0,  // Show all archetypes
-		IncludeStrategies:  true,
-		IncludeUpgrades:    true,
-		TopUpgradesPerArch: 3,
+		MinViability:         0, // Show all archetypes
+		IncludeStrategies:    true,
+		IncludeUpgrades:      true,
+		TopUpgradesPerArch:   3,
 		TopCrossArchUpgrades: 10,
-		ExcludeCards:       []string{},
+		ExcludeCards:         []string{},
 	}
 }
 
@@ -286,21 +286,21 @@ func (d *DynamicArchetypeDetector) scoreArchetype(
 	ownedCount, totalCount := d.getCardCounts(template, analysis)
 
 	return DetectedArchetype{
-		Name:               template.Name,
-		WinCondition:       template.WinCondition,
-		ViabilityScore:     viabilityScore,
-		ViabilityTier:      tier,
-		WinConditionLevel:  winConLevel,
-		WinConditionMax:    winConMax,
-		SupportCardsAvg:    supportScore / 100.0 * float64(winConMax), // Convert back to level
-		MissingCards:       missingCards,
-		UnderleveledCards:  underleveledCards,
-		SynergyScore:       synergyScore,
-		TopSynergies:       topSynergies,
-		AvgElixir:          avgElixir,
-		OwnedCardCount:     ownedCount,
-		TotalCardCount:     totalCount,
-		GoldToCompetitive:  0, // Calculate in upgrade recommendations
+		Name:              template.Name,
+		WinCondition:      template.WinCondition,
+		ViabilityScore:    viabilityScore,
+		ViabilityTier:     tier,
+		WinConditionLevel: winConLevel,
+		WinConditionMax:   winConMax,
+		SupportCardsAvg:   supportScore / 100.0 * float64(winConMax), // Convert back to level
+		MissingCards:      missingCards,
+		UnderleveledCards: underleveledCards,
+		SynergyScore:      synergyScore,
+		TopSynergies:      topSynergies,
+		AvgElixir:         avgElixir,
+		OwnedCardCount:    ownedCount,
+		TotalCardCount:    totalCount,
+		GoldToCompetitive: 0, // Calculate in upgrade recommendations
 	}
 }
 

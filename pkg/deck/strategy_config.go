@@ -51,13 +51,13 @@ type CompositionOverride struct {
 
 // strategyConfigJSON is the JSON representation of a single strategy
 type strategyConfigJSON struct {
-	Name               string             `json:"name"`
-	Description        string             `json:"description"`
-	TargetElixirMin    float64            `json:"target_elixir_min"`
-	TargetElixirMax    float64            `json:"target_elixir_max"`
-	RoleMultipliers    map[string]float64 `json:"role_multipliers"`
-	RoleBonuses        map[string]float64 `json:"role_bonuses"`
-	ArchetypeAffinity  map[string]float64 `json:"archetype_affinity"`
+	Name                 string                   `json:"name"`
+	Description          string                   `json:"description"`
+	TargetElixirMin      float64                  `json:"target_elixir_min"`
+	TargetElixirMax      float64                  `json:"target_elixir_max"`
+	RoleMultipliers      map[string]float64       `json:"role_multipliers"`
+	RoleBonuses          map[string]float64       `json:"role_bonuses"`
+	ArchetypeAffinity    map[string]float64       `json:"archetype_affinity"`
 	CompositionOverrides *compositionOverrideJSON `json:"composition_overrides,omitempty"`
 }
 
