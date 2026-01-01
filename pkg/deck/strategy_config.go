@@ -1,8 +1,13 @@
 package deck
 
 import (
+	"encoding/json"
+	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"sync"
 )
 
 // StrategyConfig defines the parameters for a deck building strategy
@@ -44,296 +49,218 @@ type CompositionOverride struct {
 	Cycle         *int
 }
 
-// GetStrategyConfig returns the configuration for a given strategy
-func GetStrategyConfig(strategy Strategy) StrategyConfig {
-	switch strategy {
-	case StrategyAggro:
-		// Aggro strategy: 2 win conditions, 0 buildings (pure offense)
-		winConditions := 2
-		buildings := 0
-		support := 3
-		cycle := 1
+// strategyConfigJSON is the JSON representation of a single strategy
+type strategyConfigJSON struct {
+	Name               string             `json:"name"`
+	Description        string             `json:"description"`
+	TargetElixirMin    float64            `json:"target_elixir_min"`
+	TargetElixirMax    float64            `json:"target_elixir_max"`
+	RoleMultipliers    map[string]float64 `json:"role_multipliers"`
+	RoleBonuses        map[string]float64 `json:"role_bonuses"`
+	ArchetypeAffinity  map[string]float64 `json:"archetype_affinity"`
+	CompositionOverrides *compositionOverrideJSON `json:"composition_overrides,omitempty"`
+}
 
-		return StrategyConfig{
-			TargetElixirMin: 3.5,
-			TargetElixirMax: 4.0,
-			RoleMultipliers: map[CardRole]float64{
-				RoleWinCondition: 2.0, // Strongly favor win conditions
-				RoleSupport:      1.2, // Favor support for offensive pressure
-				RoleCycle:        1.0,
-				RoleSpellBig:     1.0,
-				RoleSpellSmall:   1.0,
-				RoleBuilding:     0.3, // Disfavor defensive buildings
-			},
-			RoleBonuses: map[CardRole]float64{
-				RoleWinCondition: 0.40,  // Strong favor
-				RoleSupport:      0.15,  // Moderate favor
-				RoleCycle:        0.0,   // Neutral
-				RoleSpellBig:     0.0,   // Neutral
-				RoleSpellSmall:   0.0,   // Neutral
-				RoleBuilding:    -0.30,  // Strong disfavor
-			},
-			ArchetypeAffinity: map[string]float64{
-				// Aggressive win conditions (fast, direct damage)
-				"Hog Rider":         0.25,
-				"Royal Hogs":        0.25,
-				"Ram Rider":         0.25,
-				"Battle Ram":        0.25,
-				"Balloon":           0.25,
-				"Elite Barbarians":  0.20,
-				"Royal Giant":       0.20,
-				// Aggressive support (high damage, offensive pressure)
-				"Mini PEKKA":        0.20,
-				"Prince":            0.20,
-				"Dark Prince":       0.20,
-				"Lumberjack":        0.20,
-				"Bandit":            0.20,
-				"Electro Giant":     0.15,
-				"Goblin Giant":      0.15,
-				// Offensive spells
-				"Rage":              0.15,
-				"Clone":             0.15,
-			},
-			CompositionOverrides: &CompositionOverride{
-				WinConditions: &winConditions,
-				Buildings:     &buildings,
-				Support:       &support,
-				Cycle:         &cycle,
-			},
-		}
+// compositionOverrideJSON is the JSON representation of composition overrides
+type compositionOverrideJSON struct {
+	WinConditions *int `json:"win_conditions,omitempty"`
+	Buildings     *int `json:"buildings,omitempty"`
+	BigSpells     *int `json:"big_spells,omitempty"`
+	SmallSpells   *int `json:"small_spells,omitempty"`
+	Support       *int `json:"support,omitempty"`
+	Cycle         *int `json:"cycle,omitempty"`
+}
 
-	case StrategyControl:
-		// Control strategy: 2 buildings, 2 big spells, 0 small spells (defensive grind)
-		buildings := 2
-		bigSpells := 2
-		smallSpells := 0
-		support := 2
-		cycle := 1
+// strategiesFile is the root JSON structure
+type strategiesFile struct {
+	Strategies map[string]strategyConfigJSON `json:"strategies"`
+}
 
-		return StrategyConfig{
-			TargetElixirMin: 3.5,
-			TargetElixirMax: 4.2,
-			RoleMultipliers: map[CardRole]float64{
-				RoleBuilding:     2.0, // Strongly favor defensive buildings
-				RoleSpellBig:     1.5, // Favor big spells for area control
-				RoleSpellSmall:   0.3, // Disfavor small spells
-				RoleSupport:      1.0,
-				RoleCycle:        0.5, // Disfavor cheap cycle cards
-				RoleWinCondition: 0.5, // Disfavor pure offensive win conditions
-			},
-			RoleBonuses: map[CardRole]float64{
-				RoleBuilding:     0.40,  // Strong favor
-				RoleSpellBig:     0.25,  // Moderate favor
-				RoleSpellSmall:  -0.20,  // Disfavor
-				RoleSupport:      0.10,  // Slight favor
-				RoleCycle:       -0.15,  // Disfavor
-				RoleWinCondition: -0.30, // Strong disfavor
-			},
-			ArchetypeAffinity: map[string]float64{
-				// Defensive/siege win conditions
-				"X-Bow":            0.25,
-				"Mortar":           0.25,
-				"Graveyard":        0.20,
-				"Miner":            0.20,
-				// Defensive buildings
-				"Inferno Tower":    0.25,
-				"Tesla":            0.25,
-				"Bomb Tower":       0.20,
-				"Tombstone":        0.20,
-				"Furnace":          0.20,
-				// Defensive support (area control, slowing)
-				"Ice Wizard":       0.25,
-				"Electro Wizard":   0.25,
-				"Bowler":           0.20,
-				"Executioner":      0.20,
-				"Tornado":          0.25,
-				"Freeze":           0.15,
-				// Area damage spells
-				"Poison":           0.20,
-				"Earthquake":       0.20,
-				"Rocket":           0.15,
-			},
-			CompositionOverrides: &CompositionOverride{
-				Buildings:   &buildings,
-				BigSpells:   &bigSpells,
-				SmallSpells: &smallSpells,
-				Support:     &support,
-				Cycle:       &cycle,
-			},
-		}
+var (
+	// strategyCache holds the loaded strategies
+	strategyCache     map[string]StrategyConfig
+	strategyCacheMu   sync.RWMutex
+	strategyCacheOnce sync.Once
+)
 
-	case StrategyCycle:
-		// Cycle strategy: 4 cycle cards, 0 big spells (fast rotation)
-		cycle := 4
-		bigSpells := 0
-		support := 1
-
-		return StrategyConfig{
-			TargetElixirMin: 2.5,
-			TargetElixirMax: 3.0,
-			RoleMultipliers: map[CardRole]float64{
-				RoleCycle:        2.0, // Strongly favor cycle cards
-				RoleSpellSmall:   1.2, // Favor small spells
-				RoleWinCondition: 1.0,
-				RoleSupport:      1.0,
-				RoleBuilding:     1.0,
-				RoleSpellBig:     0.3, // Strongly disfavor big spells (high cost)
-			},
-			RoleBonuses: map[CardRole]float64{
-				RoleCycle:        0.35,  // Strong favor
-				RoleSpellSmall:   0.15,  // Moderate favor
-				RoleWinCondition: 0.10,  // Slight favor
-				RoleSupport:      0.0,   // Neutral
-				RoleBuilding:     0.0,   // Neutral
-				RoleSpellBig:    -0.30,  // Strong disfavor
-			},
-			ArchetypeAffinity: map[string]float64{
-				// Low-cost cycle cards
-				"Skeletons":      0.30,
-				"Ice Spirit":     0.30,
-				"Electro Spirit": 0.30,
-				"Fire Spirit":    0.30,
-				"Bats":           0.25,
-				"Spear Goblins":  0.25,
-				// Fast cycle support
-				"Archers":        0.20,
-				"Knight":         0.20,
-				"Ice Golem":      0.20,
-				// Low-cost spells
-				"Zap":            0.20,
-				"Log":            0.20,
-				"Snowball":       0.20,
-			},
-			CompositionOverrides: &CompositionOverride{
-				BigSpells: &bigSpells,
-				Cycle:     &cycle,
-				Support:   &support,
-			},
-		}
-
-	case StrategySplash:
-		// Splash strategy: 3 splash support cards (area damage focus)
-		support := 3
-		cycle := 1
-
-		return StrategyConfig{
-			TargetElixirMin: 3.2,
-			TargetElixirMax: 3.8,
-			RoleMultipliers: map[CardRole]float64{
-				RoleSupport:      2.0, // Strongly favor splash support troops
-				RoleSpellBig:     1.2, // Favor big splash spells
-				RoleWinCondition: 1.0,
-				RoleBuilding:     1.0,
-				RoleSpellSmall:   1.0,
-				RoleCycle:        0.5, // Disfavor cheap cycle cards
-			},
-			RoleBonuses: map[CardRole]float64{
-				RoleSupport:      0.40,  // Strong favor
-				RoleSpellBig:     0.15,  // Moderate favor
-				RoleWinCondition: 0.0,   // Neutral
-				RoleBuilding:    -0.10,  // Slight disfavor
-				RoleSpellSmall:   0.0,   // Neutral
-				RoleCycle:       -0.15,  // Disfavor
-			},
-			ArchetypeAffinity: map[string]float64{
-				// Splash support troops
-				"Baby Dragon":       0.25,
-				"Valkyrie":          0.25,
-				"Wizard":            0.25,
-				"Executioner":       0.25,
-				"Bowler":            0.25,
-				"Bomber":            0.25,
-				"Skeleton Dragons":  0.20,
-				"Fire Spirit":       0.20,
-				"Phoenix":           0.20,
-				// Splash spells
-				"Fireball":          0.15,
-				"Poison":            0.15,
-				"Lightning":         0.15,
-			},
-			CompositionOverrides: &CompositionOverride{
-				Support: &support,
-				Cycle:   &cycle,
-			},
-		}
-
-	case StrategySpell:
-		// Spell strategy has composition overrides (2 big spells, 0 buildings, 1 small spell)
-		bigSpells := 2
-		buildings := 0
-		smallSpells := 1
-		support := 3
-		cycle := 1
-
-		return StrategyConfig{
-			TargetElixirMin: 3.2,
-			TargetElixirMax: 3.8,
-			RoleMultipliers: map[CardRole]float64{
-				RoleSpellBig:     2.0, // Strongly favor big spells
-				RoleSpellSmall:   1.5, // Favor small spells
-				RoleWinCondition: 1.0,
-				RoleSupport:      1.0,
-				RoleBuilding:     0.1, // Strongly disfavor buildings (override to 0)
-				RoleCycle:        1.0,
-			},
-			RoleBonuses: map[CardRole]float64{
-				RoleSpellBig:     0.40,  // Strong favor
-				RoleSpellSmall:   0.25,  // Moderate favor
-				RoleWinCondition: 0.10,  // Slight favor
-				RoleSupport:      0.10,  // Slight favor
-				RoleBuilding:    -0.35,  // Strong disfavor
-				RoleCycle:        0.0,   // Neutral
-			},
-			ArchetypeAffinity: map[string]float64{
-				// Direct damage spells
-				"Rocket":      0.25,
-				"Lightning":   0.25,
-				"Fireball":    0.25,
-				"Poison":      0.20,
-				"Earthquake":  0.20,
-				// Small spells
-				"Log":         0.20,
-				"Zap":         0.20,
-				"Snowball":    0.20,
-				"Arrows":      0.20,
-				// Spell-synergy support
-				"Miner":       0.20, // Pairs well with spell chip
-				"Goblin Barrel": 0.15, // Spell bait element
-			},
-			CompositionOverrides: &CompositionOverride{
-				BigSpells:   &bigSpells,
-				Buildings:   &buildings,
-				SmallSpells: &smallSpells,
-				Support:     &support,
-				Cycle:       &cycle,
-			},
-		}
-
-	case StrategyBalanced:
-		fallthrough
+// roleFromString converts a JSON string role to a CardRole
+func roleFromString(s string) (CardRole, error) {
+	switch strings.ToLower(strings.ReplaceAll(s, "_", "")) {
+	case "wincondition", "win_condition":
+		return RoleWinCondition, nil
+	case "building":
+		return RoleBuilding, nil
+	case "spellbig", "spell_big":
+		return RoleSpellBig, nil
+	case "spellsmall", "spell_small":
+		return RoleSpellSmall, nil
+	case "support":
+		return RoleSupport, nil
+	case "cycle":
+		return RoleCycle, nil
 	default:
-		return StrategyConfig{
-			TargetElixirMin: 3.0,
-			TargetElixirMax: 3.5,
-			RoleMultipliers: map[CardRole]float64{
-				RoleWinCondition: 1.0,
-				RoleBuilding:     1.0,
-				RoleSpellBig:     1.0,
-				RoleSpellSmall:   1.0,
-				RoleSupport:      1.0,
-				RoleCycle:        1.0,
-			},
-			RoleBonuses: map[CardRole]float64{
-				RoleWinCondition: 0.0,
-				RoleBuilding:     0.0,
-				RoleSpellBig:     0.0,
-				RoleSpellSmall:   0.0,
-				RoleSupport:      0.0,
-				RoleCycle:        0.0,
-			},
-			ArchetypeAffinity: map[string]float64{}, // No archetype preference for balanced
+		return "", fmt.Errorf("unknown role: %s", s)
+	}
+}
+
+// loadStrategyConfigFile loads strategies from the JSON file
+func loadStrategyConfigFile() (map[string]StrategyConfig, error) {
+	// Get config file path from environment or use default
+	configPath := os.Getenv("STRATEGIES_CONFIG_PATH")
+	if configPath == "" {
+		// Default to config/strategies.json relative to current working directory
+		configPath = "config/strategies.json"
+	}
+
+	// Try absolute path first, then relative to working directory
+	if !filepath.IsAbs(configPath) {
+		// Check if running from the project root
+		if _, err := os.Stat(configPath); os.IsNotExist(err) {
+			// Try relative to the deck package (for tests)
+			configPath = filepath.Join("..", "..", configPath)
 		}
 	}
+
+	data, err := os.ReadFile(configPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read strategies config from %s: %w", configPath, err)
+	}
+
+	var file strategiesFile
+	if err := json.Unmarshal(data, &file); err != nil {
+		return nil, fmt.Errorf("failed to parse strategies config: %w", err)
+	}
+
+	strategies := make(map[string]StrategyConfig)
+	for key, jsonConfig := range file.Strategies {
+		config := StrategyConfig{
+			TargetElixirMin:   jsonConfig.TargetElixirMin,
+			TargetElixirMax:   jsonConfig.TargetElixirMax,
+			RoleMultipliers:   make(map[CardRole]float64),
+			RoleBonuses:       make(map[CardRole]float64),
+			ArchetypeAffinity: jsonConfig.ArchetypeAffinity,
+		}
+
+		// Convert role multipliers
+		for roleStr, val := range jsonConfig.RoleMultipliers {
+			role, err := roleFromString(roleStr)
+			if err != nil {
+				return nil, fmt.Errorf("invalid role multiplier %q in strategy %q: %w", roleStr, key, err)
+			}
+			config.RoleMultipliers[role] = val
+		}
+
+		// Convert role bonuses
+		for roleStr, val := range jsonConfig.RoleBonuses {
+			role, err := roleFromString(roleStr)
+			if err != nil {
+				return nil, fmt.Errorf("invalid role bonus %q in strategy %q: %w", roleStr, key, err)
+			}
+			config.RoleBonuses[role] = val
+		}
+
+		// Convert composition overrides if present
+		if jsonConfig.CompositionOverrides != nil {
+			config.CompositionOverrides = &CompositionOverride{
+				WinConditions: jsonConfig.CompositionOverrides.WinConditions,
+				Buildings:     jsonConfig.CompositionOverrides.Buildings,
+				BigSpells:     jsonConfig.CompositionOverrides.BigSpells,
+				SmallSpells:   jsonConfig.CompositionOverrides.SmallSpells,
+				Support:       jsonConfig.CompositionOverrides.Support,
+				Cycle:         jsonConfig.CompositionOverrides.Cycle,
+			}
+		}
+
+		// Validate the strategy
+		if err := validateStrategyConfig(&config); err != nil {
+			return nil, fmt.Errorf("invalid strategy %q: %w", key, err)
+		}
+
+		strategies[key] = config
+	}
+
+	return strategies, nil
+}
+
+// validateStrategyConfig validates a strategy configuration
+func validateStrategyConfig(config *StrategyConfig) error {
+	if config.TargetElixirMin < 0 || config.TargetElixirMin > 10 {
+		return fmt.Errorf("target_elixir_min must be between 0 and 10, got %f", config.TargetElixirMin)
+	}
+	if config.TargetElixirMax < 0 || config.TargetElixirMax > 10 {
+		return fmt.Errorf("target_elixir_max must be between 0 and 10, got %f", config.TargetElixirMax)
+	}
+	if config.TargetElixirMin > config.TargetElixirMax {
+		return fmt.Errorf("target_elixir_min (%f) must be <= target_elixir_max (%f)", config.TargetElixirMin, config.TargetElixirMax)
+	}
+	return nil
+}
+
+// loadStrategyCache loads the strategy cache (thread-safe singleton)
+func loadStrategyCache() map[string]StrategyConfig {
+	strategyCacheOnce.Do(func() {
+		cache, err := loadStrategyConfigFile()
+		if err != nil {
+			// If loading fails, log the error and provide default balanced strategy
+			fmt.Fprintf(os.Stderr, "Warning: failed to load strategies config: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Using default balanced strategy only.\n")
+			cache = map[string]StrategyConfig{
+				"balanced": {
+					TargetElixirMin: 3.0,
+					TargetElixirMax: 3.5,
+					RoleMultipliers: map[CardRole]float64{
+						RoleWinCondition: 1.0,
+						RoleBuilding:     1.0,
+						RoleSpellBig:     1.0,
+						RoleSpellSmall:   1.0,
+						RoleSupport:      1.0,
+						RoleCycle:        1.0,
+					},
+					RoleBonuses: map[CardRole]float64{
+						RoleWinCondition: 0.0,
+						RoleBuilding:     0.0,
+						RoleSpellBig:     0.0,
+						RoleSpellSmall:   0.0,
+						RoleSupport:      0.0,
+						RoleCycle:        0.0,
+					},
+					ArchetypeAffinity: map[string]float64{},
+				},
+			}
+		}
+		strategyCacheMu.Lock()
+		strategyCache = cache
+		strategyCacheMu.Unlock()
+	})
+	return strategyCache
+}
+
+// ReloadStrategyConfig reloads the strategy configuration from disk
+// This enables hot-reloading for development without restarting the application
+func ReloadStrategyConfig() error {
+	cache, err := loadStrategyConfigFile()
+	if err != nil {
+		return err
+	}
+	strategyCacheMu.Lock()
+	strategyCache = cache
+	strategyCacheMu.Unlock()
+	return nil
+}
+
+// GetStrategyConfig returns the configuration for a given strategy
+func GetStrategyConfig(strategy Strategy) StrategyConfig {
+	cache := loadStrategyCache()
+
+	strategyCacheMu.RLock()
+	defer strategyCacheMu.RUnlock()
+
+	config, exists := cache[string(strategy)]
+	if !exists {
+		// Return balanced strategy as fallback
+		config = cache["balanced"]
+	}
+	return config
 }
 
 // GetStrategyScaling returns global strategy bonus scaling from environment variable.
