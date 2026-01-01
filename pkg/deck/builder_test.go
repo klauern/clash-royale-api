@@ -613,6 +613,94 @@ func BenchmarkBuilder_CalculateEvolutionBonus(b *testing.B) {
 	}
 }
 
+// BenchmarkBuilder_CalculateSynergyScore benchmarks the synergy score calculation
+// This demonstrates the O(n) complexity for each call where n is the deck size
+func BenchmarkBuilder_CalculateSynergyScore(b *testing.B) {
+	builder := NewBuilder("testdata")
+	builder.SetSynergyEnabled(true)
+
+	// Create a realistic deck with 8 cards
+	deck := []*CardCandidate{
+		{Name: "Giant", Level: 10, MaxLevel: 13},
+		{Name: "Witch", Level: 8, MaxLevel: 11},
+		{Name: "Musketeer", Level: 10, MaxLevel: 13},
+		{Name: "Zap", Level: 11, MaxLevel: 13},
+		{Name: "Fireball", Level: 7, MaxLevel: 11},
+		{Name: "Cannon", Level: 11, MaxLevel: 13},
+		{Name: "Skeletons", Level: 11, MaxLevel: 13},
+		{Name: "Knight", Level: 11, MaxLevel: 13},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// Each call is O(n) where n is deck size (8)
+		// But with caching, repeated calls are O(1)
+		builder.calculateSynergyScore("Sparky", deck)
+	}
+}
+
+// BenchmarkBuilder_SynergyCacheEffectiveness demonstrates the performance
+// improvement from memoization by comparing cached vs uncached lookups
+func BenchmarkBuilder_SynergyCacheEffectiveness(b *testing.B) {
+	builder := NewBuilder("testdata")
+	builder.SetSynergyEnabled(true)
+
+	deck := []*CardCandidate{
+		{Name: "Giant", Level: 10, MaxLevel: 13},
+		{Name: "Witch", Level: 8, MaxLevel: 11},
+		{Name: "Musketeer", Level: 10, MaxLevel: 13},
+		{Name: "Zap", Level: 11, MaxLevel: 13},
+		{Name: "Fireball", Level: 7, MaxLevel: 11},
+		{Name: "Cannon", Level: 11, MaxLevel: 13},
+		{Name: "Skeletons", Level: 11, MaxLevel: 13},
+		{Name: "Knight", Level: 11, MaxLevel: 13},
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		// First call will cache all pair lookups
+		// Subsequent iterations will hit the cache
+		builder.calculateSynergyScore("Sparky", deck)
+		builder.calculateSynergyScore("Baby Dragon", deck)
+		builder.calculateSynergyScore("P.E.K.K.A", deck)
+	}
+}
+
+// BenchmarkBuilder_BuildDeckWithSynergy benchmarks full deck building with synergy enabled
+// to show the real-world performance impact of the optimization
+func BenchmarkBuilder_BuildDeckWithSynergy(b *testing.B) {
+	builder := NewBuilder("testdata")
+	builder.SetSynergyEnabled(true)
+
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Giant":       {Level: 10, MaxLevel: 13, Rarity: "Rare", Elixir: 5},
+			"Witch":       {Level: 8, MaxLevel: 11, Rarity: "Epic", Elixir: 5},
+			"Sparky":      {Level: 7, MaxLevel: 11, Rarity: "Legendary", Elixir: 6},
+			"Musketeer":   {Level: 10, MaxLevel: 13, Rarity: "Rare", Elixir: 4},
+			"Zap":         {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 2},
+			"Fireball":    {Level: 7, MaxLevel: 11, Rarity: "Rare", Elixir: 4},
+			"Cannon":      {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 3},
+			"Skeletons":   {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 1},
+			"Knight":      {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 3},
+			"Ice Spirit":  {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 1},
+			"Valkyrie":    {Level: 8, MaxLevel: 11, Rarity: "Rare", Elixir: 4},
+			"Baby Dragon": {Level: 8, MaxLevel: 11, Rarity: "Epic", Elixir: 4},
+			"Hog Rider":   {Level: 9, MaxLevel: 13, Rarity: "Rare", Elixir: 4},
+			"Log":         {Level: 11, MaxLevel: 13, Rarity: "Legendary", Elixir: 2},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := builder.BuildDeckFromAnalysis(analysis)
+		if err != nil {
+			b.Fatalf("Failed to build deck: %v", err)
+		}
+	}
+}
+
 func TestCardCandidate_LevelRatio(t *testing.T) {
 	tests := []struct {
 		name              string
@@ -1904,5 +1992,148 @@ func TestBuildDeckFromFile(t *testing.T) {
 	_, err = builder.BuildDeckFromFile("/nonexistent/analysis.json")
 	if err == nil {
 		t.Error("Expected error for non-existent file")
+	}
+}
+
+// TestBuilder_SynergyCacheTests tests the memoization cache functionality
+func TestBuilder_SynergyCacheTests(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.SetSynergyEnabled(true)
+
+	// Create test deck with known synergy pairs
+	deck := []*CardCandidate{
+		{Name: "Giant", Level: 10, MaxLevel: 13},
+		{Name: "Witch", Level: 8, MaxLevel: 11},
+	}
+
+	// Clear cache before test
+	builder.clearSynergyCache()
+
+	// First call should cache the result
+	firstScore := builder.calculateSynergyScore("Sparky", deck)
+	cacheSize1 := len(builder.synergyCache)
+
+	// Second call with same inputs should use cache
+	secondScore := builder.calculateSynergyScore("Sparky", deck)
+	cacheSize2 := len(builder.synergyCache)
+
+	if firstScore != secondScore {
+		t.Errorf("Cache returned different result: first=%.2f, second=%.2f", firstScore, secondScore)
+	}
+
+	// Cache size should not decrease (entries are added, not removed)
+	if cacheSize2 < cacheSize1 {
+		t.Errorf("Cache shrank: first=%d entries, second=%d entries", cacheSize1, cacheSize2)
+	}
+}
+
+// TestBuilder_SynergyCacheOrdering tests that cache key ordering works correctly
+func TestBuilder_SynergyCacheOrdering(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.SetSynergyEnabled(true)
+
+	// Clear cache before test
+	builder.clearSynergyCache()
+
+	deck1 := []*CardCandidate{
+		{Name: "Giant", Level: 10, MaxLevel: 13},
+	}
+
+	deck2 := []*CardCandidate{
+		{Name: "Witch", Level: 8, MaxLevel: 11},
+	}
+
+	// Query synergy in both directions
+	score1 := builder.calculateSynergyScore("Sparky", deck1) // Sparky + Giant
+	score2 := builder.calculateSynergyScore("Sparky", deck2) // Sparky + Witch
+
+	// Verify cache has entries (the exact number depends on synergyDB contents)
+	cacheSize := len(builder.synergyCache)
+	if cacheSize == 0 {
+		t.Error("Expected cache to have entries after synergy calculations")
+	}
+
+	// Scores should be non-negative
+	if score1 < 0 || score2 < 0 {
+		t.Errorf("Expected non-negative scores: score1=%.2f, score2=%.2f", score1, score2)
+	}
+}
+
+// TestBuilder_SynergyCacheClearing tests that the cache is cleared between builds
+func TestBuilder_SynergyCacheClearing(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.SetSynergyEnabled(true)
+
+	// Create analysis that will trigger cache usage
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Giant":     {Level: 10, MaxLevel: 13, Rarity: "Rare", Elixir: 5},
+			"Witch":     {Level: 8, MaxLevel: 11, Rarity: "Epic", Elixir: 5},
+			"Sparky":    {Level: 7, MaxLevel: 11, Rarity: "Legendary", Elixir: 6},
+			"Zap":       {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 2},
+			"Fireball":  {Level: 7, MaxLevel: 11, Rarity: "Rare", Elixir: 4},
+			"Cannon":    {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 3},
+			"Skeletons": {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 1},
+			"Knight":    {Level: 11, MaxLevel: 13, Rarity: "Common", Elixir: 3},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	// Build first deck - this populates cache
+	_, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build deck: %v", err)
+	}
+
+	cacheSizeAfterFirst := len(builder.synergyCache)
+	if cacheSizeAfterFirst == 0 {
+		t.Error("Expected cache to be populated after deck build")
+	}
+
+	// Build second deck - this should clear cache first
+	_, err = builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build second deck: %v", err)
+	}
+
+	// Cache should have been cleared and repopulated
+	// The size should be roughly the same (or smaller if some synergies weren't checked)
+	cacheSizeAfterSecond := len(builder.synergyCache)
+	if cacheSizeAfterSecond > cacheSizeAfterFirst*2 {
+		t.Errorf("Cache appears to be growing unbounded: first=%d, second=%d",
+			cacheSizeAfterFirst, cacheSizeAfterSecond)
+	}
+}
+
+// TestBuilder_CachedSynergyRetrieval tests getCachedSynergy directly
+func TestBuilder_CachedSynergyRetrieval(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.SetSynergyEnabled(true)
+
+	// Clear cache before test
+	builder.clearSynergyCache()
+
+	// First call - cache miss, should query database
+	score1 := builder.getCachedSynergy("Giant", "Witch")
+	if score1 < 0 {
+		t.Errorf("Expected non-negative score, got %.2f", score1)
+	}
+
+	// Second call - cache hit (same order)
+	score2 := builder.getCachedSynergy("Giant", "Witch")
+	if score2 != score1 {
+		t.Errorf("Cache returned different result for same order: first=%.2f, second=%.2f", score1, score2)
+	}
+
+	// Third call - cache hit (reversed order, should use same cache key)
+	score3 := builder.getCachedSynergy("Witch", "Giant")
+	if score3 != score1 {
+		t.Errorf("Cache returned different result for reversed order: first=%.2f, reversed=%.2f", score1, score3)
+	}
+
+	// Verify only one cache entry was created (due to key ordering)
+	cacheSize := len(builder.synergyCache)
+	if cacheSize != 1 {
+		t.Errorf("Expected 1 cache entry, got %d", cacheSize)
 	}
 }

@@ -28,6 +28,7 @@ type Builder struct {
 	synergyDB          *SynergyDatabase
 	synergyEnabled     bool
 	synergyWeight      float64
+	synergyCache       map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
 }
 
 // NewBuilder creates a new deck builder instance
@@ -51,6 +52,7 @@ func NewBuilder(dataDir string) *Builder {
 		dataDir:            dataDir,
 		unlockedEvolutions: unlockedEvos,
 		evolutionSlotLimit: 2,
+		synergyCache:       make(map[string]float64),
 	}
 
 	// Try to load combat stats
@@ -105,6 +107,9 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	if len(analysis.CardLevels) == 0 {
 		return nil, fmt.Errorf("analysis data missing 'card_levels'")
 	}
+
+	// Clear cache at the start of each deck build to prevent unbounded growth
+	b.clearSynergyCache()
 
 	// Convert analysis data to candidates
 	candidates := b.buildCandidates(analysis.CardLevels)
@@ -514,6 +519,17 @@ func (b *Builder) selectEvolutionSlots(deck []*CardCandidate) []string {
 //
 // The score is calculated as the average synergy score across all pairs between
 // the candidate card and cards currently in the deck.
+//
+// Time Complexity:
+// - Without cache: O(n) database lookups per call where n = deck size
+// - With cache (warm): O(1) per cached pair lookup
+// - During deck building: Each pair is queried once from DB, then cached
+//
+// Space Complexity: O(c²) where c is the number of unique cards in the pool
+// (cache stores all pairwise combinations queried during deck building)
+//
+// The memoization cache is cleared at the start of each BuildDeckFromAnalysis call
+// to prevent unbounded memory growth.
 func (b *Builder) calculateSynergyScore(cardName string, deck []*CardCandidate) float64 {
 	if b.synergyDB == nil || len(deck) == 0 {
 		return 0.0
@@ -524,7 +540,7 @@ func (b *Builder) calculateSynergyScore(cardName string, deck []*CardCandidate) 
 
 	// Check synergy with each card in the current deck
 	for _, deckCard := range deck {
-		if synergyScore := b.synergyDB.GetSynergy(cardName, deckCard.Name); synergyScore > 0 {
+		if synergyScore := b.getCachedSynergy(cardName, deckCard.Name); synergyScore > 0 {
 			totalSynergy += synergyScore
 			synergyCount++
 		}
@@ -536,6 +552,49 @@ func (b *Builder) calculateSynergyScore(cardName string, deck []*CardCandidate) 
 	}
 
 	return totalSynergy / float64(synergyCount)
+}
+
+// getCachedSynergy retrieves a synergy score from cache or queries the database.
+//
+// The cache key is ordered (alphabetically) to ensure card1+card2 and card2+card1
+// use the same cache entry. This is important because synergy is symmetric:
+// the synergy between "Giant" and "Witch" is the same as between "Witch" and "Giant".
+//
+// Performance: O(1) for cache hits, O(1) for database query (cached internally by
+// the synergy database). The main benefit is avoiding repeated map lookups in the
+// underlying synergy database during deck building.
+func (b *Builder) getCachedSynergy(card1, card2 string) float64 {
+	// Create ordered cache key to ensure card1+card2 == card2+card1
+	var key string
+	if card1 < card2 {
+		key = card1 + "|" + card2
+	} else {
+		key = card2 + "|" + card1
+	}
+
+	// Check cache first - O(1) map lookup
+	if score, exists := b.synergyCache[key]; exists {
+		return score
+	}
+
+	// Cache miss: query from database and cache the result
+	score := b.synergyDB.GetSynergy(card1, card2)
+	b.synergyCache[key] = score
+	return score
+}
+
+// clearSynergyCache clears the memoization cache. Should be called between
+// deck builds to prevent unbounded cache growth.
+//
+// During a typical deck build with 100 candidate cards and 8 deck slots:
+// - Maximum unique pairs: C(100, 2) = 4,950
+// - Actual pairs queried: ~100 * 8 = 800 (each candidate checked against current deck)
+// - Cache size after build: ~800 entries
+//
+// By clearing between builds, we ensure the cache doesn't grow indefinitely
+// when the builder is reused for multiple deck recommendations.
+func (b *Builder) clearSynergyCache() {
+	b.synergyCache = make(map[string]float64)
 }
 
 func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[string]bool, currentDeck []*CardCandidate) *CardCandidate {
