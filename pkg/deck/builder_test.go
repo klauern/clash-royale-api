@@ -1719,3 +1719,190 @@ func TestBuilder_StrategyCompositionOverrides(t *testing.T) {
 		})
 	}
 }
+
+// TestLoadAnalysis tests loading analysis from file
+func TestLoadAnalysis(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create a valid analysis file
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Knight": {
+				Level:    11,
+				MaxLevel: 14,
+				Rarity:   "Common",
+				Elixir:   3,
+			},
+			"Archers": {
+				Level:    12,
+				MaxLevel: 14,
+				Rarity:   "Common",
+				Elixir:   3,
+			},
+		},
+		AnalysisTime: "2024-01-01T00:00:00Z",
+	}
+
+	data, err := json.Marshal(analysis)
+	if err != nil {
+		t.Fatalf("Failed to marshal test analysis: %v", err)
+	}
+
+	analysisPath := filepath.Join(tempDir, "test_analysis.json")
+	if err := os.WriteFile(analysisPath, data, 0o644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	// Test loading the file
+	builder := NewBuilder(tempDir)
+	loaded, err := builder.LoadAnalysis(analysisPath)
+	if err != nil {
+		t.Fatalf("LoadAnalysis failed: %v", err)
+	}
+
+	if loaded.CardLevels["Knight"].Level != 11 {
+		t.Errorf("Knight level = %d, want 11", loaded.CardLevels["Knight"].Level)
+	}
+
+	// Test non-existent file
+	_, err = builder.LoadAnalysis("/nonexistent/file.json")
+	if err == nil {
+		t.Error("Expected error for non-existent file")
+	}
+}
+
+// TestSaveDeck tests saving deck to file
+func TestSaveDeck(t *testing.T) {
+	tempDir := t.TempDir()
+	builder := NewBuilder(tempDir)
+
+	deck := &DeckRecommendation{
+		Deck: []string{"Knight", "Archers"},
+		DeckDetail: []CardDetail{
+			{Name: "Knight", Level: 11},
+			{Name: "Archers", Level: 12},
+		},
+		AvgElixir: 3.0,
+	}
+
+	// Test saving to default location
+	path, err := builder.SaveDeck(deck, "", "#TESTPLAYER")
+	if err != nil {
+		t.Fatalf("SaveDeck failed: %v", err)
+	}
+
+	if path == "" {
+		t.Error("SaveDeck returned empty path")
+	}
+
+	// Verify file was created
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		t.Errorf("File was not created: %s", path)
+	}
+
+	// Test saving to custom location
+	customDir := filepath.Join(tempDir, "custom")
+	path2, err := builder.SaveDeck(deck, customDir, "#TESTPLAYER")
+	if err != nil {
+		t.Fatalf("SaveDeck with custom dir failed: %v", err)
+	}
+
+	// Verify custom directory was used
+	if !strings.Contains(path2, customDir) {
+		t.Errorf("Path does not contain custom dir: %s", path2)
+	}
+}
+
+// TestBuildDeckFromFile tests building deck from file
+func TestBuildDeckFromFile(t *testing.T) {
+	tempDir := t.TempDir()
+
+	// Create a test analysis file
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Knight": {
+				Level:    11,
+				MaxLevel: 14,
+				Rarity:   "Common",
+				Elixir:   3,
+			},
+			"Archers": {
+				Level:    12,
+				MaxLevel: 14,
+				Rarity:   "Common",
+				Elixir:   3,
+			},
+			"Giant": {
+				Level:    9,
+				MaxLevel: 14,
+				Rarity:   "Rare",
+				Elixir:   5,
+			},
+			"Musketeer": {
+				Level:    9,
+				MaxLevel: 14,
+				Rarity:   "Rare",
+				Elixir:   4,
+			},
+			"Fireball": {
+				Level:    8,
+				MaxLevel: 14,
+				Rarity:   "Rare",
+				Elixir:   4,
+			},
+			"Zap": {
+				Level:    12,
+				MaxLevel: 14,
+				Rarity:   "Common",
+				Elixir:   2,
+			},
+			"Skeletons": {
+				Level:    13,
+				MaxLevel: 14,
+				Rarity:   "Common",
+				Elixir:   1,
+			},
+			"Bomber": {
+				Level:    11,
+				MaxLevel: 14,
+				Rarity:   "Rare",
+				Elixir:   2,
+			},
+		},
+	}
+
+	data, err := json.Marshal(analysis)
+	if err != nil {
+		t.Fatalf("Failed to marshal test analysis: %v", err)
+	}
+
+	analysisPath := filepath.Join(tempDir, "test_analysis.json")
+	if err := os.WriteFile(analysisPath, data, 0o644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	// Test building deck from file
+	builder := NewBuilder(tempDir)
+	deck, err := builder.BuildDeckFromFile(analysisPath)
+	if err != nil {
+		t.Fatalf("BuildDeckFromFile failed: %v", err)
+	}
+
+	if deck == nil {
+		t.Fatal("BuildDeckFromFile returned nil deck")
+	}
+
+	if len(deck.Deck) == 0 {
+		t.Error("Deck is empty")
+	}
+
+	if len(deck.DeckDetail) != 8 {
+		t.Errorf("Deck has %d cards, want 8", len(deck.DeckDetail))
+	}
+
+	// Test with non-existent file
+	_, err = builder.BuildDeckFromFile("/nonexistent/analysis.json")
+	if err == nil {
+		t.Error("Expected error for non-existent file")
+	}
+}

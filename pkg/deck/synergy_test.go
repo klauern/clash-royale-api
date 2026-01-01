@@ -290,6 +290,7 @@ func TestGetCategoryDescription(t *testing.T) {
 		{SynergyDefensive, "Defensive"},
 		{SynergyCycle, "Cycle"},
 		{SynergyBridgeSpam, "Bridge Spam"},
+		{"UnknownCategory", "UnknownCategory"}, // Unknown category returns itself
 	}
 
 	for _, tt := range tests {

@@ -313,3 +313,48 @@ func TestNilInputs(t *testing.T) {
 		}
 	})
 }
+
+// TestGetDeckName tests the getDeckName helper function
+func TestGetDeckName(t *testing.T) {
+	winCon := RoleWinCondition
+	support := RoleSupport
+
+	tests := []struct {
+		name     string
+		deck     []*CardCandidate
+		expected string
+	}{
+		{
+			name:     "Empty deck",
+			deck:     []*CardCandidate{},
+			expected: "Empty Deck",
+		},
+		{
+			name: "Deck with win condition",
+			deck: []*CardCandidate{
+				{Name: "Hog Rider", Role: &support},
+				{Name: "Giant", Role: &winCon},
+				{Name: "Knight", Role: &support},
+			},
+			expected: "Giant Deck",
+		},
+		{
+			name: "Deck without win condition (uses first card)",
+			deck: []*CardCandidate{
+				{Name: "Knight", Role: &support},
+				{Name: "Archers", Role: &support},
+				{Name: "Skeletons", Role: &support},
+			},
+			expected: "Knight Deck",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := getDeckName(tt.deck)
+			if result != tt.expected {
+				t.Errorf("getDeckName() = %v, want %v", result, tt.expected)
+			}
+		})
+	}
+}

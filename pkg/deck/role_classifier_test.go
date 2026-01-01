@@ -506,6 +506,7 @@ func TestGetRoleDescription(t *testing.T) {
 		{string(RoleSpellSmall), "Utility spell (2-3 elixir)"},
 		{string(RoleSupport), "Mid-cost support troop"},
 		{string(RoleCycle), "Cheap cycle card (1-2 elixir)"},
+		{"InvalidRole", "Unknown role"}, // Unknown role falls back
 	}
 
 	for _, tt := range tests {

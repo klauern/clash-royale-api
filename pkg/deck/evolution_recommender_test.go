@@ -297,6 +297,51 @@ func TestSetShardsPerEvolution(t *testing.T) {
 	}
 }
 
+// TestMapShardSource tests the GetShardCount method on mapShardSource.
+func TestMapShardSource(t *testing.T) {
+	tests := []struct {
+		name      string
+		shardMap  map[string]int
+		cardName  string
+		expected  int
+	}{
+		{
+			name:     "Card exists in map",
+			shardMap: map[string]int{"Knight": 5, "Archers": 10},
+			cardName: "Knight",
+			expected: 5,
+		},
+		{
+			name:     "Card does not exist in map",
+			shardMap: map[string]int{"Knight": 5, "Archers": 10},
+			cardName: "Musketeer",
+			expected: 0,
+		},
+		{
+			name:     "Nil map returns 0",
+			shardMap: nil,
+			cardName: "Knight",
+			expected: 0,
+		},
+		{
+			name:     "Empty map returns 0",
+			shardMap: map[string]int{},
+			cardName: "Knight",
+			expected: 0,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			source := mapShardSource(tt.shardMap)
+			result := source.GetShardCount(tt.cardName)
+			if result != tt.expected {
+				t.Errorf("GetShardCount(%q) = %d, want %d", tt.cardName, result, tt.expected)
+			}
+		})
+	}
+}
+
 func contains(s, substr string) bool {
 	return len(s) >= len(substr) && (s == substr ||
 		len(s) > len(substr) && findSubstring(s, substr))

@@ -970,3 +970,86 @@ func compareDeckRecommendations(old, new []string) int {
 	}
 	return changed
 }
+
+// TestFillMissingFields tests that missing config fields are filled with defaults
+func TestFillMissingFields(t *testing.T) {
+	lc, err := NewLevelCurve("../../config/card_level_curves.json")
+	if err != nil {
+		t.Fatalf("Failed to create LevelCurve: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		input    CardLevelConfig
+		expected CardLevelConfig
+	}{
+		{
+			name: "All fields missing",
+			input: CardLevelConfig{
+				BaseScale:  0,
+				GrowthRate: 0,
+				Type:       "",
+			},
+			expected: CardLevelConfig{
+				BaseScale:  100.0,
+				GrowthRate: 0.10,
+				Type:       "standard",
+			},
+		},
+		{
+			name: "Some fields missing",
+			input: CardLevelConfig{
+				BaseScale:  100.0,
+				GrowthRate: 0,
+				Type:       "",
+			},
+			expected: CardLevelConfig{
+				BaseScale:  100.0,
+				GrowthRate: 0.10,
+				Type:       "standard",
+			},
+		},
+		{
+			name: "No fields missing",
+			input: CardLevelConfig{
+				BaseScale:  100.0,
+				GrowthRate: 0.10,
+				Type:       "standard",
+			},
+			expected: CardLevelConfig{
+				BaseScale:  100.0,
+				GrowthRate: 0.10,
+				Type:       "standard",
+			},
+		},
+		{
+			name: "Custom values preserved",
+			input: CardLevelConfig{
+				BaseScale:  105.0,
+				GrowthRate: 0.12,
+				Type:       "spell_duration",
+			},
+			expected: CardLevelConfig{
+				BaseScale:  105.0,
+				GrowthRate: 0.12,
+				Type:       "spell_duration",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := lc.fillMissingFields(tt.input)
+
+			if result.BaseScale != tt.expected.BaseScale {
+				t.Errorf("BaseScale = %v, want %v", result.BaseScale, tt.expected.BaseScale)
+			}
+			if result.GrowthRate != tt.expected.GrowthRate {
+				t.Errorf("GrowthRate = %v, want %v", result.GrowthRate, tt.expected.GrowthRate)
+			}
+			if result.Type != tt.expected.Type {
+				t.Errorf("Type = %v, want %v", result.Type, tt.expected.Type)
+			}
+		})
+	}
+}

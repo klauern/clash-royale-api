@@ -884,3 +884,102 @@ func BenchmarkCalculateEvolutionLevelBonus(b *testing.B) {
 		calculateEvolutionLevelBonus(2, 3)
 	}
 }
+
+// TestRoleToString tests the roleToString helper function
+func TestRoleToString(t *testing.T) {
+	tests := []struct {
+		name     string
+		role     *CardRole
+		expected string
+	}{
+		{"nil role", nil, ""},
+		{"Win Condition", rolePtr(RoleWinCondition), "wincondition"},
+		{"Building", rolePtr(RoleBuilding), "building"},
+		{"Support", rolePtr(RoleSupport), "support"},
+		{"Spell Big", rolePtr(RoleSpellBig), "spell"},
+		{"Spell Small", rolePtr(RoleSpellSmall), "spell"}, // Both map to "spell"
+		{"Cycle", rolePtr(RoleCycle), "cycle"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := roleToString(tt.role)
+			if result != tt.expected {
+				t.Errorf("roleToString(%v) = %v, want %v", tt.role, result, tt.expected)
+			}
+		})
+	}
+}
+
+// TestGetTopN_EdgeCases tests edge cases for GetTopN
+func TestGetTopN_EdgeCases(t *testing.T) {
+	tests := []struct {
+		name      string
+		candidates []CardCandidate
+		n         int
+		expectedLen int
+	}{
+		{
+			name:      "Empty slice",
+			candidates: []CardCandidate{},
+			n:         5,
+			expectedLen: 0,
+		},
+		{
+			name:      "N larger than slice",
+			candidates: []CardCandidate{
+				{Name: "A", Score: 1.0},
+				{Name: "B", Score: 0.5},
+			},
+			n: 10,
+			expectedLen: 2,
+		},
+		{
+			name:      "N is zero",
+			candidates: []CardCandidate{
+				{Name: "A", Score: 1.0},
+			},
+			n: 0,
+			expectedLen: 0,
+		},
+		{
+			name:      "All same scores",
+			candidates: []CardCandidate{
+				{Name: "A", Score: 1.0},
+				{Name: "B", Score: 1.0},
+				{Name: "C", Score: 1.0},
+			},
+			n: 2,
+			expectedLen: 2,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := GetTopN(tt.candidates, tt.n)
+			if len(result) != tt.expectedLen {
+				t.Errorf("GetTopN() returned %d items, want %d", len(result), tt.expectedLen)
+			}
+		})
+	}
+}
+
+// TestGetTopN_AllScoresNegative tests that negative scores are handled correctly
+func TestGetTopN_AllScoresNegative(t *testing.T) {
+	candidates := []CardCandidate{
+		{Name: "A", Score: -1.5},
+		{Name: "B", Score: -0.5},
+		{Name: "C", Score: -2.0},
+	}
+
+	top2 := GetTopN(candidates, 2)
+
+	if len(top2) != 2 {
+		t.Errorf("GetTopN with negative scores returned %d items, want 2", len(top2))
+	}
+
+	// Should still sort correctly (least negative first)
+	if top2[0].Score != -0.5 {
+		t.Errorf("Expected highest score -0.5, got %v", top2[0].Score)
+	}
+}
