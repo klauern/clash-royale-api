@@ -300,10 +300,10 @@ func TestSetShardsPerEvolution(t *testing.T) {
 // TestMapShardSource tests the GetShardCount method on mapShardSource.
 func TestMapShardSource(t *testing.T) {
 	tests := []struct {
-		name      string
-		shardMap  map[string]int
-		cardName  string
-		expected  int
+		name     string
+		shardMap map[string]int
+		cardName string
+		expected int
 	}{
 		{
 			name:     "Card exists in map",

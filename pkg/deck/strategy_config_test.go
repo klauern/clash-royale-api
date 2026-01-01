@@ -358,12 +358,12 @@ func TestScoreCardWithStrategy(t *testing.T) {
 	winConRole := RoleWinCondition
 
 	tests := []struct {
-		name          string
-		card          CardCandidate
-		role          *CardRole
-		strategy      Strategy
-		expectedMin   float64
-		expectedMax   float64
+		name        string
+		card        CardCandidate
+		role        *CardRole
+		strategy    Strategy
+		expectedMin float64
+		expectedMax float64
 	}{
 		{
 			name: "High level card with aggro strategy",

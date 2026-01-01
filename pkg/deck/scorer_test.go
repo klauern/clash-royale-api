@@ -914,42 +914,42 @@ func TestRoleToString(t *testing.T) {
 // TestGetTopN_EdgeCases tests edge cases for GetTopN
 func TestGetTopN_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name      string
-		candidates []CardCandidate
-		n         int
+		name        string
+		candidates  []CardCandidate
+		n           int
 		expectedLen int
 	}{
 		{
-			name:      "Empty slice",
-			candidates: []CardCandidate{},
-			n:         5,
+			name:        "Empty slice",
+			candidates:  []CardCandidate{},
+			n:           5,
 			expectedLen: 0,
 		},
 		{
-			name:      "N larger than slice",
+			name: "N larger than slice",
 			candidates: []CardCandidate{
 				{Name: "A", Score: 1.0},
 				{Name: "B", Score: 0.5},
 			},
-			n: 10,
+			n:           10,
 			expectedLen: 2,
 		},
 		{
-			name:      "N is zero",
+			name: "N is zero",
 			candidates: []CardCandidate{
 				{Name: "A", Score: 1.0},
 			},
-			n: 0,
+			n:           0,
 			expectedLen: 0,
 		},
 		{
-			name:      "All same scores",
+			name: "All same scores",
 			candidates: []CardCandidate{
 				{Name: "A", Score: 1.0},
 				{Name: "B", Score: 1.0},
 				{Name: "C", Score: 1.0},
 			},
-			n: 2,
+			n:           2,
 			expectedLen: 2,
 		},
 	}
