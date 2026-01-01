@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
@@ -71,8 +72,8 @@ func convertCardsToUpgradeInfos(cards []clashroyale.Card) []UpgradeInfo {
 		// e.g. Epic 1 + 6 - 1 = 6 (if API level 1 is start)
 		// Let's assume API returns relative level starting from 1 for the card's rarity
 
-		rarity := NormalizeRarity(card.Rarity)
-		startingLevel := GetStartingLevel(rarity)
+		rarity := config.NormalizeRarity(card.Rarity)
+		startingLevel := config.GetStartingLevel(rarity)
 
 		// If API level is 0, it might mean level 1? Usually API uses 1-based levels matching the in-game display for that rarity relative to 1
 		// Actually for non-commons, if API says level 6 for Epic, and Epic starts at 6, is it Absolute 6?

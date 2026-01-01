@@ -2,6 +2,8 @@ package analysis
 
 import (
 	"testing"
+
+	"github.com/klauer/clash-royale-api/go/internal/config"
 )
 
 // TestCalculateCardsNeeded tests upgrade cost calculations
@@ -90,12 +92,12 @@ func TestGetMaxLevel(t *testing.T) {
 		{"Epic", 16},
 		{"Legendary", 16},
 		{"Champion", 16},
-		{"Unknown", 16}, // Default
+		{"Unknown", 0}, // Returns 0 to signal invalid/unknown rarity
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.rarity, func(t *testing.T) {
-			got := GetMaxLevel(tt.rarity)
+			got := config.GetMaxLevel(tt.rarity)
 			if got != tt.want {
 				t.Errorf("GetMaxLevel(%v) = %v, want %v", tt.rarity, got, tt.want)
 			}
@@ -114,12 +116,12 @@ func TestGetStartingLevel(t *testing.T) {
 		{"Epic", 6},
 		{"Legendary", 9},
 		{"Champion", 11},
-		{"Unknown", 1}, // Default
+		{"Unknown", 0}, // Returns 0 to signal invalid/unknown rarity
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.rarity, func(t *testing.T) {
-			got := GetStartingLevel(tt.rarity)
+			got := config.GetStartingLevel(tt.rarity)
 			if got != tt.want {
 				t.Errorf("GetStartingLevel(%v) = %v, want %v", tt.rarity, got, tt.want)
 			}

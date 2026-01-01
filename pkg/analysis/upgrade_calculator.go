@@ -2,7 +2,9 @@
 // Based on official Clash Royale card progression system.
 package analysis
 
-import "strings"
+import (
+	"github.com/klauer/clash-royale-api/go/internal/config"
+)
 
 // CardInfo interface for card data
 // This allows the package to work without importing the clashroyale package directly
@@ -17,28 +19,6 @@ type cardAdapter struct {
 
 func (c cardAdapter) GetRarity() string {
 	return c.rarity
-}
-
-// NormalizeRarity ensures rarity strings are in TitleCase for consistent map lookups
-func NormalizeRarity(rarity string) string {
-	switch strings.ToLower(strings.TrimSpace(rarity)) {
-	case "common":
-		return "Common"
-	case "rare":
-		return "Rare"
-	case "epic":
-		return "Epic"
-	case "legendary":
-		return "Legendary"
-	case "champion":
-		return "Champion"
-	default:
-		// Return original if no match, or could capitalize first letter
-		if len(rarity) == 0 {
-			return rarity
-		}
-		return strings.Title(strings.ToLower(rarity))
-	}
 }
 
 // Upgrade costs define how many cards are needed to upgrade from each level
@@ -123,30 +103,6 @@ var upgradeCosts = map[string]map[int]int{
 	},
 }
 
-// Max levels for each rarity
-var maxLevels = map[string]int{
-	"Common":    16,
-	"Rare":      16,
-	"Epic":      16,
-	"Legendary": 16,
-	"Champion":  16,
-}
-
-// Starting levels for each rarity (when first unlocked)
-
-var startingLevels = map[string]int{
-
-	"Common": 1,
-
-	"Rare": 3,
-
-	"Epic": 6,
-
-	"Legendary": 9,
-
-	"Champion": 11,
-}
-
 // NewCardAdapter creates a CardInfo from a rarity string
 // This can be used when converting from external card types
 func NewCardAdapter(rarity string) CardInfo {
@@ -159,11 +115,11 @@ func NewCardAdapter(rarity string) CardInfo {
 
 func CalculateCardsNeeded(currentLevel int, rarity string) int {
 
-	rarity = NormalizeRarity(rarity)
+	rarity = config.NormalizeRarity(rarity)
 
 	// Check if already at max level
 
-	maxLevel := GetMaxLevel(rarity)
+	maxLevel := config.GetMaxLevel(rarity)
 
 	if currentLevel >= maxLevel {
 
@@ -173,7 +129,7 @@ func CalculateCardsNeeded(currentLevel int, rarity string) int {
 
 	// Check if level is below starting level for this rarity
 
-	startingLevel := GetStartingLevel(rarity)
+	startingLevel := config.GetStartingLevel(rarity)
 
 	if currentLevel < startingLevel {
 
@@ -209,45 +165,13 @@ func CalculateCardsNeeded(currentLevel int, rarity string) int {
 
 }
 
-// GetMaxLevel returns the maximum level for a given rarity
-
-func GetMaxLevel(rarity string) int {
-
-	rarity = NormalizeRarity(rarity)
-
-	if maxLevel, exists := maxLevels[rarity]; exists {
-
-		return maxLevel
-
-	}
-
-	return 16 // Default to 16 if unknown
-
-}
-
-// GetStartingLevel returns the initial level when a card is first unlocked
-
-func GetStartingLevel(rarity string) int {
-
-	rarity = NormalizeRarity(rarity)
-
-	if startLevel, exists := startingLevels[rarity]; exists {
-
-		return startLevel
-
-	}
-
-	return 1 // Default to 1 if unknown
-
-}
-
 // IsMaxLevel checks if a card is at maximum level for its rarity
 
 func IsMaxLevel(currentLevel int, rarity string) bool {
 
-	rarity = NormalizeRarity(rarity)
+	rarity = config.NormalizeRarity(rarity)
 
-	return currentLevel >= GetMaxLevel(rarity)
+	return currentLevel >= config.GetMaxLevel(rarity)
 
 }
 
@@ -255,9 +179,9 @@ func IsMaxLevel(currentLevel int, rarity string) bool {
 
 func CalculateTotalCardsToMax(currentLevel int, rarity string) int {
 
-	rarity = NormalizeRarity(rarity)
+	rarity = config.NormalizeRarity(rarity)
 
-	maxLevel := GetMaxLevel(rarity)
+	maxLevel := config.GetMaxLevel(rarity)
 
 	if currentLevel >= maxLevel {
 
@@ -355,13 +279,13 @@ type UpgradeInfo struct {
 
 func CalculateUpgradeInfo(cardName string, rarity string, elixirCost int, currentLevel int, cardsOwned int, evolutionLevel int, maxEvolutionLevel int, apiMaxLevel int) UpgradeInfo {
 
-	rarity = NormalizeRarity(rarity)
+	rarity = config.NormalizeRarity(rarity)
 
 	maxLevel := apiMaxLevel
 
 	if maxLevel == 0 {
 
-		maxLevel = GetMaxLevel(rarity)
+		maxLevel = config.GetMaxLevel(rarity)
 
 	}
 
@@ -469,13 +393,13 @@ type RarityUpgradeStats struct {
 
 func CalculateRarityStats(cards []UpgradeInfo, rarity string) RarityUpgradeStats {
 
-	rarity = NormalizeRarity(rarity)
+	rarity = config.NormalizeRarity(rarity)
 
 	filtered := make([]UpgradeInfo, 0)
 
 	for _, card := range cards {
 
-		if NormalizeRarity(card.Rarity) == rarity {
+		if config.NormalizeRarity(card.Rarity) == rarity {
 
 			filtered = append(filtered, card)
 
@@ -579,27 +503,7 @@ func CalculatePriorityScore(info UpgradeInfo) float64 {
 	levelScore := levelRatio * 100.0
 
 	// Rarity boost (prioritize harder-to-get cards)
-
-	rarityScores := map[string]float64{
-
-		"Common": 0.0,
-
-		"Rare": 20.0,
-
-		"Epic": 40.0,
-
-		"Legendary": 60.0,
-
-		"Champion": 80.0,
-	}
-
-	rarityScore, exists := rarityScores[NormalizeRarity(info.Rarity)]
-
-	if !exists {
-
-		rarityScore = 0.0
-
-	}
+	rarityScore := config.GetRarityPriorityScore(info.Rarity)
 
 	// Weighted combination (base score without evolution)
 	priorityScore := (proximityScore * 0.5) + (levelScore * 0.3) + (rarityScore * 0.2)
@@ -678,7 +582,7 @@ func NewCardCountConfig(cards []CardInfo) *CardCountConfig {
 
 	// Count cards by rarity
 	for _, card := range cards {
-		rarity := NormalizeRarity(card.GetRarity())
+		rarity := config.NormalizeRarity(card.GetRarity())
 		if rarity != "" {
 			counts[rarity]++
 		}
@@ -723,7 +627,7 @@ func (c *CardCountConfig) GetTotalCards(rarity string) int {
 		return 0
 	}
 
-	normalized := NormalizeRarity(rarity)
+	normalized := config.NormalizeRarity(rarity)
 	if count, ok := c.cardCounts[normalized]; ok {
 		return count
 	}

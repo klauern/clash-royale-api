@@ -8,18 +8,9 @@ import (
 	"sort"
 	"strconv"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
-
-// Rarity weights boost scores for higher rarity cards since they're harder to level up
-// Common cards (easiest to upgrade) get no boost, Champions get the highest boost
-var rarityWeights = map[string]float64{
-	"Common":    1.0,
-	"Rare":      1.05,
-	"Epic":      1.1,
-	"Legendary": 1.15,
-	"Champion":  1.2,
-}
 
 // Elixir sweet spot is 3-4 elixir (most versatile cards)
 // Higher cost cards get penalized slightly, very low cost cards also penalized
@@ -75,10 +66,7 @@ func ScoreCardWithEvolution(level, maxLevel int, rarity string, elixir int, role
 	levelRatio := calculateLevelRatio("", level, maxLevel, nil)
 
 	// Get rarity boost multiplier
-	rarityBoost, exists := rarityWeights[rarity]
-	if !exists {
-		rarityBoost = 1.0 // Default to Common if unknown rarity
-	}
+	rarityBoost := config.GetRarityWeight(rarity)
 
 	// Calculate elixir efficiency weight
 	// Penalize cards far from optimal elixir cost (3)
@@ -428,10 +416,7 @@ func scoreCardWithEvolutionInternal(cardName string, level, maxLevel int, rarity
 	levelRatio := calculateLevelRatio(cardName, level, maxLevel, levelCurve)
 
 	// Get rarity boost multiplier
-	rarityBoost, exists := rarityWeights[rarity]
-	if !exists {
-		rarityBoost = 1.0 // Default to Common if unknown rarity
-	}
+	rarityBoost := config.GetRarityWeight(rarity)
 
 	// Calculate elixir efficiency weight
 	// Penalize cards far from optimal elixir cost (3)

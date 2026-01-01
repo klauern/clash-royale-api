@@ -4,6 +4,8 @@ package scoring
 
 import (
 	"math"
+
+	"github.com/klauer/clash-royale-api/go/internal/config"
 )
 
 // BaseScorer implements the Scorer interface with traditional card scoring.
@@ -87,13 +89,14 @@ type BaseScorerConfig struct {
 
 // DefaultRarityWeights returns the standard rarity weight map.
 // Rarer cards get higher boost since they're harder to level up.
+// This function delegates to the centralized config package.
 func DefaultRarityWeights() map[string]float64 {
 	return map[string]float64{
-		"Common":    1.0,
-		"Rare":      1.05,
-		"Epic":      1.1,
-		"Legendary": 1.15,
-		"Champion":  1.2,
+		"Common":    config.GetRarityWeight("Common"),
+		"Rare":      config.GetRarityWeight("Rare"),
+		"Epic":      config.GetRarityWeight("Epic"),
+		"Legendary": config.GetRarityWeight("Legendary"),
+		"Champion":  config.GetRarityWeight("Champion"),
 	}
 }
 

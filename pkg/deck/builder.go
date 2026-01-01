@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
@@ -22,7 +23,6 @@ type Builder struct {
 	evolutionSlotLimit int
 	roleGroups         map[CardRole][]string
 	fallbackElixir     map[string]int
-	rarityWeights      map[string]float64
 	statsRegistry      *clashroyale.CardStatsRegistry
 	strategy           Strategy
 	strategyConfig     StrategyConfig
@@ -90,13 +90,6 @@ func NewBuilder(dataDir string) *Builder {
 			"Baby Dragon": 4, "Skeleton Dragons": 4, "Knight": 3,
 			"Skeletons": 1, "Ice Spirit": 1, "Electro Spirit": 1, "Fire Spirit": 1,
 			"Bats": 2, "Spear Goblins": 2, "Goblin Gang": 3, "Minions": 3,
-		},
-		rarityWeights: map[string]float64{
-			"Common":    1.0,
-			"Rare":      1.05,
-			"Epic":      1.1,
-			"Legendary": 1.15,
-			"Champion":  1.2,
 		},
 	}
 
@@ -456,10 +449,7 @@ func (b *Builder) inferRole(name string) *CardRole {
 
 func (b *Builder) scoreCard(name string, level, maxLevel int, rarity string, elixir int, role *CardRole, maxEvolutionLevel int) float64 {
 	levelRatio := float64(level) / float64(maxLevel)
-	rarityBoost := b.rarityWeights[rarity]
-	if rarityBoost == 0 {
-		rarityBoost = 1.0
-	}
+	rarityBoost := config.GetRarityWeight(rarity)
 
 	// Encourage cheaper cards slightly to keep cycle tight
 	elixirWeight := 1.0 - float64(max(elixir-3, 0))/9.0
@@ -913,7 +903,7 @@ func (b *Builder) getUpgradeCandidates(deck *DeckRecommendation, cardLevels map[
 		// - Role importance (20%)
 		// - Rarity bonus (10% - rarer cards get priority)
 		roleImportance := b.getRoleImportance(role)
-		rarityBonus := b.getRarityBonus(card.Rarity)
+		rarityBonus := config.GetRarityPriorityBonus(card.Rarity)
 
 		impactScore := (scoreDelta * 1000) + // Scale up for meaningful comparison
 			(roleImportance * 20) +
@@ -1010,24 +1000,6 @@ func (b *Builder) getRoleImportance(role *CardRole) float64 {
 		return 0.3
 	default:
 		return 0.4
-	}
-}
-
-// getRarityBonus returns a bonus score for rarer cards (harder to upgrade)
-func (b *Builder) getRarityBonus(rarity string) float64 {
-	switch rarity {
-	case "Champion":
-		return 5.0
-	case "Legendary":
-		return 4.0
-	case "Epic":
-		return 3.0
-	case "Rare":
-		return 2.0
-	case "Common":
-		return 1.0
-	default:
-		return 1.0
 	}
 }
 
