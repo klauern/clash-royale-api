@@ -202,7 +202,7 @@ UNLOCKED_EVOLUTIONS="Archers,Knight,Musketeer"
 
 **Recommendations**: `./bin/cr-api evolutions recommend --tag <TAG> [--top 5] [--verbose]`
 
-See [EVOLUTION.md](EVOLUTION.md) for complete documentation including:
+See [EVOLUTION.md](docs/EVOLUTION.md) for complete documentation including:
 - Evolution level mechanics (evolutionLevel vs maxEvolutionLevel)
 - Shard management and inventory tracking
 - Evolution recommendation scoring factors

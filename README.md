@@ -115,18 +115,18 @@ task test                # Run tests
 ```
 
 See feature-specific documentation for detailed command options:
-- [DECK_BUILDER.md](DECK_BUILDER.md) - Deck building strategies and options
-- [EVENT_TRACKING.md](EVENT_TRACKING.md) - Event scanning and analysis
-- [CSV_EXPORTS.md](CSV_EXPORTS.md) - Export formats and options
-- [EVOLUTION.md](EVOLUTION.md) - Evolution shard management
+- [DECK_BUILDER.md](docs/DECK_BUILDER.md) - Deck building strategies and options
+- [EVENT_TRACKING.md](docs/EVENT_TRACKING.md) - Event scanning and analysis
+- [CSV_EXPORTS.md](docs/CSV_EXPORTS.md) - Export formats and options
+- [EVOLUTION.md](docs/EVOLUTION.md) - Evolution shard management
 
 ## Using as a Go Library
 
-For complete Go API examples, integration patterns, and package documentation, see [DECK_BUILDER.md](DECK_BUILDER.md).
+For complete Go API examples, integration patterns, and package documentation, see [DECK_BUILDER.md](docs/DECK_BUILDER.md).
 
 ## Data Structure
 
-Card collections include name, level, rarity, count, and max_level. Analysis provides upgrade priorities, rarity breakdowns, and max-level card tracking. For evolution mechanics and configuration, see [EVOLUTION.md](EVOLUTION.md).
+Card collections include name, level, rarity, count, and max_level. Analysis provides upgrade priorities, rarity breakdowns, and max-level card tracking. For evolution mechanics and configuration, see [EVOLUTION.md](docs/EVOLUTION.md).
 
 ## Configuration
 
