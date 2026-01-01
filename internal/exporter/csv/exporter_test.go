@@ -123,7 +123,6 @@ func TestBaseExporter_WriteCSV_DirectoryCreation(t *testing.T) {
 
 	exporter := &BaseExporter{}
 	err := exporter.writeCSV(nestedPath, []string{"ID"}, [][]string{{"1"}})
-
 	if err != nil {
 		t.Errorf("writeCSV() with nested directories failed: %v", err)
 	}
@@ -171,7 +170,6 @@ func TestCSVExporter_Export(t *testing.T) {
 	exporter := NewCSVExporter("test.csv", func() []string { return []string{} }, exportFunc)
 
 	err := exporter.Export("/test/dir", "test data")
-
 	if err != nil {
 		t.Errorf("Export() error = %v", err)
 	}

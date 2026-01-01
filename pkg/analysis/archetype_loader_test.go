@@ -45,7 +45,7 @@ func TestLoadArchetypes_CustomFile(t *testing.T) {
 		]
 	}`
 
-	if err := os.WriteFile(configPath, []byte(configJSON), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configJSON), 0o644); err != nil {
 		t.Fatalf("Failed to write test config: %v", err)
 	}
 
@@ -77,7 +77,7 @@ func TestLoadArchetypes_InvalidJSON(t *testing.T) {
 	tmpDir := t.TempDir()
 	configPath := filepath.Join(tmpDir, "invalid.json")
 
-	if err := os.WriteFile(configPath, []byte("{invalid json"), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte("{invalid json"), 0o644); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 
@@ -189,7 +189,7 @@ func TestLoadArchetypes_EmptyConfig(t *testing.T) {
 	configPath := filepath.Join(tmpDir, "empty.json")
 
 	configJSON := `{"version": 1, "archetypes": []}`
-	if err := os.WriteFile(configPath, []byte(configJSON), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(configJSON), 0o644); err != nil {
 		t.Fatalf("Failed to write test file: %v", err)
 	}
 

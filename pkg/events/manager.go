@@ -51,7 +51,7 @@ func (m *Manager) ensurePlayerDirectories(playerTag string) error {
 	}
 
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
@@ -93,7 +93,7 @@ func (m *Manager) SaveEventDeck(eventDeck *EventDeck) error {
 	}
 
 	// Save to file
-	if err := os.WriteFile(filepath, data, 0644); err != nil {
+	if err := os.WriteFile(filepath, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write event deck file: %w", err)
 	}
 
@@ -138,7 +138,7 @@ func (m *Manager) updateCollectionFile(eventDeck *EventDeck) error {
 		return fmt.Errorf("failed to marshal collection: %w", err)
 	}
 
-	if err := os.WriteFile(collectionFile, data, 0644); err != nil {
+	if err := os.WriteFile(collectionFile, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write collection file: %w", err)
 	}
 
@@ -363,7 +363,7 @@ func (m *Manager) DeleteEventDeck(playerTag, eventID string) error {
 				return fmt.Errorf("failed to marshal collection: %w", err)
 			}
 
-			if err := os.WriteFile(collectionFile, collectionData, 0644); err != nil {
+			if err := os.WriteFile(collectionFile, collectionData, 0o644); err != nil {
 				return fmt.Errorf("failed to write collection file: %w", err)
 			}
 

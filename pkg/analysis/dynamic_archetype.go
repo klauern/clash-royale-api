@@ -440,7 +440,7 @@ func getViabilityTier(score float64) string {
 func (d *DynamicArchetypeDetector) identifyProblemCards(
 	template DeckArchetypeTemplate,
 	analysis *CardAnalysis,
-) (missing []string, underleveled []string) {
+) (missing, underleveled []string) {
 	allCards := append([]string{template.WinCondition}, template.SupportCards...)
 	allCards = append(allCards, template.RequiredCards...)
 
@@ -520,7 +520,7 @@ func (d *DynamicArchetypeDetector) calculateAvgElixir(
 func (d *DynamicArchetypeDetector) getCardCounts(
 	template DeckArchetypeTemplate,
 	analysis *CardAnalysis,
-) (owned int, total int) {
+) (owned, total int) {
 	allCards := append([]string{template.WinCondition}, template.SupportCards...)
 	allCards = append(allCards, template.RequiredCards...)
 

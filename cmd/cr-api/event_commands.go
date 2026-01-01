@@ -722,7 +722,7 @@ func displayComprehensiveAnalysis(analysis *events.EventAnalysis, includeDecks b
 // exportAnalysisToCSV exports event analysis to CSV format
 func exportAnalysisToCSV(dataDir string, analysis *events.EventAnalysis) error {
 	analysisDir := filepath.Join(dataDir, "csv", "analysis")
-	if err := os.MkdirAll(analysisDir, 0755); err != nil {
+	if err := os.MkdirAll(analysisDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create analysis directory: %w", err)
 	}
 

@@ -56,7 +56,7 @@ func (m *Manager) Get(format string) (Exporter, error) {
 }
 
 // Export exports data using the specified format
-func (m *Manager) Export(format string, dataDir string, data interface{}) error {
+func (m *Manager) Export(format, dataDir string, data interface{}) error {
 	exporter, err := m.Get(format)
 	if err != nil {
 		return err

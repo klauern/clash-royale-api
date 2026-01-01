@@ -170,7 +170,7 @@ func ClassifyCard(cardName string, elixirCost int) *CardRole {
 // ClassifyCardWithEvolution determines the strategic role of a card considering
 // both its base properties and evolution status. When a card is evolved and has
 // a specific evolution role override, that role takes precedence over base classification.
-func ClassifyCardWithEvolution(cardName string, elixirCost int, evolutionLevel int) *CardRole {
+func ClassifyCardWithEvolution(cardName string, elixirCost, evolutionLevel int) *CardRole {
 	// Normalize card name for matching (case-insensitive, trim whitespace)
 	normalized := strings.TrimSpace(cardName)
 

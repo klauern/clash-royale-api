@@ -165,7 +165,7 @@ func TestReadJSON(t *testing.T) {
 				_ = WriteJSON(test.filePath, map[string]string{"test": "value"})
 			} else if test.name == "Read invalid JSON" {
 				// Create file with invalid JSON
-				_ = os.WriteFile(test.filePath, []byte("{invalid json"), 0644)
+				_ = os.WriteFile(test.filePath, []byte("{invalid json"), 0o644)
 			}
 
 			var result map[string]string
@@ -195,7 +195,7 @@ func TestFileExists(t *testing.T) {
 	dirPath := tempDir
 
 	// Create existing file
-	_ = os.WriteFile(existingFile, []byte("test"), 0644)
+	_ = os.WriteFile(existingFile, []byte("test"), 0o644)
 
 	tests := []struct {
 		name     string
@@ -235,7 +235,7 @@ func TestDirectoryExists(t *testing.T) {
 	filePath := filepath.Join(tempDir, "file.txt")
 
 	// Create a file
-	_ = os.WriteFile(filePath, []byte("test"), 0644)
+	_ = os.WriteFile(filePath, []byte("test"), 0o644)
 
 	tests := []struct {
 		name    string
@@ -319,15 +319,15 @@ func TestListJSONFiles(t *testing.T) {
 	tempDir := t.TempDir()
 
 	// Create test files
-	_ = os.WriteFile(filepath.Join(tempDir, "file1.json"), []byte("{}"), 0644)
-	_ = os.WriteFile(filepath.Join(tempDir, "file2.txt"), []byte("text"), 0644)
-	_ = os.WriteFile(filepath.Join(tempDir, "file3.json"), []byte("{}"), 0644)
-	_ = os.WriteFile(filepath.Join(tempDir, "file.json.bak"), []byte("{}"), 0644)
+	_ = os.WriteFile(filepath.Join(tempDir, "file1.json"), []byte("{}"), 0o644)
+	_ = os.WriteFile(filepath.Join(tempDir, "file2.txt"), []byte("text"), 0o644)
+	_ = os.WriteFile(filepath.Join(tempDir, "file3.json"), []byte("{}"), 0o644)
+	_ = os.WriteFile(filepath.Join(tempDir, "file.json.bak"), []byte("{}"), 0o644)
 
 	// Create subdirectory with JSON
 	subDir := filepath.Join(tempDir, "subdir")
-	_ = os.Mkdir(subDir, 0755)
-	_ = os.WriteFile(filepath.Join(subDir, "subfile.json"), []byte("{}"), 0644)
+	_ = os.Mkdir(subDir, 0o755)
+	_ = os.WriteFile(filepath.Join(subDir, "subfile.json"), []byte("{}"), 0o644)
 
 	tests := []struct {
 		name    string
@@ -354,7 +354,6 @@ func TestListJSONFiles(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			files, err := ListJSONFiles(test.dirPath)
-
 			if err != nil {
 				t.Errorf("ListJSONFiles() error = %v", err)
 				return
@@ -380,7 +379,7 @@ func TestDeleteFile(t *testing.T) {
 	nonExistentFile := filepath.Join(tempDir, "nonexistent.txt")
 
 	// Create existing file
-	_ = os.WriteFile(existingFile, []byte("test"), 0644)
+	_ = os.WriteFile(existingFile, []byte("test"), 0o644)
 
 	tests := []struct {
 		name     string
@@ -424,7 +423,7 @@ func TestCopyFile(t *testing.T) {
 
 	// Create source file
 	content := []byte("test content for copying")
-	_ = os.WriteFile(srcFile, content, 0644)
+	_ = os.WriteFile(srcFile, content, 0o644)
 
 	tests := []struct {
 		name    string
@@ -492,7 +491,7 @@ func TestMoveFile(t *testing.T) {
 
 	// Create source file
 	content := []byte("test content for moving")
-	_ = os.WriteFile(srcFile, content, 0644)
+	_ = os.WriteFile(srcFile, content, 0o644)
 
 	err := MoveFile(srcFile, dstFile)
 	if err != nil {
@@ -526,7 +525,7 @@ func TestGetFileSize(t *testing.T) {
 
 	// Create file with known content
 	content := []byte("test content for size")
-	_ = os.WriteFile(testFile, content, 0644)
+	_ = os.WriteFile(testFile, content, 0o644)
 
 	size, err := GetFileSize(testFile)
 	if err != nil {

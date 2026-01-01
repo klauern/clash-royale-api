@@ -156,7 +156,7 @@ func TestBuilder_LoadAndSaveDeck(t *testing.T) {
 	}
 
 	analysisPath := filepath.Join(tempDir, "test_analysis.json")
-	if err := os.WriteFile(analysisPath, analysisData, 0644); err != nil {
+	if err := os.WriteFile(analysisPath, analysisData, 0o644); err != nil {
 		t.Fatalf("Failed to write analysis file: %v", err)
 	}
 

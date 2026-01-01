@@ -54,7 +54,7 @@ func addExportCommands() *cli.Command {
 
 					// Create export directory
 					exportDir := filepath.Join(dataDir, "csv", "players")
-					if err := os.MkdirAll(exportDir, 0755); err != nil {
+					if err := os.MkdirAll(exportDir, 0o755); err != nil {
 						return fmt.Errorf("failed to create export directory: %w", err)
 					}
 
@@ -103,7 +103,7 @@ func addExportCommands() *cli.Command {
 
 					// Create export directory
 					exportDir := filepath.Join(dataDir, "csv", "reference")
-					if err := os.MkdirAll(exportDir, 0755); err != nil {
+					if err := os.MkdirAll(exportDir, 0o755); err != nil {
 						return fmt.Errorf("failed to create export directory: %w", err)
 					}
 
@@ -161,7 +161,7 @@ func addExportCommands() *cli.Command {
 
 					// Create export directory
 					exportDir := filepath.Join(dataDir, "csv", "analysis")
-					if err := os.MkdirAll(exportDir, 0755); err != nil {
+					if err := os.MkdirAll(exportDir, 0o755); err != nil {
 						return fmt.Errorf("failed to create export directory: %w", err)
 					}
 
@@ -215,7 +215,7 @@ func addExportCommands() *cli.Command {
 
 					// Create export directory
 					exportDir := filepath.Join(dataDir, "csv", "battles")
-					if err := os.MkdirAll(exportDir, 0755); err != nil {
+					if err := os.MkdirAll(exportDir, 0o755); err != nil {
 						return fmt.Errorf("failed to create export directory: %w", err)
 					}
 
@@ -270,7 +270,7 @@ func addExportCommands() *cli.Command {
 
 					// Create export directory
 					exportDir := filepath.Join(dataDir, "csv", "events")
-					if err := os.MkdirAll(exportDir, 0755); err != nil {
+					if err := os.MkdirAll(exportDir, 0o755); err != nil {
 						return fmt.Errorf("failed to create export directory: %w", err)
 					}
 
@@ -335,7 +335,7 @@ func addExportCommands() *cli.Command {
 					// 1. Export player summary and cards
 					fmt.Println("1. Exporting player data...")
 					playerExportDir := filepath.Join(dataDir, "csv", "players")
-					if err := os.MkdirAll(playerExportDir, 0755); err != nil {
+					if err := os.MkdirAll(playerExportDir, 0o755); err != nil {
 						return fmt.Errorf("failed to create player export directory: %w", err)
 					}
 
@@ -362,7 +362,7 @@ func addExportCommands() *cli.Command {
 					}
 
 					analysisExportDir := filepath.Join(dataDir, "csv", "analysis")
-					if err := os.MkdirAll(analysisExportDir, 0755); err != nil {
+					if err := os.MkdirAll(analysisExportDir, 0o755); err != nil {
 						return fmt.Errorf("failed to create analysis export directory: %w", err)
 					}
 
@@ -375,7 +375,7 @@ func addExportCommands() *cli.Command {
 					// 3. Export battles
 					fmt.Println("\n3. Exporting battle log...")
 					battleExportDir := filepath.Join(dataDir, "csv", "battles")
-					if err := os.MkdirAll(battleExportDir, 0755); err != nil {
+					if err := os.MkdirAll(battleExportDir, 0o755); err != nil {
 						return fmt.Errorf("failed to create battle export directory: %w", err)
 					}
 
@@ -398,7 +398,7 @@ func addExportCommands() *cli.Command {
 
 					if len(eventBattles) > 0 {
 						eventExportDir := filepath.Join(dataDir, "csv", "events")
-						if err := os.MkdirAll(eventExportDir, 0755); err != nil {
+						if err := os.MkdirAll(eventExportDir, 0o755); err != nil {
 							return fmt.Errorf("failed to create event export directory: %w", err)
 						}
 
@@ -414,7 +414,7 @@ func addExportCommands() *cli.Command {
 					// 5. Export card database (only if not already exists)
 					fmt.Println("\n5. Exporting card database...")
 					cardExportDir := filepath.Join(dataDir, "csv", "reference")
-					if err := os.MkdirAll(cardExportDir, 0755); err != nil {
+					if err := os.MkdirAll(cardExportDir, 0o755); err != nil {
 						return fmt.Errorf("failed to create card export directory: %w", err)
 					}
 

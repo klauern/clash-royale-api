@@ -303,7 +303,7 @@ func displayUpcomingChests(chests *clashroyale.ChestCycle) {
 func savePlayerData(dataDir string, p *clashroyale.Player) error {
 	// Create data directory if it doesn't exist
 	playersDir := filepath.Join(dataDir, "players")
-	if err := os.MkdirAll(playersDir, 0755); err != nil {
+	if err := os.MkdirAll(playersDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create players directory: %w", err)
 	}
 
@@ -314,7 +314,7 @@ func savePlayerData(dataDir string, p *clashroyale.Player) error {
 		return fmt.Errorf("failed to marshal player data: %w", err)
 	}
 
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	if err := os.WriteFile(filename, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write player file: %w", err)
 	}
 
@@ -554,7 +554,7 @@ func saveAnalysisData(dataDir string, a *analysis.CardAnalysis) error {
 	pb := storage.NewPathBuilder(dataDir)
 
 	// Ensure analysis directory exists
-	if err := os.MkdirAll(pb.GetAnalysisDir(), 0755); err != nil {
+	if err := os.MkdirAll(pb.GetAnalysisDir(), 0o755); err != nil {
 		return fmt.Errorf("failed to create analysis directory: %w", err)
 	}
 
@@ -566,7 +566,7 @@ func saveAnalysisData(dataDir string, a *analysis.CardAnalysis) error {
 		return fmt.Errorf("failed to marshal analysis data: %w", err)
 	}
 
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	if err := os.WriteFile(filename, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write analysis file: %w", err)
 	}
 
@@ -758,7 +758,7 @@ func displayDeckRecommendations(r *analysis.DeckRecommendationResult) {
 func savePlaystyleData(dataDir string, p *analysis.PlaystyleAnalysis, r *analysis.DeckRecommendationResult) error {
 	// Create analysis directory if it doesn't exist
 	analysisDir := filepath.Join(dataDir, "analysis")
-	if err := os.MkdirAll(analysisDir, 0755); err != nil {
+	if err := os.MkdirAll(analysisDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create analysis directory: %w", err)
 	}
 
@@ -781,7 +781,7 @@ func savePlaystyleData(dataDir string, p *analysis.PlaystyleAnalysis, r *analysi
 		return fmt.Errorf("failed to marshal playstyle data: %w", err)
 	}
 
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	if err := os.WriteFile(filename, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write playstyle file: %w", err)
 	}
 

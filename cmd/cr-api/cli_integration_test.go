@@ -493,17 +493,17 @@ func mockPlayerCommand(cmd *cli.Command) error {
 
 	if cmd.Bool("export-csv") || cmd.Bool("save") {
 		playersDir := filepath.Join(dataDir, "csv", "players")
-		os.MkdirAll(playersDir, 0755)
+		os.MkdirAll(playersDir, 0o755)
 
 		// Create mock CSV file
 		csvFile := filepath.Join(playersDir, "players.csv")
-		os.WriteFile(csvFile, []byte(mockPlayerCSV), 0644)
+		os.WriteFile(csvFile, []byte(mockPlayerCSV), 0o644)
 
 		// Create mock JSON file
 		if cmd.Bool("save") {
 			jsonFile := filepath.Join(dataDir, "players", "TEST12345.json")
-			os.MkdirAll(filepath.Dir(jsonFile), 0755)
-			os.WriteFile(jsonFile, []byte(mockPlayerJSON), 0644)
+			os.MkdirAll(filepath.Dir(jsonFile), 0o755)
+			os.WriteFile(jsonFile, []byte(mockPlayerJSON), 0o644)
 		}
 	}
 
@@ -514,10 +514,10 @@ func mockCardsCommand(cmd *cli.Command) error {
 	if cmd.Bool("export-csv") {
 		dataDir := cmd.String("data-dir")
 		refDir := filepath.Join(dataDir, "csv", "reference")
-		os.MkdirAll(refDir, 0755)
+		os.MkdirAll(refDir, 0o755)
 
 		csvFile := filepath.Join(refDir, "cards.csv")
-		os.WriteFile(csvFile, []byte(mockCardsCSV), 0644)
+		os.WriteFile(csvFile, []byte(mockCardsCSV), 0o644)
 	}
 
 	return nil
@@ -528,18 +528,18 @@ func mockAnalyzeCommand(cmd *cli.Command) error {
 
 	if cmd.Bool("export-csv") {
 		analysisDir := filepath.Join(dataDir, "csv", "analysis")
-		os.MkdirAll(analysisDir, 0755)
+		os.MkdirAll(analysisDir, 0o755)
 
 		csvFile := filepath.Join(analysisDir, "card_analysis.csv")
-		os.WriteFile(csvFile, []byte(mockAnalysisCSV), 0644)
+		os.WriteFile(csvFile, []byte(mockAnalysisCSV), 0o644)
 	}
 
 	if cmd.Bool("save") {
 		analysisDir := filepath.Join(dataDir, "analysis")
-		os.MkdirAll(analysisDir, 0755)
+		os.MkdirAll(analysisDir, 0o755)
 
 		jsonFile := filepath.Join(analysisDir, "TEST12345.json")
-		os.WriteFile(jsonFile, []byte(mockAnalysisJSON), 0644)
+		os.WriteFile(jsonFile, []byte(mockAnalysisJSON), 0o644)
 	}
 
 	return nil

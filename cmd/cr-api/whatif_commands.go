@@ -292,7 +292,7 @@ func outputWhatIfJSON(scenario *whatif.WhatIfScenario) error {
 func saveWhatIfScenario(dataDir string, scenario *whatif.WhatIfScenario) error {
 	// Create whatif directory if it doesn't exist
 	whatifDir := filepath.Join(dataDir, "whatif")
-	if err := os.MkdirAll(whatifDir, 0755); err != nil {
+	if err := os.MkdirAll(whatifDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create whatif directory: %w", err)
 	}
 
@@ -306,7 +306,7 @@ func saveWhatIfScenario(dataDir string, scenario *whatif.WhatIfScenario) error {
 		return fmt.Errorf("failed to marshal scenario: %w", err)
 	}
 
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	if err := os.WriteFile(filename, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write scenario file: %w", err)
 	}
 

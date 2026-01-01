@@ -164,7 +164,7 @@ func (e *Exporter) groupByEventType(collection *EventDeckCollection) *EventDeckC
 
 // exportCSV exports the collection to CSV format
 func (e *Exporter) exportCSV(collection *EventDeckCollection) error {
-	if err := os.MkdirAll(e.options.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(e.options.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -250,7 +250,7 @@ func (e *Exporter) exportCSV(collection *EventDeckCollection) error {
 
 // exportJSON exports the collection to JSON format
 func (e *Exporter) exportJSON(collection *EventDeckCollection) error {
-	if err := os.MkdirAll(e.options.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(e.options.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -275,7 +275,7 @@ func (e *Exporter) exportJSON(collection *EventDeckCollection) error {
 
 // exportDeckList exports decks in a simple deck list format
 func (e *Exporter) exportDeckList(collection *EventDeckCollection) error {
-	if err := os.MkdirAll(e.options.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(e.options.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -323,7 +323,7 @@ func (e *Exporter) exportDeckList(collection *EventDeckCollection) error {
 
 // exportRoyaleAPI exports decks in RoyaleAPI deck link format
 func (e *Exporter) exportRoyaleAPI(collection *EventDeckCollection) error {
-	if err := os.MkdirAll(e.options.OutputDir, 0755); err != nil {
+	if err := os.MkdirAll(e.options.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 

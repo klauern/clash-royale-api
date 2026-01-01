@@ -92,7 +92,7 @@ func TestAnalysisToDeckBuilderIntegration(t *testing.T) {
 		t.Fatalf("Failed to marshal analysis: %v", err)
 	}
 
-	err = os.WriteFile(analysisPath, data, 0644)
+	err = os.WriteFile(analysisPath, data, 0o644)
 	if err != nil {
 		t.Fatalf("Failed to save analysis: %v", err)
 	}
@@ -362,7 +362,7 @@ func TestFullWorkflowIntegration(t *testing.T) {
 		t.Fatalf("Failed to marshal analysis: %v", err)
 	}
 
-	err = os.WriteFile(analysisPath, data, 0644)
+	err = os.WriteFile(analysisPath, data, 0o644)
 	if err != nil {
 		t.Fatalf("Failed to save analysis: %v", err)
 	}
@@ -549,7 +549,7 @@ func BenchmarkFullWorkflow(b *testing.B) {
 			b.Fatal(err)
 		}
 
-		err = os.WriteFile(analysisPath, data, 0644)
+		err = os.WriteFile(analysisPath, data, 0o644)
 		if err != nil {
 			b.Fatal(err)
 		}

@@ -467,18 +467,31 @@ tasks:
       - go vet ./...
 
   format:
-    desc: Format Go code
+    desc: Format Go code with gofumpt
     summary: |
-      Format Go code
-      - Go: goimports (preferred) or gofmt
+      Format Go code with gofumpt (stricter than gofmt)
+      Falls back to goimports/gofmt if gofumpt not available
     cmds:
       - echo "Formatting Go code..."
       - |
-        if command -v goimports >/dev/null 2>&1; then
+        if command -v gofumpt >/dev/null 2>&1; then
+          gofumpt -w -extra .
+        elif command -v goimports >/dev/null 2>&1; then
           goimports -w $(go list -f '{{.Dir}}' ./...)
         else
           gofmt -w $(go list -f '{{.Dir}}' ./...)
         fi
+
+  setup-githooks:
+    desc: Install git hooks for auto-formatting
+    summary: |
+      Install git pre-push hook that auto-formats code before pushing.
+      This prevents CI failures due to formatting issues.
+    cmds:
+      - bash scripts/setup-githooks.sh
+    preconditions:
+      - sh: test -f scripts/setup-githooks.sh
+        msg: "setup-githooks.sh not found"
 
   clean:
     desc: Clean up generated files
@@ -571,6 +584,14 @@ tasks:
           go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
         else
           echo "golangci-lint already installed"
+        fi
+
+        # Install gofumpt
+        if ! command -v gofumpt &> /dev/null; then
+          echo "Installing gofumpt..."
+          go install mvdan.cc/gofumpt@latest
+        else
+          echo "gofumpt already installed"
         fi
 
         # Install gosec

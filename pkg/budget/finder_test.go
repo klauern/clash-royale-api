@@ -170,7 +170,6 @@ func TestFindOptimalDecks(t *testing.T) {
 	cardAnalysis := createTestCardAnalysis()
 
 	result, err := finder.FindOptimalDecks(cardAnalysis, "#TEST123", "TestPlayer")
-
 	if err != nil {
 		t.Fatalf("FindOptimalDecks returned error: %v", err)
 	}

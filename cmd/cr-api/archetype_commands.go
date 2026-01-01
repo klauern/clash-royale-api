@@ -304,7 +304,7 @@ func formatNumber(n int) string {
 // saveArchetypeAnalysis saves analysis to JSON file
 func saveArchetypeAnalysis(result *archetypes.ArchetypeAnalysisResult, dataDir string) error {
 	dir := filepath.Join(dataDir, "archetypes")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create archetypes directory: %w", err)
 	}
 
@@ -318,7 +318,7 @@ func saveArchetypeAnalysis(result *archetypes.ArchetypeAnalysisResult, dataDir s
 		return fmt.Errorf("failed to marshal analysis: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
@@ -632,7 +632,7 @@ func formatStrategies(strategies []analysis.StrategyRecommendation) string {
 // saveDynamicArchetypeAnalysis saves analysis to JSON file
 func saveDynamicArchetypeAnalysis(result *analysis.DynamicArchetypeAnalysis, dataDir string) error {
 	dir := filepath.Join(dataDir, "archetype_analysis")
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 
@@ -646,7 +646,7 @@ func saveDynamicArchetypeAnalysis(result *analysis.DynamicArchetypeAnalysis, dat
 		return fmt.Errorf("failed to marshal analysis: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 

@@ -14,7 +14,7 @@ import (
 func WriteJSON(filePath string, data interface{}) error {
 	// Ensure parent directory exists
 	dir := filepath.Dir(filePath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dir, err)
 	}
 
@@ -25,7 +25,7 @@ func WriteJSON(filePath string, data interface{}) error {
 	}
 
 	// Write to file
-	if err := os.WriteFile(filePath, jsonData, 0644); err != nil {
+	if err := os.WriteFile(filePath, jsonData, 0o644); err != nil {
 		return fmt.Errorf("failed to write file %s: %w", filePath, err)
 	}
 
@@ -72,7 +72,7 @@ func EnsureDirectory(dirPath string) error {
 		return nil
 	}
 
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
+	if err := os.MkdirAll(dirPath, 0o755); err != nil {
 		return fmt.Errorf("failed to create directory %s: %w", dirPath, err)
 	}
 
@@ -130,7 +130,7 @@ func CopyFile(src, dst string) error {
 	}
 
 	// Write to destination
-	if err := os.WriteFile(dst, data, 0644); err != nil {
+	if err := os.WriteFile(dst, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write destination file %s: %w", dst, err)
 	}
 

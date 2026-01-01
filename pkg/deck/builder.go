@@ -264,7 +264,7 @@ func (b *Builder) LoadAnalysis(analysisPath string) (*CardAnalysis, error) {
 }
 
 // LoadLatestAnalysis loads the most recent analysis for a player
-func (b *Builder) LoadLatestAnalysis(playerTag string, analysisDir string) (*CardAnalysis, error) {
+func (b *Builder) LoadLatestAnalysis(playerTag, analysisDir string) (*CardAnalysis, error) {
 	if analysisDir == "" {
 		analysisDir = filepath.Join(b.dataDir, "analysis")
 	}
@@ -296,12 +296,12 @@ func (b *Builder) LoadLatestAnalysis(playerTag string, analysisDir string) (*Car
 }
 
 // SaveDeck persists a deck recommendation to disk
-func (b *Builder) SaveDeck(deckData *DeckRecommendation, outputDir string, playerTag string) (string, error) {
+func (b *Builder) SaveDeck(deckData *DeckRecommendation, outputDir, playerTag string) (string, error) {
 	if outputDir == "" {
 		outputDir = filepath.Join(b.dataDir, "decks")
 	}
 
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
+	if err := os.MkdirAll(outputDir, 0o755); err != nil {
 		return "", fmt.Errorf("failed to create output directory: %w", err)
 	}
 
@@ -315,7 +315,7 @@ func (b *Builder) SaveDeck(deckData *DeckRecommendation, outputDir string, playe
 		return "", fmt.Errorf("failed to marshal deck data: %w", err)
 	}
 
-	if err := os.WriteFile(path, data, 0644); err != nil {
+	if err := os.WriteFile(path, data, 0o644); err != nil {
 		return "", fmt.Errorf("failed to write deck file: %w", err)
 	}
 

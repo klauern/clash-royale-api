@@ -925,7 +925,7 @@ func displaySingleRecommendation(rank int, rec *recommend.DeckRecommendation, ve
 // exportRecommendationsToCSV exports recommendations to CSV file
 func exportRecommendationsToCSV(dataDir string, result *recommend.RecommendationResult) error {
 	csvDir := filepath.Join(dataDir, "csv")
-	if err := os.MkdirAll(csvDir, 0755); err != nil {
+	if err := os.MkdirAll(csvDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create CSV directory: %w", err)
 	}
 
@@ -1095,7 +1095,7 @@ func outputMulliganGuideJSON(guide *mulligan.MulliganGuide) error {
 func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
 	// Create mulligan directory if it doesn't exist
 	mulliganDir := filepath.Join(dataDir, "mulligan")
-	if err := os.MkdirAll(mulliganDir, 0755); err != nil {
+	if err := os.MkdirAll(mulliganDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create mulligan directory: %w", err)
 	}
 
@@ -1109,7 +1109,7 @@ func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
 		return fmt.Errorf("failed to marshal mulligan guide: %w", err)
 	}
 
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	if err := os.WriteFile(filename, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write mulligan guide file: %w", err)
 	}
 
@@ -1613,7 +1613,7 @@ func outputBudgetResultJSON(result *budget.BudgetFinderResult) error {
 func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 	// Create budget directory if it doesn't exist
 	budgetDir := filepath.Join(dataDir, "budget")
-	if err := os.MkdirAll(budgetDir, 0755); err != nil {
+	if err := os.MkdirAll(budgetDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create budget directory: %w", err)
 	}
 
@@ -1628,7 +1628,7 @@ func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 		return fmt.Errorf("failed to marshal budget result: %w", err)
 	}
 
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	if err := os.WriteFile(filename, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write budget file: %w", err)
 	}
 

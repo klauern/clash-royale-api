@@ -296,7 +296,7 @@ func (a *UpgradeImpactAnalyzer) calculateCardImpact(
 
 // scoreCard calculates card score with evolution awareness.
 // This provides more accurate scoring than the legacy calculateCardScore by considering evolution levels.
-func (a *UpgradeImpactAnalyzer) scoreCard(cardName string, level, maxLevel int, rarity string, elixir int, evolutionLevel, maxEvolutionLevel int) float64 {
+func (a *UpgradeImpactAnalyzer) scoreCard(cardName string, level, maxLevel int, rarity string, elixir, evolutionLevel, maxEvolutionLevel int) float64 {
 	//  Base score calculation (same as before)
 	baseScore := a.fallbackScore(level, maxLevel, rarity, elixir)
 
@@ -677,8 +677,10 @@ func (a *UpgradeImpactAnalyzer) inferRole(cardName string) string {
 		}
 	}
 
-	buildings := []string{"Cannon", "Goblin Cage", "Inferno Tower", "Bomb Tower", "Tombstone",
-		"Goblin Hut", "Barbarian Hut", "Tesla", "Furnace"}
+	buildings := []string{
+		"Cannon", "Goblin Cage", "Inferno Tower", "Bomb Tower", "Tombstone",
+		"Goblin Hut", "Barbarian Hut", "Tesla", "Furnace",
+	}
 	for _, b := range buildings {
 		if cardName == b {
 			return "buildings"

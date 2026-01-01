@@ -15,7 +15,7 @@ type BaseExporter struct {
 // writeCSV writes data to a CSV file
 func (e *BaseExporter) writeCSV(filePath string, headers []string, rows [][]string) error {
 	// Create directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
+	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
 	}
 

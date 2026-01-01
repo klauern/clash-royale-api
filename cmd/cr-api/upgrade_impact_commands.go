@@ -351,7 +351,7 @@ func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) err
 func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) error {
 	// Create analysis directory if it doesn't exist
 	analysisDir := filepath.Join(dataDir, "analysis")
-	if err := os.MkdirAll(analysisDir, 0755); err != nil {
+	if err := os.MkdirAll(analysisDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create analysis directory: %w", err)
 	}
 
@@ -365,7 +365,7 @@ func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeI
 		return fmt.Errorf("failed to marshal analysis: %w", err)
 	}
 
-	if err := os.WriteFile(filename, data, 0644); err != nil {
+	if err := os.WriteFile(filename, data, 0o644); err != nil {
 		return fmt.Errorf("failed to write analysis file: %w", err)
 	}
 

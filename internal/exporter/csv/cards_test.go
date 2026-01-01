@@ -123,7 +123,6 @@ func TestCardsExport_InvalidDataType(t *testing.T) {
 
 	exporter := NewCardsExporter()
 	err := exporter.Export(tempDir, "invalid data")
-
 	// Should not crash, but might not create meaningful data
 	if err != nil {
 		t.Logf("CardsExport() with invalid data returned error (acceptable): %v", err)

@@ -321,7 +321,7 @@ func TestLevelCurve_DefaultConfigFallback(t *testing.T) {
 
 	// Create empty config
 	emptyConfig := `{"cardLevelCurves": {}}`
-	if err := os.WriteFile(configPath, []byte(emptyConfig), 0644); err != nil {
+	if err := os.WriteFile(configPath, []byte(emptyConfig), 0o644); err != nil {
 		t.Fatalf("Failed to create test config: %v", err)
 	}
 
@@ -945,15 +945,19 @@ func setupTestAnalysisData() map[string]interface{} {
 func generateDeckWithLinearScoring(analysisData map[string]interface{}) []string {
 	// Simulate old linear scoring system
 	// This is a simplified version for testing
-	return []string{"Knight", "Archers", "Baby_Dragon", "Hog_Rider",
-		"Fireball", "Giant", "Musketeer", "Prince"}
+	return []string{
+		"Knight", "Archers", "Baby_Dragon", "Hog_Rider",
+		"Fireball", "Giant", "Musketeer", "Prince",
+	}
 }
 
 func generateDeckWithCurveScoring(analysisData map[string]interface{}, lc *LevelCurve) []string {
 	// Simulate new curve-based scoring system
 	// This would integrate with actual deck builder in production
-	return []string{"Knight", "Archers", "Baby_Dragon", "Hog_Rider",
-		"Fireball", "Giant", "Musketeer", "Prince"}
+	return []string{
+		"Knight", "Archers", "Baby_Dragon", "Hog_Rider",
+		"Fireball", "Giant", "Musketeer", "Prince",
+	}
 }
 
 func compareDeckRecommendations(old, new []string) int {
