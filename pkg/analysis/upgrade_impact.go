@@ -112,12 +112,13 @@ type UpgradeImpactAnalyzer struct {
 
 // DeckArchetypeTemplate represents a deck archetype for analysis
 type DeckArchetypeTemplate struct {
-	Name          string   `json:"name"`
-	WinCondition  string   `json:"win_condition"`
-	RequiredCards []string `json:"required_cards,omitempty"`
-	SupportCards  []string `json:"support_cards,omitempty"`
-	MinElixir     float64  `json:"min_elixir"`
-	MaxElixir     float64  `json:"max_elixir"`
+	Name              string   `json:"name"`
+	WinCondition      string   `json:"win_condition"`
+	RequiredCards     []string `json:"required_cards,omitempty"`
+	SupportCards      []string `json:"support_cards,omitempty"`
+	MinElixir         float64  `json:"min_elixir"`
+	MaxElixir         float64  `json:"max_elixir"`
+	PreferredStrategy string   `json:"preferred_strategy,omitempty"` // Recommended deck builder strategy
 }
 
 // NewUpgradeImpactAnalyzer creates a new upgrade impact analyzer.

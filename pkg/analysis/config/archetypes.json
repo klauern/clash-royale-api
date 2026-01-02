@@ -6,189 +6,216 @@
       "win_condition": "Golem",
       "support_cards": ["Baby Dragon", "Night Witch", "Mega Minion", "Lumberjack", "Lightning", "Tornado"],
       "min_elixir": 3.5,
-      "max_elixir": 4.5
+      "max_elixir": 4.5,
+      "preferred_strategy": "aggro"
     },
     {
       "name": "LavaLoon Beatdown",
       "win_condition": "Lava Hound",
       "support_cards": ["Balloon", "Inferno Dragon", "Lumberjack", "Bowler", "Freeze", "Tornado"],
       "min_elixir": 3.8,
-      "max_elixir": 4.8
+      "max_elixir": 4.8,
+      "preferred_strategy": "aggro"
     },
     {
       "name": "Giant Beatdown",
       "win_condition": "Giant",
       "support_cards": ["Witch", "Musketeer", "Prince", "Mega Minion", "Fireball", "Elixir Collector"],
       "min_elixir": 3.2,
-      "max_elixir": 4.2
+      "max_elixir": 4.2,
+      "preferred_strategy": "aggro"
     },
     {
       "name": "Electro Giant Beatdown",
       "win_condition": "Electro Giant",
       "support_cards": ["Little Prince", "Bowler", "Knight", "Archers", "Cannon", "Lightning", "Tornado"],
       "min_elixir": 3.8,
-      "max_elixir": 5.0
+      "max_elixir": 5.0,
+      "preferred_strategy": "aggro"
     },
     {
       "name": "Hog Rider Cycle",
       "win_condition": "Hog Rider",
       "support_cards": ["Skeletons", "Cannon", "Ice Golem", "Musketeer", "Ice Spirit", "Fireball"],
       "min_elixir": 2.4,
-      "max_elixir": 3.2
+      "max_elixir": 3.2,
+      "preferred_strategy": "cycle"
     },
     {
       "name": "Royal Giant Cycle",
       "win_condition": "Royal Giant",
       "support_cards": ["Fireball", "Lightning", "Cannon", "Furnace", "Royal Ghost", "Skeletons"],
       "min_elixir": 2.8,
-      "max_elixir": 3.6
+      "max_elixir": 3.6,
+      "preferred_strategy": "cycle"
     },
     {
       "name": "Miner Poison Cycle",
       "win_condition": "Miner",
       "support_cards": ["Poison", "Electro Wizard", "Valkyrie", "Ice Golem", "Fireball"],
       "min_elixir": 2.6,
-      "max_elixir": 3.4
+      "max_elixir": 3.4,
+      "preferred_strategy": "cycle"
     },
     {
       "name": "Miner Balloon Cycle",
       "win_condition": "Miner",
       "support_cards": ["Balloon", "Musketeer", "Skeletons", "Ice Golem", "Bomb Tower"],
       "min_elixir": 2.8,
-      "max_elixir": 3.6
+      "max_elixir": 3.6,
+      "preferred_strategy": "cycle"
     },
     {
       "name": "Royal Hogs Cycle",
       "win_condition": "Royal Hogs",
       "support_cards": ["Royal Recruits", "Flying Machine", "Goblin Cage", "Fireball", "Arrows"],
       "min_elixir": 2.8,
-      "max_elixir": 3.6
+      "max_elixir": 3.6,
+      "preferred_strategy": "cycle"
     },
     {
       "name": "X-Bow Siege",
       "win_condition": "X-Bow",
       "support_cards": ["Tesla", "Archers", "Knight", "Skeletons", "Electro Spirit", "Fireball"],
       "min_elixir": 2.8,
-      "max_elixir": 3.6
+      "max_elixir": 3.6,
+      "preferred_strategy": "control"
     },
     {
       "name": "Mortar Siege",
       "win_condition": "Mortar",
       "support_cards": ["Skeleton Barrel", "Cannon Cart", "Royal Chef", "Knight", "Arrows"],
       "min_elixir": 2.6,
-      "max_elixir": 3.4
+      "max_elixir": 3.4,
+      "preferred_strategy": "control"
     },
     {
       "name": "PEKKA Bridge Spam",
       "win_condition": "P.E.K.K.A",
       "support_cards": ["Battle Ram", "Bandit", "Royal Ghost", "Electro Wizard", "Minions", "Poison"],
       "min_elixir": 3.0,
-      "max_elixir": 4.0
+      "max_elixir": 4.0,
+      "preferred_strategy": "balanced"
     },
     {
       "name": "Mega Knight Bridge Spam",
       "win_condition": "Mega Knight",
       "support_cards": ["Wall Breakers", "Archer Queen", "Prince", "Bandit", "Goblin Gang"],
       "min_elixir": 3.2,
-      "max_elixir": 4.2
+      "max_elixir": 4.2,
+      "preferred_strategy": "balanced"
     },
     {
       "name": "Royal Ghost Bridge Spam",
       "win_condition": "Royal Ghost",
       "support_cards": ["Battle Ram", "Ice Golem", "Night Witch", "Inferno Dragon", "Guards"],
       "min_elixir": 2.8,
-      "max_elixir": 3.8
+      "max_elixir": 3.8,
+      "preferred_strategy": "balanced"
     },
     {
       "name": "Log Bait",
       "win_condition": "Goblin Barrel",
       "support_cards": ["Knight", "Princess", "Goblin Gang", "Ice Spirit", "Inferno Tower", "Rocket"],
       "min_elixir": 2.6,
-      "max_elixir": 3.4
+      "max_elixir": 3.4,
+      "preferred_strategy": "balanced"
     },
     {
       "name": "Evo Dart Goblin Bait",
       "win_condition": "Goblin Barrel",
       "support_cards": ["Dart Goblin", "Knight", "Princess", "Goblin Gang", "Ice Spirit", "Cannon"],
       "min_elixir": 2.4,
-      "max_elixir": 3.2
+      "max_elixir": 3.2,
+      "preferred_strategy": "balanced"
     },
     {
       "name": "Evo Recruits Barrel Bait",
       "win_condition": "Goblin Barrel",
       "support_cards": ["Royal Recruits", "Goblinstein", "Cannon Cart", "Dart Goblin", "Goblin Gang"],
       "min_elixir": 2.8,
-      "max_elixir": 3.6
+      "max_elixir": 3.6,
+      "preferred_strategy": "balanced"
     },
     {
       "name": "Graveyard Freeze",
       "win_condition": "Graveyard",
       "support_cards": ["Ice Wizard", "Baby Dragon", "Bomb Tower", "Poison", "Tornado", "Knight"],
       "min_elixir": 3.0,
-      "max_elixir": 4.0
+      "max_elixir": 4.0,
+      "preferred_strategy": "control"
     },
     {
       "name": "Splashyard",
       "win_condition": "Graveyard",
       "support_cards": ["Knight", "Ice Wizard", "Baby Dragon", "Bomb Tower", "Poison", "Tornado"],
       "min_elixir": 2.8,
-      "max_elixir": 3.8
+      "max_elixir": 3.8,
+      "preferred_strategy": "control"
     },
     {
       "name": "Evo Witch Giant Graveyard",
       "win_condition": "Giant",
       "support_cards": ["Graveyard", "Witch", "Giant Snowball", "Bowler", "Minions", "Guards"],
       "min_elixir": 3.2,
-      "max_elixir": 4.2
+      "max_elixir": 4.2,
+      "preferred_strategy": "aggro"
     },
     {
       "name": "3M Bridge Spam",
       "win_condition": "Three Musketeers",
       "support_cards": ["Battle Ram", "Royal Ghost", "Bandit", "Ice Golem", "Elixir Collector"],
       "min_elixir": 3.2,
-      "max_elixir": 4.2
+      "max_elixir": 4.2,
+      "preferred_strategy": "aggro"
     },
     {
       "name": "Giant Muskets",
       "win_condition": "Giant",
       "support_cards": ["Three Musketeers", "Bats", "Battle Ram", "Minion Horde", "Elixir Collector"],
       "min_elixir": 3.5,
-      "max_elixir": 4.5
+      "max_elixir": 4.5,
+      "preferred_strategy": "aggro"
     },
     {
       "name": "Goblin Drill Evo Valk",
       "win_condition": "Goblin Drill",
       "support_cards": ["Valkyrie", "Skeletons", "Magic Archer", "Spear Goblins", "Bomb Tower", "Tornado"],
       "min_elixir": 2.8,
-      "max_elixir": 3.6
+      "max_elixir": 3.6,
+      "preferred_strategy": "cycle"
     },
     {
       "name": "Evo Mortar Miner Skeleton King",
       "win_condition": "Mortar",
       "support_cards": ["Skeleton King", "Miner", "Bats", "Cannon Cart", "Goblin Gang"],
       "min_elixir": 2.8,
-      "max_elixir": 3.6
+      "max_elixir": 3.6,
+      "preferred_strategy": "control"
     },
     {
       "name": "Evo Royal Giant Archers Skeleton King",
       "win_condition": "Royal Giant",
       "support_cards": ["Skeleton King", "Archers", "Fisherman", "Mother Witch", "Tombstone"],
       "min_elixir": 2.8,
-      "max_elixir": 3.8
+      "max_elixir": 3.8,
+      "preferred_strategy": "cycle"
     },
     {
       "name": "Double Elixir Loon Freeze",
       "win_condition": "Balloon",
       "support_cards": ["Electro Dragon", "Inferno Dragon", "Lumberjack", "Bowler", "Freeze", "Tornado"],
       "min_elixir": 3.5,
-      "max_elixir": 4.5
+      "max_elixir": 4.5,
+      "preferred_strategy": "aggro"
     },
     {
       "name": "Golden Knight Royal Hogs",
       "win_condition": "Royal Hogs",
       "support_cards": ["Golden Knight", "Royal Recruits", "Zappies", "Flying Machine", "Goblin Cage"],
       "min_elixir": 2.8,
-      "max_elixir": 3.8
+      "max_elixir": 3.8,
+      "preferred_strategy": "cycle"
     }
   ]
 }
