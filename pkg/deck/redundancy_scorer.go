@@ -1,3 +1,5 @@
+//go:build research
+
 // Package deck provides redundancy and versatility scoring research prototypes.
 // This is RESEARCH CODE, not production-ready implementations.
 //
