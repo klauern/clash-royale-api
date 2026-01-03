@@ -548,28 +548,28 @@ func TestIsLevelIndependent(t *testing.T) {
 
 func TestCalculateLadderScore(t *testing.T) {
 	tests := []struct {
-		name             string
-		rarityScore      float64
-		levelIndepScore  float64
-		upgradeProgress  float64
-		minScore         float64
-		maxScore         float64
+		name            string
+		rarityScore     float64
+		levelIndepScore float64
+		upgradeProgress float64
+		minScore        float64
+		maxScore        float64
 	}{
 		{
-			name:             "F2P friendly deck",
-			rarityScore:      9.0,
-			levelIndepScore:  8.0,
-			upgradeProgress:  7.0,
-			minScore:         7.5,
-			maxScore:         9.0,
+			name:            "F2P friendly deck",
+			rarityScore:     9.0,
+			levelIndepScore: 8.0,
+			upgradeProgress: 7.0,
+			minScore:        7.5,
+			maxScore:        9.0,
 		},
 		{
-			name:             "Expensive deck",
-			rarityScore:      3.0,
-			levelIndepScore:  2.0,
-			upgradeProgress:  4.0,
-			minScore:         2.0,
-			maxScore:         4.0,
+			name:            "Expensive deck",
+			rarityScore:     3.0,
+			levelIndepScore: 2.0,
+			upgradeProgress: 4.0,
+			minScore:        2.0,
+			maxScore:        4.0,
 		},
 	}
 
