@@ -109,26 +109,26 @@ type EvaluationResult struct {
 	AvgElixir float64  `json:"average_elixir"`
 
 	// Category scores (5 categories)
-	Attack       CategoryScore `json:"attack"`
-	Defense      CategoryScore `json:"defense"`
-	Synergy      CategoryScore `json:"synergy"`
-	Versatility  CategoryScore `json:"versatility"`
-	F2PFriendly  CategoryScore `json:"f2p_friendly"`
+	Attack      CategoryScore `json:"attack"`
+	Defense     CategoryScore `json:"defense"`
+	Synergy     CategoryScore `json:"synergy"`
+	Versatility CategoryScore `json:"versatility"`
+	F2PFriendly CategoryScore `json:"f2p_friendly"`
 
 	// Overall score (weighted average)
 	OverallScore  float64 `json:"overall_score"`
 	OverallRating Rating  `json:"overall_rating"`
 
 	// Archetype detection
-	DetectedArchetype Archetype `json:"detected_archetype"`
-	ArchetypeConfidence float64  `json:"archetype_confidence"` // 0.0-1.0
+	DetectedArchetype   Archetype `json:"detected_archetype"`
+	ArchetypeConfidence float64   `json:"archetype_confidence"` // 0.0-1.0
 
 	// Detailed analysis sections
-	DefenseAnalysis    AnalysisSection `json:"defense_analysis"`
-	AttackAnalysis     AnalysisSection `json:"attack_analysis"`
-	BaitAnalysis       AnalysisSection `json:"bait_analysis"`
-	CycleAnalysis      AnalysisSection `json:"cycle_analysis"`
-	LadderAnalysis     AnalysisSection `json:"ladder_analysis"`
+	DefenseAnalysis AnalysisSection `json:"defense_analysis"`
+	AttackAnalysis  AnalysisSection `json:"attack_analysis"`
+	BaitAnalysis    AnalysisSection `json:"bait_analysis"`
+	CycleAnalysis   AnalysisSection `json:"cycle_analysis"`
+	LadderAnalysis  AnalysisSection `json:"ladder_analysis"`
 
 	// Synergy matrix
 	SynergyMatrix SynergyMatrix `json:"synergy_matrix,omitempty"`
