@@ -118,6 +118,8 @@ type DeckArchetypeTemplate struct {
 	SupportCards      []string `json:"support_cards,omitempty"`
 	MinElixir         float64  `json:"min_elixir"`
 	MaxElixir         float64  `json:"max_elixir"`
+	Category          string   `json:"category,omitempty"`           // Archetype category (beatdown, cycle, siege, etc.)
+	Enabled           bool     `json:"enabled"`                      // Whether this archetype is enabled for analysis
 	PreferredStrategy string   `json:"preferred_strategy,omitempty"` // Recommended deck builder strategy
 }
 

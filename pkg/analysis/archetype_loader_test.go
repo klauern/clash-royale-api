@@ -40,7 +40,9 @@ func TestLoadArchetypes_CustomFile(t *testing.T) {
 				"win_condition": "Golem",
 				"support_cards": ["Baby Dragon", "Mega Minion"],
 				"min_elixir": 3.0,
-				"max_elixir": 4.0
+				"max_elixir": 4.0,
+				"category": "beatdown",
+				"enabled": true
 			}
 		]
 	}`
@@ -100,6 +102,8 @@ func TestValidateArchetype(t *testing.T) {
 				WinCondition: "Golem",
 				MinElixir:    3.0,
 				MaxElixir:    4.0,
+				Category:     "beatdown",
+				Enabled:      true,
 			},
 			wantErr: false,
 		},
@@ -196,5 +200,83 @@ func TestLoadArchetypes_EmptyConfig(t *testing.T) {
 	_, err := LoadArchetypes(configPath)
 	if err == nil {
 		t.Error("Expected error for empty archetype list, got nil")
+	}
+}
+
+func TestLoadArchetypes_DisabledArchetypes(t *testing.T) {
+	// Test filtering of disabled archetypes
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "disabled_archetypes.json")
+
+	configJSON := `{
+		"version": 1,
+		"archetypes": [
+			{
+				"name": "Enabled Beatdown",
+				"win_condition": "Golem",
+				"support_cards": ["Baby Dragon"],
+				"min_elixir": 3.0,
+				"max_elixir": 4.0,
+				"category": "beatdown",
+				"enabled": true
+			},
+			{
+				"name": "Disabled Cycle",
+				"win_condition": "Hog Rider",
+				"support_cards": ["Skeletons"],
+				"min_elixir": 2.5,
+				"max_elixir": 3.0,
+				"category": "cycle",
+				"enabled": false
+			}
+		]
+	}`
+
+	if err := os.WriteFile(configPath, []byte(configJSON), 0o644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	archetypes, err := LoadArchetypes(configPath)
+	if err != nil {
+		t.Fatalf("LoadArchetypes failed: %v", err)
+	}
+
+	// Should only have 1 archetype (the enabled one)
+	if len(archetypes) != 1 {
+		t.Errorf("Expected 1 enabled archetype, got %d", len(archetypes))
+	}
+
+	if archetypes[0].Name != "Enabled Beatdown" {
+		t.Errorf("Expected 'Enabled Beatdown', got '%s'", archetypes[0].Name)
+	}
+}
+
+func TestLoadArchetypes_AllDisabled(t *testing.T) {
+	// Test with all archetypes disabled
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "all_disabled.json")
+
+	configJSON := `{
+		"version": 1,
+		"archetypes": [
+			{
+				"name": "Disabled Beatdown",
+				"win_condition": "Golem",
+				"support_cards": ["Baby Dragon"],
+				"min_elixir": 3.0,
+				"max_elixir": 4.0,
+				"category": "beatdown",
+				"enabled": false
+			}
+		]
+	}`
+
+	if err := os.WriteFile(configPath, []byte(configJSON), 0o644); err != nil {
+		t.Fatalf("Failed to write test file: %v", err)
+	}
+
+	_, err := LoadArchetypes(configPath)
+	if err == nil {
+		t.Error("Expected error when all archetypes are disabled, got nil")
 	}
 }

@@ -63,14 +63,24 @@ func parseArchetypesJSON(data []byte) ([]DeckArchetypeTemplate, error) {
 		return nil, fmt.Errorf("no archetypes found in configuration")
 	}
 
-	// Validate archetypes
+	// Validate and filter archetypes
+	enabledArchetypes := make([]DeckArchetypeTemplate, 0, len(config.Archetypes))
 	for i, archetype := range config.Archetypes {
 		if err := validateArchetype(&archetype); err != nil {
 			return nil, fmt.Errorf("archetype #%d (%s) is invalid: %w", i, archetype.Name, err)
 		}
+
+		// Only include enabled archetypes (default to true if not specified for backward compatibility)
+		if archetype.Enabled {
+			enabledArchetypes = append(enabledArchetypes, archetype)
+		}
 	}
 
-	return config.Archetypes, nil
+	if len(enabledArchetypes) == 0 {
+		return nil, fmt.Errorf("no enabled archetypes found in configuration")
+	}
+
+	return enabledArchetypes, nil
 }
 
 // validateArchetype validates that an archetype has all required fields
@@ -130,6 +140,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Baby Dragon", "Night Witch", "Mega Minion", "Lumberjack", "Lightning", "Tornado"},
 			MinElixir:    3.5,
 			MaxElixir:    4.5,
+			Category:     "beatdown",
+			Enabled:      true,
 		},
 		{
 			Name:         "LavaLoon Beatdown",
@@ -137,6 +149,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Balloon", "Inferno Dragon", "Lumberjack", "Bowler", "Freeze", "Tornado"},
 			MinElixir:    3.8,
 			MaxElixir:    4.8,
+			Category:     "beatdown",
+			Enabled:      true,
 		},
 		{
 			Name:         "Giant Beatdown",
@@ -144,6 +158,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Witch", "Musketeer", "Prince", "Mega Minion", "Fireball", "Elixir Collector"},
 			MinElixir:    3.2,
 			MaxElixir:    4.2,
+			Category:     "beatdown",
+			Enabled:      true,
 		},
 		{
 			Name:         "Electro Giant Beatdown",
@@ -151,6 +167,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Little Prince", "Bowler", "Knight", "Archers", "Cannon", "Lightning", "Tornado"},
 			MinElixir:    3.8,
 			MaxElixir:    5.0,
+			Category:     "beatdown",
+			Enabled:      true,
 		},
 
 		// === Cycle Archetypes ===
@@ -160,6 +178,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Skeletons", "Cannon", "Ice Golem", "Musketeer", "Ice Spirit", "Fireball"},
 			MinElixir:    2.4,
 			MaxElixir:    3.2,
+			Category:     "cycle",
+			Enabled:      true,
 		},
 		{
 			Name:         "Royal Giant Cycle",
@@ -167,6 +187,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Fireball", "Lightning", "Cannon", "Furnace", "Royal Ghost", "Skeletons"},
 			MinElixir:    2.8,
 			MaxElixir:    3.6,
+			Category:     "cycle",
+			Enabled:      true,
 		},
 		{
 			Name:         "Miner Poison Cycle",
@@ -174,6 +196,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Poison", "Electro Wizard", "Valkyrie", "Ice Golem", "Fireball"},
 			MinElixir:    2.6,
 			MaxElixir:    3.4,
+			Category:     "cycle",
+			Enabled:      true,
 		},
 		{
 			Name:         "Miner Balloon Cycle",
@@ -181,6 +205,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Balloon", "Musketeer", "Skeletons", "Ice Golem", "Bomb Tower"},
 			MinElixir:    2.8,
 			MaxElixir:    3.6,
+			Category:     "cycle",
+			Enabled:      true,
 		},
 		{
 			Name:         "Royal Hogs Cycle",
@@ -188,6 +214,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Royal Recruits", "Flying Machine", "Goblin Cage", "Fireball", "Arrows"},
 			MinElixir:    2.8,
 			MaxElixir:    3.6,
+			Category:     "cycle",
+			Enabled:      true,
 		},
 
 		// === Siege Archetypes ===
@@ -197,6 +225,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Tesla", "Archers", "Knight", "Skeletons", "Electro Spirit", "Fireball"},
 			MinElixir:    2.8,
 			MaxElixir:    3.6,
+			Category:     "siege",
+			Enabled:      true,
 		},
 		{
 			Name:         "Mortar Siege",
@@ -204,6 +234,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Skeleton Barrel", "Cannon Cart", "Royal Chef", "Knight", "Arrows"},
 			MinElixir:    2.6,
 			MaxElixir:    3.4,
+			Category:     "siege",
+			Enabled:      true,
 		},
 
 		// === Bridge Spam Archetypes ===
@@ -213,6 +245,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Battle Ram", "Bandit", "Royal Ghost", "Electro Wizard", "Minions", "Poison"},
 			MinElixir:    3.0,
 			MaxElixir:    4.0,
+			Category:     "bridge_spam",
+			Enabled:      true,
 		},
 		{
 			Name:         "Mega Knight Bridge Spam",
@@ -220,6 +254,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Wall Breakers", "Archer Queen", "Prince", "Bandit", "Goblin Gang"},
 			MinElixir:    3.2,
 			MaxElixir:    4.2,
+			Category:     "bridge_spam",
+			Enabled:      true,
 		},
 		{
 			Name:         "Royal Ghost Bridge Spam",
@@ -227,6 +263,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Battle Ram", "Ice Golem", "Night Witch", "Inferno Dragon", "Guards"},
 			MinElixir:    2.8,
 			MaxElixir:    3.8,
+			Category:     "bridge_spam",
+			Enabled:      true,
 		},
 
 		// === Bait Archetypes ===
@@ -236,6 +274,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Knight", "Princess", "Goblin Gang", "Ice Spirit", "Inferno Tower", "Rocket"},
 			MinElixir:    2.6,
 			MaxElixir:    3.4,
+			Category:     "bait",
+			Enabled:      true,
 		},
 		{
 			Name:         "Evo Dart Goblin Bait",
@@ -243,6 +283,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Dart Goblin", "Knight", "Princess", "Goblin Gang", "Ice Spirit", "Cannon"},
 			MinElixir:    2.4,
 			MaxElixir:    3.2,
+			Category:     "bait",
+			Enabled:      true,
 		},
 		{
 			Name:         "Evo Recruits Barrel Bait",
@@ -250,6 +292,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Royal Recruits", "Goblinstein", "Cannon Cart", "Dart Goblin", "Goblin Gang"},
 			MinElixir:    2.8,
 			MaxElixir:    3.6,
+			Category:     "bait",
+			Enabled:      true,
 		},
 
 		// === Control/Graveyard Archetypes ===
@@ -259,6 +303,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Ice Wizard", "Baby Dragon", "Bomb Tower", "Poison", "Tornado", "Knight"},
 			MinElixir:    3.0,
 			MaxElixir:    4.0,
+			Category:     "control",
+			Enabled:      true,
 		},
 		{
 			Name:         "Splashyard",
@@ -266,6 +312,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Knight", "Ice Wizard", "Baby Dragon", "Bomb Tower", "Poison", "Tornado"},
 			MinElixir:    2.8,
 			MaxElixir:    3.8,
+			Category:     "control",
+			Enabled:      true,
 		},
 		{
 			Name:         "Evo Witch Giant Graveyard",
@@ -273,6 +321,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Graveyard", "Witch", "Giant Snowball", "Bowler", "Minions", "Guards"},
 			MinElixir:    3.2,
 			MaxElixir:    4.2,
+			Category:     "control",
+			Enabled:      true,
 		},
 
 		// === Three Musketeers Archetypes ===
@@ -282,6 +332,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Battle Ram", "Royal Ghost", "Bandit", "Ice Golem", "Elixir Collector"},
 			MinElixir:    3.2,
 			MaxElixir:    4.2,
+			Category:     "beatdown",
+			Enabled:      true,
 		},
 		{
 			Name:         "Giant Muskets",
@@ -289,6 +341,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Three Musketeers", "Bats", "Battle Ram", "Minion Horde", "Elixir Collector"},
 			MinElixir:    3.5,
 			MaxElixir:    4.5,
+			Category:     "beatdown",
+			Enabled:      true,
 		},
 
 		// === Goblin Drill Archetypes ===
@@ -298,6 +352,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Valkyrie", "Skeletons", "Magic Archer", "Spear Goblins", "Bomb Tower", "Tornado"},
 			MinElixir:    2.8,
 			MaxElixir:    3.6,
+			Category:     "cycle",
+			Enabled:      true,
 		},
 
 		// === Skeleton King Archetypes ===
@@ -307,6 +363,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Skeleton King", "Miner", "Bats", "Cannon Cart", "Goblin Gang"},
 			MinElixir:    2.8,
 			MaxElixir:    3.6,
+			Category:     "siege",
+			Enabled:      true,
 		},
 		{
 			Name:         "Evo Royal Giant Archers Skeleton King",
@@ -314,6 +372,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Skeleton King", "Archers", "Fisherman", "Mother Witch", "Tombstone"},
 			MinElixir:    2.8,
 			MaxElixir:    3.8,
+			Category:     "cycle",
+			Enabled:      true,
 		},
 
 		// === Double Dragon Archetypes ===
@@ -323,6 +383,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Electro Dragon", "Inferno Dragon", "Lumberjack", "Bowler", "Freeze", "Tornado"},
 			MinElixir:    3.5,
 			MaxElixir:    4.5,
+			Category:     "beatdown",
+			Enabled:      true,
 		},
 
 		// === Ram Rider Archetypes ===
@@ -332,6 +394,8 @@ func defaultEmbeddedArchetypes() []DeckArchetypeTemplate {
 			SupportCards: []string{"Golden Knight", "Royal Recruits", "Zappies", "Flying Machine", "Goblin Cage"},
 			MinElixir:    2.8,
 			MaxElixir:    3.8,
+			Category:     "cycle",
+			Enabled:      true,
 		},
 	}
 }
