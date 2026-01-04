@@ -15,6 +15,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/budget"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
+	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/klauer/clash-royale-api/go/pkg/recommend"
 	"github.com/urfave/cli/v3"
@@ -1675,10 +1676,11 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	deckString := cmd.String("deck")
 	_ = cmd.String("tag") // TODO: Use for player context in future tasks
 	fromAnalysis := cmd.String("from-analysis")
-	arena := cmd.Int("arena")
+	_ = cmd.Int("arena") // TODO: Use for arena-specific analysis in future tasks
 	format := cmd.String("format")
-	output := cmd.String("output")
+	outputFile := cmd.String("output")
 	verbose := cmd.Bool("verbose")
+	_ = cmd.String("data-dir") // TODO: Use for loading card database in future
 
 	// Validation: Must provide either --deck or --from-analysis
 	if deckString == "" && fromAnalysis == "" {
@@ -1690,12 +1692,12 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Parse deck cards
-	var deckCards []string
+	var deckCardNames []string
 	if deckString != "" {
 		// Parse deck string (cards separated by dashes)
-		deckCards = parseDeckString(deckString)
-		if len(deckCards) != 8 {
-			return fmt.Errorf("deck must contain exactly 8 cards, got %d", len(deckCards))
+		deckCardNames = parseDeckString(deckString)
+		if len(deckCardNames) != 8 {
+			return fmt.Errorf("deck must contain exactly 8 cards, got %d", len(deckCardNames))
 		}
 	} else {
 		// Load deck from analysis file
@@ -1703,28 +1705,193 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 		if err != nil {
 			return fmt.Errorf("failed to load deck from analysis: %w", err)
 		}
-		deckCards = loadedCards
+		deckCardNames = loadedCards
 	}
 
 	if verbose {
-		fmt.Printf("Evaluating deck: %v\n", deckCards)
-		if arena > 0 {
-			fmt.Printf("Arena level: %d\n", arena)
-		}
+		fmt.Printf("Evaluating deck: %v\n", deckCardNames)
+		fmt.Printf("Output format: %s\n", format)
 	}
 
-	// TODO: Integrate with evaluation engine
-	// For now, just display the parsed deck
-	fmt.Printf("\nDeck Evaluation:\n")
-	fmt.Printf("================\n")
-	fmt.Printf("Cards: %s\n", strings.Join(deckCards, ", "))
-	fmt.Printf("Format: %s\n", format)
-	if output != "" {
-		fmt.Printf("Output file: %s\n", output)
+	// Convert card names to CardCandidates with default card data
+	deckCards := convertToCardCandidates(deckCardNames)
+
+	// Create synergy database
+	synergyDB := deck.NewSynergyDatabase()
+
+	// Evaluate the deck
+	result := evaluation.Evaluate(deckCards, synergyDB)
+
+	// Format output based on requested format
+	var formattedOutput string
+	switch strings.ToLower(format) {
+	case "human":
+		formattedOutput = evaluation.FormatHuman(&result)
+	case "json":
+		// TODO: Implement JSON formatter (Task 2.3)
+		return fmt.Errorf("JSON format not yet implemented (Task 2.3)")
+	case "csv":
+		// TODO: Implement CSV formatter (Task 2.3)
+		return fmt.Errorf("CSV format not yet implemented (Task 2.3)")
+	case "detailed":
+		// TODO: Implement detailed formatter (Task 2.3)
+		return fmt.Errorf("detailed format not yet implemented (Task 2.3)")
+	default:
+		return fmt.Errorf("unknown format: %s (supported: human, json, csv, detailed)", format)
 	}
-	fmt.Printf("\nNote: Full evaluation implementation pending (Task 2.2-2.4)\n")
+
+	// Output to file or stdout
+	if outputFile != "" {
+		if err := os.WriteFile(outputFile, []byte(formattedOutput), 0o644); err != nil {
+			return fmt.Errorf("failed to write output file: %w", err)
+		}
+		if verbose {
+			fmt.Printf("Evaluation saved to: %s\n", outputFile)
+		}
+	} else {
+		fmt.Print(formattedOutput)
+	}
 
 	return nil
+}
+
+// convertToCardCandidates converts card names to CardCandidate structs with inferred data
+// For evaluation purposes, we create cards with reasonable defaults based on card names
+func convertToCardCandidates(cardNames []string) []deck.CardCandidate {
+	deckCards := make([]deck.CardCandidate, 0, len(cardNames))
+
+	for _, name := range cardNames {
+		// Create a CardCandidate with inferred properties
+		candidate := deck.CardCandidate{
+			Name:     name,
+			Level:    11,    // Default level
+			MaxLevel: 15,    // Default max level
+			Rarity:   inferRarity(name),
+			Elixir:   inferElixir(name),
+			Role:     inferRole(name),
+			Stats:    inferStats(name),
+		}
+		deckCards = append(deckCards, candidate)
+	}
+
+	return deckCards
+}
+
+// inferRarity infers card rarity from card name
+func inferRarity(name string) string {
+	// This is a simplified version - in reality, you'd look this up from a database
+	// For now, we'll use common as default
+	return "Common"
+}
+
+// inferElixir infers elixir cost from card name
+func inferElixir(name string) int {
+	// Simplified elixir inference based on common knowledge
+	lowercaseName := strings.ToLower(name)
+
+	// High cost cards (6+ elixir)
+	if strings.Contains(lowercaseName, "golem") ||
+		strings.Contains(lowercaseName, "mega knight") ||
+		strings.Contains(lowercaseName, "pekka") ||
+		strings.Contains(lowercaseName, "three musketeers") {
+		return 7
+	}
+
+	// Medium-high cost cards (5 elixir)
+	if strings.Contains(lowercaseName, "giant") ||
+		strings.Contains(lowercaseName, "balloon") ||
+		strings.Contains(lowercaseName, "prince") ||
+		strings.Contains(lowercaseName, "wizard") {
+		return 5
+	}
+
+	// Medium cost cards (4 elixir)
+	if strings.Contains(lowercaseName, "hog") ||
+		strings.Contains(lowercaseName, "valkyrie") ||
+		strings.Contains(lowercaseName, "mini pekka") ||
+		strings.Contains(lowercaseName, "fireball") {
+		return 4
+	}
+
+	// Low-medium cost cards (3 elixir)
+	if strings.Contains(lowercaseName, "knight") ||
+		strings.Contains(lowercaseName, "miner") ||
+		strings.Contains(lowercaseName, "goblin gang") ||
+		strings.Contains(lowercaseName, "tesla") {
+		return 3
+	}
+
+	// Low cost cards (2 elixir)
+	if strings.Contains(lowercaseName, "skeletons") ||
+		strings.Contains(lowercaseName, "ice spirit") ||
+		strings.Contains(lowercaseName, "bats") ||
+		strings.Contains(lowercaseName, "log") {
+		return 2
+	}
+
+	// Very low cost cards (1 elixir)
+	if strings.Contains(lowercaseName, "skeleton") && !strings.Contains(lowercaseName, "s") {
+		return 1
+	}
+
+	// Default to 3 elixir if unknown
+	return 3
+}
+
+// inferRole infers card role from card name
+func inferRole(name string) *deck.CardRole {
+	lowercaseName := strings.ToLower(name)
+
+	// Win conditions
+	if strings.Contains(lowercaseName, "hog") ||
+		strings.Contains(lowercaseName, "balloon") ||
+		strings.Contains(lowercaseName, "giant") ||
+		strings.Contains(lowercaseName, "golem") ||
+		strings.Contains(lowercaseName, "graveyard") {
+		role := deck.RoleWinCondition
+		return &role
+	}
+
+	// Spells (big)
+	if strings.Contains(lowercaseName, "fireball") ||
+		strings.Contains(lowercaseName, "lightning") ||
+		strings.Contains(lowercaseName, "rocket") {
+		role := deck.RoleSpellBig
+		return &role
+	}
+
+	// Buildings
+	if strings.Contains(lowercaseName, "tesla") ||
+		strings.Contains(lowercaseName, "cannon") ||
+		strings.Contains(lowercaseName, "inferno tower") {
+		role := deck.RoleBuilding
+		return &role
+	}
+
+	// Support troops
+	if strings.Contains(lowercaseName, "wizard") ||
+		strings.Contains(lowercaseName, "witch") ||
+		strings.Contains(lowercaseName, "musketeer") {
+		role := deck.RoleSupport
+		return &role
+	}
+
+	// Default to support
+	role := deck.RoleSupport
+	return &role
+}
+
+// inferStats infers basic combat stats from card name
+func inferStats(name string) *clashroyale.CombatStats {
+	// For evaluation purposes, we use simplified stats
+	// In a full implementation, this would come from the API
+	return &clashroyale.CombatStats{
+		Targets:          "Air & Ground", // Default to versatile
+		DamagePerSecond:  100,            // Default DPS
+		Hitpoints:        1000,           // Default HP
+		HitSpeed:         1.5,            // Default hit speed
+		Range:            5.0,            // Default range
+	}
 }
 
 // parseDeckString parses a deck string into individual card names
