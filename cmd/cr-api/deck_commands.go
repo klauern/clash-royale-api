@@ -1724,18 +1724,19 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Format output based on requested format
 	var formattedOutput string
+	var err error
 	switch strings.ToLower(format) {
 	case "human":
 		formattedOutput = evaluation.FormatHuman(&result)
 	case "json":
-		// TODO: Implement JSON formatter (Task 2.3)
-		return fmt.Errorf("JSON format not yet implemented (Task 2.3)")
+		formattedOutput, err = evaluation.FormatJSON(&result)
+		if err != nil {
+			return fmt.Errorf("failed to format JSON: %w", err)
+		}
 	case "csv":
-		// TODO: Implement CSV formatter (Task 2.3)
-		return fmt.Errorf("CSV format not yet implemented (Task 2.3)")
+		formattedOutput = evaluation.FormatCSV(&result)
 	case "detailed":
-		// TODO: Implement detailed formatter (Task 2.3)
-		return fmt.Errorf("detailed format not yet implemented (Task 2.3)")
+		formattedOutput = evaluation.FormatDetailed(&result)
 	default:
 		return fmt.Errorf("unknown format: %s (supported: human, json, csv, detailed)", format)
 	}

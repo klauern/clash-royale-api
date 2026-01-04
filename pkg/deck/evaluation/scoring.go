@@ -344,7 +344,7 @@ func ScoreF2P(deckCards []deck.CardCandidate) CategoryScore {
 
 // Assessment text generators
 
-func generateAttackAssessment(winConditions int, spellDamage float64, score float64) string {
+func generateAttackAssessment(winConditions int, spellDamage, score float64) string {
 	if score >= 8.0 {
 		return "Excellent offensive potential with strong win conditions"
 	} else if score >= 6.0 {

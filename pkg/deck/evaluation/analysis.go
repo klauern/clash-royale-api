@@ -479,7 +479,7 @@ func BuildBaitAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 }
 
 // calculateCycleScore computes cycle efficiency (0-10)
-func calculateCycleScore(avgElixir float64, lowCostCount int, shortestCycle int) float64 {
+func calculateCycleScore(avgElixir float64, lowCostCount, shortestCycle int) float64 {
 	// Cycle speed score (40%)
 	cycleSpeedScore := 0.0
 	if avgElixir < 3.0 {
