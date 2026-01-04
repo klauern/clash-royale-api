@@ -17,6 +17,8 @@ func FormatHuman(result *EvaluationResult) string {
 	output.WriteString(formatSynergyMatrix(result))
 	output.WriteString(formatCounterAnalysis(result))
 	output.WriteString(formatRecommendations(result))
+	output.WriteString(formatAlternativeSuggestions(result))
+	output.WriteString(formatMissingCards(result))
 	output.WriteString(formatCopyDeckLink(result))
 	output.WriteString(formatFooter(result))
 
@@ -381,6 +383,14 @@ func formatCopyDeckLink(result *EvaluationResult) string {
 	link.WriteString("                          SHARE DECK\n")
 	link.WriteString("═══════════════════════════════════════════════════════════════════════\n\n")
 
+	// Generate official Clash Royale copy-deck link
+	deckLink := GenerateDeckLink(result.Deck)
+	if deckLink.Valid {
+		link.WriteString(fmt.Sprintf("📋 Copy Deck to Game:\n   %s\n\n", deckLink.URL))
+	} else {
+		link.WriteString(fmt.Sprintf("⚠️  Copy Deck Link: Unable to generate (%s)\n\n", deckLink.Error))
+	}
+
 	// Generate RoyaleAPI deck link format
 	// Format: https://royaleapi.com/decks/stats/card1,card2,card3,card4,card5,card6,card7,card8
 	deckString := strings.Join(result.Deck, ",")
@@ -400,6 +410,82 @@ func formatCopyDeckLink(result *EvaluationResult) string {
 	link.WriteString(fmt.Sprintf("🔗 DeckShop.pro Link:\n   %s\n\n", deckshopURL))
 
 	return link.String()
+}
+
+// formatAlternativeSuggestions formats alternative deck suggestions
+func formatAlternativeSuggestions(result *EvaluationResult) string {
+	if result.AlternativeSuggestions == nil || len(result.AlternativeSuggestions.Suggestions) == 0 {
+		return ""
+	}
+
+	var alts strings.Builder
+
+	alts.WriteString("═══════════════════════════════════════════════════════════════════════\n")
+	alts.WriteString("                    ALTERNATIVE DECK SUGGESTIONS\n")
+	alts.WriteString("═══════════════════════════════════════════════════════════════════════\n\n")
+
+	alts.WriteString(fmt.Sprintf("Current Deck Score: %.1f/10\n\n", result.AlternativeSuggestions.OriginalScore))
+
+	for i, suggestion := range result.AlternativeSuggestions.Suggestions {
+		if i >= 5 {
+			break // Show max 5 suggestions
+		}
+
+		alts.WriteString(fmt.Sprintf("💡 Alternative #%d: %s\n", i+1, suggestion.Impact))
+		alts.WriteString(fmt.Sprintf("   Replace: %s → %s\n", suggestion.OriginalCard, suggestion.ReplacementCard))
+		alts.WriteString(fmt.Sprintf("   Score:   %.1f → %.1f (+%.1f)\n", suggestion.OriginalScore, suggestion.NewScore, suggestion.ScoreDelta))
+		alts.WriteString(fmt.Sprintf("   Why:     %s\n\n", suggestion.Rationale))
+	}
+
+	return alts.String()
+}
+
+// formatMissingCards formats missing cards analysis
+func formatMissingCards(result *EvaluationResult) string {
+	if result.MissingCardsAnalysis == nil {
+		return ""
+	}
+
+	analysis := result.MissingCardsAnalysis
+
+	// If deck is playable, show a success message
+	if analysis.IsPlayable {
+		var playable strings.Builder
+		playable.WriteString("═══════════════════════════════════════════════════════════════════════\n")
+		playable.WriteString("                       CARD AVAILABILITY\n")
+		playable.WriteString("═══════════════════════════════════════════════════════════════════════\n\n")
+		playable.WriteString("✅ All cards in this deck are available in your collection!\n\n")
+		return playable.String()
+	}
+
+	var missing strings.Builder
+
+	missing.WriteString("═══════════════════════════════════════════════════════════════════════\n")
+	missing.WriteString("                       MISSING CARDS ANALYSIS\n")
+	missing.WriteString("═══════════════════════════════════════════════════════════════════════\n\n")
+
+	missing.WriteString(fmt.Sprintf("Deck Status: %d/%d cards available\n\n", analysis.AvailableCount, len(analysis.Deck)))
+
+	for i, card := range analysis.MissingCards {
+		missing.WriteString(fmt.Sprintf("❌ %d. %s (%s)\n", i+1, card.Name, card.Rarity))
+		missing.WriteString(fmt.Sprintf("   Unlocks: %s (Arena %d)\n", card.UnlockArenaName, card.UnlockArena))
+
+		if card.IsLocked {
+			missing.WriteString(fmt.Sprintf("   Status:  🔒 LOCKED - Progress to Arena %d to unlock\n", card.UnlockArena))
+		} else {
+			missing.WriteString("   Status:  ✓ Unlocked - Available in chests and shop\n")
+		}
+
+		if len(card.AlternativeCards) > 0 {
+			missing.WriteString(fmt.Sprintf("   Alternatives: %s\n", strings.Join(card.AlternativeCards, ", ")))
+		} else {
+			missing.WriteString("   Alternatives: None found in your collection\n")
+		}
+
+		missing.WriteString("\n")
+	}
+
+	return missing.String()
 }
 
 // formatFooter creates the footer with performance metrics and version info
