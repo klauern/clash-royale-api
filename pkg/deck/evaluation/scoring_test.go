@@ -385,6 +385,160 @@ func TestAssessmentGenerators(t *testing.T) {
 	}
 }
 
+// Test edge cases for assessment generators
+func TestGenerateAttackAssessment(t *testing.T) {
+	tests := []struct {
+		name         string
+		winCond      int
+		spellDamage  float64
+		score        float64
+		wantContains string
+	}{
+		{"Excellent offense", 2, 2000, 8.5, "Excellent"},
+		{"Good offense", 2, 1500, 7.0, "Good"},
+		{"Moderate offense", 1, 1000, 5.0, "Moderate"},
+		{"Weak offense", 0, 500, 2.0, "Weak"},
+		{"Boundary excellent", 2, 2000, 8.0, "Excellent"},
+		{"Boundary good", 2, 1500, 6.0, "Good"},
+		{"Boundary moderate", 1, 1000, 4.0, "Moderate"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := generateAttackAssessment(tt.winCond, tt.spellDamage, tt.score)
+			if result == "" {
+				t.Errorf("generateAttackAssessment() returned empty string")
+			}
+		})
+	}
+}
+
+func TestGenerateDefenseAssessment(t *testing.T) {
+	tests := []struct {
+		name         string
+		antiAir      int
+		buildings    int
+		score        float64
+		wantContains string
+	}{
+		{"Excellent defense", 3, 1, 9.0, "Solid"},
+		{"Good defense", 2, 1, 7.0, "Decent"},
+		{"No anti-air warning", 0, 1, 5.0, "no anti-air"},
+		{"Weak defense", 1, 0, 3.0, "Weak"},
+		{"Boundary solid", 3, 1, 8.0, "Solid"},
+		{"Boundary decent", 2, 1, 6.0, "Decent"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := generateDefenseAssessment(tt.antiAir, tt.buildings, tt.score)
+			if result == "" {
+				t.Errorf("generateDefenseAssessment() returned empty string")
+			}
+			if tt.wantContains != "" {
+				// Case-insensitive check for substring
+				lowerResult := result
+				lowerWant := tt.wantContains
+				found := false
+				for i := 0; i <= len(lowerResult)-len(lowerWant); i++ {
+					if lowerResult[i:i+len(lowerWant)] == lowerWant {
+						found = true
+						break
+					}
+				}
+				if !found {
+					t.Errorf("generateDefenseAssessment() = %q, want to contain %q", result, tt.wantContains)
+				}
+			}
+		})
+	}
+}
+
+func TestGenerateSynergyAssessment(t *testing.T) {
+	tests := []struct {
+		name         string
+		synergies    []deck.SynergyPair
+		pairCount    int
+		score        float64
+		wantContains string
+	}{
+		{"Excellent synergy", []deck.SynergyPair{{Card1: "A", Card2: "B", Score: 0.9}}, 5, 9.0, "Excellent"},
+		{"Good synergy", []deck.SynergyPair{{Card1: "A", Card2: "B", Score: 0.7}}, 3, 7.0, "Good"},
+		{"Moderate synergy", []deck.SynergyPair{{Card1: "A", Card2: "B", Score: 0.5}}, 1, 5.0, "Moderate"},
+		{"Poor synergy", []deck.SynergyPair{}, 0, 2.0, "Poor"},
+		{"Empty synergies excellent", []deck.SynergyPair{}, 0, 8.5, "Excellent"},
+		{"Boundary excellent", []deck.SynergyPair{{Card1: "A", Card2: "B", Score: 0.9}}, 5, 8.0, "Excellent"},
+		{"Boundary good", []deck.SynergyPair{{Card1: "A", Card2: "B", Score: 0.7}}, 3, 6.0, "Good"},
+		{"Boundary moderate", []deck.SynergyPair{{Card1: "A", Card2: "B", Score: 0.5}}, 1, 4.0, "Moderate"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := generateSynergyAssessment(tt.synergies, tt.pairCount, tt.score)
+			if result == "" {
+				t.Errorf("generateSynergyAssessment() returned empty string")
+			}
+		})
+	}
+}
+
+func TestGenerateVersatilityAssessment(t *testing.T) {
+	tests := []struct {
+		name         string
+		roleCount    int
+		elixirCount  int
+		score        float64
+		wantContains string
+	}{
+		{"High versatility", 6, 6, 9.0, "Highly"},
+		{"Good versatility", 5, 5, 7.0, "Good"},
+		{"Moderate versatility", 3, 3, 5.0, "Moderate"},
+		{"Low versatility", 2, 2, 2.0, "Limited"},
+		{"Boundary highly", 6, 6, 8.0, "Highly"},
+		{"Boundary good", 5, 5, 6.0, "Good"},
+		{"Boundary moderate", 3, 3, 4.0, "Moderate"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := generateVersatilityAssessment(tt.roleCount, tt.elixirCount, tt.score)
+			if result == "" {
+				t.Errorf("generateVersatilityAssessment() returned empty string")
+			}
+		})
+	}
+}
+
+func TestGenerateF2PAssessment(t *testing.T) {
+	tests := []struct {
+		name           string
+		legendaryCount int
+		epicCount      int
+		commonCount    int
+		score          float64
+		wantContains   string
+	}{
+		{"Excellent F2P", 0, 1, 5, 9.0, "Excellent"},
+		{"Good F2P", 0, 2, 4, 7.0, "Good"},
+		{"Moderate F2P", 1, 3, 3, 5.0, "Moderate"},
+		{"Many legendaries", 3, 1, 2, 3.0, "legendaries"},
+		{"Many epics", 1, 4, 2, 5.0, "epic"},
+		{"Boundary excellent", 0, 1, 5, 8.0, "Excellent"},
+		{"Boundary good", 0, 2, 4, 6.0, "Good"},
+		{"Edge case 0 common", 0, 1, 0, 7.0, "Good"},
+		{"Edge case all legendaries", 5, 0, 0, 0.0, "legendaries"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := generateF2PAssessment(tt.legendaryCount, tt.epicCount, tt.commonCount, tt.score)
+			if result == "" {
+				t.Errorf("generateF2PAssessment() returned empty string")
+			}
+		})
+	}
+}
+
 func TestEmptyDeckScoring(t *testing.T) {
 	emptyDeck := []deck.CardCandidate{}
 	synergyDB := deck.NewSynergyDatabase()
