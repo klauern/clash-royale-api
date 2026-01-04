@@ -67,6 +67,8 @@ func main() {
 			addUpgradeImpactCommands(),
 			addWhatIfCommands(),
 			addOnboardCommand(),
+			addCompareCommands(),
+			addBatchCommands(),
 			{
 				Name:  "player",
 				Usage: "Get player information",
