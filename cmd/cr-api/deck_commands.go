@@ -38,7 +38,7 @@ func addDeckCommands() *cli.Command {
 					&cli.StringFlag{
 						Name:    "tag",
 						Aliases: []string{"p"},
-						Usage:   "Player tag (without #) for context",
+						Usage:   "Player tag (without #) for card level context and upgrade impact analysis",
 					},
 					&cli.StringFlag{
 						Name:  "from-analysis",
@@ -57,6 +57,15 @@ func addDeckCommands() *cli.Command {
 					&cli.StringFlag{
 						Name:  "output",
 						Usage: "Output file path (optional, prints to stdout if not specified)",
+					},
+					&cli.BoolFlag{
+						Name:  "show-upgrade-impact",
+						Usage: "Show upgrade impact analysis and recommendations (requires --tag)",
+					},
+					&cli.IntFlag{
+						Name:  "top-upgrades",
+						Value: 5,
+						Usage: "Number of top upgrades to show in upgrade impact analysis",
 					},
 				},
 				Action: deckEvaluateCommand,
@@ -1674,13 +1683,16 @@ func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 // deckEvaluateCommand evaluates a deck with comprehensive analysis and scoring
 func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	deckString := cmd.String("deck")
-	_ = cmd.String("tag") // TODO: Use for player context in future tasks
+	playerTag := cmd.String("tag")
 	fromAnalysis := cmd.String("from-analysis")
 	_ = cmd.Int("arena") // TODO: Use for arena-specific analysis in future tasks
 	format := cmd.String("format")
 	outputFile := cmd.String("output")
+	showUpgradeImpact := cmd.Bool("show-upgrade-impact")
+	topUpgrades := cmd.Int("top-upgrades")
+	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
-	_ = cmd.String("data-dir") // TODO: Use for loading card database in future
+	dataDir := cmd.String("data-dir")
 
 	// Validation: Must provide either --deck or --from-analysis
 	if deckString == "" && fromAnalysis == "" {
@@ -1689,6 +1701,15 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 
 	if deckString != "" && fromAnalysis != "" {
 		return fmt.Errorf("cannot use both --deck and --from-analysis")
+	}
+
+	// Validate upgrade impact requirements
+	if showUpgradeImpact && playerTag == "" {
+		return fmt.Errorf("--show-upgrade-impact requires --tag to fetch player card levels")
+	}
+
+	if showUpgradeImpact && apiToken == "" {
+		return fmt.Errorf("--show-upgrade-impact requires API token (set CLASH_ROYALE_API_TOKEN or use --api-token)")
 	}
 
 	// Parse deck cards
@@ -1753,7 +1774,314 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 		fmt.Print(formattedOutput)
 	}
 
+	// Perform upgrade impact analysis if requested
+	if showUpgradeImpact {
+		// Only for human output format (not applicable to JSON/CSV)
+		if format == "human" || format == "detailed" {
+			if err := performDeckUpgradeImpactAnalysis(deckCardNames, playerTag, topUpgrades, apiToken, dataDir, verbose); err != nil {
+				// Log error but don't fail the entire command
+				fmt.Fprintf(os.Stderr, "\nWarning: Failed to perform upgrade impact analysis: %v\n", err)
+			}
+		} else if verbose {
+			fmt.Fprintf(os.Stderr, "\nNote: Upgrade impact analysis only available for human and detailed output formats\n")
+		}
+	}
+
 	return nil
+}
+
+// performDeckUpgradeImpactAnalysis performs upgrade impact analysis for a specific deck
+// It fetches the player's card levels and shows which deck card upgrades would have the most impact
+func performDeckUpgradeImpactAnalysis(deckCardNames []string, playerTag string, topN int, apiToken, dataDir string, verbose bool) error {
+	// Create client to fetch player data
+	client := clashroyale.NewClient(apiToken)
+
+	if verbose {
+		fmt.Printf("\nFetching player data for upgrade impact analysis...\n")
+	}
+
+	// Get player information
+	player, err := client.GetPlayer(playerTag)
+	if err != nil {
+		return fmt.Errorf("failed to get player: %w", err)
+	}
+
+	if verbose {
+		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+		fmt.Printf("Analyzing deck: %v\n", deckCardNames)
+	}
+
+	// Perform card collection analysis
+	analysisOptions := analysis.DefaultAnalysisOptions()
+	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
+	if err != nil {
+		return fmt.Errorf("failed to analyze card collection: %w", err)
+	}
+
+	// Convert analysis.CardAnalysis to deck.CardAnalysis
+	deckCardAnalysis := deck.CardAnalysis{
+		CardLevels:   make(map[string]deck.CardLevelData),
+		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+	}
+
+	for cardName, cardInfo := range cardAnalysis.CardLevels {
+		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
+			Level:             cardInfo.Level,
+			MaxLevel:          cardInfo.MaxLevel,
+			Rarity:            cardInfo.Rarity,
+			Elixir:            cardInfo.Elixir,
+			EvolutionLevel:    cardInfo.EvolutionLevel,
+			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
+		}
+	}
+
+	// Create a deck builder to build the current deck
+	builder := deck.NewBuilder(dataDir)
+
+	// Find which deck cards can be upgraded and calculate their impact
+	upgradeImpacts := calculateDeckCardUpgrades(deckCardNames, deckCardAnalysis, builder)
+
+	// Sort by impact score (highest first)
+	sortUpgradeImpactsByScore(upgradeImpacts)
+
+	// Display the upgrade impact analysis
+	displayDeckUpgradeImpactAnalysis(deckCardNames, upgradeImpacts, topN, player)
+
+	return nil
+}
+
+// DeckCardUpgrade represents a potential upgrade for a card in the deck
+type DeckCardUpgrade struct {
+	CardName       string
+	CurrentLevel   int
+	TargetLevel    int
+	MaxLevel       int
+	Rarity         string
+	ImpactScore    float64
+	GoldCost       int
+	CardsNeeded    int
+	Reason         string
+	IsKeyUpgrade   bool
+	UnlocksNewDeck bool
+}
+
+// calculateDeckCardUpgrades calculates upgrade impacts for cards in the deck
+func calculateDeckCardUpgrades(deckCardNames []string, cardAnalysis deck.CardAnalysis, builder *deck.Builder) []DeckCardUpgrade {
+	impacts := make([]DeckCardUpgrade, 0, len(deckCardNames))
+
+	for _, cardName := range deckCardNames {
+		cardData, exists := cardAnalysis.CardLevels[cardName]
+		if !exists {
+			// Player doesn't have this card
+			continue
+		}
+
+		// Skip if already at max level
+		if cardData.Level >= cardData.MaxLevel {
+			continue
+		}
+
+		// Calculate potential upgrade (typically +1 level)
+		targetLevel := cardData.Level + 1
+		if targetLevel > cardData.MaxLevel {
+			targetLevel = cardData.MaxLevel
+		}
+
+		// Calculate gold cost and cards needed for this upgrade
+		goldCost := calculateUpgradeGoldCost(cardData.Rarity, cardData.Level, targetLevel)
+		cardsNeeded := calculateUpgradeCardsNeeded(cardData.Rarity, cardData.Level, targetLevel)
+
+		// Calculate impact score (simplified - based on rarity and level gap)
+		// Higher impact for upgrading win conditions and key cards
+		baseImpact := calculateBaseImpact(cardData.Rarity, targetLevel)
+		levelGap := float64(targetLevel - cardData.Level)
+		impactScore := baseImpact * levelGap
+
+		// Determine if this is a key upgrade
+		isKeyUpgrade := cardData.Rarity == "Legendary" || cardData.Rarity == "Champion"
+
+		// Generate reason
+		reason := fmt.Sprintf("Upgrade %s from level %d to %d (%s)", cardName, cardData.Level, targetLevel, cardData.Rarity)
+
+		impacts = append(impacts, DeckCardUpgrade{
+			CardName:       cardName,
+			CurrentLevel:   cardData.Level,
+			TargetLevel:    targetLevel,
+			MaxLevel:       cardData.MaxLevel,
+			Rarity:         cardData.Rarity,
+			ImpactScore:    impactScore,
+			GoldCost:       goldCost,
+			CardsNeeded:    cardsNeeded,
+			Reason:         reason,
+			IsKeyUpgrade:   isKeyUpgrade,
+			UnlocksNewDeck: false, // TODO: Could analyze if this unlocks new archetypes
+		})
+	}
+
+	return impacts
+}
+
+// calculateBaseImpact calculates the base impact score for an upgrade
+func calculateBaseImpact(rarity string, level int) float64 {
+	// Higher rarity = higher base impact
+	// Higher level = slightly diminishing returns
+	rarityMultiplier := 1.0
+	switch rarity {
+	case "Common":
+		rarityMultiplier = 1.0
+	case "Rare":
+		rarityMultiplier = 2.0
+	case "Epic":
+		rarityMultiplier = 4.0
+	case "Legendary":
+		rarityMultiplier = 8.0
+	case "Champion":
+		rarityMultiplier = 10.0
+	}
+
+	// Slight diminishing returns at higher levels
+	levelModifier := 1.0
+	if level > 13 {
+		levelModifier = 0.8
+	} else if level > 11 {
+		levelModifier = 0.9
+	}
+
+	return 10.0 * rarityMultiplier * levelModifier
+}
+
+// calculateUpgradeGoldCost estimates the gold cost for an upgrade
+// This is a simplified calculation - actual costs vary by specific card
+func calculateUpgradeGoldCost(rarity string, fromLevel, toLevel int) int {
+	// Simplified gold cost calculation
+	baseCost := 0
+	switch rarity {
+	case "Common":
+		baseCost = 100
+	case "Rare":
+		baseCost = 400
+	case "Epic":
+		baseCost = 1000
+	case "Legendary":
+		baseCost = 4000
+	case "Champion":
+		baseCost = 5000
+	}
+
+	// Cost increases with level
+	levelMultiplier := 1 << uint(fromLevel-1) // Doubles each level
+	return baseCost * levelMultiplier * (toLevel - fromLevel)
+}
+
+// calculateUpgradeCardsNeeded estimates the number of cards needed for an upgrade
+func calculateUpgradeCardsNeeded(rarity string, fromLevel, toLevel int) int {
+	// Simplified card cost calculation
+	baseCards := 2
+	switch rarity {
+	case "Common":
+		baseCards = 2
+	case "Rare":
+		baseCards = 2
+	case "Epic":
+		baseCards = 2
+	case "Legendary":
+		baseCards = 1
+	case "Champion":
+		baseCards = 1
+	}
+
+	// Cards needed increase with level
+	levelMultiplier := 1 << uint(fromLevel-1) // Doubles each level
+	return baseCards * levelMultiplier * (toLevel - fromLevel)
+}
+
+// sortUpgradeImpactsByScore sorts upgrade impacts by score (highest first)
+func sortUpgradeImpactsByScore(impacts []DeckCardUpgrade) {
+	// Simple bubble sort (for small lists)
+	n := len(impacts)
+	for i := 0; i < n-1; i++ {
+		for j := 0; j < n-i-1; j++ {
+			if impacts[j].ImpactScore < impacts[j+1].ImpactScore {
+				impacts[j], impacts[j+1] = impacts[j+1], impacts[j]
+			}
+		}
+	}
+}
+
+// displayDeckUpgradeImpactAnalysis displays the upgrade impact analysis for deck cards
+func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCardUpgrade, topN int, player *clashroyale.Player) {
+	fmt.Printf("\n")
+	fmt.Printf("╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║                    UPGRADE IMPACT ANALYSIS                          ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+	fmt.Printf("Deck: %v\n\n", deckCardNames)
+
+	if len(impacts) == 0 {
+		fmt.Printf("✨ All deck cards are already at max level!\n")
+		return
+	}
+
+	// Limit to top N
+	displayCount := topN
+	if displayCount > len(impacts) {
+		displayCount = len(impacts)
+	}
+
+	// Calculate total costs
+	totalGold := 0
+	totalCards := 0
+	for i := 0; i < displayCount; i++ {
+		totalGold += impacts[i].GoldCost
+		totalCards += impacts[i].CardsNeeded
+	}
+
+	fmt.Printf("Summary:\n")
+	fmt.Printf("════════\n")
+	fmt.Printf("Upgradable Cards: %d\n", len(impacts))
+	fmt.Printf("Top %d Upgrades: %d gold total\n\n", displayCount, totalGold)
+
+	fmt.Printf("Most Impactful Upgrades:\n")
+	fmt.Printf("════════════════════════\n")
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fmt.Fprintf(w, "#\tCard\tLevel\t\tRarity\t\tImpact\tGold\t\tCards\n")
+	fmt.Fprintf(w, "─\t────\t─────\t\t──────\t\t──────\t────\t\t─────\n")
+
+	for i := 0; i < displayCount; i++ {
+		upgrade := impacts[i]
+		keyMarker := ""
+		if upgrade.IsKeyUpgrade {
+			keyMarker = " ⭐"
+		}
+
+		goldDisplay := formatGoldCost(upgrade.GoldCost)
+		fmt.Fprintf(w, "%d\t%s%s\t%d->%d\t\t%s\t\t%.1f\t%s\t\t%d\n",
+			i+1,
+			upgrade.CardName,
+			keyMarker,
+			upgrade.CurrentLevel,
+			upgrade.TargetLevel,
+			upgrade.Rarity,
+			upgrade.ImpactScore,
+			goldDisplay,
+			upgrade.CardsNeeded,
+		)
+	}
+	w.Flush()
+
+	fmt.Printf("\n")
+	fmt.Printf("💡 Tip: Focus on upgrading cards with the highest impact score first.\n")
+	fmt.Printf("   Win conditions and Legendary/Champion cards typically provide the best ROI.\n")
+}
+
+// formatGoldCost formats a gold cost for display
+func formatGoldCost(gold int) string {
+	if gold >= 1000 {
+		return fmt.Sprintf("%dk", gold/1000)
+	}
+	return fmt.Sprintf("%d", gold)
 }
 
 // convertToCardCandidates converts card names to CardCandidate structs with inferred data
