@@ -134,9 +134,9 @@ type EvaluationResult struct {
 	SynergyMatrix SynergyMatrix `json:"synergy_matrix,omitempty"`
 
 	// Optional features (Task 2.4)
-	DeckLink              *DeckLink                 `json:"deck_link,omitempty"`
-	AlternativeSuggestions *AlternativeSuggestions  `json:"alternative_suggestions,omitempty"`
-	MissingCardsAnalysis  *MissingCardsAnalysis    `json:"missing_cards_analysis,omitempty"`
+	DeckLink               *DeckLink               `json:"deck_link,omitempty"`
+	AlternativeSuggestions *AlternativeSuggestions `json:"alternative_suggestions,omitempty"`
+	MissingCardsAnalysis   *MissingCardsAnalysis   `json:"missing_cards_analysis,omitempty"`
 }
 
 // AnalysisSection represents detailed analysis for a specific aspect
