@@ -213,13 +213,26 @@ func GenerateDeckLink(cardNames []string) *DeckLink {
 }
 
 // findCardIDCaseInsensitive searches for a card ID with case-insensitive matching
+// Also handles partial matches (e.g., "Log" matches "The Log")
 func findCardIDCaseInsensitive(cardName string) (string, bool) {
 	lowerName := strings.ToLower(cardName)
+
+	// First try exact case-insensitive match
 	for name, id := range cardIDMap {
 		if strings.ToLower(name) == lowerName {
 			return id, true
 		}
 	}
+
+	// Try partial match (e.g., "Log" should match "The Log")
+	for name, id := range cardIDMap {
+		lowerMapName := strings.ToLower(name)
+		// Check if the search term is contained in the full name
+		if strings.Contains(lowerMapName, lowerName) {
+			return id, true
+		}
+	}
+
 	return "", false
 }
 
