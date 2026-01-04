@@ -27,6 +27,40 @@ func addDeckCommands() *cli.Command {
 		Usage: "Deck building and analysis commands",
 		Commands: []*cli.Command{
 			{
+				Name:  "evaluate",
+				Usage: "Evaluate a deck with comprehensive analysis and scoring",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "deck",
+						Usage: "Deck string (8 cards separated by dashes, e.g., Knight-Archers-Fireball-...)",
+					},
+					&cli.StringFlag{
+						Name:    "tag",
+						Aliases: []string{"p"},
+						Usage:   "Player tag (without #) for context",
+					},
+					&cli.StringFlag{
+						Name:  "from-analysis",
+						Usage: "Load deck from analysis JSON file",
+					},
+					&cli.IntFlag{
+						Name:  "arena",
+						Value: 0,
+						Usage: "Arena level for card unlock context (0 = no restriction)",
+					},
+					&cli.StringFlag{
+						Name:  "format",
+						Value: "human",
+						Usage: "Output format: human, json, csv, detailed",
+					},
+					&cli.StringFlag{
+						Name:  "output",
+						Usage: "Output file path (optional, prints to stdout if not specified)",
+					},
+				},
+				Action: deckEvaluateCommand,
+			},
+			{
 				Name:  "build",
 				Usage: "Build an optimized deck based on player's card collection",
 				Flags: []cli.Flag{
@@ -1634,4 +1668,123 @@ func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 
 	fmt.Printf("Budget analysis saved to: %s\n", filename)
 	return nil
+}
+
+// deckEvaluateCommand evaluates a deck with comprehensive analysis and scoring
+func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
+	deckString := cmd.String("deck")
+	_ = cmd.String("tag") // TODO: Use for player context in future tasks
+	fromAnalysis := cmd.String("from-analysis")
+	arena := cmd.Int("arena")
+	format := cmd.String("format")
+	output := cmd.String("output")
+	verbose := cmd.Bool("verbose")
+
+	// Validation: Must provide either --deck or --from-analysis
+	if deckString == "" && fromAnalysis == "" {
+		return fmt.Errorf("must provide either --deck or --from-analysis")
+	}
+
+	if deckString != "" && fromAnalysis != "" {
+		return fmt.Errorf("cannot use both --deck and --from-analysis")
+	}
+
+	// Parse deck cards
+	var deckCards []string
+	if deckString != "" {
+		// Parse deck string (cards separated by dashes)
+		deckCards = parseDeckString(deckString)
+		if len(deckCards) != 8 {
+			return fmt.Errorf("deck must contain exactly 8 cards, got %d", len(deckCards))
+		}
+	} else {
+		// Load deck from analysis file
+		loadedCards, err := loadDeckFromAnalysis(fromAnalysis)
+		if err != nil {
+			return fmt.Errorf("failed to load deck from analysis: %w", err)
+		}
+		deckCards = loadedCards
+	}
+
+	if verbose {
+		fmt.Printf("Evaluating deck: %v\n", deckCards)
+		if arena > 0 {
+			fmt.Printf("Arena level: %d\n", arena)
+		}
+	}
+
+	// TODO: Integrate with evaluation engine
+	// For now, just display the parsed deck
+	fmt.Printf("\nDeck Evaluation:\n")
+	fmt.Printf("================\n")
+	fmt.Printf("Cards: %s\n", strings.Join(deckCards, ", "))
+	fmt.Printf("Format: %s\n", format)
+	if output != "" {
+		fmt.Printf("Output file: %s\n", output)
+	}
+	fmt.Printf("\nNote: Full evaluation implementation pending (Task 2.2-2.4)\n")
+
+	return nil
+}
+
+// parseDeckString parses a deck string into individual card names
+func parseDeckString(deckStr string) []string {
+	// Split by dash and trim whitespace
+	parts := strings.Split(deckStr, "-")
+	cards := make([]string, 0, len(parts))
+
+	for _, part := range parts {
+		trimmed := strings.TrimSpace(part)
+		if trimmed != "" {
+			cards = append(cards, trimmed)
+		}
+	}
+
+	return cards
+}
+
+// loadDeckFromAnalysis loads a deck from an analysis JSON file
+func loadDeckFromAnalysis(filePath string) ([]string, error) {
+	// Read the analysis file
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read analysis file: %w", err)
+	}
+
+	// Parse JSON to extract deck cards
+	var analysisData map[string]interface{}
+	if err := json.Unmarshal(data, &analysisData); err != nil {
+		return nil, fmt.Errorf("failed to parse analysis JSON: %w", err)
+	}
+
+	// Extract deck cards from analysis
+	// Assuming the analysis file has a "current_deck" or "deck" field
+	deckField, ok := analysisData["current_deck"]
+	if !ok {
+		deckField, ok = analysisData["deck"]
+		if !ok {
+			return nil, fmt.Errorf("analysis file does not contain 'current_deck' or 'deck' field")
+		}
+	}
+
+	// Convert to string array
+	deckArray, ok := deckField.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("deck field is not an array")
+	}
+
+	cards := make([]string, 0, len(deckArray))
+	for _, card := range deckArray {
+		cardStr, ok := card.(string)
+		if !ok {
+			return nil, fmt.Errorf("deck contains non-string card")
+		}
+		cards = append(cards, cardStr)
+	}
+
+	if len(cards) != 8 {
+		return nil, fmt.Errorf("deck must contain exactly 8 cards, got %d", len(cards))
+	}
+
+	return cards, nil
 }
