@@ -1764,8 +1764,8 @@ func convertToCardCandidates(cardNames []string) []deck.CardCandidate {
 		// Create a CardCandidate with inferred properties
 		candidate := deck.CardCandidate{
 			Name:     name,
-			Level:    11,    // Default level
-			MaxLevel: 15,    // Default max level
+			Level:    11, // Default level
+			MaxLevel: 15, // Default max level
 			Rarity:   inferRarity(name),
 			Elixir:   inferElixir(name),
 			Role:     inferRole(name),
@@ -1886,11 +1886,11 @@ func inferStats(name string) *clashroyale.CombatStats {
 	// For evaluation purposes, we use simplified stats
 	// In a full implementation, this would come from the API
 	return &clashroyale.CombatStats{
-		Targets:          "Air & Ground", // Default to versatile
-		DamagePerSecond:  100,            // Default DPS
-		Hitpoints:        1000,           // Default HP
-		HitSpeed:         1.5,            // Default hit speed
-		Range:            5.0,            // Default range
+		Targets:         "Air & Ground", // Default to versatile
+		DamagePerSecond: 100,            // Default DPS
+		Hitpoints:       1000,           // Default HP
+		HitSpeed:        1.5,            // Default hit speed
+		Range:           5.0,            // Default range
 	}
 }
 
