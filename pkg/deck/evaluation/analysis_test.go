@@ -788,8 +788,8 @@ func makeCardWithTargets(name string, role deck.CardRole, level, maxLevel int, r
 
 func TestClassifyWinCondition(t *testing.T) {
 	tests := []struct {
-		name            string
-		cardName        string
+		name             string
+		cardName         string
 		expectedCategory string
 	}{
 		{"Hog Rider", "Hog Rider", "Direct Damage"},
@@ -850,8 +850,8 @@ func TestCalculateBaitScore_EdgeCases(t *testing.T) {
 		{
 			name: "Multiple shared counters",
 			baitGroups: map[string][]string{
-				"Log":  {"Goblin Gang", "Princess", "Dart Goblin"},
-				"Zap":  {"Bats", "Skeleton Army"},
+				"Log":    {"Goblin Gang", "Princess", "Dart Goblin"},
+				"Zap":    {"Bats", "Skeleton Army"},
 				"Arrows": {"Goblin Gang", "Skeleton Army"},
 			},
 			hasGoblinBarrel: true,
