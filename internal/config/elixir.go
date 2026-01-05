@@ -34,6 +34,8 @@ var fallbackElixir = map[string]int{
 	"Mortar":         4,
 	"X-Bow":          6,
 	"Royal Hogs":     5,
+	"Rune Giant":     6,
+	"Goblin Giant":   6,
 
 	// Buildings (3-6 elixir)
 	"Cannon":        3,
@@ -57,16 +59,25 @@ var fallbackElixir = map[string]int{
 	"Barbarian Barrel": 2,
 	"Freeze":           4,
 	"Log":              2,
+	"Mirror":           1,
+	"Vines":            2,
 
 	// Support (2-5 elixir)
-	"Archers":          3,
-	"Bomber":           2,
-	"Musketeer":        4,
-	"Wizard":           5,
-	"Mega Minion":      3,
-	"Valkyrie":         4,
-	"Baby Dragon":      4,
-	"Skeleton Dragons": 4,
+	"Archers":           3,
+	"Bomber":            2,
+	"Musketeer":         4,
+	"Wizard":            5,
+	"Mega Minion":       3,
+	"Valkyrie":          4,
+	"Baby Dragon":       4,
+	"Skeleton Dragons":  4,
+	"Berserker":         4,
+	"Dart Goblin":       3,
+	"Goblin Demolisher": 4,
+	"Minion Horde":      5,
+	"Phoenix":           4,
+	"Royal Ghost":       3,
+	"Skeleton Barrel":   3,
 
 	// Cycle (1-3 elixir)
 	"Knight":         3,
@@ -108,6 +119,7 @@ var roleGroups = map[CardRole][]string{
 		"P.E.K.K.A", "Mega Knight", "Electro Giant", "Royal Hogs", "Ram Rider",
 		"Wall Breakers", "Graveyard", "Sparky", "Three Musketeers",
 		"Giant Skeleton", "Elixir Golem",
+		"Rune Giant", "Goblin Giant",
 	},
 	RoleBuilding: {
 		"Cannon", "Tesla", "Inferno Tower", "Bomb Tower", "Goblin Cage",
@@ -123,6 +135,7 @@ var roleGroups = map[CardRole][]string{
 	RoleSpellSmall: {
 		"Zap", "Log", "Arrows", "Snowball", "Tornado", "Barbarian Barrel",
 		"Giant Snowball", "Heal Spirit",
+		"Mirror", "Vines",
 	},
 	RoleSupport: {
 		"Musketeer", "Wizard", "Witch", "Baby Dragon", "Electro Wizard",
@@ -140,11 +153,14 @@ var roleGroups = map[CardRole][]string{
 		"Cannon Cart", "Fisherman", "Firecracker", "Rascals", "Flying Machine",
 		"Zappies", "Royal Delivery", "Barbarians", "Elite Barbarians",
 		// Note: Goblin Barrel also in RoleWinCondition (dual role)
+		"Berserker", "Dart Goblin", "Goblin Demolisher", "Minion Horde",
+		"Phoenix", "Royal Ghost", "Skeleton Barrel",
 	},
 	RoleCycle: {
 		"Skeletons", "Ice Spirit", "Fire Spirit", "Heal Spirit",
 		"Electro Spirit", "Spear Goblins", "Goblins", "Bats", "Ice Golem",
 		// Note: Knight, Valkyrie, Goblin Gang, Minions moved to RoleSupport
+		"Bomber",
 	},
 }
 
