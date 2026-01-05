@@ -100,30 +100,63 @@ const (
 
 // roleGroups maps card roles to their representative cards.
 // This is used to classify cards by their strategic function in a deck.
+// Migrated from pkg/deck/role_classifier.go to provide comprehensive coverage.
 var roleGroups = map[CardRole][]string{
 	RoleWinCondition: {
-		"Royal Giant", "Hog Rider", "Giant", "P.E.K.K.A", "Giant Skeleton",
-		"Goblin Barrel", "Mortar", "X-Bow", "Royal Hogs",
+		"Hog Rider", "Royal Giant", "Battle Ram", "Goblin Barrel", "Miner",
+		"Giant", "Golem", "Lava Hound", "Balloon", "X-Bow", "Mortar",
+		"P.E.K.K.A", "Mega Knight", "Electro Giant", "Royal Hogs", "Ram Rider",
+		"Wall Breakers", "Graveyard", "Sparky", "Three Musketeers",
+		"Giant Skeleton", "Elixir Golem",
 	},
 	RoleBuilding: {
-		"Cannon", "Goblin Cage", "Inferno Tower", "Bomb Tower", "Tombstone",
-		"Goblin Hut", "Barbarian Hut",
+		"Cannon", "Tesla", "Inferno Tower", "Bomb Tower", "Goblin Cage",
+		"Furnace", "Barbarian Hut", "Goblin Hut", "Tombstone",
+		"Elixir Collector",
+		// Note: X-Bow and Mortar also in RoleWinCondition (dual role)
 	},
 	RoleSpellBig: {
-		"Fireball", "Poison", "Lightning", "Rocket",
+		"Fireball", "Poison", "Lightning", "Rocket", "Freeze", "Earthquake",
+		"Clone", "Rage",
+		// Note: Graveyard also in RoleWinCondition (dual role)
 	},
 	RoleSpellSmall: {
-		"Zap", "Arrows", "Giant Snowball", "Barbarian Barrel",
-		"Freeze", "Log",
+		"Zap", "Log", "Arrows", "Snowball", "Tornado", "Barbarian Barrel",
+		"Giant Snowball", "Heal Spirit",
 	},
 	RoleSupport: {
-		"Princess", "Archers", "Bomber", "Musketeer", "Wizard", "Mega Minion",
-		"Valkyrie", "Baby Dragon", "Skeleton Dragons",
+		"Musketeer", "Wizard", "Witch", "Baby Dragon", "Electro Wizard",
+		"Ice Wizard", "Night Witch", "Executioner", "Bowler", "Dark Prince",
+		"Prince", "Mini P.E.K.K.A", "Lumberjack", "Bandit", "Magic Archer",
+		"Hunter", "Skeleton Dragons", "Mother Witch",
+		// Champions
+		"Archer Queen", "Golden Knight", "Skeleton King", "Mighty Miner",
+		"Monk", "Little Prince",
+		// Common support troops
+		"Princess", "Archers", "Knight", "Valkyrie", "Goblin Gang", "Minions",
+		"Mega Minion", "Guards", "Skeleton Army",
+		// Additional support
+		"Battle Healer", "Electro Dragon", "Inferno Dragon", "Royal Recruits",
+		"Cannon Cart", "Fisherman", "Firecracker", "Rascals", "Flying Machine",
+		"Zappies", "Royal Delivery", "Barbarians", "Elite Barbarians",
+		// Note: Goblin Barrel also in RoleWinCondition (dual role)
 	},
 	RoleCycle: {
-		"Knight", "Skeletons", "Ice Spirit", "Electro Spirit",
-		"Fire Spirit", "Bats", "Spear Goblins", "Goblin Gang", "Minions",
+		"Skeletons", "Ice Spirit", "Fire Spirit", "Heal Spirit",
+		"Electro Spirit", "Spear Goblins", "Goblins", "Bats", "Ice Golem",
+		// Note: Knight, Valkyrie, Goblin Gang, Minions moved to RoleSupport
 	},
+}
+
+// evolutionRoleOverrides defines cards whose role changes when evolved.
+// When a card is evolved, check this map first before using roleGroups.
+var evolutionRoleOverrides = map[string]CardRole{
+	"Valkyrie":    RoleSupport,      // Evolved: whirlwind pull makes it a control support card
+	"Knight":      RoleSupport,      // Evolved: clone on death increases defensive value
+	"Royal Giant": RoleWinCondition, // Evolved: anti-pushback improves win condition reliability
+	"Barbarian":   RoleSupport,      // Evolved: 3 spawned barbarians act as support swarm
+	"Witch":       RoleSupport,      // Evolved: faster skeleton spawn enhances support
+	"Golem":       RoleWinCondition, // Evolved: golemites spawn on death strengthens win condition
 }
 
 // GetCardElixir returns the elixir cost for a card.
@@ -146,7 +179,23 @@ func GetCardElixir(cardName string, apiElixir int) int {
 
 // GetCardRole returns the role for a given card name.
 // Returns empty CardRole ("") if the card is not found in any role group.
+// For evolution-aware role classification, use GetCardRoleWithEvolution.
 func GetCardRole(cardName string) CardRole {
+	return GetCardRoleWithEvolution(cardName, 0)
+}
+
+// GetCardRoleWithEvolution returns the role for a given card name, considering evolution level.
+// When evolutionLevel > 0, checks evolutionRoleOverrides first before roleGroups.
+// Returns empty CardRole ("") if the card is not found in any role group.
+func GetCardRoleWithEvolution(cardName string, evolutionLevel int) CardRole {
+	// Check evolution overrides first if evolved
+	if evolutionLevel > 0 {
+		if role, exists := evolutionRoleOverrides[cardName]; exists {
+			return role
+		}
+	}
+
+	// Check standard role groups
 	for role, cards := range roleGroups {
 		for _, card := range cards {
 			if card == cardName {
