@@ -438,10 +438,10 @@ func ptrRole(r deck.CardRole) *deck.CardRole {
 
 // labeledDeck represents a deck with known archetype for accuracy testing
 type labeledDeck struct {
-	Name           string
-	DeckCards      []deck.CardCandidate
-	ExpectedArchetype Archetype
-	IsHybrid       bool
+	Name               string
+	DeckCards          []deck.CardCandidate
+	ExpectedArchetype  Archetype
+	IsHybrid           bool
 	SecondaryArchetype Archetype // For hybrid decks
 }
 
@@ -464,7 +464,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Skeletons", Elixir: 1},
 			},
 			ExpectedArchetype: ArchetypeBeatdown,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Lava Hound Beatdown",
@@ -479,7 +479,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Skeletons", Elixir: 1},
 			},
 			ExpectedArchetype: ArchetypeBeatdown,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Electro Giant Beatdown",
@@ -494,7 +494,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeBeatdown,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Giant Beatdown",
@@ -509,7 +509,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Inferno Tower", Elixir: 5, Role: ptrRole(deck.RoleBuilding)},
 			},
 			ExpectedArchetype: ArchetypeBeatdown,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 
 		// === CYCLE (Pure) ===
@@ -526,7 +526,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeCycle,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Hog 2.6 Cycle",
@@ -539,7 +539,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeCycle,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Miner Cycle",
@@ -554,7 +554,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeCycle,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Royal Giant Cycle",
@@ -569,7 +569,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Inferno Tower", Elixir: 5, Role: ptrRole(deck.RoleBuilding)},
 			},
 			ExpectedArchetype: ArchetypeCycle,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 
 		// === SIEGE (Pure) ===
@@ -586,7 +586,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeSiege,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "X-Bow Cycle",
@@ -600,7 +600,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeSiege,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Mortar Siege",
@@ -615,7 +615,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Ice Spirit", Elixir: 1},
 			},
 			ExpectedArchetype: ArchetypeSiege,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 
 		// === BAIT (Pure) ===
@@ -632,7 +632,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeBait,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Goblin Barrel Bait",
@@ -647,7 +647,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Rocket", Elixir: 6},
 			},
 			ExpectedArchetype: ArchetypeBait,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Goblin Drill Bait",
@@ -662,7 +662,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeBait,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 
 		// === BRIDGE SPAM (Pure) ===
@@ -679,7 +679,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Zap", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeBridge,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Mega Knight Bridge Spam",
@@ -694,7 +694,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Zap", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeBridge,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Royal Ghost Bridge Spam",
@@ -709,7 +709,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Fireball", Elixir: 4},
 			},
 			ExpectedArchetype: ArchetypeBridge,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 
 		// === GRAVEYARD (Pure) ===
@@ -726,7 +726,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Poison", Elixir: 4},
 			},
 			ExpectedArchetype: ArchetypeGraveyard,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Graveyard Poison",
@@ -741,7 +741,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Skeletons", Elixir: 1},
 			},
 			ExpectedArchetype: ArchetypeGraveyard,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 
 		// === MINER (Pure) ===
@@ -758,7 +758,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeMiner,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Miner Control",
@@ -773,7 +773,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeMiner,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 
 		// === HYBRID DECKS ===
@@ -789,9 +789,9 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Lightning", Elixir: 6},
 				{Name: "Skeletons", Elixir: 1},
 			},
-			ExpectedArchetype: ArchetypeBeatdown,
+			ExpectedArchetype:  ArchetypeBeatdown,
 			SecondaryArchetype: ArchetypeBridge,
-			IsHybrid: true,
+			IsHybrid:           true,
 		},
 		{
 			Name: "Cycle-Miner Hybrid",
@@ -805,9 +805,9 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Ice Golem", Elixir: 2},
 				{Name: "The Log", Elixir: 2},
 			},
-			ExpectedArchetype: ArchetypeCycle,
+			ExpectedArchetype:  ArchetypeCycle,
 			SecondaryArchetype: ArchetypeMiner,
-			IsHybrid: true,
+			IsHybrid:           true,
 		},
 		{
 			Name: "Graveyard-Control Hybrid",
@@ -821,9 +821,9 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Knight", Elixir: 3},
 				{Name: "Skeletons", Elixir: 1},
 			},
-			ExpectedArchetype: ArchetypeSiege,
+			ExpectedArchetype:  ArchetypeSiege,
 			SecondaryArchetype: ArchetypeGraveyard,
-			IsHybrid: true,
+			IsHybrid:           true,
 		},
 
 		// === EDGE CASES ===
@@ -840,7 +840,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "The Log", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeControl,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Midrange Deck",
@@ -855,7 +855,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Ice Golem", Elixir: 2},
 			},
 			ExpectedArchetype: ArchetypeBeatdown,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 		{
 			Name: "Spell Bait",
@@ -870,15 +870,15 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 				{Name: "Skeleton Army", Elixir: 3},
 			},
 			ExpectedArchetype: ArchetypeBait,
-			IsHybrid: false,
+			IsHybrid:          false,
 		},
 	}
 
 	// Run detection and track results
 	var pureCorrect, pureTotal int
 	var hybridCorrect, hybridTotal int
-	var correctByArchetype = make(map[Archetype]int)
-	var totalByArchetype = make(map[Archetype]int)
+	correctByArchetype := make(map[Archetype]int)
+	totalByArchetype := make(map[Archetype]int)
 
 	// Confusion matrix tracking
 	confusionMatrix := make(map[Archetype]map[Archetype]int) // [actual][detected]
