@@ -23,13 +23,13 @@ func TestEvaluateWithRealDecks(t *testing.T) {
 	synergyDB := deck.NewSynergyDatabase()
 
 	tests := []struct {
-		name                 string
-		deckCards            []deck.CardCandidate
+		name      string
+		deckCards []deck.CardCandidate
 		// expectedArchetype is the archetype we expect this deck to have
 		// Note: archetype detection is validated separately in accuracy tests
-		expectedArchetype    Archetype
-		minAvgElixir         float64
-		maxAvgElixir         float64
+		expectedArchetype Archetype
+		minAvgElixir      float64
+		maxAvgElixir      float64
 	}{
 		{
 			name: "Golem Beatdown - High Synergy",
@@ -337,8 +337,8 @@ func TestEvaluateEdgeCases(t *testing.T) {
 		expectValid bool
 	}{
 		{
-			name: "Empty deck",
-			deckCards: []deck.CardCandidate{},
+			name:        "Empty deck",
+			deckCards:   []deck.CardCandidate{},
 			expectValid: false,
 		},
 		{
