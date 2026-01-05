@@ -29,6 +29,8 @@ type Builder struct {
 	synergyEnabled     bool
 	synergyWeight      float64
 	synergyCache       map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
+	includeCards       []string           // Cards to force into the deck
+	excludeCards       []string           // Cards to exclude from consideration
 }
 
 // NewBuilder creates a new deck builder instance
@@ -114,9 +116,38 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	// Convert analysis data to candidates
 	candidates := b.buildCandidates(analysis.CardLevels)
 
+	// Filter out excluded cards
+	if len(b.excludeCards) > 0 {
+		excludeMap := make(map[string]bool)
+		for _, card := range b.excludeCards {
+			excludeMap[card] = true
+		}
+		filtered := make([]*CardCandidate, 0, len(candidates))
+		for _, candidate := range candidates {
+			if !excludeMap[candidate.Name] {
+				filtered = append(filtered, candidate)
+			}
+		}
+		candidates = filtered
+	}
+
 	deck := make([]*CardCandidate, 0)
 	used := make(map[string]bool)
 	notes := make([]string, 0)
+
+	// Force-include specified cards first
+	if len(b.includeCards) > 0 {
+		for _, cardName := range b.includeCards {
+			// Find the card in candidates
+			for _, candidate := range candidates {
+				if candidate.Name == cardName {
+					deck = append(deck, candidate)
+					used[candidate.Name] = true
+					break
+				}
+			}
+		}
+	}
 
 	// Apply composition overrides if present (e.g., spell strategy)
 	override := b.strategyConfig.CompositionOverrides
@@ -409,7 +440,7 @@ func (b *Builder) inferRole(name string) *CardRole {
 
 func (b *Builder) scoreCard(name string, level, maxLevel int, rarity string, elixir int, role *CardRole, maxEvolutionLevel int) float64 {
 	levelRatio := float64(level) / float64(maxLevel)
-	rarityBoost := config.GetRarityWeight(rarity)
+	rarityBoost := config.GetRarityPriorityBonus(rarity) // Use priority bonus (4.0x for Legendary) instead of weight (1.15x)
 
 	// Encourage cheaper cards slightly to keep cycle tight
 	elixirWeight := 1.0 - float64(max(elixir-3, 0))/9.0
@@ -803,6 +834,18 @@ func (b *Builder) SetSynergyWeight(weight float64) {
 		weight = 1.0
 	}
 	b.synergyWeight = weight
+}
+
+// SetIncludeCards sets the cards that must be included in the deck
+// These cards will be forced into the deck if they're available in the collection
+func (b *Builder) SetIncludeCards(cards []string) {
+	b.includeCards = cards
+}
+
+// SetExcludeCards sets the cards that should be excluded from consideration
+// These cards will never be selected for the deck
+func (b *Builder) SetExcludeCards(cards []string) {
+	b.excludeCards = cards
 }
 
 // GetUpgradeRecommendations generates upgrade recommendations for a deck.

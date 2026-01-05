@@ -400,8 +400,8 @@ func scoreCardWithEvolutionInternal(cardName string, level, maxLevel int, rarity
 	// Calculate level ratio using curve-based calculation when card name is available
 	levelRatio := calculateLevelRatio(cardName, level, maxLevel, levelCurve)
 
-	// Get rarity boost multiplier
-	rarityBoost := config.GetRarityWeight(rarity)
+	// Get rarity boost multiplier - use priority bonus for deck building
+	rarityBoost := config.GetRarityPriorityBonus(rarity)
 
 	// Calculate elixir efficiency weight
 	// Penalize cards far from optimal elixir cost (3)

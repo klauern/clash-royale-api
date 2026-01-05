@@ -417,6 +417,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	dataDir := cmd.String("data-dir")
 	combatStatsWeight := cmd.Float64("combat-stats-weight")
 	disableCombatStats := cmd.Bool("disable-combat-stats")
+	includeCards := cmd.StringSlice("include-cards")
 	excludeCards := cmd.StringSlice("exclude-cards")
 
 	// Upgrade recommendations flags
@@ -453,6 +454,14 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	// Override evolution slot limit if provided
 	if slots := cmd.Int("evolution-slots"); slots > 0 {
 		builder.SetEvolutionSlotLimit(slots)
+	}
+
+	// Set include/exclude card filters if provided
+	if len(includeCards) > 0 {
+		builder.SetIncludeCards(includeCards)
+	}
+	if len(excludeCards) > 0 {
+		builder.SetExcludeCards(excludeCards)
 	}
 
 	// Parse and set strategy if provided (skip for "all" which is handled later)

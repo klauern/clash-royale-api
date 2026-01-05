@@ -99,6 +99,7 @@ var supportTroops = map[string]bool{
 	"Mighty Miner":     true,
 	"Monk":             true,
 	"Little Prince":    true,
+	"Princess":         true,
 	"Archers":          true,
 	"Knight":           true,
 	"Valkyrie":         true,

@@ -51,7 +51,8 @@ const (
 	// EvolutionBaseBonus is the base bonus for unlocked evolution cards
 	// Used in level-scaled evolution bonus calculation in deck builder
 	// Formula: baseBonus * (level/maxLevel)^1.5 * (1 + 0.2*(maxEvoLevel-1))
-	EvolutionBaseBonus = 0.25
+	// Reduced from 0.25 to 0.12 to prevent over-prioritizing evolution over card levels/rarity
+	EvolutionBaseBonus = 0.12
 )
 
 // Deck Recommendation Scoring Weights

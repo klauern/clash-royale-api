@@ -30,14 +30,15 @@ var priorityScores = map[string]float64{
 	"Champion":  80.0,
 }
 
-// Priority bonuses for deck building (1.0-5.0 scale)
+// Priority bonuses for deck building (1.0-2.5 scale)
 // Used to prioritize selection of higher rarity cards in deck building
+// Adjusted from original 1.0-5.0 to prevent over-prioritization of high-rarity cards
 var priorityBonuses = map[string]float64{
 	"Common":    1.0,
-	"Rare":      2.0,
-	"Epic":      3.0,
-	"Legendary": 4.0,
-	"Champion":  5.0,
+	"Rare":      1.3,
+	"Epic":      1.7,
+	"Legendary": 2.2,
+	"Champion":  2.5,
 }
 
 // Maximum levels for each rarity

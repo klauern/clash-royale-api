@@ -117,7 +117,7 @@ var roleGroups = map[CardRole][]string{
 		"Freeze", "Log",
 	},
 	RoleSupport: {
-		"Archers", "Bomber", "Musketeer", "Wizard", "Mega Minion",
+		"Princess", "Archers", "Bomber", "Musketeer", "Wizard", "Mega Minion",
 		"Valkyrie", "Baby Dragon", "Skeleton Dragons",
 	},
 	RoleCycle: {
