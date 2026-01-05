@@ -260,7 +260,7 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 // Cycle: Low elixir + fast rotation + cycle cards
 func scoreCycle(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	cycleWinCons := []string{"Hog Rider", "Miner", "Royal Giant", "Royal Hogs"}
+	cycleWinCons := []string{"Hog Rider", "Royal Giant", "Royal Hogs"}
 	cycleCards := []string{"Skeletons", "Ice Spirit", "Ice Golem", "Electro Spirit"}
 
 	// Check for cycle win conditions (30% of score)
