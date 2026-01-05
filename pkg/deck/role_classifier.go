@@ -1,166 +1,14 @@
 // Package deck provides role classification for Clash Royale cards.
 // Role classification assigns strategic purposes to cards for intelligent deck building.
+//
+// DEPRECATED: This package now wraps the single source of truth in internal/config/elixir.go
+// to eliminate duplication. The role data (winConditions, buildings, spells, etc.) is now
+// maintained in internal/config. New code should use config.CardRole and config.GetCardRole().
 package deck
 
 import (
-	"strings"
+	"github.com/klauer/clash-royale-api/go/internal/config"
 )
-
-// Win condition cards - primary tower-damaging threats
-var winConditions = map[string]bool{
-	"Hog Rider":        true,
-	"Royal Giant":      true,
-	"Battle Ram":       true,
-	"Goblin Barrel":    true,
-	"Miner":            true,
-	"Giant":            true,
-	"Golem":            true,
-	"Lava Hound":       true,
-	"Balloon":          true,
-	"X-Bow":            true,
-	"Mortar":           true,
-	"P.E.K.K.A":        true,
-	"Mega Knight":      true,
-	"Electro Giant":    true,
-	"Royal Hogs":       true,
-	"Ram Rider":        true,
-	"Wall Breakers":    true,
-	"Graveyard":        true,
-	"Sparky":           true,
-	"Three Musketeers": true,
-	"Giant Skeleton":   true,
-	"Elixir Golem":     true,
-}
-
-// Defensive buildings - used for defense, kiting, or siege
-var buildings = map[string]bool{
-	"Cannon":           true,
-	"Tesla":            true,
-	"Inferno Tower":    true,
-	"Bomb Tower":       true,
-	"Goblin Cage":      true,
-	"Furnace":          true,
-	"Barbarian Hut":    true,
-	"Goblin Hut":       true,
-	"Tombstone":        true,
-	"Elixir Collector": true,
-	"X-Bow":            true, // Also win condition
-	"Mortar":           true, // Also win condition
-}
-
-// Big damage spells - 4+ elixir, high damage
-var spellsBig = map[string]bool{
-	"Fireball":   true,
-	"Poison":     true,
-	"Lightning":  true,
-	"Rocket":     true,
-	"Freeze":     true,
-	"Earthquake": true,
-	"Graveyard":  true, // Also win condition
-	"Clone":      true,
-	"Rage":       true,
-}
-
-// Small utility spells - 2-3 elixir, tactical
-var spellsSmall = map[string]bool{
-	"Zap":              true,
-	"Log":              true,
-	"Arrows":           true,
-	"Snowball":         true,
-	"Tornado":          true,
-	"Barbarian Barrel": true,
-	"Giant Snowball":   true,
-	"Heal Spirit":      true,
-}
-
-// Support troops - mid-cost troops for offense/defense
-var supportTroops = map[string]bool{
-	"Musketeer":        true,
-	"Wizard":           true,
-	"Witch":            true,
-	"Baby Dragon":      true,
-	"Electro Wizard":   true,
-	"Ice Wizard":       true,
-	"Night Witch":      true,
-	"Executioner":      true,
-	"Bowler":           true,
-	"Dark Prince":      true,
-	"Prince":           true,
-	"Mini P.E.K.K.A":   true,
-	"Lumberjack":       true,
-	"Bandit":           true,
-	"Magic Archer":     true,
-	"Hunter":           true,
-	"Skeleton Dragons": true,
-	"Mother Witch":     true,
-	"Archer Queen":     true,
-	"Golden Knight":    true,
-	"Skeleton King":    true,
-	"Mighty Miner":     true,
-	"Monk":             true,
-	"Little Prince":    true,
-	"Princess":         true,
-	"Archers":          true,
-	"Knight":           true,
-	"Valkyrie":         true,
-	"Goblin Gang":      true,
-	"Minions":          true,
-	"Mega Minion":      true,
-	"Guards":           true,
-	"Skeleton Army":    true,
-	"Goblin Barrel":    true, // Also win condition
-	"Battle Healer":    true,
-	"Electro Dragon":   true,
-	"Inferno Dragon":   true,
-	"Royal Recruits":   true,
-	"Cannon Cart":      true,
-	"Fisherman":        true,
-	"Firecracker":      true,
-	"Rascals":          true,
-	"Flying Machine":   true,
-	"Zappies":          true,
-	"Royal Delivery":   true,
-	"Barbarians":       true,
-	"Elite Barbarians": true,
-}
-
-// Cycle cards - 1-2 elixir cheap troops for fast cycling
-var cycleTroops = map[string]bool{
-	"Skeletons":      true,
-	"Ice Spirit":     true,
-	"Fire Spirit":    true,
-	"Heal Spirit":    true,
-	"Electro Spirit": true,
-	"Spear Goblins":  true,
-	"Goblins":        true,
-	"Bats":           true,
-	"Ice Golem":      true,
-	"Larry":          true, // Skeletons alternate name
-}
-
-// EvolutionRoleOverrides defines cards whose role changes when evolved
-// Format: card name -> evolved role (nil means no special override)
-var evolutionRoleOverrides = map[string]CardRole{
-	// Cards that gain significant behavior changes when evolved
-	"Valkyrie":    RoleSupport,      // Evolved: whirlwind pull makes it a control support card
-	"Knight":      RoleSupport,      // Evolved: clone on death increases defensive value
-	"Royal Giant": RoleWinCondition, // Evolved: anti-pushback improves win condition reliability
-	"Barbarian":   RoleSupport,      // Evolved: 3 spawned barbarians act as support swarm
-	"Witch":       RoleSupport,      // Evolved: faster skeleton spawn enhances support
-	"Golem":       RoleWinCondition, // Evolved: golemites spawn on death strengthens win condition
-}
-
-// hasEvolutionOverride checks if a card has a special role when evolved
-func hasEvolutionOverride(cardName string, evolutionLevel int) *CardRole {
-	if evolutionLevel <= 0 {
-		return nil
-	}
-	normalized := strings.TrimSpace(cardName)
-	if role, exists := evolutionRoleOverrides[normalized]; exists {
-		return &role
-	}
-	return nil
-}
 
 // ClassifyCard determines the strategic role of a card based on its properties
 // Returns a pointer to CardRole, or nil if the card doesn't fit a clear role
@@ -172,69 +20,25 @@ func ClassifyCard(cardName string, elixirCost int) *CardRole {
 // both its base properties and evolution status. When a card is evolved and has
 // a specific evolution role override, that role takes precedence over base classification.
 func ClassifyCardWithEvolution(cardName string, elixirCost, evolutionLevel int) *CardRole {
-	// Normalize card name for matching (case-insensitive, trim whitespace)
-	normalized := strings.TrimSpace(cardName)
+	// Use the single source of truth from config
+	role := config.GetCardRoleWithEvolution(cardName, evolutionLevel)
 
-	// Check evolution-specific role overrides first (highest priority when evolved)
-	if override := hasEvolutionOverride(normalized, evolutionLevel); override != nil {
-		return override
-	}
-
-	// Check win conditions first (highest priority)
-	if winConditions[normalized] {
-		role := RoleWinCondition
+	// Fallback: classify by elixir cost if not in config database
+	if role == "" {
+		if elixirCost <= 2 {
+			role = RoleCycle
+		} else if elixirCost >= 3 && elixirCost <= 5 {
+			role = RoleSupport
+		} else if elixirCost >= 6 {
+			role = RoleWinCondition
+		} else {
+			// Unknown elixir cost, no clear role
+			return nil
+		}
 		return &role
 	}
 
-	// Check buildings
-	if buildings[normalized] {
-		role := RoleBuilding
-		return &role
-	}
-
-	// Check big spells (4+ elixir)
-	if spellsBig[normalized] {
-		role := RoleSpellBig
-		return &role
-	}
-
-	// Check small spells (2-3 elixir)
-	if spellsSmall[normalized] {
-		role := RoleSpellSmall
-		return &role
-	}
-
-	// Check cycle cards (1-2 elixir)
-	if cycleTroops[normalized] {
-		role := RoleCycle
-		return &role
-	}
-
-	// Check support troops
-	if supportTroops[normalized] {
-		role := RoleSupport
-		return &role
-	}
-
-	// Fallback: classify by elixir cost if not in known lists
-	if elixirCost <= 2 {
-		role := RoleCycle
-		return &role
-	}
-
-	if elixirCost >= 3 && elixirCost <= 5 {
-		role := RoleSupport
-		return &role
-	}
-
-	// High cost cards (6+) likely win conditions
-	if elixirCost >= 6 {
-		role := RoleWinCondition
-		return &role
-	}
-
-	// Unknown card, no clear role
-	return nil
+	return &role
 }
 
 // ClassifyCardCandidate assigns a role to a CardCandidate and updates its Role field.
@@ -254,24 +58,49 @@ func ClassifyAllCandidates(candidates []CardCandidate) {
 
 // IsWinCondition returns true if the card is classified as a win condition
 func IsWinCondition(cardName string) bool {
-	return winConditions[strings.TrimSpace(cardName)]
+	return config.GetCardRole(cardName) == RoleWinCondition
 }
 
 // IsBuilding returns true if the card is a building
 func IsBuilding(cardName string) bool {
-	return buildings[strings.TrimSpace(cardName)]
+	return config.GetCardRole(cardName) == RoleBuilding
 }
 
 // IsSpell returns true if the card is any type of spell
 func IsSpell(cardName string, elixirCost int) bool {
-	normalized := strings.TrimSpace(cardName)
-	return spellsBig[normalized] || spellsSmall[normalized]
+	role := config.GetCardRole(cardName)
+	return role == RoleSpellBig || role == RoleSpellSmall
 }
 
 // IsCycleCard returns true if the card is a cheap cycle card (1-2 elixir)
 func IsCycleCard(cardName string, elixirCost int) bool {
-	normalized := strings.TrimSpace(cardName)
-	return cycleTroops[normalized] || elixirCost <= 2
+	role := config.GetCardRole(cardName)
+	return role == RoleCycle || elixirCost <= 2
+}
+
+// HasEvolutionOverride returns true if the card has a special role override when evolved
+func HasEvolutionOverride(cardName string, evolutionLevel int) bool {
+	if evolutionLevel <= 0 {
+		return false
+	}
+	return config.HasEvolutionOverride(cardName)
+}
+
+// GetEvolutionOverrideRole returns the override role for an evolved card, or nil if none
+func GetEvolutionOverrideRole(cardName string, evolutionLevel int) *CardRole {
+	if evolutionLevel <= 0 {
+		return nil
+	}
+	// Check if the card has an evolution override defined in config
+	if !config.HasEvolutionOverride(cardName) {
+		return nil
+	}
+	// Get the evolved role (which includes evolution overrides)
+	evolvedRole := config.GetCardRoleWithEvolution(cardName, evolutionLevel)
+	if evolvedRole == "" {
+		return nil
+	}
+	return &evolvedRole
 }
 
 // GetRoleDescription returns a human-readable description of a card role
@@ -332,14 +161,4 @@ func HasBalancedRoles(candidates []CardCandidate) bool {
 	}
 
 	return true
-}
-
-// HasEvolutionOverride returns true if the card has a special role override when evolved
-func HasEvolutionOverride(cardName string, evolutionLevel int) bool {
-	return hasEvolutionOverride(cardName, evolutionLevel) != nil
-}
-
-// GetEvolutionOverrideRole returns the override role for an evolved card, or nil if none
-func GetEvolutionOverrideRole(cardName string, evolutionLevel int) *CardRole {
-	return hasEvolutionOverride(cardName, evolutionLevel)
 }

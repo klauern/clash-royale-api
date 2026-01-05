@@ -94,6 +94,11 @@ var fallbackElixir = map[string]int{
 // CardRole represents the strategic role of a card in a deck (string type)
 type CardRole string
 
+// String returns the string representation of the card role
+func (cr CardRole) String() string {
+	return string(cr)
+}
+
 const (
 	// RoleWinCondition represents primary tower-damaging cards
 	RoleWinCondition CardRole = "win_conditions"
@@ -146,7 +151,7 @@ var roleGroups = map[CardRole][]string{
 		"Archer Queen", "Golden Knight", "Skeleton King", "Mighty Miner",
 		"Monk", "Little Prince",
 		// Common support troops
-		"Princess", "Archers", "Knight", "Valkyrie", "Goblin Gang", "Minions",
+		"Princess", "Archers", "Valkyrie", "Goblin Gang", "Minions",
 		"Mega Minion", "Guards", "Skeleton Army",
 		// Additional support
 		"Battle Healer", "Electro Dragon", "Inferno Dragon", "Royal Recruits",
@@ -229,4 +234,12 @@ func GetRoleCards(role CardRole) []string {
 		return cards
 	}
 	return nil
+}
+
+// HasEvolutionOverride returns true if the card has an evolution role override defined.
+// This checks if the card exists in the evolutionRoleOverrides map, regardless of
+// whether the override role differs from the base role.
+func HasEvolutionOverride(cardName string) bool {
+	_, exists := evolutionRoleOverrides[cardName]
+	return exists
 }

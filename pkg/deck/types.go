@@ -6,36 +6,29 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
 // CardRole represents the strategic role of a card in a deck
-type CardRole string
+// This is an alias for config.CardRole, which is the single source of truth
+type CardRole = config.CardRole
 
+// Role constants are aliases for config constants for convenience
 const (
 	// RoleWinCondition represents primary tower-damaging cards
-	RoleWinCondition CardRole = "win_conditions"
-
+	RoleWinCondition = config.RoleWinCondition
 	// RoleBuilding represents defensive buildings
-	RoleBuilding CardRole = "buildings"
-
+	RoleBuilding = config.RoleBuilding
 	// RoleSpellBig represents high-elixir damage spells
-	RoleSpellBig CardRole = "spells_big"
-
+	RoleSpellBig = config.RoleSpellBig
 	// RoleSpellSmall represents low-elixir utility spells
-	RoleSpellSmall CardRole = "spells_small"
-
+	RoleSpellSmall = config.RoleSpellSmall
 	// RoleSupport represents mid-cost support troops
-	RoleSupport CardRole = "support"
-
+	RoleSupport = config.RoleSupport
 	// RoleCycle represents low-cost cycle cards
-	RoleCycle CardRole = "cycle"
+	RoleCycle = config.RoleCycle
 )
-
-// String returns the string representation of the card role
-func (cr CardRole) String() string {
-	return string(cr)
-}
 
 // Strategy represents a deck building strategy that influences card selection
 type Strategy string
