@@ -204,7 +204,7 @@ func scoreBeatdown(deckCards []deck.CardCandidate) float64 {
 // Control: Defensive buildings + big spells + defensive troops
 func scoreControl(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	controlWinCons := []string{"X-Bow", "Mortar", "Graveyard"}
+	controlWinCons := []string{"Graveyard"}
 	defensiveBuildings := []string{"Tesla", "Cannon", "Inferno Tower", "Bomb Tower"}
 	bigSpells := []string{"Poison", "Fireball", "Lightning", "Rocket"}
 
