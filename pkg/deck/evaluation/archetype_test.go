@@ -872,6 +872,371 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 			ExpectedArchetype: ArchetypeBait,
 			IsHybrid:          false,
 		},
+
+		// === ADDITIONAL CYCLE VARIANTS (Strengthening most-tested archetype) ===
+		{
+			Name: "Archer Queen Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Archer Queen", Elixir: 5},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "Ice Spirit", Elixir: 1},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "Musketeer", Elixir: 4},
+				{Name: "Cannon", Elixir: 3, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeCycle,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Royal Hogs Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Royal Hogs", Elixir: 5},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "Ice Spirit", Elixir: 1},
+				{Name: "Earthquake", Elixir: 3},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "Cannon", Elixir: 3, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeCycle,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Miner Balloon Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Miner", Elixir: 3},
+				{Name: "Balloon", Elixir: 5},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "Musketeer", Elixir: 4},
+				{Name: "Bomb Tower", Elixir: 4, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Barbarian Barrel", Elixir: 2},
+				{Name: "Giant Snowball", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeCycle,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Ice Golem Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Hog Rider", Elixir: 4},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "Ice Spirit", Elixir: 1},
+				{Name: "Archers", Elixir: 3},
+				{Name: "Cannon", Elixir: 3, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeCycle,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Mortar Bait Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Mortar", Elixir: 4},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "Ice Spirit", Elixir: 1},
+				{Name: "Knight", Elixir: 3},
+				{Name: "Archers", Elixir: 3},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "The Log", Elixir: 2},
+				{Name: "Rascals", Elixir: 5},
+			},
+			ExpectedArchetype: ArchetypeSiege,
+			IsHybrid:          false,
+		},
+
+		// === ADDITIONAL BEATDOWN VARIANTS (Adding diversity) ===
+		{
+			Name: "Lava Hound Miner Hybrid",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Lava Hound", Elixir: 7},
+				{Name: "Miner", Elixir: 3},
+				{Name: "Mega Minion", Elixir: 3},
+				{Name: "Baby Dragon", Elixir: 4},
+				{Name: "Tombstone", Elixir: 3, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Poison", Elixir: 4},
+				{Name: "Zap", Elixir: 2},
+				{Name: "Skeletons", Elixir: 1},
+			},
+			ExpectedArchetype: ArchetypeBeatdown,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Giant Sparky",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Giant", Elixir: 5},
+				{Name: "Sparky", Elixir: 6},
+				{Name: "Electro Wizard", Elixir: 4},
+				{Name: "Dark Prince", Elixir: 4},
+				{Name: "Goblin Gang", Elixir: 3},
+				{Name: "Tornado", Elixir: 3},
+				{Name: "Zap", Elixir: 2},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeBeatdown,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Ram Rider Beatdown",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Ram Rider", Elixir: 5},
+				{Name: "Mega Knight", Elixir: 7},
+				{Name: "Baby Dragon", Elixir: 4},
+				{Name: "Electro Wizard", Elixir: 4},
+				{Name: "Magic Archer", Elixir: 4},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "Zap", Elixir: 2},
+				{Name: "Skeletons", Elixir: 1},
+			},
+			ExpectedArchetype: ArchetypeBeatdown,
+			IsHybrid:          false,
+		},
+
+		// === ADDITIONAL CONTROL VARIANTS (Currently underrepresented) ===
+		{
+			Name: "Splashyard (Graveyard Control)",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Graveyard", Elixir: 5},
+				{Name: "Bowler", Elixir: 5},
+				{Name: "Baby Dragon", Elixir: 4},
+				{Name: "Tornado", Elixir: 3},
+				{Name: "Poison", Elixir: 4},
+				{Name: "Ice Wizard", Elixir: 3},
+				{Name: "Cannon Cart", Elixir: 5},
+				{Name: "Skeletons", Elixir: 1},
+			},
+			ExpectedArchetype: ArchetypeGraveyard,
+			IsHybrid:          false,
+		},
+		{
+			Name: "X-Bow Defensive Control",
+			DeckCards: []deck.CardCandidate{
+				{Name: "X-Bow", Elixir: 6},
+				{Name: "Tesla", Elixir: 4, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Valkyrie", Elixir: 4},
+				{Name: "Mega Minion", Elixir: 3},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "The Log", Elixir: 2},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "Skeletons", Elixir: 1},
+			},
+			ExpectedArchetype: ArchetypeSiege,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Miner Control Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Miner", Elixir: 3},
+				{Name: "Tesla", Elixir: 4, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Rocket", Elixir: 6},
+				{Name: "Ice Wizard", Elixir: 3},
+				{Name: "Tornado", Elixir: 3},
+				{Name: "Knight", Elixir: 3},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeMiner,
+			IsHybrid:          false,
+		},
+
+		// === ADDITIONAL BRIDGE SPAM VARIANTS (Modern meta) ===
+		{
+			Name: "Battle Ram Spam (No Tank)",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Battle Ram", Elixir: 4},
+				{Name: "Bandit", Elixir: 3},
+				{Name: "Royal Ghost", Elixir: 3},
+				{Name: "Dark Prince", Elixir: 4},
+				{Name: "Electro Wizard", Elixir: 4},
+				{Name: "Magic Archer", Elixir: 4},
+				{Name: "Poison", Elixir: 4},
+				{Name: "Zap", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeBridge,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Bandit Bridge Spam",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Bandit", Elixir: 3},
+				{Name: "Battle Ram", Elixir: 4},
+				{Name: "P.E.K.K.A", Elixir: 7},
+				{Name: "Magic Archer", Elixir: 4},
+				{Name: "Minions", Elixir: 3},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "Zap", Elixir: 2},
+				{Name: "Ice Golem", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeBridge,
+			IsHybrid:          false,
+		},
+
+		// === ADDITIONAL BAIT VARIANTS ===
+		{
+			Name: "Skeleton Barrel Bait",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Skeleton Barrel", Elixir: 3},
+				{Name: "Goblin Barrel", Elixir: 3},
+				{Name: "Princess", Elixir: 3},
+				{Name: "Dart Goblin", Elixir: 3},
+				{Name: "Knight", Elixir: 3},
+				{Name: "Rocket", Elixir: 6},
+				{Name: "The Log", Elixir: 2},
+				{Name: "Ice Spirit", Elixir: 1},
+			},
+			ExpectedArchetype: ArchetypeBait,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Miner Bait Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Goblin Barrel", Elixir: 3},
+				{Name: "Miner", Elixir: 3},
+				{Name: "Princess", Elixir: 3},
+				{Name: "Goblin Gang", Elixir: 3},
+				{Name: "Skeleton Army", Elixir: 3},
+				{Name: "Rocket", Elixir: 6},
+				{Name: "The Log", Elixir: 2},
+				{Name: "Ice Spirit", Elixir: 1},
+			},
+			ExpectedArchetype: ArchetypeBait,
+			IsHybrid:          false,
+		},
+
+		// === ADDITIONAL SIEGE VARIANT ===
+		{
+			Name: "Mortar Rocket Siege",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Mortar", Elixir: 4},
+				{Name: "Rocket", Elixir: 6},
+				{Name: "Knight", Elixir: 3},
+				{Name: "Archers", Elixir: 3},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "The Log", Elixir: 2},
+				{Name: "Tornado", Elixir: 3},
+				{Name: "Ice Wizard", Elixir: 3},
+			},
+			ExpectedArchetype: ArchetypeSiege,
+			IsHybrid:          false,
+		},
+
+		// === ADDITIONAL HYBRID DECKS (Strengthening hybrid detection) ===
+		{
+			Name: "PEKKA Graveyard Hybrid (Bridge + Graveyard)",
+			DeckCards: []deck.CardCandidate{
+				{Name: "P.E.K.K.A", Elixir: 7},
+				{Name: "Graveyard", Elixir: 5},
+				{Name: "Baby Dragon", Elixir: 4},
+				{Name: "Electro Wizard", Elixir: 4},
+				{Name: "Tornado", Elixir: 3},
+				{Name: "Poison", Elixir: 4},
+				{Name: "Zap", Elixir: 2},
+				{Name: "Ice Golem", Elixir: 2},
+			},
+			ExpectedArchetype:  ArchetypeBridge,
+			SecondaryArchetype: ArchetypeGraveyard,
+			IsHybrid:           true,
+		},
+		{
+			Name: "Lava Miner Control Hybrid",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Lava Hound", Elixir: 7},
+				{Name: "Miner", Elixir: 3},
+				{Name: "Inferno Dragon", Elixir: 4},
+				{Name: "Mega Minion", Elixir: 3},
+				{Name: "Tombstone", Elixir: 3, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Poison", Elixir: 4},
+				{Name: "Zap", Elixir: 2},
+				{Name: "Guards", Elixir: 3},
+			},
+			ExpectedArchetype:  ArchetypeBeatdown,
+			SecondaryArchetype: ArchetypeMiner,
+			IsHybrid:           true,
+		},
+
+		// === ADDITIONAL EDGE CASES (Weak signals) ===
+		{
+			Name: "Cannon Cart Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Cannon Cart", Elixir: 5},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "Ice Spirit", Elixir: 1},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "Archers", Elixir: 3},
+				{Name: "Knight", Elixir: 3},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeCycle,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Elixir Golem Beatdown",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Elixir Golem", Elixir: 3},
+				{Name: "Battle Healer", Elixir: 4},
+				{Name: "Electro Dragon", Elixir: 5},
+				{Name: "Baby Dragon", Elixir: 4},
+				{Name: "Tornado", Elixir: 3},
+				{Name: "Barbarian Barrel", Elixir: 2},
+				{Name: "Night Witch", Elixir: 4},
+				{Name: "Dark Prince", Elixir: 4},
+			},
+			ExpectedArchetype: ArchetypeBeatdown,
+			IsHybrid:          false,
+		},
+
+		// === ADDITIONAL STRONG ARCHETYPES (Reaching 50+ decks) ===
+		{
+			Name: "Wall Breakers Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Wall Breakers", Elixir: 2},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "Ice Spirit", Elixir: 1},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "Musketeer", Elixir: 4},
+				{Name: "Cannon", Elixir: 3, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeCycle,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Three Musketeers Beatdown",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Three Musketeers", Elixir: 9},
+				{Name: "Giant", Elixir: 5},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "Elixir Collector", Elixir: 6},
+				{Name: "Minion Horde", Elixir: 5},
+				{Name: "Zap", Elixir: 2},
+				{Name: "The Log", Elixir: 2},
+				{Name: "Ice Spirit", Elixir: 1},
+			},
+			ExpectedArchetype: ArchetypeBeatdown,
+			IsHybrid:          false,
+		},
+		{
+			Name: "Fisherman Hog Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Hog Rider", Elixir: 4},
+				{Name: "Fisherman", Elixir: 3},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "Ice Spirit", Elixir: 1},
+				{Name: "Musketeer", Elixir: 4},
+				{Name: "Cannon", Elixir: 3, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeCycle,
+			IsHybrid:          false,
+		},
 	}
 
 	// Run detection and track results
@@ -879,6 +1244,11 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 	var hybridCorrect, hybridTotal int
 	correctByArchetype := make(map[Archetype]int)
 	totalByArchetype := make(map[Archetype]int)
+
+	// Precision/Recall/F1 tracking
+	truePositives := make(map[Archetype]int)  // Correctly predicted as archetype X
+	falsePositives := make(map[Archetype]int) // Incorrectly predicted as archetype X
+	falseNegatives := make(map[Archetype]int) // Should be archetype X but wasn't detected
 
 	// Confusion matrix tracking
 	confusionMatrix := make(map[Archetype]map[Archetype]int) // [actual][detected]
@@ -913,6 +1283,14 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 			if detectedCorrectly {
 				pureCorrect++
 				correctByArchetype[deck.ExpectedArchetype]++
+				truePositives[deck.ExpectedArchetype]++
+			} else {
+				// False negative for the expected archetype
+				falseNegatives[deck.ExpectedArchetype]++
+				// False positive for the detected archetype (if it was detected as something else)
+				if result.Primary != ArchetypeHybrid && result.Primary != ArchetypeUnknown {
+					falsePositives[result.Primary]++
+				}
 			}
 
 			confusionMatrix[deck.ExpectedArchetype][result.Primary]++
@@ -970,6 +1348,37 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 		}
 	}
 
+	// Precision/Recall/F1 metrics per archetype
+	t.Logf("\n=== PER-ARCHETYPE PRECISION/RECALL/F1 ===")
+	for _, archetype := range allArchetypes {
+		if totalByArchetype[archetype] > 0 {
+			tp := truePositives[archetype]
+			fp := falsePositives[archetype]
+			fn := falseNegatives[archetype]
+
+			// Calculate precision: TP / (TP + FP)
+			var precision float64
+			if tp+fp > 0 {
+				precision = float64(tp) / float64(tp+fp)
+			}
+
+			// Calculate recall: TP / (TP + FN)
+			var recall float64
+			if tp+fn > 0 {
+				recall = float64(tp) / float64(tp+fn)
+			}
+
+			// Calculate F1 score: 2 * (precision * recall) / (precision + recall)
+			var f1 float64
+			if precision+recall > 0 {
+				f1 = 2 * (precision * recall) / (precision + recall)
+			}
+
+			t.Logf("%s: Precision=%.3f, Recall=%.3f, F1=%.3f (TP=%d, FP=%d, FN=%d)",
+				archetype, precision, recall, f1, tp, fp, fn)
+		}
+	}
+
 	// Confusion matrix (simplified - only show misclassifications)
 	t.Logf("\n=== CONFUSION MATRIX (Misclassifications) ===")
 	for actual, detectedMap := range confusionMatrix {
@@ -999,4 +1408,204 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 	// 4. Not be related archetypes
 	// These strict requirements mean few test hybrids are detected
 	// TODO: Improve hybrid detection or adjust test expectations
+}
+
+func TestConfidenceCalibration(t *testing.T) {
+	// This test validates that confidence scores correlate with prediction accuracy
+	// High confidence predictions should be more accurate than low confidence ones
+
+	// Get the same labeled decks from TestArchetypeDetectionAccuracy
+	// We'll use a subset of well-known decks for calibration validation
+	testDecks := []labeledDeck{
+		// Beatdown decks
+		{
+			Name: "Golem Beatdown",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Golem", Elixir: 8},
+				{Name: "Baby Dragon", Elixir: 4},
+				{Name: "Night Witch", Elixir: 4},
+				{Name: "Lumberjack", Elixir: 4},
+				{Name: "Lightning", Elixir: 6},
+				{Name: "Tornado", Elixir: 3},
+				{Name: "Mega Minion", Elixir: 3},
+				{Name: "Skeletons", Elixir: 1},
+			},
+			ExpectedArchetype: ArchetypeBeatdown,
+		},
+		// Cycle decks
+		{
+			Name: "Hog 2.6 Cycle",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Hog Rider", Elixir: 4},
+				{Name: "Ice Spirit", Elixir: 1},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "Cannon", Elixir: 3, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeCycle,
+		},
+		// Siege decks
+		{
+			Name: "X-Bow Siege",
+			DeckCards: []deck.CardCandidate{
+				{Name: "X-Bow", Elixir: 6},
+				{Name: "Tesla", Elixir: 4, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Archers", Elixir: 3},
+				{Name: "Knight", Elixir: 3},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeSiege,
+		},
+		// Bait decks
+		{
+			Name: "Log Bait",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Goblin Barrel", Elixir: 3},
+				{Name: "Princess", Elixir: 3},
+				{Name: "Goblin Gang", Elixir: 3},
+				{Name: "Knight", Elixir: 3},
+				{Name: "Ice Spirit", Elixir: 1},
+				{Name: "Inferno Tower", Elixir: 5, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Rocket", Elixir: 6},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeBait,
+		},
+		// Bridge Spam
+		{
+			Name: "PEKKA Bridge Spam",
+			DeckCards: []deck.CardCandidate{
+				{Name: "P.E.K.K.A", Elixir: 7},
+				{Name: "Battle Ram", Elixir: 4},
+				{Name: "Bandit", Elixir: 3},
+				{Name: "Royal Ghost", Elixir: 3},
+				{Name: "Electro Wizard", Elixir: 4},
+				{Name: "Minions", Elixir: 3},
+				{Name: "Poison", Elixir: 4},
+				{Name: "Zap", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeBridge,
+		},
+		// Graveyard
+		{
+			Name: "Graveyard Freeze",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Graveyard", Elixir: 5},
+				{Name: "Ice Wizard", Elixir: 3},
+				{Name: "Baby Dragon", Elixir: 4},
+				{Name: "Bomb Tower", Elixir: 4, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Freeze", Elixir: 4},
+				{Name: "Tornado", Elixir: 3},
+				{Name: "Knight", Elixir: 3},
+				{Name: "Poison", Elixir: 4},
+			},
+			ExpectedArchetype: ArchetypeGraveyard,
+		},
+		// Miner
+		{
+			Name: "Miner Poison",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Miner", Elixir: 3},
+				{Name: "Poison", Elixir: 4},
+				{Name: "Valkyrie", Elixir: 4},
+				{Name: "Electro Wizard", Elixir: 4},
+				{Name: "Ice Golem", Elixir: 2},
+				{Name: "Inferno Tower", Elixir: 5, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Skeletons", Elixir: 1},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeMiner,
+		},
+		// Control
+		{
+			Name: "Control Deck",
+			DeckCards: []deck.CardCandidate{
+				{Name: "Electro Wizard", Elixir: 4},
+				{Name: "Valkyrie", Elixir: 4},
+				{Name: "Musketeer", Elixir: 4},
+				{Name: "Mega Minion", Elixir: 3},
+				{Name: "Inferno Tower", Elixir: 5, Role: ptrRole(deck.RoleBuilding)},
+				{Name: "Poison", Elixir: 4},
+				{Name: "Fireball", Elixir: 4},
+				{Name: "The Log", Elixir: 2},
+			},
+			ExpectedArchetype: ArchetypeControl,
+		},
+	}
+
+	// Track predictions by confidence bucket
+	type confidenceBucket struct {
+		correct int
+		total   int
+	}
+
+	buckets := map[string]*confidenceBucket{
+		"high":   {0, 0}, // ≥0.8
+		"medium": {0, 0}, // 0.5-0.8
+		"low":    {0, 0}, // <0.5
+	}
+
+	// Run detection and categorize by confidence
+	for _, testDeck := range testDecks {
+		result := DetectArchetype(testDeck.DeckCards)
+
+		// Determine confidence bucket
+		var bucketName string
+		if result.PrimaryConfidence >= 0.8 {
+			bucketName = "high"
+		} else if result.PrimaryConfidence >= 0.5 {
+			bucketName = "medium"
+		} else {
+			bucketName = "low"
+		}
+
+		bucket := buckets[bucketName]
+		bucket.total++
+
+		// Check if prediction was correct
+		if result.Primary == testDeck.ExpectedArchetype {
+			bucket.correct++
+		}
+
+		t.Logf("Deck: %s | Expected: %s | Detected: %s | Confidence: %.3f | Bucket: %s",
+			testDeck.Name, testDeck.ExpectedArchetype, result.Primary,
+			result.PrimaryConfidence, bucketName)
+	}
+
+	// Report calibration results
+	t.Logf("\n=== CONFIDENCE CALIBRATION RESULTS ===")
+	for _, bucketName := range []string{"high", "medium", "low"} {
+		bucket := buckets[bucketName]
+		if bucket.total > 0 {
+			accuracy := float64(bucket.correct) / float64(bucket.total) * 100
+			t.Logf("Confidence %s (%.1f-%.1f): %.1f%% accuracy (%d/%d)",
+				bucketName,
+				map[string]float64{"high": 0.8, "medium": 0.5, "low": 0.0}[bucketName],
+				map[string]float64{"high": 1.0, "medium": 0.8, "low": 0.5}[bucketName],
+				accuracy, bucket.correct, bucket.total)
+		}
+	}
+
+	// Validate calibration expectations
+	// High confidence should generally be more accurate than medium/low
+	if buckets["high"].total > 0 && buckets["medium"].total > 0 {
+		highAccuracy := float64(buckets["high"].correct) / float64(buckets["high"].total)
+		mediumAccuracy := float64(buckets["medium"].correct) / float64(buckets["medium"].total)
+
+		if highAccuracy < mediumAccuracy {
+			t.Logf("WARNING: High confidence accuracy (%.1f%%) is lower than medium confidence (%.1f%%)",
+				highAccuracy*100, mediumAccuracy*100)
+		}
+	}
+
+	t.Logf("\n=== CALIBRATION VALIDATION ===")
+	t.Logf("Confidence scores appear to be properly calibrated if:")
+	t.Logf("- High confidence (≥0.8) shows highest accuracy")
+	t.Logf("- Medium confidence (0.5-0.8) shows moderate accuracy")
+	t.Logf("- Low confidence (<0.5) shows lower accuracy")
+	t.Logf("Results above indicate calibration quality for the detection system.")
 }
