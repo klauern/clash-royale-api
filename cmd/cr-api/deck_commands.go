@@ -241,10 +241,9 @@ func addDeckCommands() *cli.Command {
 						Required: true,
 					},
 					&cli.StringSliceFlag{
-						Name:     "cards",
-						Aliases:  []string{"c"},
-						Usage:    "Current 8-card deck to optimize",
-						Required: true,
+						Name:    "cards",
+						Aliases: []string{"c"},
+						Usage:   "Current 8-card deck to optimize (if not provided, uses player's current deck from API)",
 					},
 					&cli.IntFlag{
 						Name:  "max-changes",
@@ -258,6 +257,10 @@ func addDeckCommands() *cli.Command {
 					&cli.BoolFlag{
 						Name:  "export-csv",
 						Usage: "Export optimization results to CSV",
+					},
+					&cli.BoolFlag{
+						Name:  "verbose",
+						Usage: "Enable verbose output",
 					},
 				},
 				Action: deckOptimizeCommand,
@@ -749,12 +752,42 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	cardNames := cmd.StringSlice("cards")
 	apiToken := cmd.String("api-token")
+	verbose := cmd.Bool("verbose")
 
 	if apiToken == "" {
 		return fmt.Errorf("API token is required")
 	}
 
-	if len(cardNames) != 8 {
+	// If no cards provided, fetch player's current deck from API
+	if len(cardNames) == 0 {
+		if verbose {
+			fmt.Printf("Fetching player data for tag: %s\n", tag)
+		}
+
+		client := clashroyale.NewClient(apiToken)
+		player, err := client.GetPlayer(tag)
+		if err != nil {
+			return fmt.Errorf("failed to get player: %w", err)
+		}
+
+		if len(player.CurrentDeck) == 0 {
+			return fmt.Errorf("player %s has no current deck configured", tag)
+		}
+
+		if len(player.CurrentDeck) != 8 {
+			return fmt.Errorf("player's current deck has %d cards, expected 8", len(player.CurrentDeck))
+		}
+
+		// Extract card names from CurrentDeck
+		cardNames = make([]string, len(player.CurrentDeck))
+		for i, card := range player.CurrentDeck {
+			cardNames[i] = card.Name
+		}
+
+		if verbose {
+			fmt.Printf("Using player's current deck: %v\n", cardNames)
+		}
+	} else if len(cardNames) != 8 {
 		return fmt.Errorf("exactly 8 cards are required for optimization")
 	}
 
