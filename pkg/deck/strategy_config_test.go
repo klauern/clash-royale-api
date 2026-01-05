@@ -376,8 +376,8 @@ func TestScoreCardWithStrategy(t *testing.T) {
 			},
 			role:        &winConRole,
 			strategy:    StrategyAggro,
-			expectedMin: 1.3, // Win condition gets bonus in aggro
-			expectedMax: 2.5,
+			expectedMin: 3.0, // Updated: Legendary priority bonus increased to 2.2
+			expectedMax: 3.6,
 		},
 		{
 			name: "Support card with cycle strategy",
@@ -405,8 +405,8 @@ func TestScoreCardWithStrategy(t *testing.T) {
 			},
 			role:        &supportRole,
 			strategy:    StrategyBalanced,
-			expectedMin: 0.7,
-			expectedMax: 1.2,
+			expectedMin: 1.2, // Updated: Rare priority bonus is 1.3
+			expectedMax: 1.4,
 		},
 	}
 

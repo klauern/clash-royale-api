@@ -124,7 +124,7 @@ func GetRarityPriorityScore(rarity string) float64 {
 	return 0.0 // Lowest priority for unknown rarities
 }
 
-// GetRarityPriorityBonus returns the bonus multiplier for deck building (1.0-5.0 scale).
+// GetRarityPriorityBonus returns the bonus multiplier for deck building (1.0-2.5 scale).
 // Used to prioritize selection of higher rarity cards when building decks.
 // Returns 1.0 (neutral multiplier) for unknown rarities.
 //
@@ -133,10 +133,10 @@ func GetRarityPriorityScore(rarity string) float64 {
 //
 // Values:
 //   - Common: 1.0
-//   - Rare: 2.0
-//   - Epic: 3.0
-//   - Legendary: 4.0
-//   - Champion: 5.0
+//   - Rare: 1.3
+//   - Epic: 1.7
+//   - Legendary: 2.2
+//   - Champion: 2.5
 func GetRarityPriorityBonus(rarity string) float64 {
 	normalized := NormalizeRarity(rarity)
 	if bonus, ok := priorityBonuses[normalized]; ok {

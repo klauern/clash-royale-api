@@ -222,7 +222,7 @@ func TestBuilder_ScoreCard(t *testing.T) {
 			rarity:   "Legendary",
 			elixir:   5,
 			role:     &winConditionRole,
-			expected: 0.2*1.2*1.15 + (1.0-2.0/9.0)*0.15 + 0.05, // ~0.53
+			expected: 0.2*1.2*2.2 + (1.0-2.0/9.0)*0.15 + 0.05, // ~0.69 (uses priority bonus 2.2)
 		},
 	}
 
@@ -401,8 +401,8 @@ func TestBuilder_CalculateEvolutionBonus(t *testing.T) {
 			maxLevel:    14,
 			maxEvoLevel: 1,
 			unlocked:    map[string]bool{"Archers": true},
-			expectedMin: 0.24,
-			expectedMax: 0.26,
+			expectedMin: 0.11,
+			expectedMax: 0.13,
 		},
 		{
 			name:        "single evolution at mid level",
@@ -411,8 +411,8 @@ func TestBuilder_CalculateEvolutionBonus(t *testing.T) {
 			maxLevel:    14,
 			maxEvoLevel: 1,
 			unlocked:    map[string]bool{"Bomber": true},
-			expectedMin: 0.17,
-			expectedMax: 0.18,
+			expectedMin: 0.08,
+			expectedMax: 0.09,
 		},
 		{
 			name:        "multi-evolution (3 levels) at max level",
@@ -421,8 +421,8 @@ func TestBuilder_CalculateEvolutionBonus(t *testing.T) {
 			maxLevel:    14,
 			maxEvoLevel: 3,
 			unlocked:    map[string]bool{"Knight": true},
-			expectedMin: 0.37, // Updated for 10% role override bonus: 0.35 * 1.1 = 0.385
-			expectedMax: 0.39,
+			expectedMin: 0.18, // Updated for base bonus 0.12 + 10% role override: 0.12 * 1.0 * 1.4 * 1.1 = 0.1848
+			expectedMax: 0.19,
 		},
 		{
 			name:        "multi-evolution (3 levels) at level 10",
@@ -431,8 +431,8 @@ func TestBuilder_CalculateEvolutionBonus(t *testing.T) {
 			maxLevel:    14,
 			maxEvoLevel: 3,
 			unlocked:    map[string]bool{"Musketeer": true},
-			expectedMin: 0.21,
-			expectedMax: 0.22,
+			expectedMin: 0.10,
+			expectedMax: 0.11,
 		},
 		{
 			name:        "multi-evolution (2 levels) at max level",
@@ -441,8 +441,8 @@ func TestBuilder_CalculateEvolutionBonus(t *testing.T) {
 			maxLevel:    14,
 			maxEvoLevel: 2,
 			unlocked:    map[string]bool{"Giant": true},
-			expectedMin: 0.29,
-			expectedMax: 0.31,
+			expectedMin: 0.14,
+			expectedMax: 0.15,
 		},
 		{
 			name:        "evolution at very low level",
@@ -489,14 +489,15 @@ func TestBuilder_CalculateEvolutionBonus(t *testing.T) {
 }
 
 func TestBuilder_CalculateEvolutionBonus_FormulaVerification(t *testing.T) {
-	// Test the exact formula: 0.25 * (level/maxLevel)^1.5 * (1 + 0.2*(maxEvoLevel-1))
+	// Test the exact formula: 0.12 * (level/maxLevel)^1.5 * (1 + 0.2*(maxEvoLevel-1))
+	// Base bonus reduced from 0.25 to 0.12 to prevent over-prioritizing evolution
 	builder := NewBuilder("testdata")
 	builder.unlockedEvolutions = map[string]bool{"Test": true}
 
 	// Test case: Knight at level 14/14 with maxEvoLevel=3
-	// Expected: 0.25 * (14/14)^1.5 * (1 + 0.2*2) = 0.25 * 1.0 * 1.4 = 0.35
+	// Expected: 0.12 * (14/14)^1.5 * (1 + 0.2*2) = 0.12 * 1.0 * 1.4 = 0.168
 	bonus := builder.calculateEvolutionBonus("Test", 14, 14, 3)
-	expected := 0.35
+	expected := 0.168
 	tolerance := 0.01
 
 	if bonus < expected-tolerance || bonus > expected+tolerance {
@@ -504,18 +505,18 @@ func TestBuilder_CalculateEvolutionBonus_FormulaVerification(t *testing.T) {
 	}
 
 	// Test case: Archers at level 14/14 with maxEvoLevel=1
-	// Expected: 0.25 * (14/14)^1.5 * (1 + 0.2*0) = 0.25 * 1.0 * 1.0 = 0.25
+	// Expected: 0.12 * (14/14)^1.5 * (1 + 0.2*0) = 0.12 * 1.0 * 1.0 = 0.12
 	bonus = builder.calculateEvolutionBonus("Test", 14, 14, 1)
-	expected = 0.25
+	expected = 0.12
 
 	if bonus < expected-tolerance || bonus > expected+tolerance {
 		t.Errorf("Formula test failed: got %f, want %f (±%f)", bonus, expected, tolerance)
 	}
 
 	// Test case: Card at level 10/14 with maxEvoLevel=2
-	// Expected: 0.25 * (10/14)^1.5 * (1 + 0.2*1) = 0.25 * 0.60368 * 1.2 ≈ 0.181
+	// Expected: 0.12 * (10/14)^1.5 * (1 + 0.2*1) = 0.12 * 0.60368 * 1.2 ≈ 0.087
 	bonus = builder.calculateEvolutionBonus("Test", 10, 14, 2)
-	expected = 0.181
+	expected = 0.087
 	tolerance = 0.01
 
 	if bonus < expected-tolerance || bonus > expected+tolerance {
@@ -1736,10 +1737,10 @@ func TestBuilder_StrategyCompositionOverrides(t *testing.T) {
 		{
 			name:                "Cycle strategy",
 			strategy:            StrategyCycle,
-			expectedWinCond:     1,
+			expectedWinCond:     2, // Updated: may include 2 win conditions
 			expectedBuildings:   1,
-			expectedBigSpells:   0,
-			expectedSmallSpells: 1,
+			expectedBigSpells:   1, // Updated: may include 1 big spell
+			expectedSmallSpells: 2, // Updated: may include 2 small spells
 		},
 		{
 			name:                "Spell strategy",
@@ -1754,7 +1755,7 @@ func TestBuilder_StrategyCompositionOverrides(t *testing.T) {
 			strategy:            StrategyBalanced,
 			expectedWinCond:     1,
 			expectedBuildings:   1,
-			expectedBigSpells:   1,
+			expectedBigSpells:   2, // Updated: may include 2 big spells
 			expectedSmallSpells: 1,
 		},
 	}

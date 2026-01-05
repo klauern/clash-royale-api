@@ -134,16 +134,16 @@ func TestGetRarityPriorityBonus(t *testing.T) {
 		rarity   string
 		expected float64
 	}{
-		// Standard rarities (1.0-5.0 scale)
+		// Standard rarities (1.0-2.5 scale, adjusted to prevent over-prioritization)
 		{"Common", "Common", 1.0},
-		{"Rare", "Rare", 2.0},
-		{"Epic", "Epic", 3.0},
-		{"Legendary", "Legendary", 4.0},
-		{"Champion", "Champion", 5.0},
+		{"Rare", "Rare", 1.3},
+		{"Epic", "Epic", 1.7},
+		{"Legendary", "Legendary", 2.2},
+		{"Champion", "Champion", 2.5},
 
 		// Case variations
 		{"common lowercase", "common", 1.0},
-		{"EPIC uppercase", "EPIC", 3.0},
+		{"EPIC uppercase", "EPIC", 1.7},
 
 		// Unknown rarities (should return 1.0 = neutral)
 		{"Unknown rarity", "Mythic", 1.0},
@@ -175,9 +175,9 @@ func TestPriorityScoreVsBonusDifferentScales(t *testing.T) {
 			t.Errorf("GetRarityPriorityScore(%q) = %.1f, expected to be in range [0, 80]", rarity, score)
 		}
 
-		// Bonus should be on 1.0-5.0 scale
-		if bonus < 1.0 || bonus > 5.0 {
-			t.Errorf("GetRarityPriorityBonus(%q) = %.1f, expected to be in range [1.0, 5.0]", rarity, bonus)
+		// Bonus should be on 1.0-2.5 scale
+		if bonus < 1.0 || bonus > 2.5 {
+			t.Errorf("GetRarityPriorityBonus(%q) = %.1f, expected to be in range [1.0, 2.5]", rarity, bonus)
 		}
 
 		// They should be different values (different purposes)
