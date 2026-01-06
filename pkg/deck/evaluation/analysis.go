@@ -669,8 +669,71 @@ func calculateLadderScore(rarityScore, levelIndepScore, upgradeProgress float64)
 	return score
 }
 
+// upgradePriority represents an upgrade recommendation
+type upgradePriority struct {
+	cardName     string
+	currentLevel int
+	maxLevel     int
+	gap          int
+	tier         int
+	reason       string
+}
+
+// calculateUpgradePriorities returns sorted upgrade recommendations
+func calculateUpgradePriorities(deckCards []deck.CardCandidate, playerContext *PlayerContext) []upgradePriority {
+	priorities := []upgradePriority{}
+
+	for _, card := range deckCards {
+		info, exists := playerContext.Collection[card.Name]
+		if !exists {
+			continue // Card not owned
+		}
+
+		gap := info.MaxLevel - info.Level
+		if gap == 0 {
+			continue // Already maxed
+		}
+
+		priority := upgradePriority{
+			cardName:     card.Name,
+			currentLevel: info.Level,
+			maxLevel:     info.MaxLevel,
+			gap:          gap,
+		}
+
+		// Assign tier and reason
+		if card.Role != nil && *card.Role == deck.RoleWinCondition {
+			priority.tier = 1
+			priority.reason = "win condition"
+		} else if card.Role != nil && (*card.Role == deck.RoleSpellBig || *card.Role == deck.RoleSpellSmall) {
+			priority.tier = 2
+			priority.reason = "spell breakpoints"
+		} else if card.Stats != nil && card.Stats.DamagePerSecond > 150 {
+			priority.tier = 3
+			priority.reason = "tank killer"
+		} else {
+			priority.tier = 4
+			priority.reason = "support"
+		}
+
+		priorities = append(priorities, priority)
+	}
+
+	// Sort by tier (ascending), then gap (descending)
+	sort.Slice(priorities, func(i, j int) bool {
+		if priorities[i].tier != priorities[j].tier {
+			return priorities[i].tier < priorities[j].tier
+		}
+		return priorities[i].gap > priorities[j].gap
+	})
+
+	return priorities
+}
+
 // BuildLadderAnalysis creates detailed ladder analysis
-func BuildLadderAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
+// If playerContext is provided, uses actual card levels for personalized recommendations
+// If playerContext is nil, falls back to generic rarity-based analysis
+func BuildLadderAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerContext) AnalysisSection {
 	// Get F2P score for rarity assessment
 	f2pScore := ScoreF2P(deckCards)
 
@@ -694,69 +757,139 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 		totalLevelRatio += card.LevelRatio()
 	}
 
-	// Calculate level-independence score
-	levelIndepScore := float64(len(levelIndepCards)) / float64(len(deckCards)) * 10.0
+	// Check if we have player context for level-based analysis
+	hasPlayerContext := playerContext != nil
+	var avgCurrentLevel float64
+	var avgLevelGap float64
+	var maxLevelGap int
+	var upgradePriorities []upgradePriority
 
-	// Calculate average upgrade progress
-	avgProgress := totalLevelRatio / float64(len(deckCards))
-	upgradeProgressScore := avgProgress * 10.0
+	if hasPlayerContext {
+		// Calculate actual level metrics from playerContext.Collection
+		totalCurrentLevel := 0
+		totalMaxLevel := 0
+		totalGap := 0
+		cardsWithLevels := 0
+
+		for _, card := range deckCards {
+			if info, exists := playerContext.Collection[card.Name]; exists {
+				totalCurrentLevel += info.Level
+				totalMaxLevel += info.MaxLevel
+				gap := info.MaxLevel - info.Level
+				totalGap += gap
+				cardsWithLevels++
+
+				if gap > maxLevelGap {
+					maxLevelGap = gap
+				}
+			}
+		}
+
+		if cardsWithLevels > 0 {
+			avgCurrentLevel = float64(totalCurrentLevel) / float64(cardsWithLevels)
+			avgLevelGap = float64(totalGap) / float64(cardsWithLevels)
+		}
+
+		upgradePriorities = calculateUpgradePriorities(deckCards, playerContext)
+	}
+
+	// Calculate competitive viability (level-based)
+	var competitiveViability float64
+	var viabilityRating string
+
+	if hasPlayerContext {
+		competitiveViability = 10.0
+		competitiveViability -= (avgLevelGap * 2.0)
+
+		if maxLevelGap >= 5 {
+			competitiveViability -= 1.0
+		}
+		if maxLevelGap >= 7 {
+			competitiveViability -= 1.0
+		}
+
+		if competitiveViability < 0 {
+			competitiveViability = 0
+		}
+
+		// Assign rating
+		if competitiveViability >= 9.0 {
+			viabilityRating = "Tournament ready"
+		} else if competitiveViability >= 7.0 {
+			viabilityRating = "Ladder competitive"
+		} else if competitiveViability >= 5.0 {
+			viabilityRating = "Playable but underleveled"
+		} else if competitiveViability >= 3.0 {
+			viabilityRating = "Significant disadvantage"
+		} else {
+			viabilityRating = "Not competitive"
+		}
+	}
 
 	// Calculate ladder score
-	score := calculateLadderScore(f2pScore.Score, levelIndepScore, upgradeProgressScore)
-	rating := ScoreToRating(score)
+	var score float64
+	var rating Rating
+
+	if hasPlayerContext {
+		// Use competitive viability as primary score when player context available
+		score = competitiveViability
+		rating = Rating(viabilityRating)
+	} else {
+		// Fall back to F2P-based scoring
+		levelIndepScore := float64(len(levelIndepCards)) / float64(len(deckCards)) * 10.0
+		avgProgress := totalLevelRatio / float64(len(deckCards))
+		upgradeProgressScore := avgProgress * 10.0
+		score = calculateLadderScore(f2pScore.Score, levelIndepScore, upgradeProgressScore)
+		rating = ScoreToRating(score)
+	}
 
 	// Build details array
 	details := []string{}
 
-	// Rarity breakdown
+	// Rarity breakdown (always shown)
 	details = append(details, fmt.Sprintf("Rarity breakdown: %d Commons, %d Rares, %d Epics, %d Legendaries, %d Champions",
 		rarityCount["Common"], rarityCount["Rare"], rarityCount["Epic"],
 		rarityCount["Legendary"], rarityCount["Champion"]))
 
-	// Level-independent cards
+	// Level-based analysis (only if player context available)
+	if hasPlayerContext {
+		// Average deck level
+		maxAvgLevel := avgCurrentLevel + avgLevelGap
+		details = append(details, fmt.Sprintf("Average deck level: %.1f / %.0f (%.1f level gap)",
+			avgCurrentLevel, maxAvgLevel, avgLevelGap))
+
+		// Competitive viability
+		details = append(details, fmt.Sprintf("Competitive viability: %s (%.1f/10)",
+			viabilityRating, competitiveViability))
+
+		// Upgrade priorities (top 3)
+		if len(upgradePriorities) > 0 {
+			for i := 0; i < len(upgradePriorities) && i < 3; i++ {
+				p := upgradePriorities[i]
+				details = append(details, fmt.Sprintf("Upgrade priority %d: %s (%d→%d, %s)",
+					i+1, p.cardName, p.currentLevel, p.maxLevel, p.reason))
+			}
+		}
+
+		// Cards ready for ladder (level 11+)
+		readyCount := 0
+		for _, card := range deckCards {
+			if info, exists := playerContext.Collection[card.Name]; exists {
+				if info.Level >= 11 {
+					readyCount++
+				}
+			}
+		}
+		details = append(details, fmt.Sprintf("Cards ready for ladder: %d/8 (level 11+)", readyCount))
+	}
+
+	// Level-independent cards (always shown if present)
 	if len(levelIndepCards) > 0 {
 		details = append(details, fmt.Sprintf("Level-independent cards (%d): %s",
 			len(levelIndepCards), buildCardList(levelIndepCards)))
 	}
 
-	// Upgrade priority (top 3 most impactful)
-	priorities := []string{}
-	for _, card := range deckCards {
-		if card.Role != nil && *card.Role == deck.RoleWinCondition {
-			priorities = append(priorities, fmt.Sprintf("%s (win condition)", card.Name))
-		}
-	}
-	for _, card := range deckCards {
-		if len(priorities) >= 3 {
-			break
-		}
-		if card.Role != nil && *card.Role == deck.RoleSupport && card.Rarity != "Common" {
-			priorities = append(priorities, fmt.Sprintf("%s (versatile %s)", card.Name, strings.ToLower(card.Rarity)))
-		}
-	}
-	if len(priorities) > 0 {
-		priorityStr := ""
-		for i, p := range priorities {
-			if i < 3 {
-				priorityStr += fmt.Sprintf("%d) %s", i+1, p)
-				if i < len(priorities)-1 && i < 2 {
-					priorityStr += ", "
-				}
-			}
-		}
-		details = append(details, fmt.Sprintf("Upgrade priority: %s", priorityStr))
-	}
-
-	// Overleveling impact
-	for _, card := range deckCards {
-		if card.Role != nil && *card.Role == deck.RoleSpellBig {
-			details = append(details, fmt.Sprintf("Overleveling impact: %s breakpoints critical vs. support troops",
-				card.Name))
-			break
-		}
-	}
-
-	// F2P assessment
+	// F2P assessment (always shown)
 	f2pAssessment := "Difficult"
 	if f2pScore.Score >= 8.0 {
 		f2pAssessment = "Excellent"
@@ -773,17 +906,31 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 	}
 	details = append(details, fmt.Sprintf("F2P assessment: %s - %s", f2pAssessment, reason))
 
-	// Gold efficiency
+	// Gold efficiency (always shown)
 	goldEfficiency := int(f2pScore.Score * 10)
 	details = append(details, fmt.Sprintf("Gold efficiency: %d/100 - %s upgrade costs",
 		goldEfficiency, f2pAssessment))
 
 	// Generate summary
 	summary := "Moderate F2P-friendliness"
-	if f2pScore.Score >= 8.0 {
-		summary = "Excellent F2P deck with clear upgrade path"
-	} else if f2pScore.Score < 5.0 {
-		summary = "Expensive deck requiring significant investment"
+
+	if hasPlayerContext {
+		if competitiveViability >= 9.0 {
+			summary = "Tournament-ready deck with maxed or near-maxed cards"
+		} else if competitiveViability >= 7.0 {
+			summary = fmt.Sprintf("Ladder competitive with %.1f average level gap", avgLevelGap)
+		} else if competitiveViability >= 5.0 {
+			summary = fmt.Sprintf("Playable but underleveled (%.1f level gap)", avgLevelGap)
+		} else {
+			summary = fmt.Sprintf("Significant level disadvantage (%.1f gap)", avgLevelGap)
+		}
+	} else {
+		// Rarity-based summary (existing logic)
+		if f2pScore.Score >= 8.0 {
+			summary = "Excellent F2P deck with clear upgrade path"
+		} else if f2pScore.Score < 5.0 {
+			summary = "Expensive deck requiring significant investment"
+		}
 	}
 
 	return AnalysisSection{
@@ -829,7 +976,7 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 	attackAnalysis := BuildAttackAnalysis(deckCards)
 	baitAnalysis := BuildBaitAnalysis(deckCards)
 	cycleAnalysis := BuildCycleAnalysis(deckCards)
-	ladderAnalysis := BuildLadderAnalysis(deckCards)
+	ladderAnalysis := BuildLadderAnalysis(deckCards, playerContext)
 
 	// Phase 4: Calculate Overall Score (weighted average)
 	// Weights: Attack 20%, Defense 20%, Synergy 25%, Versatility 20%, F2P 15%

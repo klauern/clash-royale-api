@@ -656,7 +656,7 @@ func TestBuildLadderAnalysis(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := BuildLadderAnalysis(tt.cards)
+			result := BuildLadderAnalysis(tt.cards, nil)
 
 			if result.Score < tt.minScore || result.Score > tt.maxScore {
 				t.Errorf("BuildLadderAnalysis() score = %v, want between %v and %v",
@@ -1005,5 +1005,183 @@ func TestBuildDefenseAnalysis_EdgeCases(t *testing.T) {
 				t.Errorf("BuildDefenseAnalysis() details missing '%v'", tt.expectInDetails)
 			}
 		})
+	}
+}
+
+// ============================================================================
+// Level-based Ladder Analysis Tests
+// ============================================================================
+
+func TestBuildLadderAnalysis_WithNilPlayerContext(t *testing.T) {
+	cards := []deck.CardCandidate{
+		makeCard("Hog Rider", deck.RoleWinCondition, 11, 14, "Rare", 4),
+		makeCardWithTargets("Musketeer", deck.RoleSupport, 11, 14, "Rare", 4, "Air & Ground", 180),
+		makeCard("Fireball", deck.RoleSpellBig, 11, 14, "Rare", 4),
+		makeCard("Log", deck.RoleSpellSmall, 11, 14, "Legendary", 2),
+		makeCard("Ice Golem", deck.RoleCycle, 11, 14, "Rare", 2),
+		makeCard("Ice Spirit", deck.RoleCycle, 11, 14, "Common", 1),
+		makeCard("Cannon", deck.RoleBuilding, 11, 14, "Common", 3),
+		makeCard("Skeletons", deck.RoleCycle, 11, 14, "Common", 1),
+	}
+
+	result := BuildLadderAnalysis(cards, nil)
+
+	// Should fall back to rarity-based analysis
+	detailsStr := strings.Join(result.Details, " ")
+	if strings.Contains(detailsStr, "Average deck level") {
+		t.Errorf("Should not show level details when playerContext is nil")
+	}
+
+	if !strings.Contains(detailsStr, "F2P assessment") {
+		t.Errorf("Should contain F2P assessment")
+	}
+
+	if strings.Contains(detailsStr, "Competitive viability") {
+		t.Errorf("Should not show competitive viability when playerContext is nil")
+	}
+}
+
+func TestBuildLadderAnalysis_MaxedDeck(t *testing.T) {
+	playerContext := &PlayerContext{
+		Collection: map[string]CardLevelInfo{
+			"Hog Rider":  {Level: 14, MaxLevel: 14, Rarity: "Rare"},
+			"Musketeer":  {Level: 14, MaxLevel: 14, Rarity: "Rare"},
+			"Fireball":   {Level: 14, MaxLevel: 14, Rarity: "Rare"},
+			"Log":        {Level: 14, MaxLevel: 14, Rarity: "Legendary"},
+			"Ice Golem":  {Level: 14, MaxLevel: 14, Rarity: "Rare"},
+			"Ice Spirit": {Level: 14, MaxLevel: 14, Rarity: "Common"},
+			"Cannon":     {Level: 14, MaxLevel: 14, Rarity: "Common"},
+			"Skeletons":  {Level: 14, MaxLevel: 14, Rarity: "Common"},
+		},
+	}
+
+	cards := []deck.CardCandidate{
+		makeCard("Hog Rider", deck.RoleWinCondition, 14, 14, "Rare", 4),
+		makeCardWithTargets("Musketeer", deck.RoleSupport, 14, 14, "Rare", 4, "Air & Ground", 180),
+		makeCard("Fireball", deck.RoleSpellBig, 14, 14, "Rare", 4),
+		makeCard("Log", deck.RoleSpellSmall, 14, 14, "Legendary", 2),
+		makeCard("Ice Golem", deck.RoleCycle, 14, 14, "Rare", 2),
+		makeCard("Ice Spirit", deck.RoleCycle, 14, 14, "Common", 1),
+		makeCard("Cannon", deck.RoleBuilding, 14, 14, "Common", 3),
+		makeCard("Skeletons", deck.RoleCycle, 14, 14, "Common", 1),
+	}
+
+	result := BuildLadderAnalysis(cards, playerContext)
+
+	detailsStr := strings.Join(result.Details, " ")
+	if !strings.Contains(detailsStr, "Tournament ready") {
+		t.Errorf("Maxed deck should be tournament ready, got details: %v", detailsStr)
+	}
+
+	if !strings.Contains(detailsStr, "0.0 level gap") {
+		t.Errorf("Should show 0.0 level gap for maxed deck, got details: %v", detailsStr)
+	}
+
+	if result.Score < 9.0 {
+		t.Errorf("Maxed deck should have score >= 9.0, got %v", result.Score)
+	}
+
+	if !strings.Contains(result.Summary, "Tournament-ready") {
+		t.Errorf("Summary should mention tournament-ready, got: %v", result.Summary)
+	}
+}
+
+func TestBuildLadderAnalysis_UnderleveledDeck(t *testing.T) {
+	playerContext := &PlayerContext{
+		Collection: map[string]CardLevelInfo{
+			"Hog Rider":  {Level: 9, MaxLevel: 14, Rarity: "Rare"},
+			"Musketeer":  {Level: 10, MaxLevel: 14, Rarity: "Rare"},
+			"Fireball":   {Level: 8, MaxLevel: 14, Rarity: "Rare"},
+			"Log":        {Level: 11, MaxLevel: 14, Rarity: "Legendary"},
+			"Ice Golem":  {Level: 10, MaxLevel: 14, Rarity: "Rare"},
+			"Ice Spirit": {Level: 9, MaxLevel: 14, Rarity: "Common"},
+			"Cannon":     {Level: 10, MaxLevel: 14, Rarity: "Common"},
+			"Skeletons":  {Level: 9, MaxLevel: 14, Rarity: "Common"},
+		},
+	}
+
+	cards := []deck.CardCandidate{
+		makeCard("Hog Rider", deck.RoleWinCondition, 9, 14, "Rare", 4),
+		makeCardWithTargets("Musketeer", deck.RoleSupport, 10, 14, "Rare", 4, "Air & Ground", 180),
+		makeCard("Fireball", deck.RoleSpellBig, 8, 14, "Rare", 4),
+		makeCard("Log", deck.RoleSpellSmall, 11, 14, "Legendary", 2),
+		makeCard("Ice Golem", deck.RoleCycle, 10, 14, "Rare", 2),
+		makeCard("Ice Spirit", deck.RoleCycle, 9, 14, "Common", 1),
+		makeCard("Cannon", deck.RoleBuilding, 10, 14, "Common", 3),
+		makeCard("Skeletons", deck.RoleCycle, 9, 14, "Common", 1),
+	}
+
+	result := BuildLadderAnalysis(cards, playerContext)
+
+	detailsStr := strings.Join(result.Details, " ")
+
+	// Should show competitive disadvantage or not competitive
+	if !strings.Contains(detailsStr, "disadvantage") && !strings.Contains(detailsStr, "Not competitive") {
+		t.Errorf("Underleveled deck should show competitive disadvantage, got details: %v", detailsStr)
+	}
+
+	// Should show upgrade priorities
+	if !strings.Contains(detailsStr, "Upgrade priority") {
+		t.Errorf("Should show upgrade priorities, got details: %v", detailsStr)
+	}
+
+	// Should show average level gap > 3
+	if !strings.Contains(detailsStr, "level gap") {
+		t.Errorf("Should show level gap information, got details: %v", detailsStr)
+	}
+
+	if result.Score >= 7.0 {
+		t.Errorf("Underleveled deck should have score < 7.0, got %v", result.Score)
+	}
+}
+
+func TestCalculateUpgradePriorities(t *testing.T) {
+	playerContext := &PlayerContext{
+		Collection: map[string]CardLevelInfo{
+			"Hog Rider":  {Level: 11, MaxLevel: 14}, // Tier 1 (win condition), gap 3
+			"Fireball":   {Level: 9, MaxLevel: 14},  // Tier 2 (spell), gap 5
+			"Log":        {Level: 11, MaxLevel: 14}, // Tier 2 (spell), gap 3
+			"Musketeer":  {Level: 10, MaxLevel: 14}, // Tier 3 (DPS=180), gap 4
+			"Ice Golem":  {Level: 12, MaxLevel: 14}, // Tier 4, gap 2
+			"Ice Spirit": {Level: 14, MaxLevel: 14}, // gap 0 - excluded
+		},
+	}
+
+	cards := []deck.CardCandidate{
+		makeCard("Hog Rider", deck.RoleWinCondition, 11, 14, "Rare", 4),
+		makeCard("Fireball", deck.RoleSpellBig, 9, 14, "Rare", 4),
+		makeCard("Log", deck.RoleSpellSmall, 11, 14, "Legendary", 2),
+		makeCardWithTargets("Musketeer", deck.RoleSupport, 10, 14, "Rare", 4, "Air & Ground", 180),
+		makeCard("Ice Golem", deck.RoleCycle, 12, 14, "Rare", 2),
+		makeCard("Ice Spirit", deck.RoleCycle, 14, 14, "Common", 1),
+	}
+
+	priorities := calculateUpgradePriorities(cards, playerContext)
+
+	// Expected order:
+	// 1. Hog Rider (tier 1, gap 3)
+	// 2. Fireball (tier 2, gap 5)
+	// 3. Log (tier 2, gap 3)
+	// 4. Musketeer (tier 3, gap 4)
+	// 5. Ice Golem (tier 4, gap 2)
+
+	if len(priorities) != 5 {
+		t.Errorf("Expected 5 priorities (Ice Spirit excluded), got %d", len(priorities))
+	}
+
+	if len(priorities) > 0 && priorities[0].cardName != "Hog Rider" {
+		t.Errorf("Priority 1 should be Hog Rider (win condition), got %v", priorities[0].cardName)
+	}
+
+	if len(priorities) > 1 && priorities[1].cardName != "Fireball" {
+		t.Errorf("Priority 2 should be Fireball (spell, largest gap), got %v", priorities[1].cardName)
+	}
+
+	if len(priorities) > 0 && priorities[0].tier != 1 {
+		t.Errorf("Hog Rider should be tier 1, got tier %v", priorities[0].tier)
+	}
+
+	if len(priorities) > 1 && priorities[1].gap != 5 {
+		t.Errorf("Fireball gap should be 5, got %v", priorities[1].gap)
 	}
 }
