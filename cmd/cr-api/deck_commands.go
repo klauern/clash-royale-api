@@ -752,11 +752,17 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	cardNames := cmd.StringSlice("cards")
 	apiToken := cmd.String("api-token")
+	dataDir := cmd.String("data-dir")
 	verbose := cmd.Bool("verbose")
+	_ = cmd.Int("max-changes")    // TODO: implement max-changes filtering
+	_ = cmd.Bool("keep-win-con")  // TODO: implement win condition preservation
+	exportCSV := cmd.Bool("export-csv")
 
 	if apiToken == "" {
 		return fmt.Errorf("API token is required")
 	}
+
+	client := clashroyale.NewClient(apiToken)
 
 	// If no cards provided, fetch player's current deck from API
 	if len(cardNames) == 0 {
@@ -764,7 +770,6 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 			fmt.Printf("Fetching player data for tag: %s\n", tag)
 		}
 
-		client := clashroyale.NewClient(apiToken)
 		player, err := client.GetPlayer(tag)
 		if err != nil {
 			return fmt.Errorf("failed to get player: %w", err)
@@ -791,9 +796,116 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("exactly 8 cards are required for optimization")
 	}
 
-	fmt.Printf("Optimizing deck for player %s\n", tag)
-	fmt.Printf("Current deck: %v\n", cardNames)
-	fmt.Println("Note: Deck optimization not yet implemented")
+	// Fetch player data for context
+	player, err := client.GetPlayer(tag)
+	if err != nil {
+		return fmt.Errorf("failed to get player: %w", err)
+	}
+
+	// Convert card names to CardCandidates
+	deckCards := convertToCardCandidates(cardNames)
+
+	// Load synergy database
+	synergyDB := deck.NewSynergyDatabase()
+
+	// Create player context
+	playerContext := evaluation.NewPlayerContextFromPlayer(player)
+
+	// Evaluate current deck
+	if verbose {
+		fmt.Println("Evaluating current deck...")
+	}
+	currentResult := evaluation.Evaluate(deckCards, synergyDB, playerContext)
+
+	// Convert player cards to map for GenerateAlternatives
+	playerCardMap := make(map[string]bool)
+	for _, card := range player.Cards {
+		playerCardMap[card.Name] = true
+	}
+
+	// Generate alternative suggestions
+	if verbose {
+		fmt.Println("Generating optimization suggestions...")
+	}
+	alternatives := evaluation.GenerateAlternatives(deckCards, synergyDB, 10, playerCardMap)
+
+	// Display current deck analysis
+	fmt.Println("╔════════════════════════════════════════════════════════════════╗")
+	fmt.Println("║                    DECK OPTIMIZATION REPORT                    ║")
+	fmt.Println("╚════════════════════════════════════════════════════════════════╝")
+	fmt.Println()
+	fmt.Printf("🃏 Current Deck: %s\n", strings.Join(cardNames, " • "))
+	fmt.Printf("📊 Average Elixir: %.2f\n", currentResult.AvgElixir)
+	fmt.Printf("🎯 Archetype: %s (%.0f%% confidence)\n",
+		strings.Title(string(currentResult.DetectedArchetype)),
+		currentResult.ArchetypeConfidence*100)
+	fmt.Println()
+	fmt.Printf("⭐ Current Overall Score: %.1f/10 - %s\n",
+		currentResult.OverallScore,
+		currentResult.OverallRating)
+	fmt.Println()
+
+	// Display current category scores
+	fmt.Println("Current Category Scores:")
+	fmt.Printf("  ⚔️  Attack:        %s  %.1f/10 - %s\n",
+		formatStars(currentResult.Attack.Stars),
+		currentResult.Attack.Score,
+		currentResult.Attack.Rating)
+	fmt.Printf("  🛡️  Defense:       %s  %.1f/10 - %s\n",
+		formatStars(currentResult.Defense.Stars),
+		currentResult.Defense.Score,
+		currentResult.Defense.Rating)
+	fmt.Printf("  🔗 Synergy:       %s  %.1f/10 - %s\n",
+		formatStars(currentResult.Synergy.Stars),
+		currentResult.Synergy.Score,
+		currentResult.Synergy.Rating)
+	fmt.Printf("  🎭 Versatility:   %s  %.1f/10 - %s\n",
+		formatStars(currentResult.Versatility.Stars),
+		currentResult.Versatility.Score,
+		currentResult.Versatility.Rating)
+	fmt.Printf("  💰 F2P Friendly:  %s  %.1f/10 - %s\n",
+		formatStars(currentResult.F2PFriendly.Stars),
+		currentResult.F2PFriendly.Score,
+		currentResult.F2PFriendly.Rating)
+	fmt.Println()
+
+	// Display optimization suggestions
+	if len(alternatives.Suggestions) == 0 {
+		fmt.Println("✨ Your deck is already well-optimized! No better alternatives found.")
+		return nil
+	}
+
+	fmt.Println("═══════════════════════════════════════════════════════════════")
+	fmt.Printf("                OPTIMIZATION SUGGESTIONS (%d found)\n", len(alternatives.Suggestions))
+	fmt.Println("═══════════════════════════════════════════════════════════════")
+	fmt.Println()
+
+	// Display top suggestions
+	displayCount := len(alternatives.Suggestions)
+	if displayCount > 5 {
+		displayCount = 5
+	}
+
+	for i, alt := range alternatives.Suggestions[:displayCount] {
+		fmt.Printf("Suggestion #%d: %s\n", i+1, alt.Impact)
+		fmt.Println("───────────────────────────────────────────────────────────────")
+		fmt.Printf("  Replace: %s  →  %s\n", alt.OriginalCard, alt.ReplacementCard)
+		fmt.Printf("  Score Improvement: %.1f → %.1f (+%.1f)\n",
+			alt.OriginalScore, alt.NewScore, alt.ScoreDelta)
+		fmt.Printf("  Rationale: %s\n", alt.Rationale)
+		fmt.Printf("  New Deck: %s\n", strings.Join(alt.Deck, " • "))
+		fmt.Println()
+	}
+
+	// CSV export if requested
+	if exportCSV {
+		csvPath := filepath.Join(dataDir, fmt.Sprintf("deck-optimize-%s-%d.csv", tag, time.Now().Unix()))
+		if err := exportOptimizationCSV(csvPath, tag, cardNames, currentResult, *alternatives); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to export CSV: %v\n", err)
+		} else {
+			fmt.Printf("✓ Optimization results exported to: %s\n", csvPath)
+		}
+	}
 
 	return nil
 }
@@ -2347,4 +2459,80 @@ func loadDeckFromAnalysis(filePath string) ([]string, error) {
 	}
 
 	return cards, nil
+}
+
+// formatStars formats a star rating as visual stars
+func formatStars(stars int) string {
+	const filledStar = "★"
+	const emptyStar = "☆"
+
+	result := ""
+	for i := 0; i < 3; i++ {
+		if i < stars {
+			result += filledStar
+		} else {
+			result += emptyStar
+		}
+	}
+	return result
+}
+
+// exportOptimizationCSV exports optimization results to a CSV file
+func exportOptimizationCSV(path string, playerTag string, currentDeck []string, currentResult evaluation.EvaluationResult, alternatives evaluation.AlternativeSuggestions) error {
+	file, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("failed to create CSV file: %w", err)
+	}
+	defer file.Close()
+
+	// Write header
+	fmt.Fprintln(file, "# DECK OPTIMIZATION RESULTS")
+	fmt.Fprintf(file, "Player Tag,%s\n", playerTag)
+	fmt.Fprintf(file, "Current Deck,%s\n", strings.Join(currentDeck, ";"))
+	fmt.Fprintf(file, "Current Score,%.2f\n", currentResult.OverallScore)
+	fmt.Fprintf(file, "Archetype,%s\n", currentResult.DetectedArchetype)
+	fmt.Fprintln(file, "")
+
+	// Write category scores
+	fmt.Fprintln(file, "# CURRENT CATEGORY SCORES")
+	fmt.Fprintln(file, "Category,Score,Rating,Stars")
+	fmt.Fprintf(file, "Attack,%.2f,%s,%d\n",
+		currentResult.Attack.Score,
+		currentResult.Attack.Rating,
+		currentResult.Attack.Stars)
+	fmt.Fprintf(file, "Defense,%.2f,%s,%d\n",
+		currentResult.Defense.Score,
+		currentResult.Defense.Rating,
+		currentResult.Defense.Stars)
+	fmt.Fprintf(file, "Synergy,%.2f,%s,%d\n",
+		currentResult.Synergy.Score,
+		currentResult.Synergy.Rating,
+		currentResult.Synergy.Stars)
+	fmt.Fprintf(file, "Versatility,%.2f,%s,%d\n",
+		currentResult.Versatility.Score,
+		currentResult.Versatility.Rating,
+		currentResult.Versatility.Stars)
+	fmt.Fprintf(file, "F2P Friendly,%.2f,%s,%d\n",
+		currentResult.F2PFriendly.Score,
+		currentResult.F2PFriendly.Rating,
+		currentResult.F2PFriendly.Stars)
+	fmt.Fprintln(file, "")
+
+	// Write optimization suggestions
+	fmt.Fprintln(file, "# OPTIMIZATION SUGGESTIONS")
+	fmt.Fprintln(file, "Rank,Original Card,Replacement Card,Score Before,Score After,Improvement,Impact,Rationale,New Deck")
+	for i, alt := range alternatives.Suggestions {
+		fmt.Fprintf(file, "%d,%s,%s,%.2f,%.2f,%.2f,%s,\"%s\",%s\n",
+			i+1,
+			alt.OriginalCard,
+			alt.ReplacementCard,
+			alt.OriginalScore,
+			alt.NewScore,
+			alt.ScoreDelta,
+			alt.Impact,
+			alt.Rationale,
+			strings.Join(alt.Deck, ";"))
+	}
+
+	return nil
 }
