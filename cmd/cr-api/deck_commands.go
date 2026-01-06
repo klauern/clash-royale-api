@@ -754,8 +754,8 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	apiToken := cmd.String("api-token")
 	dataDir := cmd.String("data-dir")
 	verbose := cmd.Bool("verbose")
-	_ = cmd.Int("max-changes")    // TODO: implement max-changes filtering
-	_ = cmd.Bool("keep-win-con")  // TODO: implement win condition preservation
+	_ = cmd.Int("max-changes")   // TODO: implement max-changes filtering
+	_ = cmd.Bool("keep-win-con") // TODO: implement win condition preservation
 	exportCSV := cmd.Bool("export-csv")
 
 	if apiToken == "" {
