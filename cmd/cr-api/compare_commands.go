@@ -93,7 +93,7 @@ func deckCompareCommand(ctx context.Context, cmd *cli.Command) error {
 	// Evaluate all decks
 	results := make([]evaluation.EvaluationResult, len(deckCards))
 	for i, cards := range deckCards {
-		result := evaluation.Evaluate(cards, synergyDB)
+		result := evaluation.Evaluate(cards, synergyDB, nil)
 		results[i] = result
 	}
 

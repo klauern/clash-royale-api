@@ -21,7 +21,7 @@ func TestFormatJSON(t *testing.T) {
 		makeCard("Ice Golem", deck.RoleCycle, 11, 11, "Rare", 2),
 	}
 
-	result := Evaluate(deckCards, synergyDB)
+	result := Evaluate(deckCards, synergyDB, nil)
 
 	jsonOutput, err := FormatJSON(&result)
 	if err != nil {
@@ -170,7 +170,7 @@ func TestGenerateRecommendationsJSON(t *testing.T) {
 		makeCard("Archers", deck.RoleSupport, 11, 11, "Common", 3),
 	}
 
-	result := Evaluate(deckCards, synergyDB)
+	result := Evaluate(deckCards, synergyDB, nil)
 
 	recs := generateRecommendationsJSON(&result)
 
@@ -200,7 +200,7 @@ func TestFormatJSONErrorHandling(t *testing.T) {
 		makeCard("Hog Rider", deck.RoleWinCondition, 11, 11, "Rare", 4),
 	}
 
-	result := Evaluate(deckCards, synergyDB)
+	result := Evaluate(deckCards, synergyDB, nil)
 
 	jsonOutput, err := FormatJSON(&result)
 	if err != nil {

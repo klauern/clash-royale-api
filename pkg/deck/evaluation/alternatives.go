@@ -74,7 +74,7 @@ func GenerateAlternatives(
 	}
 
 	// Evaluate original deck
-	originalEval := Evaluate(deckCards, synergyDB)
+	originalEval := Evaluate(deckCards, synergyDB, nil)
 
 	result := &AlternativeSuggestions{
 		OriginalDeck:  originalDeck,
@@ -115,7 +115,7 @@ func generateSingleCardAlternatives(
 	alternatives := make([]AlternativeDeck, 0)
 
 	// Get original score
-	originalEval := Evaluate(deckCards, synergyDB)
+	originalEval := Evaluate(deckCards, synergyDB, nil)
 	originalScore := originalEval.OverallScore
 
 	// For each card in the deck, try replacing it
@@ -130,7 +130,7 @@ func generateSingleCardAlternatives(
 			newDeck[i] = replacement
 
 			// Evaluate new deck
-			newEval := Evaluate(newDeck, synergyDB)
+			newEval := Evaluate(newDeck, synergyDB, nil)
 			newScore := newEval.OverallScore
 
 			// Only suggest if it improves the score

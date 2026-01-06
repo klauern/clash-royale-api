@@ -1782,8 +1782,30 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	// Create synergy database
 	synergyDB := deck.NewSynergyDatabase()
 
+	// Fetch player context if --tag is provided
+	var playerContext *evaluation.PlayerContext
+	if playerTag != "" && apiToken != "" {
+		if verbose {
+			fmt.Printf("Fetching player data for context-aware evaluation...\n")
+		}
+
+		client := clashroyale.NewClient(apiToken)
+		player, err := client.GetPlayer(playerTag)
+		if err != nil {
+			// Log warning but continue with evaluation without context
+			fmt.Fprintf(os.Stderr, "Warning: Failed to fetch player data: %v\n", err)
+			fmt.Fprintf(os.Stderr, "Continuing with evaluation without player context.\n")
+		} else {
+			playerContext = evaluation.NewPlayerContextFromPlayer(player)
+			if verbose {
+				fmt.Printf("Player context loaded: %s (%s), Arena: %s\n",
+					player.Name, player.Tag, player.Arena.Name)
+			}
+		}
+	}
+
 	// Evaluate the deck
-	result := evaluation.Evaluate(deckCards, synergyDB)
+	result := evaluation.Evaluate(deckCards, synergyDB, playerContext)
 
 	// Format output based on requested format
 	var formattedOutput string

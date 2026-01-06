@@ -199,7 +199,7 @@ func TestEvaluateWithRealDecks(t *testing.T) {
 			start := time.Now()
 
 			// Run evaluation
-			result := Evaluate(tt.deckCards, synergyDB)
+			result := Evaluate(tt.deckCards, synergyDB, nil)
 
 			duration := time.Since(start)
 
@@ -305,7 +305,7 @@ func TestEvaluatePerformanceWithBatch(t *testing.T) {
 	successCount := 0
 
 	for _, deckCards := range testDecks {
-		result := Evaluate(deckCards, synergyDB)
+		result := Evaluate(deckCards, synergyDB, nil)
 		if result.OverallScore > 0 {
 			successCount++
 		}
@@ -381,7 +381,7 @@ func TestEvaluateEdgeCases(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := Evaluate(tt.deckCards, synergyDB)
+			result := Evaluate(tt.deckCards, synergyDB, nil)
 
 			if tt.expectValid {
 				if result.OverallScore < 0 || result.OverallScore > 10 {

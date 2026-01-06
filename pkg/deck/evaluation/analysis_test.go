@@ -692,7 +692,7 @@ func TestEvaluate(t *testing.T) {
 		makeCard("Ice Golem", deck.RoleCycle, 11, 11, "Rare", 2),
 	}
 
-	result := Evaluate(hogCycleDeck, nil)
+	result := Evaluate(hogCycleDeck, nil, nil)
 
 	// Check basic structure
 	if len(result.Deck) != 8 {

@@ -800,7 +800,11 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 // ============================================================================
 
 // Evaluate performs comprehensive deck evaluation with all scoring and analysis
-func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase) EvaluationResult {
+// If playerContext is provided, evaluation will include player-specific context such as:
+// - Card levels from player's collection
+// - Arena-specific card availability
+// - Evolution unlock status
+func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, playerContext *PlayerContext) EvaluationResult {
 	// Extract deck card names
 	deckNames := make([]string, len(deckCards))
 	for i, card := range deckCards {

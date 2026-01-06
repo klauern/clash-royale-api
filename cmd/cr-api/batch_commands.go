@@ -147,7 +147,7 @@ func deckBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		deckCards := convertToCardCandidates(cardNames)
-		result := evaluation.Evaluate(deckCards, synergyDB)
+		result := evaluation.Evaluate(deckCards, synergyDB, nil)
 
 		elapsed := time.Since(deckStart)
 

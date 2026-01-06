@@ -19,7 +19,7 @@ func TestFormatCSV(t *testing.T) {
 		makeCard("Ice Golem", deck.RoleCycle, 11, 11, "Rare", 2),
 	}
 
-	result := Evaluate(deckCards, synergyDB)
+	result := Evaluate(deckCards, synergyDB, nil)
 
 	csv := FormatCSV(&result)
 

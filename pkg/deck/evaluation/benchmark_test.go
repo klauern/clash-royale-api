@@ -94,7 +94,7 @@ func BenchmarkEvaluate(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = Evaluate(deckCards, synergyDB)
+		_ = Evaluate(deckCards, synergyDB, nil)
 	}
 }
 
@@ -126,7 +126,7 @@ func BenchmarkGenerateSynergyMatrix(b *testing.B) {
 func BenchmarkFormatCSV(b *testing.B) {
 	deckCards := getBenchmarkDeck()
 	synergyDB := deck.NewSynergyDatabase()
-	result := Evaluate(deckCards, synergyDB)
+	result := Evaluate(deckCards, synergyDB, nil)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -139,7 +139,7 @@ func BenchmarkFormatCSV(b *testing.B) {
 func BenchmarkFormatJSON(b *testing.B) {
 	deckCards := getBenchmarkDeck()
 	synergyDB := deck.NewSynergyDatabase()
-	result := Evaluate(deckCards, synergyDB)
+	result := Evaluate(deckCards, synergyDB, nil)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -244,7 +244,7 @@ func BenchmarkEvaluateBatch(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		for _, deckCards := range testDecks {
-			_ = Evaluate(deckCards, synergyDB)
+			_ = Evaluate(deckCards, synergyDB, nil)
 		}
 	}
 }
@@ -313,7 +313,7 @@ func BenchmarkEvaluateAllocs(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_ = Evaluate(deckCards, synergyDB)
+		_ = Evaluate(deckCards, synergyDB, nil)
 	}
 }
 
@@ -321,7 +321,7 @@ func BenchmarkEvaluateAllocs(b *testing.B) {
 func BenchmarkFormatCSVAllocs(b *testing.B) {
 	deckCards := getBenchmarkDeck()
 	synergyDB := deck.NewSynergyDatabase()
-	result := Evaluate(deckCards, synergyDB)
+	result := Evaluate(deckCards, synergyDB, nil)
 
 	b.ReportAllocs()
 	b.ResetTimer()
@@ -334,7 +334,7 @@ func BenchmarkFormatCSVAllocs(b *testing.B) {
 func BenchmarkFormatJSONAllocs(b *testing.B) {
 	deckCards := getBenchmarkDeck()
 	synergyDB := deck.NewSynergyDatabase()
-	result := Evaluate(deckCards, synergyDB)
+	result := Evaluate(deckCards, synergyDB, nil)
 
 	b.ReportAllocs()
 	b.ResetTimer()
