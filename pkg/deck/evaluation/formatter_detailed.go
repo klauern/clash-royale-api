@@ -28,6 +28,9 @@ func FormatDetailed(result *EvaluationResult) string {
 	// Synergy matrix with detailed pair explanations
 	output.WriteString(formatDetailedSynergyMatrix(result))
 
+	// Missing cards analysis with unlock requirements
+	output.WriteString(formatDetailedMissingCards(result))
+
 	// Counter analysis with comprehensive breakdowns
 	output.WriteString(formatDetailedCounterAnalysis(result))
 
@@ -220,6 +223,119 @@ func formatDetailedSynergyMatrix(result *EvaluationResult) string {
 	}
 
 	return matrix.String()
+}
+
+// formatDetailedMissingCards formats missing cards analysis with detailed unlock requirements
+func formatDetailedMissingCards(result *EvaluationResult) string {
+	if result.MissingCardsAnalysis == nil {
+		return ""
+	}
+
+	analysis := result.MissingCardsAnalysis
+	var missing strings.Builder
+
+	missing.WriteString("═══════════════════════════════════════════════════════════════════════\n")
+	missing.WriteString("                   CARD AVAILABILITY & UNLOCK REQUIREMENTS\n")
+	missing.WriteString("═══════════════════════════════════════════════════════════════════════\n\n")
+
+	// If deck is playable, show success and return
+	if analysis.IsPlayable {
+		missing.WriteString("✅ DECK STATUS: FULLY PLAYABLE\n")
+		missing.WriteString("─────────────────────────────────────────────────────────────────────\n\n")
+		missing.WriteString("All 8 cards in this deck are available in your collection!\n")
+		missing.WriteString("You can build and play this deck immediately.\n\n")
+		return missing.String()
+	}
+
+	// Deck not playable - show detailed analysis
+	missing.WriteString("📊 DECK AVAILABILITY SUMMARY\n")
+	missing.WriteString("─────────────────────────────────────────────────────────────────────\n\n")
+	missing.WriteString(fmt.Sprintf("  Cards Available:  %d / %d (%.0f%%)\n",
+		analysis.AvailableCount, len(analysis.Deck),
+		float64(analysis.AvailableCount)/float64(len(analysis.Deck))*100))
+	missing.WriteString(fmt.Sprintf("  Cards Missing:    %d / %d\n\n", analysis.MissingCount, len(analysis.Deck)))
+
+	// Count locked vs unlocked
+	lockedCount := 0
+	unlockedButMissingCount := 0
+	for _, card := range analysis.MissingCards {
+		if card.IsLocked {
+			lockedCount++
+		} else {
+			unlockedButMissingCount++
+		}
+	}
+
+	missing.WriteString("Missing Card Breakdown:\n")
+	if lockedCount > 0 {
+		missing.WriteString(fmt.Sprintf("  🔒 Arena Locked:  %d card(s) - Requires arena progression\n", lockedCount))
+	}
+	if unlockedButMissingCount > 0 {
+		missing.WriteString(fmt.Sprintf("  ✓  Unlocked:       %d card(s) - Obtainable from chests/shop\n", unlockedButMissingCount))
+	}
+	missing.WriteString("\n")
+
+	// Detailed card-by-card breakdown
+	missing.WriteString("MISSING CARDS - DETAILED ANALYSIS\n")
+	missing.WriteString("─────────────────────────────────────────────────────────────────────\n\n")
+
+	for i, card := range analysis.MissingCards {
+		missing.WriteString(fmt.Sprintf("CARD #%d: %s\n", i+1, strings.ToUpper(card.Name)))
+		missing.WriteString("─────────────────────────────────────────────────────────────────────\n")
+
+		// Availability status
+		if card.IsLocked {
+			missing.WriteString(fmt.Sprintf("Availability Status: 🔒 LOCKED - Requires Arena %d (%s)\n",
+				card.UnlockArena, card.UnlockArenaName))
+		} else {
+			missing.WriteString(fmt.Sprintf("Availability Status: ✓ UNLOCKED - Available at Arena %d (%s)\n",
+				card.UnlockArena, card.UnlockArenaName))
+		}
+
+		// Rarity
+		missing.WriteString(fmt.Sprintf("Rarity:              %s\n", card.Rarity))
+
+		// Unlock requirements
+		missing.WriteString("\nUnlock Requirements:\n")
+		if card.IsLocked {
+			missing.WriteString(fmt.Sprintf("  • Arena Progression: Progress to Arena %d (%s) to unlock\n",
+				card.UnlockArena, card.UnlockArenaName))
+			missing.WriteString("  • Once unlocked, card will appear in chests and shop\n")
+		} else {
+			missing.WriteString("  • Card is already unlocked in your current arena\n")
+			missing.WriteString("  • Can be obtained from chests, shop, or trades\n")
+		}
+
+		// Suggested alternatives
+		if len(card.AlternativeCards) > 0 {
+			missing.WriteString("\nSuggested Alternatives (in your collection):\n")
+			for j, alt := range card.AlternativeCards {
+				missing.WriteString(fmt.Sprintf("  %d. %s - Similar role/elixir cost\n", j+1, alt))
+			}
+			missing.WriteString("\nNote: These alternatives can replace the missing card while maintaining\n")
+			missing.WriteString("      similar deck strategy and elixir balance.\n")
+		} else {
+			missing.WriteString("\nSuggested Alternatives:\n")
+			missing.WriteString("  • No similar cards found in your collection\n")
+			missing.WriteString("  • Consider waiting to unlock this card before using this deck\n")
+		}
+
+		missing.WriteString("\n")
+	}
+
+	// Impact on deck score
+	if lockedCount > 0 || unlockedButMissingCount > 0 {
+		missing.WriteString("IMPACT ON DECK EVALUATION\n")
+		missing.WriteString("─────────────────────────────────────────────────────────────────────\n\n")
+		penalty := float64(lockedCount)*2.0 + float64(unlockedButMissingCount)*1.0
+		missing.WriteString(fmt.Sprintf("Score Penalty Applied: -%.1f points\n", penalty))
+		missing.WriteString("  • Locked cards: -2.0 points each (arena progression required)\n")
+		missing.WriteString("  • Unlocked missing cards: -1.0 points each (obtainable immediately)\n\n")
+		missing.WriteString("Note: The overall deck score has been reduced to reflect card\n")
+		missing.WriteString("      availability limitations. Score will improve as you acquire cards.\n\n")
+	}
+
+	return missing.String()
 }
 
 // formatDetailedCounterAnalysis formats counter analysis with comprehensive breakdowns

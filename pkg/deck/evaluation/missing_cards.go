@@ -50,15 +50,67 @@ type MissingCardsAnalysis struct {
 	SuggestedReplacements map[string][]string `json:"suggested_replacements,omitempty"`
 }
 
+// IdentifyMissingCardsWithContext analyzes which cards in a deck are missing from player's collection
+// Uses PlayerContext for arena-aware validation and card ownership checking
+// This is the preferred method for context-aware deck evaluation
+func IdentifyMissingCardsWithContext(
+	deckCards []deck.CardCandidate,
+	playerContext *PlayerContext,
+) *MissingCardsAnalysis {
+	if playerContext == nil {
+		// No context - treat as all cards available
+		return &MissingCardsAnalysis{
+			Deck:                  extractCardNames(deckCards),
+			MissingCards:          make([]MissingCard, 0),
+			SuggestedReplacements: make(map[string][]string),
+			AvailableCount:        len(deckCards),
+			IsPlayable:            true,
+		}
+	}
+
+	// Build simple collection map from PlayerContext
+	playerCollection := make(map[string]bool)
+	for cardName := range playerContext.Collection {
+		playerCollection[cardName] = true
+	}
+
+	// Use existing logic with PlayerContext integration
+	return identifyMissingCardsInternal(deckCards, playerCollection, playerContext)
+}
+
 // IdentifyMissingCards analyzes which cards in a deck are missing from player's collection
 // Parameters:
 //   - deckCards: The deck to analyze
 //   - playerCollection: Map of card name -> owned (true if player has it)
 //   - playerArena: Current arena level of the player (0 = all cards unlocked)
+//
+// Deprecated: Use IdentifyMissingCardsWithContext for arena-aware validation
 func IdentifyMissingCards(
 	deckCards []deck.CardCandidate,
 	playerCollection map[string]bool,
 	playerArena int,
+) *MissingCardsAnalysis {
+	// Create minimal PlayerContext for backward compatibility
+	ctx := &PlayerContext{
+		ArenaID:    playerArena,
+		Collection: make(map[string]CardLevelInfo),
+	}
+
+	// Populate collection from the map
+	if playerCollection != nil {
+		for cardName := range playerCollection {
+			ctx.Collection[cardName] = CardLevelInfo{}
+		}
+	}
+
+	return identifyMissingCardsInternal(deckCards, playerCollection, ctx)
+}
+
+// identifyMissingCardsInternal is the core implementation used by both methods
+func identifyMissingCardsInternal(
+	deckCards []deck.CardCandidate,
+	playerCollection map[string]bool,
+	playerContext *PlayerContext,
 ) *MissingCardsAnalysis {
 	analysis := &MissingCardsAnalysis{
 		Deck:                  make([]string, len(deckCards)),
@@ -83,7 +135,9 @@ func IdentifyMissingCards(
 
 		// Card is missing - get details
 		unlockArena := getCardUnlockArena(card.Name)
-		isLocked := playerArena > 0 && unlockArena > playerArena
+
+		// Use PlayerContext for arena-aware validation
+		isLocked := !playerContext.IsCardUnlockedInArena(card.Name)
 
 		missing := MissingCard{
 			Name:            card.Name,
@@ -338,6 +392,15 @@ func FormatMissingCardsReport(analysis *MissingCardsAnalysis) string {
 	}
 
 	return report
+}
+
+// extractCardNames extracts card names from a slice of CardCandidates
+func extractCardNames(deckCards []deck.CardCandidate) []string {
+	names := make([]string, len(deckCards))
+	for i, card := range deckCards {
+		names[i] = card.Name
+	}
+	return names
 }
 
 // joinCardNames joins card names with commas

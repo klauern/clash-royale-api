@@ -464,7 +464,24 @@ func formatMissingCards(result *EvaluationResult) string {
 	missing.WriteString("                       MISSING CARDS ANALYSIS\n")
 	missing.WriteString("═══════════════════════════════════════════════════════════════════════\n\n")
 
-	missing.WriteString(fmt.Sprintf("Deck Status: %d/%d cards available\n\n", analysis.AvailableCount, len(analysis.Deck)))
+	missing.WriteString(fmt.Sprintf("Deck Status: %d/%d cards available\n", analysis.AvailableCount, len(analysis.Deck)))
+
+	// Count locked vs unlocked missing cards
+	lockedCount := 0
+	for _, card := range analysis.MissingCards {
+		if card.IsLocked {
+			lockedCount++
+		}
+	}
+
+	// Add warning summary
+	if lockedCount > 0 {
+		missing.WriteString(fmt.Sprintf("⚠️  Warning: %d card(s) locked by arena restrictions\n", lockedCount))
+	}
+	if analysis.MissingCount-lockedCount > 0 {
+		missing.WriteString(fmt.Sprintf("   %d card(s) unlocked but not in collection\n", analysis.MissingCount-lockedCount))
+	}
+	missing.WriteString("\n")
 
 	for i, card := range analysis.MissingCards {
 		missing.WriteString(fmt.Sprintf("❌ %d. %s (%s)\n", i+1, card.Name, card.Rarity))

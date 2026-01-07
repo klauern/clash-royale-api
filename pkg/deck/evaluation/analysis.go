@@ -1007,6 +1007,34 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 		}
 	}
 
+	// Analyze missing cards if player context provided
+	var missingCardsAnalysis *MissingCardsAnalysis
+	if playerContext != nil {
+		missingCardsAnalysis = IdentifyMissingCardsWithContext(deckCards, playerContext)
+
+		// Apply arena-based score penalties for locked cards
+		if missingCardsAnalysis != nil && missingCardsAnalysis.MissingCount > 0 {
+			lockedCount := 0
+			for _, card := range missingCardsAnalysis.MissingCards {
+				if card.IsLocked {
+					lockedCount++
+				}
+			}
+
+			// Penalty: -2 points per locked card, -1 point per unlocked but missing card
+			penalty := float64(lockedCount)*2.0 + float64(missingCardsAnalysis.MissingCount-lockedCount)*1.0
+			overallScore -= penalty
+
+			// Ensure score doesn't go below 0
+			if overallScore < 0 {
+				overallScore = 0
+			}
+
+			// Recalculate overall rating with penalty applied
+			overallRating = ScoreToRating(overallScore)
+		}
+	}
+
 	// Assemble complete result
 	return EvaluationResult{
 		Deck:      deckNames,
@@ -1030,6 +1058,7 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 		CycleAnalysis:   cycleAnalysis,
 		LadderAnalysis:  ladderAnalysis,
 
-		SynergyMatrix: synergyMatrix,
+		SynergyMatrix:        synergyMatrix,
+		MissingCardsAnalysis: missingCardsAnalysis,
 	}
 }

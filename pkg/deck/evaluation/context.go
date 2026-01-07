@@ -115,13 +115,19 @@ func (ctx *PlayerContext) GetAverageLevel(cardNames []string) float64 {
 }
 
 // IsCardUnlockedInArena checks if a card is available in the player's current arena
-// This requires card unlock data which would typically come from game constants
-// For now, this is a placeholder that always returns true
-// TODO: Implement arena unlock checking in future task (Task 3.3.2)
+// Returns true if the player's arena level is >= the card's unlock arena
+// Returns true if ArenaID is 0 (no arena restrictions - training mode)
 func (ctx *PlayerContext) IsCardUnlockedInArena(cardName string) bool {
-	// Placeholder implementation
-	// Will be implemented in Task 3.3.2: Arena-aware card unlock validation
-	return true
+	// No arena restrictions if ArenaID is 0
+	if ctx.ArenaID == 0 {
+		return true
+	}
+
+	// Get the arena where this card unlocks
+	unlockArena := getCardUnlockArena(cardName)
+
+	// Card is unlocked if player has reached or passed the unlock arena
+	return ctx.ArenaID >= unlockArena
 }
 
 // CalculateUpgradeGap calculates how many levels a deck is below max
