@@ -122,6 +122,13 @@ func formatDetailedCategoryScores(result *EvaluationResult) string {
 			Method:   "Rarity distribution, upgrade costs, accessibility",
 			Criteria: "Common/Rare ratio (50%), Legendary count (30%), Epic count (20%)",
 		},
+		{
+			Name:     "Playability",
+			Score:    result.Playability,
+			Icon:     "🃏",
+			Method:   "Card availability based on player collection and arena",
+			Criteria: "Card ownership (60%), Arena unlock status (40%)",
+		},
 	}
 
 	for _, cat := range categories {

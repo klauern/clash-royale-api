@@ -70,6 +70,7 @@ func formatScoringGrid(result *EvaluationResult) string {
 		{"Synergy", result.Synergy, "🔗"},
 		{"Versatility", result.Versatility, "🎭"},
 		{"F2P Friendly", result.F2PFriendly, "💰"},
+		{"Playability", result.Playability, "🃏"},
 	}
 
 	// Display each category
@@ -255,6 +256,9 @@ func deriveStrengths(result *EvaluationResult) []string {
 	if result.F2PFriendly.Score >= 7.0 {
 		strengths = append(strengths, "Easy to upgrade for F2P players")
 	}
+	if result.Playability.Score >= 7.0 {
+		strengths = append(strengths, "All cards available - fully playable")
+	}
 
 	if len(strengths) == 0 {
 		strengths = append(strengths, "Balanced deck with no major standout strengths")
@@ -281,6 +285,9 @@ func deriveWeaknesses(result *EvaluationResult) []string {
 	}
 	if result.F2PFriendly.Score < 5.0 {
 		weaknesses = append(weaknesses, "Expensive upgrade path")
+	}
+	if result.Playability.Score < 5.0 {
+		weaknesses = append(weaknesses, "Missing cards - not fully playable")
 	}
 
 	if len(weaknesses) == 0 {

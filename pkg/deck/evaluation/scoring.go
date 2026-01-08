@@ -1,6 +1,8 @@
 package evaluation
 
 import (
+	"fmt"
+
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
@@ -403,5 +405,87 @@ func generateF2PAssessment(legendaryCount, epicCount, commonCount int, score flo
 		return "Challenging for F2P with many epic cards"
 	} else {
 		return "Moderate F2P friendliness, some expensive upgrades"
+	}
+}
+
+// ScorePlayability calculates how playable a deck is based on card availability (0-10 scale)
+// Requires PlayerContext to determine which cards are owned
+// Returns perfect score (10.0) if no player context (assume all cards available)
+func ScorePlayability(deckCards []deck.CardCandidate, playerContext *PlayerContext) CategoryScore {
+	if len(deckCards) == 0 {
+		return CreateCategoryScore(0, "No cards in deck")
+	}
+
+	// No player context - assume deck is fully playable
+	if playerContext == nil {
+		return CreateCategoryScore(10.0, "Player context not available - assuming all cards owned")
+	}
+
+	// Identify missing cards
+	analysis := IdentifyMissingCardsWithContext(deckCards, playerContext)
+
+	// Calculate playability score based on card availability
+	// Base score: percentage of cards owned
+	ownedRatio := float64(analysis.AvailableCount) / float64(len(deckCards))
+	baseScore := ownedRatio * 10.0
+
+	// Apply penalties for missing cards
+	// Locked cards (arena restrictions) are more severe than unlocked missing cards
+	lockedPenalty := 0.0
+	unlockedPenalty := 0.0
+
+	for _, card := range analysis.MissingCards {
+		if card.IsLocked {
+			// -1.5 points per locked card (harder to obtain)
+			lockedPenalty += 1.5
+		} else {
+			// -0.5 points per unlocked missing card (can be obtained)
+			unlockedPenalty += 0.5
+		}
+	}
+
+	score := baseScore - lockedPenalty - unlockedPenalty
+
+	// Ensure score is within 0-10 range
+	if score > 10.0 {
+		score = 10.0
+	}
+	if score < 0 {
+		score = 0
+	}
+
+	// Generate assessment
+	assessment := generatePlayabilityAssessment(analysis, score)
+
+	return CreateCategoryScore(score, assessment)
+}
+
+// generatePlayabilityAssessment creates playability assessment text
+func generatePlayabilityAssessment(analysis *MissingCardsAnalysis, score float64) string {
+	if analysis.IsPlayable {
+		return "All cards available - deck is fully playable"
+	}
+
+	lockedCount := 0
+	unlockedCount := 0
+	for _, card := range analysis.MissingCards {
+		if card.IsLocked {
+			lockedCount++
+		} else {
+			unlockedCount++
+		}
+	}
+
+	if score >= 8.0 {
+		return fmt.Sprintf("Mostly playable - only %d card(s) missing", analysis.MissingCount)
+	} else if score >= 5.0 {
+		if lockedCount > 0 {
+			return fmt.Sprintf("Partially playable - %d card(s) locked by arena, %d obtainable", lockedCount, unlockedCount)
+		}
+		return fmt.Sprintf("Partially playable - %d card(s) need to be obtained", unlockedCount)
+	} else if lockedCount > 0 {
+		return fmt.Sprintf("Not playable - %d card(s) locked by arena progression", lockedCount)
+	} else {
+		return fmt.Sprintf("Not playable - %d card(s) missing from collection", analysis.MissingCount)
 	}
 }

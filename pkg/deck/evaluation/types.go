@@ -108,12 +108,13 @@ type EvaluationResult struct {
 	Deck      []string `json:"deck"`
 	AvgElixir float64  `json:"average_elixir"`
 
-	// Category scores (5 categories)
+	// Category scores (6 categories)
 	Attack      CategoryScore `json:"attack"`
 	Defense     CategoryScore `json:"defense"`
 	Synergy     CategoryScore `json:"synergy"`
 	Versatility CategoryScore `json:"versatility"`
 	F2PFriendly CategoryScore `json:"f2p_friendly"`
+	Playability CategoryScore `json:"playability"`
 
 	// Overall score (weighted average)
 	OverallScore  float64 `json:"overall_score"`

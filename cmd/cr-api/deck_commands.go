@@ -2478,7 +2478,13 @@ func formatStars(stars int) string {
 }
 
 // exportOptimizationCSV exports optimization results to a CSV file
-func exportOptimizationCSV(path string, playerTag string, currentDeck []string, currentResult evaluation.EvaluationResult, alternatives evaluation.AlternativeSuggestions) error {
+func exportOptimizationCSV(
+	path string,
+	playerTag string,
+	currentDeck []string,
+	currentResult evaluation.EvaluationResult,
+	alternatives evaluation.AlternativeSuggestions,
+) error {
 	file, err := os.Create(path)
 	if err != nil {
 		return fmt.Errorf("failed to create CSV file: %w", err)

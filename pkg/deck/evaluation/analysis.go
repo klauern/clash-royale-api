@@ -967,6 +967,7 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 	synergyScore := ScoreSynergy(deckCards, synergyDB)
 	versatilityScore := ScoreVersatility(deckCards)
 	f2pScore := ScoreF2P(deckCards)
+	playabilityScore := ScorePlayability(deckCards, playerContext)
 
 	// Phase 2: Archetype Detection
 	archetypeResult := DetectArchetype(deckCards)
@@ -979,12 +980,14 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 	ladderAnalysis := BuildLadderAnalysis(deckCards, playerContext)
 
 	// Phase 4: Calculate Overall Score (weighted average)
-	// Weights: Attack 20%, Defense 20%, Synergy 25%, Versatility 20%, F2P 15%
-	overallScore := (attackScore.Score * 0.20) +
-		(defenseScore.Score * 0.20) +
-		(synergyScore.Score * 0.25) +
-		(versatilityScore.Score * 0.20) +
-		(f2pScore.Score * 0.15)
+	// Weights: Attack 18%, Defense 18%, Synergy 22%, Versatility 18%, F2P 12%, Playability 12%
+	// Playability is only relevant when player context is available
+	overallScore := (attackScore.Score * 0.18) +
+		(defenseScore.Score * 0.18) +
+		(synergyScore.Score * 0.22) +
+		(versatilityScore.Score * 0.18) +
+		(f2pScore.Score * 0.12) +
+		(playabilityScore.Score * 0.12)
 
 	overallRating := ScoreToRating(overallScore)
 
@@ -1045,6 +1048,7 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 		Synergy:     synergyScore,
 		Versatility: versatilityScore,
 		F2PFriendly: f2pScore,
+		Playability: playabilityScore,
 
 		OverallScore:  overallScore,
 		OverallRating: overallRating,
