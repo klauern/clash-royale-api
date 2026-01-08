@@ -68,20 +68,20 @@ func TestEvaluateWithFullPlayerContext(t *testing.T) {
 
 	// Create a mock player with full collection
 	playerContext := createMockPlayerContext(
-		"Arena 8",  // Frozen Peak
+		"Arena 8", // Frozen Peak
 		[]string{ // Full collection - all cards owned
 			"Hog Rider", "Musketeer", "Fireball", "The Log",
 			"Ice Spirit", "Skeletons", "Cannon", "Ice Golem",
 		},
 		map[string]int{ // No evolutions unlocked
-			"Hog Rider":   0,
-			"Musketeer":   0,
-			"Fireball":    0,
-			"The Log":     0,
-			"Ice Spirit":  0,
-			"Skeletons":   0,
-			"Cannon":      0,
-			"Ice Golem":   0,
+			"Hog Rider":  0,
+			"Musketeer":  0,
+			"Fireball":   0,
+			"The Log":    0,
+			"Ice Spirit": 0,
+			"Skeletons":  0,
+			"Cannon":     0,
+			"Ice Golem":  0,
 		},
 	)
 
@@ -229,24 +229,24 @@ func TestEvaluateWithArenaLockedCards(t *testing.T) {
 			// Missing: The Log, Ice Spirit, Ice Golem (locked by arena)
 		},
 		map[string]int{ // No evolutions
-			"Hog Rider":  0,
-			"Musketeer":  0,
-			"Fireball":   0,
-			"Skeletons":  0,
-			"Cannon":     0,
+			"Hog Rider": 0,
+			"Musketeer": 0,
+			"Fireball":  0,
+			"Skeletons": 0,
+			"Cannon":    0,
 		},
 	)
 
 	// Try to use a high-level deck with locked cards
 	deckCards := []deck.CardCandidate{
-		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition)}, // Unlocks Arena 2
-		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport)},          // Unlocks Arena 0
-		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSpellBig)},          // Unlocks Arena 0
-		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: ptrRole(deck.RoleSpellSmall)},    // Unlocks Arena 6 - LOCKED
-		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},         // Unlocks Arena 6 - LOCKED
-		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},          // Unlocks Arena 0
-		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleBuilding)},          // Unlocks Arena 0
-		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleCycle)},            // Unlocks Arena 8 - LOCKED
+		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition)},  // Unlocks Arena 2
+		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport)},       // Unlocks Arena 0
+		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSpellBig)},       // Unlocks Arena 0
+		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: ptrRole(deck.RoleSpellSmall)}, // Unlocks Arena 6 - LOCKED
+		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},      // Unlocks Arena 6 - LOCKED
+		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},       // Unlocks Arena 0
+		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleBuilding)},       // Unlocks Arena 0
+		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleCycle)},         // Unlocks Arena 8 - LOCKED
 	}
 
 	result := Evaluate(deckCards, synergyDB, playerContext)
@@ -304,14 +304,14 @@ func TestEvaluateWithEvolutions(t *testing.T) {
 			"Ice Spirit", "Skeletons", "Cannon", "Ice Golem",
 		},
 		map[string]int{ // Some evolutions unlocked
-			"Hog Rider":   1,  // Evolution Level 1
-			"Musketeer":   2,  // Evolution Level 2
-			"Fireball":    0,
-			"The Log":     1,  // Evolution Level 1
-			"Ice Spirit":  0,
-			"Skeletons":   0,
-			"Cannon":      0,
-			"Ice Golem":   0,
+			"Hog Rider":  1, // Evolution Level 1
+			"Musketeer":  2, // Evolution Level 2
+			"Fireball":   0,
+			"The Log":    1, // Evolution Level 1
+			"Ice Spirit": 0,
+			"Skeletons":  0,
+			"Cannon":     0,
+			"Ice Golem":  0,
 		},
 	)
 
@@ -366,39 +366,39 @@ func TestEvaluatePlayabilityScoring(t *testing.T) {
 	synergyDB := deck.NewSynergyDatabase()
 
 	tests := []struct {
-		name              string
-		ownedCards        []string
-		expectedPlayable  bool
-		minPlayability    float64
-		maxPlayability    float64
+		name             string
+		ownedCards       []string
+		expectedPlayable bool
+		minPlayability   float64
+		maxPlayability   float64
 	}{
 		{
-			name:              "Full collection",
-			ownedCards:        []string{"Hog Rider", "Musketeer", "Fireball", "The Log", "Ice Spirit", "Skeletons", "Cannon", "Ice Golem"},
-			expectedPlayable:  true,
-			minPlayability:    10.0,
-			maxPlayability:    10.0,
+			name:             "Full collection",
+			ownedCards:       []string{"Hog Rider", "Musketeer", "Fireball", "The Log", "Ice Spirit", "Skeletons", "Cannon", "Ice Golem"},
+			expectedPlayable: true,
+			minPlayability:   10.0,
+			maxPlayability:   10.0,
 		},
 		{
-			name:              "Missing 1 card",
-			ownedCards:        []string{"Hog Rider", "Musketeer", "Fireball", "The Log", "Ice Spirit", "Skeletons", "Cannon"},
-			expectedPlayable:  false,
-			minPlayability:    8.0,
-			maxPlayability:    9.5,
+			name:             "Missing 1 card",
+			ownedCards:       []string{"Hog Rider", "Musketeer", "Fireball", "The Log", "Ice Spirit", "Skeletons", "Cannon"},
+			expectedPlayable: false,
+			minPlayability:   8.0,
+			maxPlayability:   9.5,
 		},
 		{
-			name:              "Missing 2 cards",
-			ownedCards:        []string{"Hog Rider", "Musketeer", "Fireball", "The Log", "Ice Spirit", "Skeletons"},
-			expectedPlayable:  false,
-			minPlayability:    6.0,
-			maxPlayability:    8.5,
+			name:             "Missing 2 cards",
+			ownedCards:       []string{"Hog Rider", "Musketeer", "Fireball", "The Log", "Ice Spirit", "Skeletons"},
+			expectedPlayable: false,
+			minPlayability:   6.0,
+			maxPlayability:   8.5,
 		},
 		{
-			name:              "Missing 4 cards",
-			ownedCards:        []string{"Hog Rider", "Musketeer", "Fireball", "The Log"},
-			expectedPlayable:  false,
-			minPlayability:    0.0,
-			maxPlayability:    6.0,
+			name:             "Missing 4 cards",
+			ownedCards:       []string{"Hog Rider", "Musketeer", "Fireball", "The Log"},
+			expectedPlayable: false,
+			minPlayability:   0.0,
+			maxPlayability:   6.0,
 		},
 	}
 

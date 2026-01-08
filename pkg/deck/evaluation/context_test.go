@@ -86,33 +86,33 @@ func makeEmptyPlayerContext() *PlayerContext {
 
 func TestPlayerContext_GetCardLevel(t *testing.T) {
 	tests := []struct {
-		name         string
-		ctx          *PlayerContext
-		cardName     string
+		name          string
+		ctx           *PlayerContext
+		cardName      string
 		expectedLevel int
 	}{
 		{
-			name:         "Existing card - Giant",
-			ctx:          makeTestPlayerContext(),
-			cardName:     "Giant",
+			name:          "Existing card - Giant",
+			ctx:           makeTestPlayerContext(),
+			cardName:      "Giant",
 			expectedLevel: 11,
 		},
 		{
-			name:         "Existing card - Zap",
-			ctx:          makeTestPlayerContext(),
-			cardName:     "Zap",
+			name:          "Existing card - Zap",
+			ctx:           makeTestPlayerContext(),
+			cardName:      "Zap",
 			expectedLevel: 13,
 		},
 		{
-			name:         "Non-existent card",
-			ctx:          makeTestPlayerContext(),
-			cardName:     "Mega Knight",
+			name:          "Non-existent card",
+			ctx:           makeTestPlayerContext(),
+			cardName:      "Mega Knight",
 			expectedLevel: 0,
 		},
 		{
-			name:         "Empty collection",
-			ctx:          makeEmptyPlayerContext(),
-			cardName:     "Giant",
+			name:          "Empty collection",
+			ctx:           makeEmptyPlayerContext(),
+			cardName:      "Giant",
 			expectedLevel: 0,
 		},
 	}
@@ -209,10 +209,10 @@ func TestPlayerContext_HasEvolution(t *testing.T) {
 
 func TestPlayerContext_GetAverageLevel(t *testing.T) {
 	tests := []struct {
-		name         string
-		ctx          *PlayerContext
-		cardNames    []string
-		expectedAvg  float64
+		name        string
+		ctx         *PlayerContext
+		cardNames   []string
+		expectedAvg float64
 	}{
 		{
 			name:        "All cards exist",
@@ -294,7 +294,7 @@ func TestPlayerContext_IsCardUnlockedInArena(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "Arena ID 0 (no restrictions)",
+			name: "Arena ID 0 (no restrictions)",
 			ctx: &PlayerContext{
 				ArenaID:    0,
 				Collection: makeTestPlayerContext().Collection,
@@ -380,39 +380,39 @@ func TestPlayerContext_CalculateUpgradeGap(t *testing.T) {
 
 func TestPlayerContext_GetRarity(t *testing.T) {
 	tests := []struct {
-		name         string
-		ctx          *PlayerContext
-		cardName     string
+		name           string
+		ctx            *PlayerContext
+		cardName       string
 		expectedRarity string
 	}{
 		{
-			name:          "Common rarity",
-			ctx:           makeTestPlayerContext(),
-			cardName:      "Zap",
+			name:           "Common rarity",
+			ctx:            makeTestPlayerContext(),
+			cardName:       "Zap",
 			expectedRarity: "Common",
 		},
 		{
-			name:          "Rare rarity",
-			ctx:           makeTestPlayerContext(),
-			cardName:      "Giant",
+			name:           "Rare rarity",
+			ctx:            makeTestPlayerContext(),
+			cardName:       "Giant",
 			expectedRarity: "Rare",
 		},
 		{
-			name:          "Legendary rarity",
-			ctx:           makeTestPlayerContext(),
-			cardName:      "Log",
+			name:           "Legendary rarity",
+			ctx:            makeTestPlayerContext(),
+			cardName:       "Log",
 			expectedRarity: "Legendary",
 		},
 		{
-			name:          "Non-existent card",
-			ctx:           makeTestPlayerContext(),
-			cardName:      "Mega Knight",
+			name:           "Non-existent card",
+			ctx:            makeTestPlayerContext(),
+			cardName:       "Mega Knight",
 			expectedRarity: "",
 		},
 		{
-			name:          "Empty collection",
-			ctx:           makeEmptyPlayerContext(),
-			cardName:      "Giant",
+			name:           "Empty collection",
+			ctx:            makeEmptyPlayerContext(),
+			cardName:       "Giant",
 			expectedRarity: "",
 		},
 	}
@@ -490,7 +490,7 @@ func TestPlayerContext_CanEvolve(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "Card high level but low count (level 11, count 3)",
+			name: "Card high level but low count (level 11, count 3)",
 			ctx: &PlayerContext{
 				Collection: map[string]CardLevelInfo{
 					"Test Card": {Level: 11, Count: 3},
@@ -500,7 +500,7 @@ func TestPlayerContext_CanEvolve(t *testing.T) {
 			expected: false,
 		},
 		{
-			name:     "Card low level but high count (level 9, count 10)",
+			name: "Card low level but high count (level 9, count 10)",
 			ctx: &PlayerContext{
 				Collection: map[string]CardLevelInfo{
 					"Test Card": {Level: 9, Count: 10},
@@ -602,10 +602,10 @@ func TestPlayerContext_GetEvolutionProgress(t *testing.T) {
 
 func TestPlayerContext_GetUnlockedEvolutionCards(t *testing.T) {
 	tests := []struct {
-		name           string
-		ctx            *PlayerContext
-		expectedCount  int
-		expectedCards  []string
+		name          string
+		ctx           *PlayerContext
+		expectedCount int
+		expectedCards []string
 	}{
 		{
 			name:          "One evolved card",
@@ -614,18 +614,18 @@ func TestPlayerContext_GetUnlockedEvolutionCards(t *testing.T) {
 			expectedCards: []string{"Musketeer"},
 		},
 		{
-			name:           "No evolved cards",
-			ctx:            makeEmptyPlayerContext(),
-			expectedCount:  0,
-			expectedCards:  []string{},
+			name:          "No evolved cards",
+			ctx:           makeEmptyPlayerContext(),
+			expectedCount: 0,
+			expectedCards: []string{},
 		},
 		{
 			name: "Multiple evolved cards",
 			ctx: &PlayerContext{
 				UnlockedEvolutions: map[string]bool{
 					"Musketeer": true,
-					"Giant":      true,
-					"Hog Rider":  true,
+					"Giant":     true,
+					"Hog Rider": true,
 				},
 			},
 			expectedCount: 3,
@@ -697,10 +697,10 @@ func TestPlayerContext_GetEvolvableCards(t *testing.T) {
 
 func TestPlayerContext_NewPlayerContextFromPlayer(t *testing.T) {
 	tests := []struct {
-		name     string
-		player   *clashroyale.Player
-		wantNil  bool
-		verify   func(*testing.T, *PlayerContext)
+		name    string
+		player  *clashroyale.Player
+		wantNil bool
+		verify  func(*testing.T, *PlayerContext)
 	}{
 		{
 			name:    "Nil player",
@@ -718,22 +718,22 @@ func TestPlayerContext_NewPlayerContextFromPlayer(t *testing.T) {
 				},
 				Cards: []clashroyale.Card{
 					{
-						Name:             "Giant",
-						Level:            11,
-						MaxLevel:         14,
-						EvolutionLevel:   0,
+						Name:              "Giant",
+						Level:             11,
+						MaxLevel:          14,
+						EvolutionLevel:    0,
 						MaxEvolutionLevel: 0,
-						Rarity:           "Rare",
-						Count:            12,
+						Rarity:            "Rare",
+						Count:             12,
 					},
 					{
-						Name:             "Musketeer",
-						Level:            11,
-						MaxLevel:         14,
-						EvolutionLevel:   1,
+						Name:              "Musketeer",
+						Level:             11,
+						MaxLevel:          14,
+						EvolutionLevel:    1,
 						MaxEvolutionLevel: 2,
-						Rarity:           "Rare",
-						Count:            8,
+						Rarity:            "Rare",
+						Count:             8,
 					},
 				},
 			},
