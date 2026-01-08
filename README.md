@@ -23,7 +23,8 @@ cp .env.example .env
 
 - 🎴 **Complete Card Database**: Access all Clash Royale cards with detailed statistics
 - 👤 **Player Profile Analysis**: Comprehensive player data including card collections
-- 🏗️ **Intelligent Deck Building**: AI-powered deck recommendations based on your collection
+- 🎯 **Player Context Awareness**: Arena-aware card validation, collection-based playability scoring, and level-based ladder analysis
+- 🏗️ **Intelligent Deck Building**: AI-powered deck recommendations based on your collection with evolution integration
 - 📊 **Collection Analysis**: Detailed statistics on card levels, rarities, and upgrade priorities
 - 🎮 **Playstyle Analysis**: Analyze player's playstyle and get personalized deck recommendations
 - 🃏 **Event Deck Tracking**: Monitor and analyze performance in special events
