@@ -42,6 +42,142 @@ Build: `cd go && go build -o bin/cr-api ./cmd/cr-api`
 
 **Strategies**: `balanced` (default), `aggro`, `control`, `cycle`, `splash`, `spell`
 
+### Deck Evaluation with Player Context
+
+The `deck evaluate` command supports player context flags that enhance evaluation accuracy:
+
+```bash
+# Basic evaluation (no player context)
+./bin/cr-api deck evaluate --deck "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log"
+
+# Evaluation with player context (fetches card levels from API)
+./bin/cr-api deck evaluate --deck "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log" --tag PLAYER_TAG
+
+# Evaluation with arena context (manual arena level)
+./bin/cr-api deck evaluate --deck "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log" --arena 10
+
+# Combined: player context + upgrade impact analysis
+./bin/cr-api deck evaluate --deck "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log" --tag PLAYER_TAG --show-upgrade-impact
+```
+
+**Player Context Flags:**
+- `--tag <PLAYER_TAG>` - Fetches player data from API for:
+  - Card level information (exact levels, not just defaults)
+  - Arena level for unlock validation
+  - Evolution status
+  - Collection-aware playability scoring
+- `--arena <arena_id>` - Sets arena level for unlock validation:
+  - `0` = No arena restrictions (training camp mode)
+  - `1-14` = Specific arena level (1=Training Camp, 14=Champion)
+  - Useful for evaluating decks at different progression stages
+
+**What Player Context Changes:**
+
+Without context (basic evaluation):
+```
+Deck Score: 75.2
+Playability: 100% (assumes all cards available)
+Average Level: N/A (uses default levels)
+```
+
+With `--tag PLAYER_TAG` (context-aware evaluation):
+```
+Deck Score: 82.7
+Playability: 87.5% (7/8 cards owned, 1 locked)
+Average Level: 11.3/14 (uses actual card levels)
+Upgrade Gap: 12 levels below max
+Missing: Miner (locked - unlocks in Arena 10)
+```
+
+**Example Output Comparison:**
+
+```bash
+# Without context
+$ ./bin/cr-api deck evaluate --deck "Hog Rider-Fireball-Ice Spirit-Log-Musketeer-Cannon-Knight-Archers"
+
+Deck Evaluation
+═══════════════
+Deck Score: 78.5
+Playability: 100.0%
+Win Condition: Hog Rider
+Average Elixir: 3.1
+```
+
+```bash
+# With player context
+$ ./bin/cr-api deck evaluate --deck "Hog Rider-Fireball-Ice Spirit-Log-Musketeer-Cannon-Knight-Archers" --tag PLAYER_TAG
+
+Player Context Loaded: PlayerName (PLAYER_TAG), Arena: Arena 12
+
+Deck Evaluation (Context-Aware)
+═══════════════════════════════
+Deck Score: 84.2 (with level bonuses)
+Playability: 87.5% (7/8 cards playable)
+Win Condition: Hog Rider (Level 12/14)
+Average Elixir: 3.1
+Average Card Level: 11.1/14
+
+Card Levels
+═══════════
+Hog Rider      12/14  ✓  Owned
+Fireball       11/14  ✓  Owned
+Ice Spirit      9/14  ○  Owned (underleveled)
+Log            13/14  ✓  Owned
+Musketeer      12/14  ✓  Owned
+Cannon         11/14  ✓  Owned
+Knight          8/14  ○  Owned (underleveled)
+Archers         7/14  ○  Owned (underleveled)
+
+Missing Cards
+═══════════════
+None - All cards in collection
+
+Upgrade Impact
+═══════════════
+Top 5 Upgrades:
+1. Knight: 8→13 (+2.3 score, +4500 gold)
+2. Archers: 7→12 (+2.1 score, +4000 gold)
+3. Ice Spirit: 9→14 (+1.8 score, +2000 gold)
+...
+```
+
+**Arena Validation Examples:**
+
+```bash
+# Check if deck is playable at Arena 5
+$ ./bin/cr-api deck evaluate --deck "Giant-Witch-Skeleton Army-Musketeer-Fireball-Zap-Ice Golem-Archers" --arena 5
+
+Arena Validation (Arena 5: Spell Valley)
+═══════════════════════════════════════
+✓ Giant (unlocked Arena 1)
+✓ Witch (unlocked Arena 2)
+✗ Skeleton Army (locked - unlocks Arena 8)
+✓ Musketeer (unlocked Arena 4)
+✓ Fireball (unlocked Arena 1)
+✓ Zap (unlocked Arena 1)
+✗ Ice Golem (locked - unlocks Arena 6)
+✓ Archers (unlocked Arena 1)
+
+Result: 6/8 cards playable (75%)
+Missing: Skeleton Army (Arena 8), Ice Golem (Arena 6)
+```
+
+**Troubleshooting Player Context:**
+
+| Issue | Solution |
+|-------|----------|
+| `Failed to fetch player data` | Check `CLASH_ROYALE_API_TOKEN` in `.env` and verify player tag format (without `#`) |
+| `Player context not loaded` | Ensure tag is correct and player profile is public |
+| `Evaluation without player context` | Warning message appears when API fetch fails; evaluation continues with default values |
+| `Arena level mismatch` | Use `--arena` flag to manually set arena if auto-detection is incorrect |
+
+**Best Practices:**
+1. Always use `--tag` for accurate deck evaluation with real card levels
+2. Use `--show-upgrade-impact` to identify priority upgrades
+3. Use `--arena` when evaluating decks for specific progression stages
+4. Combine with `--format json` for programmatic analysis
+5. Check playability percentage before committing to a deck build
+
 ### Event Tracking
 
 ```bash
