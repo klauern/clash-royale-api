@@ -7,7 +7,7 @@ import (
 )
 
 // ScoreAttack calculates the attack score for a deck (0-10 scale)
-// Considers win conditions, damage potential, and spell damage
+// Considers win conditions, damage potential, spell damage, and evolution bonuses
 func ScoreAttack(deckCards []deck.CardCandidate) CategoryScore {
 	if len(deckCards) == 0 {
 		return CreateCategoryScore(0, "No cards in deck")
@@ -18,6 +18,7 @@ func ScoreAttack(deckCards []deck.CardCandidate) CategoryScore {
 	winConditionQuality := 0.0
 	spellDamage := 0.0
 	totalDamage := 0.0
+	evolutionBonus := 0.0
 
 	for _, card := range deckCards {
 		// Check if card is a win condition
@@ -36,6 +37,13 @@ func ScoreAttack(deckCards []deck.CardCandidate) CategoryScore {
 		if card.Stats != nil {
 			damageContribution := float64(card.Stats.DamagePerSecond) * card.LevelRatio()
 			totalDamage += damageContribution
+		}
+
+		// Calculate evolution bonus
+		if card.EvolutionLevel > 0 {
+			// Evolution bonus: 15% per evolution level
+			evoBonus := 0.15 * float64(card.EvolutionLevel)
+			evolutionBonus += evoBonus
 		}
 	}
 
@@ -76,14 +84,20 @@ func ScoreAttack(deckCards []deck.CardCandidate) CategoryScore {
 	// Combine components with weights
 	score = (winConditionScore * 0.4) + (spellScore * 0.3) + (damageScore * 0.3)
 
+	// Add evolution bonus (up to +1.5 points)
+	score += evolutionBonus
+	if score > 10.0 {
+		score = 10.0
+	}
+
 	// Generate assessment text
-	assessment := generateAttackAssessment(winConditionCount, spellDamage, score)
+	assessment := generateAttackAssessment(winConditionCount, spellDamage, score, evolutionBonus)
 
 	return CreateCategoryScore(score, assessment)
 }
 
 // ScoreDefense calculates the defense score for a deck (0-10 scale)
-// Considers anti-air capability, defensive buildings, and support troops
+// Considers anti-air capability, defensive buildings, support troops, and evolution bonuses
 func ScoreDefense(deckCards []deck.CardCandidate) CategoryScore {
 	if len(deckCards) == 0 {
 		return CreateCategoryScore(0, "No cards in deck")
@@ -93,6 +107,7 @@ func ScoreDefense(deckCards []deck.CardCandidate) CategoryScore {
 	buildingCount := 0
 	supportCount := 0
 	defenseQuality := 0.0
+	evolutionBonus := 0.0
 
 	for _, card := range deckCards {
 		// Count buildings (defensive structures)
@@ -110,6 +125,17 @@ func ScoreDefense(deckCards []deck.CardCandidate) CategoryScore {
 		// Check anti-air capability using combat stats
 		if card.Stats != nil && (card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground") {
 			antiAirCount++
+		}
+
+		// Calculate evolution bonus for defensive cards
+		if card.EvolutionLevel > 0 {
+			// Buildings and support get larger evolution bonus
+			if card.Role != nil && (*card.Role == deck.RoleBuilding || *card.Role == deck.RoleSupport) {
+				evolutionBonus += 0.20 * float64(card.EvolutionLevel)
+			} else if card.Stats != nil && (card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground") {
+				// Anti-air cards get evolution bonus
+				evolutionBonus += 0.15 * float64(card.EvolutionLevel)
+			}
 		}
 	}
 
@@ -155,8 +181,14 @@ func ScoreDefense(deckCards []deck.CardCandidate) CategoryScore {
 	// Combine components with weights
 	score = (antiAirScore * 0.4) + (buildingScore * 0.3) + (supportScore * 0.3)
 
+	// Add evolution bonus (up to +2.0 points for defense)
+	score += evolutionBonus
+	if score > 10.0 {
+		score = 10.0
+	}
+
 	// Generate assessment text
-	assessment := generateDefenseAssessment(antiAirCount, buildingCount, score)
+	assessment := generateDefenseAssessment(antiAirCount, buildingCount, score, evolutionBonus)
 
 	return CreateCategoryScore(score, assessment)
 }
@@ -346,23 +378,33 @@ func ScoreF2P(deckCards []deck.CardCandidate) CategoryScore {
 
 // Assessment text generators
 
-func generateAttackAssessment(winConditions int, spellDamage, score float64) string {
+func generateAttackAssessment(winConditions int, spellDamage, score, evolutionBonus float64) string {
+	evoText := ""
+	if evolutionBonus > 0 {
+		evoText = fmt.Sprintf(" (+%.1f evolution bonus)", evolutionBonus)
+	}
+
 	if score >= 8.0 {
-		return "Excellent offensive potential with strong win conditions"
+		return fmt.Sprintf("Excellent offensive potential with strong win conditions%s", evoText)
 	} else if score >= 6.0 {
-		return "Good attack capabilities with decent win conditions"
+		return fmt.Sprintf("Good attack capabilities with decent win conditions%s", evoText)
 	} else if score >= 4.0 {
-		return "Moderate offensive pressure, could use stronger win conditions"
+		return fmt.Sprintf("Moderate offensive pressure, could use stronger win conditions%s", evoText)
 	} else {
 		return "Weak attack potential, lacks reliable win conditions"
 	}
 }
 
-func generateDefenseAssessment(antiAir, buildings int, score float64) string {
+func generateDefenseAssessment(antiAir, buildings int, score, evolutionBonus float64) string {
+	evoText := ""
+	if evolutionBonus > 0 {
+		evoText = fmt.Sprintf(" (+%.1f evolution bonus)", evolutionBonus)
+	}
+
 	if score >= 8.0 {
-		return "Solid defensive setup with good air coverage"
+		return fmt.Sprintf("Solid defensive setup with good air coverage%s", evoText)
 	} else if score >= 6.0 {
-		return "Decent defensive capabilities"
+		return fmt.Sprintf("Decent defensive capabilities%s", evoText)
 	} else if antiAir == 0 {
 		return "Critical weakness: no anti-air defense"
 	} else {

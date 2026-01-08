@@ -702,7 +702,16 @@ func calculateUpgradePriorities(deckCards []deck.CardCandidate, playerContext *P
 		}
 
 		// Assign tier and reason
-		if card.Role != nil && *card.Role == deck.RoleWinCondition {
+		// Priority: Evolvable cards > Win Conditions > Spells > Tank Killers > Support
+		if info.MaxEvolutionLevel > 0 && info.EvolutionLevel == 0 {
+			// Unevolved cards get highest priority (tier 0)
+			priority.tier = 0
+			priority.reason = "evolvable"
+		} else if info.MaxEvolutionLevel > 0 && info.EvolutionLevel < info.MaxEvolutionLevel {
+			// Partially evolved cards get high priority (tier 0.5)
+			priority.tier = 0
+			priority.reason = "evolution upgrade"
+		} else if card.Role != nil && *card.Role == deck.RoleWinCondition {
 			priority.tier = 1
 			priority.reason = "win condition"
 		} else if card.Role != nil && (*card.Role == deck.RoleSpellBig || *card.Role == deck.RoleSpellSmall) {
@@ -943,6 +952,133 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerCo
 }
 
 // ============================================================================
+// Phase 4.5: Evolution Analysis
+// ============================================================================
+
+// BuildEvolutionAnalysis creates detailed evolution analysis
+// If playerContext is provided, shows player's evolution status
+// If playerContext is nil, shows generic evolution potential for the deck
+func BuildEvolutionAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerContext) AnalysisSection {
+	details := []string{}
+	var score float64
+	var rating Rating
+	var summary string
+
+	// Identify evolvable cards in deck
+	evolvableInDeck := []deck.CardCandidate{}
+	evolvedInDeck := []deck.CardCandidate{}
+	evolutionPotential := 0.0
+
+	for _, card := range deckCards {
+		if card.MaxEvolutionLevel > 0 {
+			evolvableInDeck = append(evolvableInDeck, card)
+			// Calculate evolution potential score
+			if card.EvolutionLevel > 0 {
+				evolvedInDeck = append(evolvedInDeck, card)
+				evolutionPotential += float64(card.EvolutionLevel) / float64(card.MaxEvolutionLevel)
+			}
+		}
+	}
+
+	// Calculate evolution score (0-10)
+	if len(evolvableInDeck) == 0 {
+		score = 0.0
+		summary = "No evolvable cards in deck"
+		details = append(details, "This deck contains no cards with evolution potential")
+	} else {
+		// Base score: percentage of evolvable cards that are evolved
+		evolutionRatio := float64(len(evolvedInDeck)) / float64(len(evolvableInDeck))
+		score = evolutionRatio * 10.0
+
+		// Add bonus for multiple evolved cards
+		if len(evolvedInDeck) >= 2 {
+			score += 1.0
+		}
+		if len(evolvedInDeck) >= 3 {
+			score += 0.5
+		}
+
+		// Cap at 10
+		if score > 10.0 {
+			score = 10.0
+		}
+
+		// Generate summary
+		if len(evolvedInDeck) == 0 {
+			summary = fmt.Sprintf("Deck has %d evolvable card(s) but none evolved", len(evolvableInDeck))
+		} else if len(evolvedInDeck) == 1 {
+			summary = fmt.Sprintf("Deck has 1 evolved card out of %d evolvable", len(evolvableInDeck))
+		} else {
+			summary = fmt.Sprintf("Deck has %d evolved cards out of %d evolvable", len(evolvedInDeck), len(evolvableInDeck))
+		}
+
+		// List evolvable cards
+		if len(evolvableInDeck) > 0 {
+			cardNames := []string{}
+			for _, card := range evolvableInDeck {
+				if card.EvolutionLevel > 0 {
+					cardNames = append(cardNames, fmt.Sprintf("%s (Evo.%d/%d)", card.Name, card.EvolutionLevel, card.MaxEvolutionLevel))
+				} else {
+					cardNames = append(cardNames, fmt.Sprintf("%s (unevolved)", card.Name))
+				}
+			}
+			details = append(details, fmt.Sprintf("Evolvable cards (%d): %s", len(evolvableInDeck), strings.Join(cardNames, ", ")))
+		}
+
+		// Player-specific evolution status
+		if playerContext != nil {
+			unlockedEvolutions := playerContext.GetUnlockedEvolutionCards()
+			details = append(details, fmt.Sprintf("Your unlocked evolutions: %d cards", len(unlockedEvolutions)))
+
+			// Check which deck cards can evolve
+			readyToEvolve := []string{}
+			for _, card := range evolvableInDeck {
+				if card.EvolutionLevel == 0 && playerContext.CanEvolve(card.Name) {
+					readyToEvolve = append(readyToEvolve, card.Name)
+				}
+			}
+			if len(readyToEvolve) > 0 {
+				details = append(details, fmt.Sprintf("Ready to evolve: %s", strings.Join(readyToEvolve, ", ")))
+			}
+
+			// Show evolution progress for key cards
+			if len(evolvedInDeck) > 0 {
+				details = append(details, "Evolution progress:")
+				for _, card := range evolvedInDeck {
+					currentLevel, maxLevel, currentCount, requiredCount := playerContext.GetEvolutionProgress(card.Name)
+					details = append(details, fmt.Sprintf("  %s: Level %d/%d, %d/%d cards",
+						card.Name, currentLevel, maxLevel, currentCount, requiredCount))
+				}
+			}
+		}
+
+		// Evolution slot strategy
+		if len(evolvedInDeck) > 2 {
+			details = append(details, "⚠️  More than 2 evolved cards - prioritize best 2 for active slots")
+		}
+
+		// Evolution impact assessment
+		if score >= 7.0 {
+			details = append(details, "Evolution impact: Strong - evolutions significantly boost deck power")
+		} else if score >= 4.0 {
+			details = append(details, "Evolution impact: Moderate - some evolution synergy present")
+		} else {
+			details = append(details, "Evolution impact: Low - consider evolving key cards")
+		}
+	}
+
+	rating = ScoreToRating(score)
+
+	return AnalysisSection{
+		Title:   "Evolution Analysis",
+		Summary: summary,
+		Details: details,
+		Score:   score,
+		Rating:  rating,
+	}
+}
+
+// ============================================================================
 // Phase 5: Main Orchestrator
 // ============================================================================
 
@@ -978,6 +1114,7 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 	baitAnalysis := BuildBaitAnalysis(deckCards)
 	cycleAnalysis := BuildCycleAnalysis(deckCards)
 	ladderAnalysis := BuildLadderAnalysis(deckCards, playerContext)
+	evolutionAnalysis := BuildEvolutionAnalysis(deckCards, playerContext)
 
 	// Phase 4: Calculate Overall Score (weighted average)
 	// Weights: Attack 18%, Defense 18%, Synergy 22%, Versatility 18%, F2P 12%, Playability 12%
@@ -1056,11 +1193,12 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 		DetectedArchetype:   archetypeResult.Primary,
 		ArchetypeConfidence: archetypeResult.PrimaryConfidence,
 
-		DefenseAnalysis: defenseAnalysis,
-		AttackAnalysis:  attackAnalysis,
-		BaitAnalysis:    baitAnalysis,
-		CycleAnalysis:   cycleAnalysis,
-		LadderAnalysis:  ladderAnalysis,
+		DefenseAnalysis:   defenseAnalysis,
+		AttackAnalysis:    attackAnalysis,
+		BaitAnalysis:      baitAnalysis,
+		CycleAnalysis:     cycleAnalysis,
+		LadderAnalysis:    ladderAnalysis,
+		EvolutionAnalysis: evolutionAnalysis,
 
 		SynergyMatrix:        synergyMatrix,
 		MissingCardsAnalysis: missingCardsAnalysis,

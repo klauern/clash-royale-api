@@ -150,3 +150,54 @@ func (ctx *PlayerContext) GetRarity(cardName string) string {
 	}
 	return ""
 }
+
+// IsEvolutionAvailable checks if a card has evolution potential
+// Returns true if the card has an evolution path available (MaxEvolutionLevel > 0)
+func (ctx *PlayerContext) IsEvolutionAvailable(cardName string) bool {
+	info, exists := ctx.Collection[cardName]
+	if !exists {
+		return false
+	}
+	return info.MaxEvolutionLevel > 0
+}
+
+// CanEvolve checks if a card is ready to evolve
+// Returns true if the player has the card at sufficient level and count for evolution
+func (ctx *PlayerContext) CanEvolve(cardName string) bool {
+	info, exists := ctx.Collection[cardName]
+	if !exists {
+		return false
+	}
+	// Standard evolution requirements: level 10+ and sufficient cards
+	return info.Level >= 10 && info.Count >= 5
+}
+
+// GetEvolutionProgress returns evolution progress for a card
+// Returns current level, max level, current count, required count
+func (ctx *PlayerContext) GetEvolutionProgress(cardName string) (currentLevel, maxLevel, currentCount, requiredCount int) {
+	info, exists := ctx.Collection[cardName]
+	if !exists {
+		return 0, 0, 0, 5
+	}
+	return info.EvolutionLevel, info.MaxEvolutionLevel, info.Count, 5
+}
+
+// GetUnlockedEvolutionCards returns list of cards with unlocked evolutions
+func (ctx *PlayerContext) GetUnlockedEvolutionCards() []string {
+	evolved := []string{}
+	for cardName := range ctx.UnlockedEvolutions {
+		evolved = append(evolved, cardName)
+	}
+	return evolved
+}
+
+// GetEvolvableCards returns list of cards that could evolve but haven't
+func (ctx *PlayerContext) GetEvolvableCards() []string {
+	evolvable := []string{}
+	for cardName, info := range ctx.Collection {
+		if info.MaxEvolutionLevel > 0 && info.EvolutionLevel == 0 {
+			evolvable = append(evolvable, cardName)
+		}
+	}
+	return evolvable
+}

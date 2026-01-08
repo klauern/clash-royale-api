@@ -125,11 +125,12 @@ type EvaluationResult struct {
 	ArchetypeConfidence float64   `json:"archetype_confidence"` // 0.0-1.0
 
 	// Detailed analysis sections
-	DefenseAnalysis AnalysisSection `json:"defense_analysis"`
-	AttackAnalysis  AnalysisSection `json:"attack_analysis"`
-	BaitAnalysis    AnalysisSection `json:"bait_analysis"`
-	CycleAnalysis   AnalysisSection `json:"cycle_analysis"`
-	LadderAnalysis  AnalysisSection `json:"ladder_analysis"`
+	DefenseAnalysis   AnalysisSection `json:"defense_analysis"`
+	AttackAnalysis    AnalysisSection `json:"attack_analysis"`
+	BaitAnalysis      AnalysisSection `json:"bait_analysis"`
+	CycleAnalysis     AnalysisSection `json:"cycle_analysis"`
+	LadderAnalysis    AnalysisSection `json:"ladder_analysis"`
+	EvolutionAnalysis AnalysisSection `json:"evolution_analysis,omitempty"`
 
 	// Synergy matrix
 	SynergyMatrix SynergyMatrix `json:"synergy_matrix,omitempty"`

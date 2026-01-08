@@ -355,11 +355,11 @@ func TestAssessmentGenerators(t *testing.T) {
 	}{
 		{
 			name:     "Attack assessment",
-			function: func() string { return generateAttackAssessment(2, 2.0, 8.5) },
+			function: func() string { return generateAttackAssessment(2, 2.0, 8.5, 0.3) },
 		},
 		{
 			name:     "Defense assessment",
-			function: func() string { return generateDefenseAssessment(3, 1, 7.0) },
+			function: func() string { return generateDefenseAssessment(3, 1, 7.0, 0.2) },
 		},
 		{
 			name:     "Synergy assessment",
@@ -392,20 +392,21 @@ func TestGenerateAttackAssessment(t *testing.T) {
 		winCond      int
 		spellDamage  float64
 		score        float64
+		evoBonus     float64
 		wantContains string
 	}{
-		{"Excellent offense", 2, 2000, 8.5, "Excellent"},
-		{"Good offense", 2, 1500, 7.0, "Good"},
-		{"Moderate offense", 1, 1000, 5.0, "Moderate"},
-		{"Weak offense", 0, 500, 2.0, "Weak"},
-		{"Boundary excellent", 2, 2000, 8.0, "Excellent"},
-		{"Boundary good", 2, 1500, 6.0, "Good"},
-		{"Boundary moderate", 1, 1000, 4.0, "Moderate"},
+		{"Excellent offense", 2, 2000, 8.5, 0.3, "Excellent"},
+		{"Good offense", 2, 1500, 7.0, 0.0, "Good"},
+		{"Moderate offense", 1, 1000, 5.0, 0.15, "Moderate"},
+		{"Weak offense", 0, 500, 2.0, 0.0, "Weak"},
+		{"Boundary excellent", 2, 2000, 8.0, 0.0, "Excellent"},
+		{"Boundary good", 2, 1500, 6.0, 0.0, "Good"},
+		{"Boundary moderate", 1, 1000, 4.0, 0.0, "Moderate"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := generateAttackAssessment(tt.winCond, tt.spellDamage, tt.score)
+			result := generateAttackAssessment(tt.winCond, tt.spellDamage, tt.score, tt.evoBonus)
 			if result == "" {
 				t.Errorf("generateAttackAssessment() returned empty string")
 			}
@@ -419,19 +420,20 @@ func TestGenerateDefenseAssessment(t *testing.T) {
 		antiAir      int
 		buildings    int
 		score        float64
+		evoBonus     float64
 		wantContains string
 	}{
-		{"Excellent defense", 3, 1, 9.0, "Solid"},
-		{"Good defense", 2, 1, 7.0, "Decent"},
-		{"No anti-air warning", 0, 1, 5.0, "no anti-air"},
-		{"Weak defense", 1, 0, 3.0, "Weak"},
-		{"Boundary solid", 3, 1, 8.0, "Solid"},
-		{"Boundary decent", 2, 1, 6.0, "Decent"},
+		{"Excellent defense", 3, 1, 9.0, 0.2, "Solid"},
+		{"Good defense", 2, 1, 7.0, 0.0, "Decent"},
+		{"No anti-air warning", 0, 1, 5.0, 0.0, "no anti-air"},
+		{"Weak defense", 1, 0, 3.0, 0.0, "Weak"},
+		{"Boundary solid", 3, 1, 8.0, 0.0, "Solid"},
+		{"Boundary decent", 2, 1, 6.0, 0.0, "Decent"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := generateDefenseAssessment(tt.antiAir, tt.buildings, tt.score)
+			result := generateDefenseAssessment(tt.antiAir, tt.buildings, tt.score, tt.evoBonus)
 			if result == "" {
 				t.Errorf("generateDefenseAssessment() returned empty string")
 			}

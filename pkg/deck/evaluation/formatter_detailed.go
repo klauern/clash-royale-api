@@ -162,6 +162,11 @@ func formatDetailedAnalysisSections(result *EvaluationResult) string {
 		result.LadderAnalysis,
 	}
 
+	// Add evolution analysis if present
+	if result.EvolutionAnalysis.Title != "" {
+		sections = append(sections, result.EvolutionAnalysis)
+	}
+
 	for i, section := range sections {
 		analysis.WriteString(fmt.Sprintf("%d. %s\n", i+1, strings.ToUpper(section.Title)))
 		analysis.WriteString("═══════════════════════════════════════════════════════════════════════\n\n")
