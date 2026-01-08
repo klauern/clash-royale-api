@@ -88,6 +88,9 @@ func (ctx *PlayerContext) HasCard(cardName string) bool {
 
 // HasEvolution checks if a card has an evolution unlocked
 func (ctx *PlayerContext) HasEvolution(cardName string) bool {
+	if ctx == nil {
+		return false
+	}
 	return ctx.UnlockedEvolutions[cardName]
 }
 
@@ -184,6 +187,9 @@ func (ctx *PlayerContext) GetEvolutionProgress(cardName string) (currentLevel, m
 
 // GetUnlockedEvolutionCards returns list of cards with unlocked evolutions
 func (ctx *PlayerContext) GetUnlockedEvolutionCards() []string {
+	if ctx == nil {
+		return []string{}
+	}
 	evolved := []string{}
 	for cardName := range ctx.UnlockedEvolutions {
 		evolved = append(evolved, cardName)
@@ -193,6 +199,9 @@ func (ctx *PlayerContext) GetUnlockedEvolutionCards() []string {
 
 // GetEvolvableCards returns list of cards that could evolve but haven't
 func (ctx *PlayerContext) GetEvolvableCards() []string {
+	if ctx == nil {
+		return []string{}
+	}
 	evolvable := []string{}
 	for cardName, info := range ctx.Collection {
 		if info.MaxEvolutionLevel > 0 && info.EvolutionLevel == 0 {
