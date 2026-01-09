@@ -1,0 +1,34 @@
+---
+description: "Testing patterns and integration test setup"
+---
+# Testing Guide
+
+## Running Tests
+
+```bash
+task test                # Run all tests
+task test:integration    # Run integration tests only
+task test:coverage       # Generate coverage report
+```
+
+## Rules
+
+- **Always** run tests before marking tasks complete
+- Check for broken links after moving documentation
+- Integration tests require valid `CLASH_ROYALE_API_TOKEN` in `.env`
+
+## Patterns
+
+**Test organization:**
+- Unit tests: `*_test.go` alongside source files
+- Integration tests: `integration_*_test.go` in root
+- Test fixtures: `internal/storage/testdata/`
+
+**Coverage:**
+- Run `task test:coverage` to view coverage report
+- Coverage reports: `coverage.html`, `coverage.out`
+
+## See Also
+
+- [docs/TESTING.md](../docs/TESTING.md) - Detailed testing strategies
+- [docs/INTEGRATION_DESIGN.md](../docs/INTEGRATION_DESIGN.md) - Integration test architecture

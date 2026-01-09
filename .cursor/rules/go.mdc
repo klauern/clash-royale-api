@@ -1,0 +1,40 @@
+---
+globs: "*.go"
+---
+# Go Conventions
+
+## Tools & Commands
+
+- Use `task` runner (not direct `go` commands)
+- Use `fd` instead of `find`, `rg` instead of `grep`
+- Use `gh` for GitHub operations
+- Format/Lint: `task lint` (runs gofumpt, golangci-lint)
+
+## Architecture
+
+**Package structure:**
+- `pkg/` - Public libraries (clashroyale, deck, analysis, events)
+- `internal/` - Private internals (exporter, storage)
+- `cmd/cr-api/` - CLI application
+
+**Patterns:**
+- Type-safe enums for card roles, constants
+- Interface-based design for testability
+- Builder pattern for deck construction
+- Specific error types with context
+
+## Data Storage
+
+- All data persists in `data/` directory (gitignored)
+- AI planning docs go in `history/` directory
+
+## Common Pitfalls
+
+- Don't commit `.env` or `data/` (gitignored)
+- Don't skip `task lint` before committing
+- Always run tests before claiming completion
+
+## See Also
+
+- [docs/INTEGRATION_DESIGN.md](../docs/INTEGRATION_DESIGN.md) - Integration patterns
+- [docs/TESTING.md](../docs/TESTING.md) - Testing strategies

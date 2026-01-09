@@ -1,0 +1,23 @@
+---
+alwaysApply: true
+---
+# Clash Royale API - Core
+
+## What This Is
+
+Go CLI for analyzing Clash Royale player data, building decks, tracking events, and exporting data.
+
+**Tech Stack**: Go 1.24, Official Clash Royale API, Rate-limited client (1 req/sec)
+
+## Quick Start
+
+```bash
+task setup        # Configure .env (requires CLASH_ROYALE_API_TOKEN)
+task build        # Build cr-api binary
+task test         # Run all tests
+task lint         # Run linters
+```
+
+## Deep Dives
+
+See [AGENTS.md](../AGENTS.md) for full context and [docs/](../docs/) for detailed documentation.
