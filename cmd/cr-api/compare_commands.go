@@ -76,7 +76,7 @@ type batchEvalResult struct {
 	Result    evaluation.EvaluationResult `json:"Result"`
 	FilePath  string                      `json:"FilePath"`
 	Evaluated string                      `json:"Evaluated"`
-	Duration  string                      `json:"Duration"`
+	Duration  int64                       `json:"Duration"`
 }
 
 // deckCompareCommand compares multiple decks side-by-side
