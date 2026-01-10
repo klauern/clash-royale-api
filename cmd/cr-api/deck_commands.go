@@ -178,6 +178,61 @@ func addDeckCommands() *cli.Command {
 				Action: deckBuildCommand,
 			},
 			{
+				Name:  "build-suite",
+				Usage: "Build multiple deck variations in one invocation for systematic analysis",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #)",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:    "strategies",
+						Aliases: []string{"s"},
+						Value:   "balanced",
+						Usage:   "Comma-separated list of strategies or 'all': balanced,aggro,control,cycle,splash,spell",
+					},
+					&cli.IntFlag{
+						Name:  "variations",
+						Value: 1,
+						Usage: "Number of variations per strategy (default 1)",
+					},
+					&cli.StringFlag{
+						Name:  "output-dir",
+						Usage: "Output directory for deck files (default: data/decks/)",
+					},
+					&cli.BoolFlag{
+						Name:  "from-analysis",
+						Usage: "Use offline mode with pre-analyzed player data",
+					},
+					&cli.Float64Flag{
+						Name:  "min-elixir",
+						Value: 2.5,
+						Usage: "Minimum average elixir for the deck",
+					},
+					&cli.Float64Flag{
+						Name:  "max-elixir",
+						Value: 4.5,
+						Usage: "Maximum average elixir for the deck",
+					},
+					&cli.StringSliceFlag{
+						Name:  "include-cards",
+						Usage: "Cards that must be included in all decks",
+					},
+					&cli.StringSliceFlag{
+						Name:  "exclude-cards",
+						Usage: "Cards that must be excluded from all decks",
+					},
+					&cli.BoolFlag{
+						Name:  "save",
+						Value: true,
+						Usage: "Save individual deck files and summary JSON (default: true)",
+					},
+				},
+				Action: deckBuildSuiteCommand,
+			},
+			{
 				Name:  "war",
 				Usage: "Build a 4-deck war set with no repeated cards",
 				Flags: []cli.Flag{
@@ -729,6 +784,343 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 			fmt.Printf("Warning: Failed to save deck: %v\n", err)
 		} else {
 			fmt.Printf("\nDeck saved to: %s\n", deckPath)
+		}
+	}
+
+	return nil
+}
+
+func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
+	tag := cmd.String("tag")
+	strategiesStr := cmd.String("strategies")
+	variations := cmd.Int("variations")
+	outputDir := cmd.String("output-dir")
+	fromAnalysis := cmd.Bool("from-analysis")
+	saveData := cmd.Bool("save")
+	apiToken := cmd.String("api-token")
+	verbose := cmd.Bool("verbose")
+	dataDir := cmd.String("data-dir")
+	minElixir := cmd.Float64("min-elixir")
+	maxElixir := cmd.Float64("max-elixir")
+	includeCards := cmd.StringSlice("include-cards")
+	excludeCards := cmd.StringSlice("exclude-cards")
+
+	// Determine output directory
+	if outputDir == "" {
+		outputDir = filepath.Join(dataDir, "decks")
+	}
+
+	// Parse strategies
+	var strategies []deck.Strategy
+	strategiesStr = strings.ToLower(strings.TrimSpace(strategiesStr))
+	if strategiesStr == "all" {
+		strategies = []deck.Strategy{
+			deck.StrategyBalanced,
+			deck.StrategyAggro,
+			deck.StrategyControl,
+			deck.StrategyCycle,
+			deck.StrategySplash,
+			deck.StrategySpell,
+		}
+	} else {
+		strategyList := strings.Split(strategiesStr, ",")
+		for _, s := range strategyList {
+			s = strings.TrimSpace(s)
+			if s == "" {
+				continue
+			}
+			parsedStrategy, err := deck.ParseStrategy(s)
+			if err != nil {
+				return fmt.Errorf("invalid strategy '%s': %w", s, err)
+			}
+			strategies = append(strategies, parsedStrategy)
+		}
+	}
+
+	if len(strategies) == 0 {
+		return fmt.Errorf("no valid strategies specified")
+	}
+
+	if verbose {
+		fmt.Printf("Building deck suite with %d strategies x %d variations = %d total decks\n",
+			len(strategies), variations, len(strategies)*variations)
+	}
+
+	// Create deck builder
+	builder := deck.NewBuilder(dataDir)
+
+	// Set include/exclude card filters if provided
+	if len(includeCards) > 0 {
+		builder.SetIncludeCards(includeCards)
+	}
+	if len(excludeCards) > 0 {
+		builder.SetExcludeCards(excludeCards)
+	}
+
+	// Load player data
+	var deckCardAnalysis deck.CardAnalysis
+	var playerName, playerTag string
+
+	if fromAnalysis {
+		// OFFLINE MODE: Load from existing analysis JSON
+		if verbose {
+			fmt.Printf("Building deck suite from offline analysis for player %s\n", tag)
+		}
+
+		analysisDir := filepath.Join(dataDir, "analysis")
+		loadedAnalysis, err := builder.LoadLatestAnalysis(tag, analysisDir)
+		if err != nil {
+			return fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+		}
+
+		deckCardAnalysis = *loadedAnalysis
+		playerTag = tag
+		playerName = tag
+	} else {
+		// ONLINE MODE: Fetch from API
+		if apiToken == "" {
+			return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
+		}
+
+		client := clashroyale.NewClient(apiToken)
+
+		if verbose {
+			fmt.Printf("Building deck suite for player %s\n", tag)
+		}
+
+		// Get player information
+		player, err := client.GetPlayer(tag)
+		if err != nil {
+			return fmt.Errorf("failed to get player: %w", err)
+		}
+
+		playerName = player.Name
+		playerTag = player.Tag
+
+		if verbose {
+			fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
+			fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+		}
+
+		// Perform card collection analysis
+		analysisOptions := analysis.DefaultAnalysisOptions()
+		cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
+		if err != nil {
+			return fmt.Errorf("failed to analyze card collection: %w", err)
+		}
+
+		// Convert analysis.CardAnalysis to deck.CardAnalysis
+		deckCardAnalysis = deck.CardAnalysis{
+			CardLevels:   make(map[string]deck.CardLevelData),
+			AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+		}
+
+		for cardName, cardInfo := range cardAnalysis.CardLevels {
+			deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
+				Level:             cardInfo.Level,
+				MaxLevel:          cardInfo.MaxLevel,
+				Rarity:            cardInfo.Rarity,
+				Elixir:            cardInfo.Elixir,
+				MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
+			}
+		}
+	}
+
+	// Apply exclude filter
+	if len(excludeCards) > 0 {
+		excludeMap := make(map[string]bool)
+		for _, card := range excludeCards {
+			trimmed := strings.TrimSpace(card)
+			if trimmed != "" {
+				excludeMap[strings.ToLower(trimmed)] = true
+			}
+		}
+
+		filteredLevels := make(map[string]deck.CardLevelData)
+		for cardName, cardInfo := range deckCardAnalysis.CardLevels {
+			if !excludeMap[strings.ToLower(cardName)] {
+				filteredLevels[cardName] = cardInfo
+			}
+		}
+		deckCardAnalysis.CardLevels = filteredLevels
+	}
+
+	// Build decks for all strategy x variation combinations
+	type deckResult struct {
+		Strategy   string
+		Variation  int
+		Deck       *deck.DeckRecommendation
+		FilePath   string
+		BuildError error
+	}
+
+	startTime := time.Now()
+	results := []deckResult{}
+
+	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	fmt.Printf("║                    DECK BUILD SUITE                                ║\n")
+	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	fmt.Printf("Player: %s (%s)\n", playerName, playerTag)
+	fmt.Printf("Output: %s\n\n", outputDir)
+
+	// Build decks for each strategy
+	for _, strategy := range strategies {
+		if verbose {
+			fmt.Printf("Building decks for strategy: %s\n", strategy)
+		}
+
+		for v := 1; v <= variations; v++ {
+			// Create a new builder for this deck
+			deckBuilder := deck.NewBuilder(dataDir)
+
+			// Copy configuration
+			if len(includeCards) > 0 {
+				deckBuilder.SetIncludeCards(includeCards)
+			}
+			if len(excludeCards) > 0 {
+				deckBuilder.SetExcludeCards(excludeCards)
+			}
+
+			// Set strategy
+			if err := deckBuilder.SetStrategy(strategy); err != nil {
+				results = append(results, deckResult{
+					Strategy:   string(strategy),
+					Variation:  v,
+					BuildError: err,
+				})
+				fmt.Printf("  ⚠ Variation %d: Failed to set strategy: %v\n", v, err)
+				continue
+			}
+
+			// Build deck
+			deckRec, err := deckBuilder.BuildDeckFromAnalysis(deckCardAnalysis)
+			if err != nil {
+				results = append(results, deckResult{
+					Strategy:   string(strategy),
+					Variation:  v,
+					BuildError: err,
+				})
+				fmt.Printf("  ⚠ Variation %d: Failed to build deck: %v\n", v, err)
+				continue
+			}
+
+			// Validate elixir constraints
+			if deckRec.AvgElixir < minElixir || deckRec.AvgElixir > maxElixir {
+				if verbose {
+					fmt.Printf("  ⚠ Variation %d: Deck average elixir (%.2f) outside range (%.1f-%.1f)\n",
+						v, deckRec.AvgElixir, minElixir, maxElixir)
+				}
+			}
+
+			// Save deck file if requested
+			var filePath string
+			if saveData {
+				timestamp := time.Now().Format("20060102_150405")
+				filename := fmt.Sprintf("%s_deck_%s_var%d_%s.json", timestamp, strategy, v, playerTag)
+				filePath = filepath.Join(outputDir, filename)
+
+				// Save using builder
+				savedPath, err := deckBuilder.SaveDeck(deckRec, outputDir, fmt.Sprintf("%s_var%d_%s", strategy, v, playerTag))
+				if err != nil {
+					if verbose {
+						fmt.Printf("  ⚠ Variation %d: Failed to save deck: %v\n", v, err)
+					}
+				} else {
+					filePath = savedPath
+				}
+			}
+
+			results = append(results, deckResult{
+				Strategy:  string(strategy),
+				Variation: v,
+				Deck:      deckRec,
+				FilePath:  filePath,
+			})
+
+			fmt.Printf("  ✓ %s variation %d: %.2f avg elixir, %d cards\n",
+				strategy, v, deckRec.AvgElixir, len(deckRec.Deck))
+		}
+	}
+
+	totalTime := time.Since(startTime)
+
+	// Display summary
+	fmt.Printf("\n")
+	fmt.Printf("════════════════════════════════════════════════════════════════════\n")
+	fmt.Printf("                           SUMMARY\n")
+	fmt.Printf("════════════════════════════════════════════════════════════════════\n\n")
+
+	successful := 0
+	failed := 0
+	for _, r := range results {
+		if r.BuildError == nil {
+			successful++
+		} else {
+			failed++
+		}
+	}
+
+	fmt.Printf("Total decks:     %d\n", len(results))
+	fmt.Printf("Successful:      %d\n", successful)
+	fmt.Printf("Failed:          %d\n", failed)
+	fmt.Printf("Build time:      %v\n", totalTime)
+	fmt.Printf("Avg per deck:    %v\n\n", totalTime/time.Duration(len(results)))
+
+	// Save summary JSON if requested
+	if saveData && successful > 0 {
+		timestamp := time.Now().Format("20060102_150405")
+		summaryFilename := fmt.Sprintf("%s_deck_suite_summary_%s.json", timestamp, playerTag)
+		summaryPath := filepath.Join(outputDir, summaryFilename)
+
+		// Build summary structure
+		summary := map[string]interface{}{
+			"version":   "1.0.0",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+			"player": map[string]string{
+				"name": playerName,
+				"tag":  playerTag,
+			},
+			"build_info": map[string]interface{}{
+				"total_decks":     len(results),
+				"successful":      successful,
+				"failed":          failed,
+				"strategies":      len(strategies),
+				"variations":      variations,
+				"generation_time": totalTime.String(),
+			},
+			"decks": []map[string]interface{}{},
+		}
+
+		// Add individual deck summaries
+		decks := []map[string]interface{}{}
+		for _, r := range results {
+			if r.Deck != nil {
+				deckSummary := map[string]interface{}{
+					"strategy":   r.Strategy,
+					"variation":  r.Variation,
+					"cards":      r.Deck.Deck,
+					"avg_elixir": r.Deck.AvgElixir,
+					"file_path":  r.FilePath,
+				}
+				decks = append(decks, deckSummary)
+			}
+		}
+		summary["decks"] = decks
+
+		// Write summary JSON
+		summaryJSON, err := json.MarshalIndent(summary, "", "  ")
+		if err != nil {
+			fmt.Printf("Warning: Failed to marshal summary JSON: %v\n", err)
+		} else {
+			if err := os.MkdirAll(outputDir, 0o755); err != nil {
+				fmt.Printf("Warning: Failed to create output directory: %v\n", err)
+			} else {
+				if err := os.WriteFile(summaryPath, summaryJSON, 0o644); err != nil {
+					fmt.Printf("Warning: Failed to write summary file: %v\n", err)
+				} else {
+					fmt.Printf("Summary saved to: %s\n", summaryPath)
+				}
+			}
 		}
 	}
 
