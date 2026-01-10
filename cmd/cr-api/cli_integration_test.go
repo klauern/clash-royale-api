@@ -106,6 +106,57 @@ func TestCLIIntegration(t *testing.T) {
 			},
 			wantErr: true,
 		},
+		{
+			name: "Deck build-suite command",
+			args: []string{
+				"deck",
+				"build-suite",
+				"--tag", "TEST12345",
+				"--strategies", "balanced,aggro",
+				"--variations", "2",
+				"--save",
+			},
+			validate: validateDeckSuiteBuild,
+			wantErr:  false,
+		},
+		{
+			name: "Deck evaluate-batch command",
+			args: []string{
+				"deck",
+				"evaluate-batch",
+				"--tag", "TEST12345",
+				"--deck-dir", "data/decks",
+				"--format", "json",
+				"--save-aggregated",
+			},
+			validate: validateEvaluateBatch,
+			wantErr:  false,
+		},
+		{
+			name: "Deck compare command",
+			args: []string{
+				"deck",
+				"compare",
+				"--from-evaluations", "data/evaluations/*.json",
+				"--format", "markdown",
+				"--report-output", "data/reports/comparison.md",
+			},
+			validate: validateCompareReport,
+			wantErr:  false,
+		},
+		{
+			name: "Deck analyze-suite command",
+			args: []string{
+				"deck",
+				"analyze-suite",
+				"--tag", "TEST12345",
+				"--strategies", "all",
+				"--variations", "1",
+				"--top-n", "5",
+			},
+			validate: validateAnalyzeSuite,
+			wantErr:  false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -210,6 +261,100 @@ func TestCLIWorkflow(t *testing.T) {
 		if err != nil {
 			t.Errorf("Analysis export failed: %v", err)
 		}
+	})
+}
+
+// TestDeckSuiteWorkflow tests the complete deck analysis suite workflow
+func TestDeckSuiteWorkflow(t *testing.T) {
+	tempDir := t.TempDir()
+	os.Setenv("CLASH_ROYALE_API_TOKEN", "test_token")
+	os.Setenv("DATA_DIR", tempDir)
+
+	playerTag := "SUITE123"
+
+	// Step 1: Build deck suite with multiple strategies
+	t.Run("Step1_BuildDeckSuite", func(t *testing.T) {
+		cmd := createTestCommand(tempDir)
+		args := []string{
+			"deck",
+			"build-suite",
+			"--tag", playerTag,
+			"--strategies", "balanced,aggro,control",
+			"--variations", "2",
+			"--min-elixir", "2.5",
+			"--max-elixir", "4.5",
+			"--save",
+		}
+
+		err := cmd.Run(context.Background(), append([]string{"cr-api"}, args...))
+		if err != nil {
+			t.Errorf("Build suite failed: %v", err)
+		}
+
+		validateDeckSuiteBuild(t, tempDir)
+	})
+
+	// Step 2: Evaluate all built decks
+	t.Run("Step2_EvaluateBatch", func(t *testing.T) {
+		cmd := createTestCommand(tempDir)
+		args := []string{
+			"deck",
+			"evaluate-batch",
+			"--tag", playerTag,
+			"--from-suite", filepath.Join(tempDir, "decks", "*_suite_summary_*.json"),
+			"--format", "json",
+			"--sort-by", "overall",
+			"--save-aggregated",
+		}
+
+		err := cmd.Run(context.Background(), append([]string{"cr-api"}, args...))
+		if err != nil {
+			t.Errorf("Evaluate batch failed: %v", err)
+		}
+
+		validateEvaluateBatch(t, tempDir)
+	})
+
+	// Step 3: Compare top performers
+	t.Run("Step3_CompareTopDecks", func(t *testing.T) {
+		cmd := createTestCommand(tempDir)
+		args := []string{
+			"deck",
+			"compare",
+			"--from-evaluations", filepath.Join(tempDir, "evaluations", "*.json"),
+			"--auto-select-top", "5",
+			"--format", "markdown",
+			"--report-output", filepath.Join(tempDir, "reports", "analysis_report.md"),
+		}
+
+		err := cmd.Run(context.Background(), append([]string{"cr-api"}, args...))
+		if err != nil {
+			t.Errorf("Compare decks failed: %v", err)
+		}
+
+		validateCompareReport(t, tempDir)
+	})
+
+	// Step 4: Full analyze-suite command (all-in-one)
+	t.Run("Step4_AnalyzeSuite_AllInOne", func(t *testing.T) {
+		cmd := createTestCommand(tempDir)
+		args := []string{
+			"deck",
+			"analyze-suite",
+			"--tag", playerTag,
+			"--strategies", "all",
+			"--variations", "1",
+			"--top-n", "5",
+			"--output-dir", filepath.Join(tempDir, "full_analysis"),
+		}
+
+		err := cmd.Run(context.Background(), append([]string{"cr-api"}, args...))
+		if err != nil {
+			t.Errorf("Analyze suite failed: %v", err)
+		}
+
+		// Validate complete output structure
+		validateAnalyzeSuite(t, filepath.Join(tempDir, "full_analysis"))
 	})
 }
 
@@ -591,6 +736,110 @@ func validateEventScan(t *testing.T, tempDir string) {
 	if _, err := os.Stat(eventDir); os.IsNotExist(err) {
 		t.Errorf("Event decks directory not created")
 	}
+}
+
+func validateDeckSuiteBuild(t *testing.T, tempDir string) {
+	decksDir := filepath.Join(tempDir, "decks")
+	if _, err := os.Stat(decksDir); os.IsNotExist(err) {
+		t.Errorf("Decks directory not created for suite")
+		return
+	}
+
+	// Check for suite summary file
+	files, err := os.ReadDir(decksDir)
+	if err != nil {
+		t.Errorf("Failed to read decks directory: %v", err)
+		return
+	}
+
+	foundSummary := false
+	for _, file := range files {
+		if !file.IsDir() && filepath.Ext(file.Name()) == ".json" {
+			if filepath.Base(file.Name()) != "" {
+				foundSummary = true
+				break
+			}
+		}
+	}
+
+	if !foundSummary {
+		t.Error("Suite summary JSON file not created")
+	}
+}
+
+func validateEvaluateBatch(t *testing.T, tempDir string) {
+	evalsDir := filepath.Join(tempDir, "evaluations")
+	if _, err := os.Stat(evalsDir); os.IsNotExist(err) {
+		t.Errorf("Evaluations directory not created")
+		return
+	}
+
+	// Check for evaluation results file
+	files, err := os.ReadDir(evalsDir)
+	if err != nil {
+		t.Errorf("Failed to read evaluations directory: %v", err)
+		return
+	}
+
+	foundResults := false
+	for _, file := range files {
+		if !file.IsDir() && filepath.Ext(file.Name()) == ".json" {
+			foundResults = true
+			break
+		}
+	}
+
+	if !foundResults {
+		t.Error("Evaluation results JSON file not created")
+	}
+}
+
+func validateCompareReport(t *testing.T, tempDir string) {
+	reportsDir := filepath.Join(tempDir, "reports")
+	if _, err := os.Stat(reportsDir); os.IsNotExist(err) {
+		t.Errorf("Reports directory not created")
+		return
+	}
+
+	// Check for markdown report
+	files, err := os.ReadDir(reportsDir)
+	if err != nil {
+		t.Errorf("Failed to read reports directory: %v", err)
+		return
+	}
+
+	foundReport := false
+	for _, file := range files {
+		if !file.IsDir() && filepath.Ext(file.Name()) == ".md" {
+			foundReport = true
+			break
+		}
+	}
+
+	if !foundReport {
+		t.Error("Markdown report file not created")
+	}
+}
+
+func validateAnalyzeSuite(t *testing.T, tempDir string) {
+	// Check for all three output directories
+	dirs := []string{"decks", "evaluations", "reports"}
+
+	for _, dir := range dirs {
+		dirPath := filepath.Join(tempDir, dir)
+		if _, err := os.Stat(dirPath); os.IsNotExist(err) {
+			t.Errorf("Analyze-suite directory not created: %s", dir)
+		}
+	}
+
+	// Validate suite summary in decks/
+	validateDeckSuiteBuild(t, tempDir)
+
+	// Validate evaluation results in evaluations/
+	validateEvaluateBatch(t, tempDir)
+
+	// Validate markdown report in reports/
+	validateCompareReport(t, tempDir)
 }
 
 func validateExportAll(t *testing.T, tempDir string) {
