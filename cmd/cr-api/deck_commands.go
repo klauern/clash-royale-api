@@ -233,6 +233,71 @@ func addDeckCommands() *cli.Command {
 				Action: deckBuildSuiteCommand,
 			},
 			{
+				Name:  "evaluate-batch",
+				Usage: "Evaluate multiple decks from a suite or directory",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:  "from-suite",
+						Usage: "Path to deck suite summary JSON file (from build-suite command)",
+					},
+					&cli.StringFlag{
+						Name:  "deck-dir",
+						Usage: "Directory containing deck JSON files",
+					},
+					&cli.StringFlag{
+						Name:    "tag",
+						Aliases: []string{"p"},
+						Usage:   "Player tag (without #) for context-aware evaluation",
+					},
+					&cli.StringFlag{
+						Name:  "format",
+						Value: "summary",
+						Usage: "Output format: summary, json, csv, detailed",
+					},
+					&cli.StringFlag{
+						Name:  "output-dir",
+						Usage: "Output directory for evaluation files (default: prints to stdout)",
+					},
+					&cli.StringFlag{
+						Name:  "sort-by",
+						Value: "overall",
+						Usage: "Sort results by: overall, attack, defense, synergy, versatility, f2p, playability, elixir",
+					},
+					&cli.BoolFlag{
+						Name:  "top-only",
+						Usage: "Show only top N decks",
+					},
+					&cli.IntFlag{
+						Name:  "top-n",
+						Value: 10,
+						Usage: "Number of top decks to show (with --top-only)",
+					},
+					&cli.BoolFlag{
+						Name:  "filter-archetype",
+						Usage: "Filter by specific archetype (use with --archetype)",
+					},
+					&cli.StringFlag{
+						Name:  "archetype",
+						Usage: "Archetype to filter by (e.g., beatdown, control, cycle)",
+					},
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Aliases: []string{"v"},
+						Usage:   "Show detailed progress information",
+					},
+					&cli.BoolFlag{
+						Name:  "timing",
+						Usage: "Show timing information for each deck evaluation",
+					},
+					&cli.BoolFlag{
+						Name:  "save-aggregated",
+						Value: true,
+						Usage: "Save aggregated results to output-dir (default: true)",
+					},
+				},
+				Action: deckEvaluateBatchCommand,
+			},
+			{
 				Name:  "war",
 				Usage: "Build a 4-deck war set with no repeated cards",
 				Flags: []cli.Flag{
@@ -1122,6 +1187,369 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 				}
 			}
 		}
+	}
+
+	return nil
+}
+
+// deckEvaluateBatchCommand evaluates multiple decks from a suite or directory
+func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
+	fromSuite := cmd.String("from-suite")
+	deckDir := cmd.String("deck-dir")
+	playerTag := cmd.String("tag")
+	format := cmd.String("format")
+	outputDir := cmd.String("output-dir")
+	sortBy := cmd.String("sort-by")
+	topOnly := cmd.Bool("top-only")
+	topN := cmd.Int("top-n")
+	filterArchetype := cmd.Bool("filter-archetype")
+	archetypeFilter := cmd.String("archetype")
+	verbose := cmd.Bool("verbose")
+	showTiming := cmd.Bool("timing")
+	saveAggregated := cmd.Bool("save-aggregated")
+
+	// Validation: Must provide either --from-suite or --deck-dir
+	if fromSuite == "" && deckDir == "" {
+		return fmt.Errorf("must provide either --from-suite or --deck-dir")
+	}
+
+	if fromSuite != "" && deckDir != "" {
+		return fmt.Errorf("cannot use both --from-suite and --deck-dir")
+	}
+
+	// Load deck data
+	type deckInfo struct {
+		Name     string
+		Cards    []string
+		Strategy string
+		FilePath string
+	}
+
+	var decks []deckInfo
+	var playerName string
+
+	if fromSuite != "" {
+		// Load from suite summary JSON
+		data, err := os.ReadFile(fromSuite)
+		if err != nil {
+			return fmt.Errorf("failed to read suite file: %w", err)
+		}
+
+		var suiteData map[string]interface{}
+		if err := json.Unmarshal(data, &suiteData); err != nil {
+			return fmt.Errorf("failed to parse suite JSON: %w", err)
+		}
+
+		// Extract player info
+		if playerInfo, ok := suiteData["player"].(map[string]interface{}); ok {
+			if name, ok := playerInfo["name"].(string); ok {
+				playerName = name
+			}
+			if tag, ok := playerInfo["tag"].(string); ok && playerTag == "" {
+				playerTag = tag
+			}
+		}
+
+		// Extract decks
+		if decksList, ok := suiteData["decks"].([]interface{}); ok {
+			for i, d := range decksList {
+				deckMap, ok := d.(map[string]interface{})
+				if !ok {
+					continue
+				}
+
+				var cards []string
+				if cardsList, ok := deckMap["cards"].([]interface{}); ok {
+					for _, c := range cardsList {
+						if cardStr, ok := c.(string); ok {
+							cards = append(cards, cardStr)
+						}
+					}
+				}
+
+				strategy := "unknown"
+				if s, ok := deckMap["strategy"].(string); ok {
+					strategy = s
+				}
+
+				variation := 0
+				if v, ok := deckMap["variation"].(float64); ok {
+					variation = int(v)
+				}
+
+				filePath := ""
+				if fp, ok := deckMap["file_path"].(string); ok {
+					filePath = fp
+				}
+
+				name := fmt.Sprintf("Deck #%d (%s v%d)", i+1, strategy, variation)
+				decks = append(decks, deckInfo{
+					Name:     name,
+					Cards:    cards,
+					Strategy: strategy,
+					FilePath: filePath,
+				})
+			}
+		}
+
+		if verbose {
+			fmt.Printf("Loaded %d decks from suite: %s\n", len(decks), fromSuite)
+		}
+	} else {
+		// Load from directory
+		entries, err := os.ReadDir(deckDir)
+		if err != nil {
+			return fmt.Errorf("failed to read deck directory: %w", err)
+		}
+
+		for i, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".json") {
+				continue
+			}
+
+			deckPath := filepath.Join(deckDir, entry.Name())
+			data, err := os.ReadFile(deckPath)
+			if err != nil {
+				if verbose {
+					fmt.Printf("Warning: Failed to read %s: %v\n", entry.Name(), err)
+				}
+				continue
+			}
+
+			var deckData map[string]interface{}
+			if err := json.Unmarshal(data, &deckData); err != nil {
+				if verbose {
+					fmt.Printf("Warning: Failed to parse %s: %v\n", entry.Name(), err)
+				}
+				continue
+			}
+
+			// Try to extract cards from various possible formats
+			var cards []string
+			if deckMap, ok := deckData["deck"].([]interface{}); ok {
+				for _, c := range deckMap {
+					if cardStr, ok := c.(string); ok {
+						cards = append(cards, cardStr)
+					}
+				}
+			} else if cardsList, ok := deckData["cards"].([]interface{}); ok {
+				for _, c := range cardsList {
+					if cardStr, ok := c.(string); ok {
+						cards = append(cards, cardStr)
+					}
+				}
+			}
+
+			if len(cards) != 8 {
+				if verbose {
+					fmt.Printf("Warning: Skipping %s (expected 8 cards, got %d)\n", entry.Name(), len(cards))
+				}
+				continue
+			}
+
+			name := strings.TrimSuffix(entry.Name(), ".json")
+			decks = append(decks, deckInfo{
+				Name:     name,
+				Cards:    cards,
+				FilePath: deckPath,
+			})
+
+			if i == 0 {
+				// Try to extract player info from first deck
+				if rec, ok := deckData["recommendation"].(map[string]interface{}); ok {
+					if pname, ok := rec["player_name"].(string); ok {
+						playerName = pname
+					}
+				}
+			}
+		}
+
+		if verbose {
+			fmt.Printf("Loaded %d decks from directory: %s\n", len(decks), deckDir)
+		}
+	}
+
+	if len(decks) == 0 {
+		return fmt.Errorf("no decks found to evaluate")
+	}
+
+	// Load player context if tag provided
+	var playerContext *evaluation.PlayerContext
+	if playerTag != "" {
+		apiToken := cmd.String("api-token")
+		if apiToken == "" {
+			apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
+		}
+
+		if apiToken != "" {
+			client := clashroyale.NewClient(apiToken)
+			player, err := client.GetPlayer(playerTag)
+			if err != nil {
+				if verbose {
+					fmt.Printf("Warning: Failed to load player data: %v\n", err)
+					fmt.Println("Continuing with generic evaluation (no player context)")
+				}
+			} else {
+				playerContext = evaluation.NewPlayerContextFromPlayer(player)
+				if playerName == "" && player != nil {
+					playerName = player.Name
+				}
+				if verbose {
+					fmt.Printf("Loaded player context for %s (%s)\n", player.Name, playerTag)
+				}
+			}
+		}
+	}
+
+	if verbose {
+		fmt.Printf("Evaluating %d decks...\n", len(decks))
+	}
+
+	// Create synergy database (shared for all evaluations)
+	synergyDB := deck.NewSynergyDatabase()
+
+	// Evaluate all decks
+	type batchEvalResult struct {
+		Name      string
+		Strategy  string
+		Deck      []string
+		Result    evaluation.EvaluationResult
+		FilePath  string
+		Evaluated time.Time
+		Duration  time.Duration
+	}
+
+	results := make([]batchEvalResult, 0, len(decks))
+	startTime := time.Now()
+
+	for i, deckData := range decks {
+		deckStart := time.Now()
+
+		if len(deckData.Cards) != 8 {
+			if verbose {
+				fmt.Printf("  [%d/%d] Skipping %s: invalid card count (%d)\n",
+					i+1, len(decks), deckData.Name, len(deckData.Cards))
+			}
+			continue
+		}
+
+		deckCards := convertToCardCandidates(deckData.Cards)
+		result := evaluation.Evaluate(deckCards, synergyDB, playerContext)
+
+		elapsed := time.Since(deckStart)
+
+		results = append(results, batchEvalResult{
+			Name:      deckData.Name,
+			Strategy:  deckData.Strategy,
+			Deck:      result.Deck,
+			Result:    result,
+			FilePath:  deckData.FilePath,
+			Evaluated: deckStart,
+			Duration:  elapsed,
+		})
+
+		if verbose {
+			fmt.Printf("  [%d/%d] %s: %.2f (%s) - %s\n",
+				i+1, len(decks), deckData.Name, result.OverallScore,
+				result.OverallRating, result.DetectedArchetype)
+		}
+	}
+
+	totalTime := time.Since(startTime)
+
+	if verbose || showTiming {
+		fmt.Printf("\nBatch evaluation completed in %v\n", totalTime)
+		if len(results) > 0 {
+			fmt.Printf("Average time per deck: %v\n", totalTime/time.Duration(len(results)))
+		}
+	}
+
+	if len(results) == 0 {
+		return fmt.Errorf("no decks were successfully evaluated")
+	}
+
+	// Sort results
+	sortEvaluationResults(results, sortBy)
+
+	// Filter by archetype if requested
+	if filterArchetype && archetypeFilter != "" {
+		filtered := make([]batchEvalResult, 0)
+		for _, r := range results {
+			if strings.EqualFold(string(r.Result.DetectedArchetype), archetypeFilter) {
+				filtered = append(filtered, r)
+			}
+		}
+		results = filtered
+		if len(results) == 0 {
+			fmt.Printf("No decks found matching archetype: %s\n", archetypeFilter)
+			return nil
+		}
+	}
+
+	// Apply top filter
+	if topOnly && len(results) > topN {
+		results = results[:topN]
+	}
+
+	// Format and output results
+	var output string
+	switch strings.ToLower(format) {
+	case "summary", "human":
+		output = formatEvaluationBatchSummary(results, len(decks), totalTime, sortBy, playerName, playerTag)
+	case "json":
+		jsonData := map[string]interface{}{
+			"version":   "1.0.0",
+			"timestamp": time.Now().UTC().Format(time.RFC3339),
+			"player": map[string]string{
+				"name": playerName,
+				"tag":  playerTag,
+			},
+			"evaluation_info": map[string]interface{}{
+				"total_decks":     len(decks),
+				"evaluated":       len(results),
+				"sort_by":         sortBy,
+				"evaluation_time": totalTime.String(),
+			},
+			"results": results,
+		}
+		jsonBytes, err := json.MarshalIndent(jsonData, "", "  ")
+		if err != nil {
+			return fmt.Errorf("failed to marshal JSON: %w", err)
+		}
+		output = string(jsonBytes)
+	case "csv":
+		output = formatEvaluationBatchCSV(results)
+	case "detailed":
+		output = formatEvaluationBatchDetailed(results, playerName, playerTag)
+	default:
+		return fmt.Errorf("unknown format: %s (supported: summary, json, csv, detailed)", format)
+	}
+
+	// Write output
+	if outputDir != "" && saveAggregated {
+		timestamp := time.Now().Format("20060102_150405")
+		var filename string
+		switch strings.ToLower(format) {
+		case "json":
+			filename = fmt.Sprintf("%s_deck_evaluations_%s.json", timestamp, playerTag)
+		case "csv":
+			filename = fmt.Sprintf("%s_deck_evaluations_%s.csv", timestamp, playerTag)
+		default:
+			filename = fmt.Sprintf("%s_deck_evaluations_%s.txt", timestamp, playerTag)
+		}
+		outputPath := filepath.Join(outputDir, filename)
+
+		if err := os.MkdirAll(outputDir, 0o755); err != nil {
+			return fmt.Errorf("failed to create output directory: %w", err)
+		}
+
+		if err := os.WriteFile(outputPath, []byte(output), 0o644); err != nil {
+			return fmt.Errorf("failed to write output file: %w", err)
+		}
+
+		fmt.Printf("\nEvaluation results saved to: %s\n", outputPath)
+	} else {
+		fmt.Print(output)
 	}
 
 	return nil
@@ -2933,4 +3361,250 @@ func exportOptimizationCSV(
 	}
 
 	return nil
+}
+
+// sortEvaluationResults sorts batch evaluation results by the specified criteria
+func sortEvaluationResults[T any](results []T, sortBy string) {
+	type resultInterface interface {
+		GetResult() evaluation.EvaluationResult
+	}
+
+	// Type assertion helper
+	getResult := func(r T) evaluation.EvaluationResult {
+		switch v := any(r).(type) {
+		case struct {
+			Name      string
+			Strategy  string
+			Deck      []string
+			Result    evaluation.EvaluationResult
+			FilePath  string
+			Evaluated time.Time
+			Duration  time.Duration
+		}:
+			return v.Result
+		default:
+			return evaluation.EvaluationResult{}
+		}
+	}
+
+	// Sort based on criteria
+	switch strings.ToLower(sortBy) {
+	case "attack":
+		for i := 0; i < len(results)-1; i++ {
+			for j := i + 1; j < len(results); j++ {
+				if getResult(results[i]).Attack.Score < getResult(results[j]).Attack.Score {
+					results[i], results[j] = results[j], results[i]
+				}
+			}
+		}
+	case "defense":
+		for i := 0; i < len(results)-1; i++ {
+			for j := i + 1; j < len(results); j++ {
+				if getResult(results[i]).Defense.Score < getResult(results[j]).Defense.Score {
+					results[i], results[j] = results[j], results[i]
+				}
+			}
+		}
+	case "synergy":
+		for i := 0; i < len(results)-1; i++ {
+			for j := i + 1; j < len(results); j++ {
+				if getResult(results[i]).Synergy.Score < getResult(results[j]).Synergy.Score {
+					results[i], results[j] = results[j], results[i]
+				}
+			}
+		}
+	case "versatility":
+		for i := 0; i < len(results)-1; i++ {
+			for j := i + 1; j < len(results); j++ {
+				if getResult(results[i]).Versatility.Score < getResult(results[j]).Versatility.Score {
+					results[i], results[j] = results[j], results[i]
+				}
+			}
+		}
+	case "f2p", "f2p-friendly":
+		for i := 0; i < len(results)-1; i++ {
+			for j := i + 1; j < len(results); j++ {
+				if getResult(results[i]).F2PFriendly.Score < getResult(results[j]).F2PFriendly.Score {
+					results[i], results[j] = results[j], results[i]
+				}
+			}
+		}
+	case "playability":
+		for i := 0; i < len(results)-1; i++ {
+			for j := i + 1; j < len(results); j++ {
+				if getResult(results[i]).Playability.Score < getResult(results[j]).Playability.Score {
+					results[i], results[j] = results[j], results[i]
+				}
+			}
+		}
+	case "elixir":
+		for i := 0; i < len(results)-1; i++ {
+			for j := i + 1; j < len(results); j++ {
+				if getResult(results[i]).AvgElixir > getResult(results[j]).AvgElixir {
+					results[i], results[j] = results[j], results[i]
+				}
+			}
+		}
+	default: // "overall"
+		for i := 0; i < len(results)-1; i++ {
+			for j := i + 1; j < len(results); j++ {
+				if getResult(results[i]).OverallScore < getResult(results[j]).OverallScore {
+					results[i], results[j] = results[j], results[i]
+				}
+			}
+		}
+	}
+}
+
+// formatEvaluationBatchSummary formats batch evaluation results as a human-readable summary
+func formatEvaluationBatchSummary[T any](results []T, totalDecks int, totalTime time.Duration, sortBy, playerName, playerTag string) string {
+	type resultType struct {
+		Name      string
+		Strategy  string
+		Deck      []string
+		Result    evaluation.EvaluationResult
+		FilePath  string
+		Evaluated time.Time
+		Duration  time.Duration
+	}
+
+	var buf strings.Builder
+
+	buf.WriteString("╔═══════════════════════════════════════════════════════════════════════════════╗\n")
+	buf.WriteString("║                        BATCH DECK EVALUATION RESULTS                          ║\n")
+	buf.WriteString("╚═══════════════════════════════════════════════════════════════════════════════╝\n\n")
+
+	if playerName != "" || playerTag != "" {
+		buf.WriteString(fmt.Sprintf("Player: %s (%s)\n", playerName, playerTag))
+	}
+	buf.WriteString(fmt.Sprintf("Total Decks: %d | Evaluated: %d | Sorted by: %s\n", totalDecks, len(results), sortBy))
+	buf.WriteString(fmt.Sprintf("Total Time: %v | Avg: %v\n\n", totalTime, totalTime/time.Duration(max(len(results), 1))))
+
+	buf.WriteString("┌─────┬──────────────────────────────┬─────────┬────────┬────────┬────────┬──────────────┐\n")
+	buf.WriteString("│ Rank│ Deck Name                    │ Overall │ Attack │ Defense│ Synergy│ Archetype    │\n")
+	buf.WriteString("├─────┼──────────────────────────────┼─────────┼────────┼────────┼────────┼──────────────┤\n")
+
+	for i, r := range results {
+		res := any(r).(resultType)
+		name := res.Name
+		if len(name) > 28 {
+			name = name[:25] + "..."
+		}
+		archetype := string(res.Result.DetectedArchetype)
+		if len(archetype) > 12 {
+			archetype = archetype[:9] + "..."
+		}
+		buf.WriteString(fmt.Sprintf("│ %3d │ %-28s │  %5.2f  │  %5.2f │  %5.2f │  %5.2f │ %-12s │\n",
+			i+1, name,
+			res.Result.OverallScore,
+			res.Result.Attack.Score,
+			res.Result.Defense.Score,
+			res.Result.Synergy.Score,
+			archetype))
+	}
+
+	buf.WriteString("└─────┴──────────────────────────────┴─────────┴────────┴────────┴────────┴──────────────┘\n")
+
+	return buf.String()
+}
+
+// formatEvaluationBatchCSV formats batch evaluation results as CSV
+func formatEvaluationBatchCSV[T any](results []T) string {
+	type resultType struct {
+		Name      string
+		Strategy  string
+		Deck      []string
+		Result    evaluation.EvaluationResult
+		FilePath  string
+		Evaluated time.Time
+		Duration  time.Duration
+	}
+
+	var buf strings.Builder
+
+	// Header
+	buf.WriteString("Rank,Name,Strategy,Overall,Attack,Defense,Synergy,Versatility,F2P,Playability,Archetype,Avg_Elixir,Deck\n")
+
+	// Data rows
+	for i, r := range results {
+		res := any(r).(resultType)
+		buf.WriteString(fmt.Sprintf("%d,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%.2f,\"%s\"\n",
+			i+1,
+			res.Name,
+			res.Strategy,
+			res.Result.OverallScore,
+			res.Result.Attack.Score,
+			res.Result.Defense.Score,
+			res.Result.Synergy.Score,
+			res.Result.Versatility.Score,
+			res.Result.F2PFriendly.Score,
+			res.Result.Playability.Score,
+			res.Result.DetectedArchetype,
+			res.Result.AvgElixir,
+			strings.Join(res.Deck, " - ")))
+	}
+
+	return buf.String()
+}
+
+// formatEvaluationBatchDetailed formats batch evaluation results with detailed analysis
+func formatEvaluationBatchDetailed[T any](results []T, playerName, playerTag string) string {
+	type resultType struct {
+		Name      string
+		Strategy  string
+		Deck      []string
+		Result    evaluation.EvaluationResult
+		FilePath  string
+		Evaluated time.Time
+		Duration  time.Duration
+	}
+
+	var buf strings.Builder
+
+	buf.WriteString("╔═══════════════════════════════════════════════════════════════════════════════╗\n")
+	buf.WriteString("║                    DETAILED BATCH EVALUATION RESULTS                          ║\n")
+	buf.WriteString("╚═══════════════════════════════════════════════════════════════════════════════╝\n\n")
+
+	if playerName != "" || playerTag != "" {
+		buf.WriteString(fmt.Sprintf("Player: %s (%s)\n\n", playerName, playerTag))
+	}
+
+	for i, r := range results {
+		res := any(r).(resultType)
+
+		buf.WriteString(fmt.Sprintf("═══════════════════ DECK #%d: %s ═══════════════════\n\n", i+1, res.Name))
+
+		if res.Strategy != "" && res.Strategy != "unknown" {
+			buf.WriteString(fmt.Sprintf("Strategy: %s\n", res.Strategy))
+		}
+
+		buf.WriteString(fmt.Sprintf("Deck: %s\n", strings.Join(res.Deck, " - ")))
+		buf.WriteString(fmt.Sprintf("Avg Elixir: %.2f\n", res.Result.AvgElixir))
+		buf.WriteString(fmt.Sprintf("Archetype: %s (%.1f%% confidence)\n\n", res.Result.DetectedArchetype, res.Result.ArchetypeConfidence*100))
+
+		// Category scores
+		buf.WriteString("SCORES:\n")
+		buf.WriteString(fmt.Sprintf("  Overall:     %.2f (%s)\n", res.Result.OverallScore, res.Result.OverallRating))
+		buf.WriteString(fmt.Sprintf("  Attack:      %.2f (%s)\n", res.Result.Attack.Score, res.Result.Attack.Rating))
+		buf.WriteString(fmt.Sprintf("  Defense:     %.2f (%s)\n", res.Result.Defense.Score, res.Result.Defense.Rating))
+		buf.WriteString(fmt.Sprintf("  Synergy:     %.2f (%s)\n", res.Result.Synergy.Score, res.Result.Synergy.Rating))
+		buf.WriteString(fmt.Sprintf("  Versatility: %.2f (%s)\n", res.Result.Versatility.Score, res.Result.Versatility.Rating))
+		buf.WriteString(fmt.Sprintf("  F2P:         %.2f (%s)\n", res.Result.F2PFriendly.Score, res.Result.F2PFriendly.Rating))
+		buf.WriteString(fmt.Sprintf("  Playability: %.2f (%s)\n\n", res.Result.Playability.Score, res.Result.Playability.Rating))
+
+		// Key assessments
+		if res.Result.Attack.Assessment != "" {
+			buf.WriteString(fmt.Sprintf("Attack: %s\n", res.Result.Attack.Assessment))
+		}
+		if res.Result.Defense.Assessment != "" {
+			buf.WriteString(fmt.Sprintf("Defense: %s\n", res.Result.Defense.Assessment))
+		}
+		if res.Result.Synergy.Assessment != "" {
+			buf.WriteString(fmt.Sprintf("Synergy: %s\n", res.Result.Synergy.Assessment))
+		}
+
+		buf.WriteString("\n" + strings.Repeat("─", 80) + "\n\n")
+	}
+
+	return buf.String()
 }

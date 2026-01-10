@@ -178,6 +178,86 @@ Missing: Skeleton Army (Arena 8), Ice Golem (Arena 6)
 4. Combine with `--format json` for programmatic analysis
 5. Check playability percentage before committing to a deck build
 
+### Batch Deck Building and Evaluation
+
+Build multiple deck variations systematically and evaluate them in batch:
+
+```bash
+# Build multiple deck variations with different strategies
+./bin/cr-api deck build-suite --tag <TAG> --strategies balanced,aggro,cycle --variations 3
+
+# Build all strategies with 2 variations each
+./bin/cr-api deck build-suite --tag <TAG> --strategies all --variations 2 --output-dir data/decks
+
+# Evaluate all decks from a build-suite run
+./bin/cr-api deck evaluate-batch --from-suite data/decks/20240110_120000_deck_suite_summary_TAG.json
+
+# Evaluate decks from a directory
+./bin/cr-api deck evaluate-batch --deck-dir data/decks --format csv --output-dir data/evaluations
+
+# Filter and sort evaluations
+./bin/cr-api deck evaluate-batch --from-suite data/decks/suite.json --sort-by attack --top-only --top-n 5
+
+# Evaluate with player context
+./bin/cr-api deck evaluate-batch --from-suite data/decks/suite.json --tag TAG --verbose
+```
+
+**build-suite Flags:**
+- `--strategies <list>` - Comma-separated strategies or 'all' (default: balanced)
+  - Available: balanced, aggro, control, cycle, splash, spell, all
+- `--variations <n>` - Number of variations per strategy (default: 1)
+- `--output-dir <dir>` - Output directory for deck files (default: data/decks/)
+- `--save` - Save individual deck files and summary JSON (default: true)
+- `--from-analysis` - Use offline mode with pre-analyzed player data
+- `--min-elixir`, `--max-elixir` - Deck elixir constraints
+- `--include-cards`, `--exclude-cards` - Card filters
+
+**evaluate-batch Flags:**
+- `--from-suite <file>` - Load decks from build-suite summary JSON
+- `--deck-dir <dir>` - Load decks from directory of JSON files
+- `--tag <TAG>` - Player tag for context-aware evaluation
+- `--format <format>` - Output format: summary, json, csv, detailed (default: summary)
+- `--output-dir <dir>` - Save results to directory
+- `--sort-by <criteria>` - Sort by: overall, attack, defense, synergy, versatility, f2p, playability, elixir
+- `--top-only` - Show only top N decks
+- `--top-n <n>` - Number of top decks (default: 10)
+- `--filter-archetype` - Filter by archetype (use with --archetype)
+- `--archetype <type>` - Archetype to filter (e.g., beatdown, control, cycle)
+- `--verbose` - Show detailed progress
+- `--timing` - Show timing information
+
+**Example Workflow:**
+```bash
+# 1. Build deck suite with all strategies, 3 variations each
+./bin/cr-api deck build-suite --tag R8QGUQRCV --strategies all --variations 3 --output-dir data/my-decks
+
+# Output:
+#   data/my-decks/20240110_120000_deck_suite_summary_R8QGUQRCV.json
+#   data/my-decks/20240110_120000_deck_balanced_var1_R8QGUQRCV.json
+#   data/my-decks/20240110_120000_deck_balanced_var2_R8QGUQRCV.json
+#   ... (18 deck files total for 6 strategies × 3 variations)
+
+# 2. Evaluate all decks from suite with player context
+./bin/cr-api deck evaluate-batch \
+  --from-suite data/my-decks/20240110_120000_deck_suite_summary_R8QGUQRCV.json \
+  --tag R8QGUQRCV \
+  --sort-by overall \
+  --format csv \
+  --output-dir data/evaluations \
+  --verbose
+
+# Output:
+#   data/evaluations/20240110_130000_deck_evaluations_R8QGUQRCV.csv
+#   (Ranked list of all 18 decks with scores)
+
+# 3. Find top 5 aggressive decks
+./bin/cr-api deck evaluate-batch \
+  --from-suite data/my-decks/20240110_120000_deck_suite_summary_R8QGUQRCV.json \
+  --filter-archetype --archetype bridge \
+  --sort-by attack \
+  --top-only --top-n 5
+```
+
 ### Event Tracking
 
 ```bash
