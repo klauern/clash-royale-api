@@ -36,6 +36,7 @@ See [.cursor/rules/beads.mdc](.cursor/rules/beads.mdc) for detailed beads workfl
 | Testing | [docs/TESTING.md](docs/TESTING.md) |
 | Release process | [docs/RELEASE_PROCESS.md](docs/RELEASE_PROCESS.md) |
 | Deck building | [docs/DECK_BUILDER.md](docs/DECK_BUILDER.md) |
+| Deck analysis suite | [docs/DECK_ANALYSIS_SUITE.md](docs/DECK_ANALYSIS_SUITE.md) |
 | Evolution mechanics | [docs/EVOLUTION.md](docs/EVOLUTION.md) |
 | Event tracking | [docs/EVENT_TRACKING.md](docs/EVENT_TRACKING.md) |
 | CSV exports | [docs/CSV_EXPORTS.md](docs/CSV_EXPORTS.md) |

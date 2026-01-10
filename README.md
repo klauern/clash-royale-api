@@ -25,6 +25,7 @@ cp .env.example .env
 - 👤 **Player Profile Analysis**: Comprehensive player data including card collections
 - 🎯 **Player Context Awareness**: Arena-aware card validation, collection-based playability scoring, and level-based ladder analysis
 - 🏗️ **Intelligent Deck Building**: AI-powered deck recommendations based on your collection with evolution integration
+- 🔬 **Deck Analysis Suite**: Batch deck building, evaluation, comparison, and comprehensive reporting workflows
 - 📊 **Collection Analysis**: Detailed statistics on card levels, rarities, and upgrade priorities
 - 🎮 **Playstyle Analysis**: Analyze player's playstyle and get personalized deck recommendations
 - 🃏 **Event Deck Tracking**: Monitor and analyze performance in special events
@@ -36,6 +37,7 @@ cp .env.example .env
 ## Documentation
 
 - **[Deck Building](docs/DECK_BUILDER.md)** - Algorithm details and Go API examples
+- **[Deck Analysis Suite](docs/DECK_ANALYSIS_SUITE.md)** - Batch deck building, evaluation, and comparison workflows
 - **[Evolution System](docs/EVOLUTION.md)** - Evolution mechanics and configuration
 - **[Event Tracking](docs/EVENT_TRACKING.md)** - Event deck analysis
 - **[CSV Exports](docs/CSV_EXPORTS.md)** - Export functionality
@@ -101,6 +103,12 @@ cd clash-royale-api && task build
 # Deck building strategies: balanced (default), aggro, control, cycle, splash, spell
 ./bin/cr-api deck build --tag PLAYER_TAG --strategy cycle --verbose
 
+# Deck Analysis Suite - systematic deck building and evaluation
+./bin/cr-api deck analyze-suite --tag PLAYER_TAG --strategies all --variations 2
+./bin/cr-api deck build-suite --tag PLAYER_TAG --strategies all --variations 3
+./bin/cr-api deck evaluate-batch --from-suite data/decks/suite_TAG.json --tag TAG
+./bin/cr-api deck compare --from-evaluations data/evaluations/evals_TAG.json --auto-select-top 5
+
 # Task runner (recommended)
 task                     # Show all tasks
 task run -- #PLAYER_TAG  # Analyze player
@@ -109,6 +117,7 @@ task test                # Run tests
 
 See feature-specific documentation for detailed command options:
 - [DECK_BUILDER.md](docs/DECK_BUILDER.md) - Deck building strategies and options
+- [DECK_ANALYSIS_SUITE.md](docs/DECK_ANALYSIS_SUITE.md) - Batch deck analysis workflows
 - [EVENT_TRACKING.md](docs/EVENT_TRACKING.md) - Event scanning and analysis
 - [CSV_EXPORTS.md](docs/CSV_EXPORTS.md) - Export formats and options
 - [EVOLUTION.md](docs/EVOLUTION.md) - Evolution shard management

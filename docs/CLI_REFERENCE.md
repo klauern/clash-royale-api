@@ -258,6 +258,236 @@ Build multiple deck variations systematically and evaluate them in batch:
   --top-only --top-n 5
 ```
 
+### Deck Comparison and Analysis Reports
+
+Compare multiple decks side-by-side with detailed analysis and generate comprehensive reports:
+
+```bash
+# Compare decks directly (max 5 decks)
+./bin/cr-api deck compare \
+  --decks "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log" \
+  --decks "Giant-Witch-Skeleton Army-Musketeer-Fireball-Zap-Ice Golem-Archers" \
+  --names "Hog Cycle" --names "Giant Beatdown" \
+  --format table
+
+# Compare from evaluation results with auto-selection
+./bin/cr-api deck compare \
+  --from-evaluations data/evaluations/20240110_deck_evaluations_TAG.json \
+  --auto-select-top 5 \
+  --format markdown \
+  --report-output data/reports/comparison_report.md
+
+# Generate JSON comparison for programmatic analysis
+./bin/cr-api deck compare \
+  --from-evaluations data/evaluations/20240110_deck_evaluations_TAG.json \
+  --auto-select-top 3 \
+  --format json \
+  --output data/reports/comparison.json
+
+# Detailed comparison with win rate predictions
+./bin/cr-api deck compare \
+  --decks "Deck1" --decks "Deck2" --decks "Deck3" \
+  --format table \
+  --verbose \
+  --winrate
+```
+
+**compare Flags:**
+- `--decks <deck>` - Deck string (format: "Card1-Card2-...-Card8"), can specify multiple times
+- `--names <name>` - Custom name for each deck (optional, corresponds to --decks order)
+- `--from-evaluations <file>` - Load from evaluation batch results JSON (alternative to --decks)
+- `--auto-select-top <n>` - Auto-select top N decks by overall score (requires --from-evaluations)
+- `--format <format>` - Output format: table, json, csv, markdown/md (default: table)
+- `--output <file>` - Output file path (default: stdout)
+- `--report-output <file>` - Generate comprehensive markdown report to file
+- `--verbose` - Show detailed comparison with strengths/weaknesses per deck
+- `--winrate` - Show predicted win rate comparison
+
+**Deck Format:** `"Card1-Card2-Card3-Card4-Card5-Card6-Card7-Card8"` (8 cards, hyphen-separated)
+
+**Comparison Outputs:**
+
+*Table Format (default):*
+```
+╔═══════════════════════════════════════════════════════════════╗
+║                      DECK COMPARISON                          ║
+╠═══════════════════════════════════════════════════════════════╣
+
+OVERVIEW
+┌─────────────┬─────────┬────────────┬──────────────┐
+│ Deck        │ Score   │ Avg Elixir │ Archetype    │
+├─────────────┼─────────┼────────────┼──────────────┤
+│ Hog Cycle   │ 8.5 ⭐  │ 3.1        │ Cycle        │
+│ Giant Beat  │ 8.2 ⭐  │ 4.0        │ Beatdown     │
+└─────────────┴─────────┴────────────┴──────────────┘
+
+CATEGORY SCORES
+┌──────────────┬───────────┬─────────────┐
+│ Category     │ Hog Cycle │ Giant Beat  │
+├──────────────┼───────────┼─────────────┤
+│ Attack       │ 8.2 ⭐⭐  │ 8.7 ⭐⭐⭐   │
+│ Defense      │ 8.8 ⭐⭐⭐ │ 7.9 ⭐⭐     │
+│ Synergy      │ 7.9 ⭐⭐  │ 8.5 ⭐⭐⭐   │
+│ Versatility  │ 8.4 ⭐⭐⭐ │ 7.7 ⭐⭐     │
+│ F2P Friendly │ 8.0 ⭐⭐  │ 6.5 ⭐⭐     │
+└──────────────┴───────────┴─────────────┘
+
+BEST IN CATEGORY
+🥇 Attack: Giant Beat (8.7)
+🥇 Defense: Hog Cycle (8.8)
+🥇 Synergy: Giant Beat (8.5)
+```
+
+*Markdown Report Format:*
+- Executive summary with recommended deck
+- Overall rankings (🥇🥈🥉)
+- Detailed score comparison table
+- Category champions
+- Complete deck compositions with card roles
+- Per-deck analysis (strengths, areas for improvement, recommendations)
+
+**Example Workflow with Reports:**
+```bash
+# 1. Build and evaluate deck suite (see previous sections)
+./bin/cr-api deck build-suite --tag TAG --strategies all --variations 2
+./bin/cr-api deck evaluate-batch --from-suite data/decks/suite_TAG.json --tag TAG
+
+# 2. Compare top 5 performers with comprehensive report
+./bin/cr-api deck compare \
+  --from-evaluations data/evaluations/evaluations_TAG.json \
+  --auto-select-top 5 \
+  --format markdown \
+  --report-output data/reports/top5_comparison.md \
+  --verbose
+
+# Output: data/reports/top5_comparison.md
+# - Executive summary with deck recommendation
+# - Rankings and category winners
+# - Detailed analysis for each deck
+# - Usage recommendations
+```
+
+### Unified Deck Analysis Suite
+
+The `analyze-suite` command combines building, evaluation, and comparison into a single unified workflow:
+
+```bash
+# Full analysis suite: build all strategies, evaluate all decks, compare top 5
+./bin/cr-api deck analyze-suite --tag <TAG> --strategies all --variations 2
+
+# Custom workflow: specific strategies, 3 variations, compare top 3
+./bin/cr-api deck analyze-suite \
+  --tag <TAG> \
+  --strategies balanced,aggro,cycle \
+  --variations 3 \
+  --top-n 3 \
+  --output-dir data/analysis
+
+# Offline mode with existing player data
+./bin/cr-api deck analyze-suite \
+  --tag <TAG> \
+  --from-analysis \
+  --strategies all \
+  --variations 1 \
+  --top-n 5
+
+# With deck constraints
+./bin/cr-api deck analyze-suite \
+  --tag <TAG> \
+  --strategies all \
+  --variations 2 \
+  --min-elixir 2.8 \
+  --max-elixir 4.2 \
+  --include-cards "Hog Rider,Log" \
+  --exclude-cards "Elite Barbarians,Royal Giant" \
+  --verbose
+```
+
+**analyze-suite Flags:**
+- `--tag <TAG>` - Player tag (required)
+- `--strategies <list>` - Comma-separated strategies or 'all' (default: all)
+  - Available: balanced, aggro, control, cycle, splash, spell, all
+- `--variations <n>` - Number of variations per strategy (default: 1)
+- `--output-dir <dir>` - Base output directory for all results (default: data/analysis)
+- `--top-n <n>` - Number of top decks to compare in final report (default: 5, max: 5)
+- `--from-analysis` - Use offline mode with pre-analyzed player data
+- `--min-elixir <float>` - Minimum average elixir for decks (default: 2.5)
+- `--max-elixir <float>` - Maximum average elixir for decks (default: 4.5)
+- `--include-cards <cards>` - Cards that must be included (comma-separated)
+- `--exclude-cards <cards>` - Cards that must be excluded (comma-separated)
+- `--verbose` - Show detailed progress information
+
+**Workflow Phases:**
+
+The command executes three phases automatically:
+
+1. **Phase 1: Building Deck Variations**
+   - Generates decks for each strategy × variations
+   - Saves individual deck JSON files
+   - Creates suite summary JSON
+
+2. **Phase 2: Evaluating All Decks**
+   - Evaluates each deck with player context
+   - Generates comprehensive scores for all categories
+   - Saves evaluation results JSON
+
+3. **Phase 3: Comparing Top Performers**
+   - Selects top N decks (sorted by overall score)
+   - Generates detailed comparison markdown report
+   - Includes recommendations and analysis
+
+**Output Directory Structure:**
+```
+data/analysis/
+├── decks/
+│   ├── 20240110_120000_deck_balanced_var1_TAG.json
+│   ├── 20240110_120000_deck_aggro_var1_TAG.json
+│   ├── ... (individual deck files)
+│   └── 20240110_120000_deck_suite_summary_TAG.json
+├── evaluations/
+│   └── 20240110_120100_deck_evaluations_TAG.json
+└── reports/
+    └── 20240110_120200_deck_analysis_report_TAG.md
+```
+
+**Example Complete Workflow:**
+```bash
+# Run comprehensive analysis with all strategies, 3 variations each
+./bin/cr-api deck analyze-suite --tag R8QGUQRCV --strategies all --variations 3 --verbose
+
+# Console Output (abbreviated):
+# 🏗️  Phase 1/3: Building deck variations...
+# ✓ Built 18 decks (6 strategies × 3 variations)
+# 📁 Saved: data/analysis/decks/20240110_deck_suite_summary_R8QGUQRCV.json
+#
+# 📊 Phase 2/3: Evaluating all decks...
+# ✓ Evaluated 18 decks in 12.3s
+# 📁 Saved: data/analysis/evaluations/20240110_deck_evaluations_R8QGUQRCV.json
+#
+# 🔍 Phase 3/3: Comparing top 5 performers...
+# ✓ Generated comparison report
+# 📁 Saved: data/analysis/reports/20240110_deck_analysis_report_R8QGUQRCV.md
+#
+# ✅ Analysis complete!
+#    Total decks: 18
+#    Top performer: Cycle variation 2 (Score: 8.9)
+#    Full report: data/analysis/reports/20240110_deck_analysis_report_R8QGUQRCV.md
+
+# Review the generated markdown report
+cat data/analysis/reports/20240110_120200_deck_analysis_report_R8QGUQRCV.md
+```
+
+**Best Practices for Deck Analysis Suite:**
+1. Start with `--strategies all --variations 2` for comprehensive baseline analysis
+2. Use `--verbose` to monitor progress for large batch operations
+3. Use `--top-n 3` for focused comparison when you have many variations
+4. Apply `--min-elixir` and `--max-elixir` to constrain analysis to your playstyle
+5. Use `--include-cards` to ensure specific cards (like your highest-level cards) are always included
+6. Review the markdown report for detailed recommendations before committing to a deck
+7. Re-run with `--from-analysis` for instant offline experimentation with different parameters
+
+See [DECK_ANALYSIS_SUITE.md](DECK_ANALYSIS_SUITE.md) for comprehensive guide and advanced workflows.
+
 ### Event Tracking
 
 ```bash
