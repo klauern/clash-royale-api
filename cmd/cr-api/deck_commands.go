@@ -17,6 +17,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
+	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/klauer/clash-royale-api/go/pkg/recommend"
 	"github.com/urfave/cli/v3"
@@ -1497,6 +1498,27 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 	// Create synergy database (shared for all evaluations)
 	synergyDB := deck.NewSynergyDatabase()
 
+	// Initialize persistent storage if player tag is available
+	var storage *leaderboard.Storage
+	var storageErr error
+	if playerTag != "" {
+		storage, storageErr = leaderboard.NewStorage(playerTag)
+		if storageErr != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", storageErr)
+			}
+		} else {
+			defer func() {
+				if err := storage.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
+				}
+			}()
+			if verbose {
+				fmt.Printf("Initialized persistent storage at: %s\n", storage.GetDBPath())
+			}
+		}
+	}
+
 	// Evaluate all decks
 	type batchEvalResult struct {
 		Name      string
@@ -1537,6 +1559,34 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 			Duration:  elapsed,
 		})
 
+		// Save to persistent storage if available
+		if storage != nil {
+			entry := &leaderboard.DeckEntry{
+				Cards:             result.Deck,
+				OverallScore:      result.OverallScore,
+				AttackScore:       result.Attack.Score,
+				DefenseScore:      result.Defense.Score,
+				SynergyScore:      result.Synergy.Score,
+				VersatilityScore:  result.Versatility.Score,
+				F2PScore:          result.F2PFriendly.Score,
+				PlayabilityScore:  result.Playability.Score,
+				Archetype:         string(result.DetectedArchetype),
+				ArchetypeConf:     result.ArchetypeConfidence,
+				Strategy:          deckData.Strategy,
+				AvgElixir:         result.AvgElixir,
+				EvaluatedAt:       deckStart,
+				PlayerTag:         playerTag,
+				EvaluationVersion: "1.0.0",
+			}
+
+			_, isNew, err := storage.InsertDeck(entry)
+			if err != nil && verbose {
+				fmt.Fprintf(os.Stderr, "  Warning: failed to save deck to storage: %v\n", err)
+			} else if verbose && !isNew {
+				fmt.Printf("  (deck already in storage, updated)\n")
+			}
+		}
+
 		if verbose {
 			fmt.Printf("  [%d/%d] %s: %.2f (%s) - %s\n",
 				i+1, len(decks), deckData.Name, result.OverallScore,
@@ -1555,6 +1605,22 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 
 	if len(results) == 0 {
 		return fmt.Errorf("no decks were successfully evaluated")
+	}
+
+	// Recalculate and update statistics after all insertions
+	if storage != nil {
+		stats, err := storage.RecalculateStats()
+		if err != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: failed to recalculate storage stats: %v\n", err)
+			}
+		} else if verbose {
+			fmt.Printf("\nStorage statistics updated:\n")
+			fmt.Printf("  Total decks evaluated: %d\n", stats.TotalDecksEvaluated)
+			fmt.Printf("  Unique decks: %d\n", stats.TotalUniqueDecks)
+			fmt.Printf("  Top score: %.2f\n", stats.TopScore)
+			fmt.Printf("  Average score: %.2f\n", stats.AvgScore)
+		}
 	}
 
 	// Sort results
@@ -1934,6 +2000,27 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Create shared synergy database
 	synergyDB := deck.NewSynergyDatabase()
 
+	// Initialize persistent storage if player tag is available
+	var storage *leaderboard.Storage
+	var storageErr error
+	if tag != "" {
+		storage, storageErr = leaderboard.NewStorage(tag)
+		if storageErr != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", storageErr)
+			}
+		} else {
+			defer func() {
+				if err := storage.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
+				}
+			}()
+			if verbose {
+				fmt.Printf("Initialized persistent storage at: %s\n", storage.GetDBPath())
+			}
+		}
+	}
+
 	// Evaluate each deck
 	type evalResult struct {
 		Name      string                      `json:"name"`
@@ -1980,12 +2067,46 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			Duration:  evalDuration.Nanoseconds(),
 		})
 
+		// Save to persistent storage if available
+		if storage != nil {
+			entry := &leaderboard.DeckEntry{
+				Cards:             deckInf.Cards,
+				OverallScore:      deckEvalResult.OverallScore,
+				AttackScore:       deckEvalResult.Attack.Score,
+				DefenseScore:      deckEvalResult.Defense.Score,
+				SynergyScore:      deckEvalResult.Synergy.Score,
+				VersatilityScore:  deckEvalResult.Versatility.Score,
+				F2PScore:          deckEvalResult.F2PFriendly.Score,
+				PlayabilityScore:  deckEvalResult.Playability.Score,
+				Archetype:         string(deckEvalResult.DetectedArchetype),
+				ArchetypeConf:     deckEvalResult.ArchetypeConfidence,
+				Strategy:          deckInf.Strategy,
+				AvgElixir:         deckEvalResult.AvgElixir,
+				EvaluatedAt:       deckStart,
+				PlayerTag:         tag,
+				EvaluationVersion: "1.0.0",
+			}
+
+			_, _, err := storage.InsertDeck(entry)
+			if err != nil && verbose {
+				fmt.Fprintf(os.Stderr, "  Warning: failed to save deck to storage: %v\n", err)
+			}
+		}
+
 		if verbose {
 			fmt.Printf("  ✓ Evaluated %s: %.2f overall (%.0fms)\n", deckName, deckEvalResult.OverallScore, float64(evalDuration.Nanoseconds())/1e6)
 		}
 	}
 
 	evalDuration := time.Since(evalStart)
+
+	// Recalculate and update statistics after all insertions
+	if storage != nil {
+		_, err := storage.RecalculateStats()
+		if err != nil && verbose {
+			fmt.Fprintf(os.Stderr, "Warning: failed to recalculate storage stats: %v\n", err)
+		}
+	}
 
 	// Sort by overall score
 	sortEvaluationResults(results, "overall")
@@ -3288,6 +3409,58 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Evaluate the deck
 	result := evaluation.Evaluate(deckCards, synergyDB, playerContext)
+
+	// Save to persistent storage if player tag is available
+	if playerTag != "" {
+		storage, err := leaderboard.NewStorage(playerTag)
+		if err != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", err)
+			}
+		} else {
+			defer func() {
+				if err := storage.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
+				}
+			}()
+
+			entry := &leaderboard.DeckEntry{
+				Cards:             result.Deck,
+				OverallScore:      result.OverallScore,
+				AttackScore:       result.Attack.Score,
+				DefenseScore:      result.Defense.Score,
+				SynergyScore:      result.Synergy.Score,
+				VersatilityScore:  result.Versatility.Score,
+				F2PScore:          result.F2PFriendly.Score,
+				PlayabilityScore:  result.Playability.Score,
+				Archetype:         string(result.DetectedArchetype),
+				ArchetypeConf:     result.ArchetypeConfidence,
+				Strategy:          "", // Single evaluations don't have a strategy
+				AvgElixir:         result.AvgElixir,
+				EvaluatedAt:       time.Now(),
+				PlayerTag:         playerTag,
+				EvaluationVersion: "1.0.0",
+			}
+
+			deckID, isNew, err := storage.InsertDeck(entry)
+			if err != nil {
+				if verbose {
+					fmt.Fprintf(os.Stderr, "Warning: failed to save deck to storage: %v\n", err)
+				}
+			} else {
+				if _, err := storage.RecalculateStats(); err != nil && verbose {
+					fmt.Fprintf(os.Stderr, "Warning: failed to recalculate stats: %v\n", err)
+				}
+				if verbose {
+					if isNew {
+						fmt.Printf("Saved deck to storage (ID: %d) at: %s\n", deckID, storage.GetDBPath())
+					} else {
+						fmt.Printf("Updated existing deck in storage (ID: %d)\n", deckID)
+					}
+				}
+			}
+		}
+	}
 
 	// Format output based on requested format
 	var formattedOutput string
