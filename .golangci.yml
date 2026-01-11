@@ -10,9 +10,16 @@ linters:
     - unused
     - misspell
     - ineffassign
+    - dupl
+    - goconst
   settings:
     misspell:
       locale: US
+    dupl:
+      threshold: 150
+    goconst:
+      min-len: 2
+      min-occurrences: 3
   exclusions:
     rules:
       - path: _test\.go
