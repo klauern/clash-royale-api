@@ -4,23 +4,23 @@ import "time"
 
 // DeckEntry represents a single deck entry in the leaderboard with all evaluation data
 type DeckEntry struct {
-	ID                int       `json:"id"`                  // Auto-incremented primary key
-	DeckHash          string    `json:"deck_hash"`           // SHA256 hash of sorted card names for deduplication
-	Cards             []string  `json:"cards"`               // 8 card names
-	OverallScore      float64   `json:"overall_score"`       // 0-10 overall evaluation score
-	AttackScore       float64   `json:"attack_score"`        // 0-10 attack category score
-	DefenseScore      float64   `json:"defense_score"`       // 0-10 defense category score
-	SynergyScore      float64   `json:"synergy_score"`       // 0-10 synergy category score
-	VersatilityScore  float64   `json:"versatility_score"`   // 0-10 versatility category score
-	F2PScore          float64   `json:"f2p_score"`           // 0-10 F2P friendly score
-	PlayabilityScore  float64   `json:"playability_score"`   // 0-10 playability score
-	Archetype         string    `json:"archetype"`           // Detected archetype (beatdown, control, etc.)
-	ArchetypeConf     float64   `json:"archetype_conf"`      // Archetype confidence 0-1
-	Strategy          string    `json:"strategy,omitempty"`  // Strategy used for generation (optional)
-	AvgElixir         float64   `json:"avg_elixir"`          // Average elixir cost
-	EvaluatedAt       time.Time `json:"evaluated_at"`        // When this deck was evaluated
-	PlayerTag         string    `json:"player_tag"`          // Player tag this deck is for
-	EvaluationVersion string    `json:"evaluation_version"`  // Version of evaluation algorithm used
+	ID                int       `json:"id"`                 // Auto-incremented primary key
+	DeckHash          string    `json:"deck_hash"`          // SHA256 hash of sorted card names for deduplication
+	Cards             []string  `json:"cards"`              // 8 card names
+	OverallScore      float64   `json:"overall_score"`      // 0-10 overall evaluation score
+	AttackScore       float64   `json:"attack_score"`       // 0-10 attack category score
+	DefenseScore      float64   `json:"defense_score"`      // 0-10 defense category score
+	SynergyScore      float64   `json:"synergy_score"`      // 0-10 synergy category score
+	VersatilityScore  float64   `json:"versatility_score"`  // 0-10 versatility category score
+	F2PScore          float64   `json:"f2p_score"`          // 0-10 F2P friendly score
+	PlayabilityScore  float64   `json:"playability_score"`  // 0-10 playability score
+	Archetype         string    `json:"archetype"`          // Detected archetype (beatdown, control, etc.)
+	ArchetypeConf     float64   `json:"archetype_conf"`     // Archetype confidence 0-1
+	Strategy          string    `json:"strategy,omitempty"` // Strategy used for generation (optional)
+	AvgElixir         float64   `json:"avg_elixir"`         // Average elixir cost
+	EvaluatedAt       time.Time `json:"evaluated_at"`       // When this deck was evaluated
+	PlayerTag         string    `json:"player_tag"`         // Player tag this deck is for
+	EvaluationVersion string    `json:"evaluation_version"` // Version of evaluation algorithm used
 }
 
 // LeaderboardStats tracks metadata about the leaderboard and evaluation progress

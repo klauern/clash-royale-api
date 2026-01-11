@@ -36,7 +36,7 @@ func NewStorage(playerTag string) (*Storage, error) {
 	dbPath := filepath.Join(leaderboardDir, fmt.Sprintf("%s.db", sanitizedTag))
 
 	// Ensure directory exists
-	if err := os.MkdirAll(leaderboardDir, 0755); err != nil {
+	if err := os.MkdirAll(leaderboardDir, 0o755); err != nil {
 		return nil, fmt.Errorf("failed to create leaderboards directory: %w", err)
 	}
 
