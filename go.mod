@@ -9,5 +9,6 @@ require (
 
 require (
 	github.com/benbjohnson/clock v1.3.0 // indirect
+	github.com/mattn/go-sqlite3 v1.14.33 // indirect
 	golang.org/x/text v0.32.0 // indirect
 )
