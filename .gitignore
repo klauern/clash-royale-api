@@ -143,6 +143,9 @@ data/*
 # AI planning documents (ephemeral)
 history/
 
+# Gas Town runtime files
+.runtime/
+
 # IDEs
 .vscode/
 .idea/
