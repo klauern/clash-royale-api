@@ -6,16 +6,19 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"strings"
 	"text/tabwriter"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/budget"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
+	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/klauer/clash-royale-api/go/pkg/recommend"
 	"github.com/urfave/cli/v3"
@@ -612,6 +615,157 @@ func addDeckCommands() *cli.Command {
 					},
 				},
 				Action: deckPossibleCountCommand,
+			},
+			{
+				Name:  "fuzz",
+				Usage: "Generate and evaluate random deck combinations using Monte Carlo sampling",
+				Commands: []*cli.Command{
+					{
+						Name:  "list",
+						Usage: "List saved top decks from storage",
+						Flags: []cli.Flag{
+							&cli.IntFlag{
+								Name:  "top",
+								Value: 10,
+								Usage: "Number of top decks to display",
+							},
+							&cli.StringFlag{
+								Name:  "archetype",
+								Usage: "Filter by archetype",
+							},
+							&cli.Float64Flag{
+								Name:  "min-score",
+								Usage: "Minimum overall score",
+							},
+							&cli.Float64Flag{
+								Name:  "max-score",
+								Usage: "Maximum overall score",
+							},
+							&cli.Float64Flag{
+								Name:  "min-elixir",
+								Usage: "Minimum average elixir",
+							},
+							&cli.Float64Flag{
+								Name:  "max-elixir",
+								Usage: "Maximum average elixir",
+							},
+							&cli.StringFlag{
+								Name:  "format",
+								Value: "summary",
+								Usage: "Output format: summary, json, csv, detailed",
+							},
+						},
+						Action: deckFuzzListCommand,
+					},
+				},
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #) for card collection context",
+						Required: true,
+					},
+					&cli.IntFlag{
+						Name:  "count",
+						Value: 1000,
+						Usage: "Number of random decks to generate and evaluate",
+					},
+					&cli.IntFlag{
+						Name:  "workers",
+						Value: 1,
+						Usage: "Number of parallel workers for deck generation",
+					},
+					&cli.StringSliceFlag{
+						Name:  "include-cards",
+						Usage: "Cards that must be included in every generated deck",
+					},
+					&cli.StringSliceFlag{
+						Name:  "exclude-cards",
+						Usage: "Cards that must be excluded from all generated decks",
+					},
+					&cli.IntFlag{
+						Name:  "include-from-saved",
+						Usage: "Include top N decks from saved storage as starting points",
+					},
+					&cli.IntFlag{
+						Name:  "from-saved",
+						Usage: "Use saved top decks as seeds (generates mutations of saved decks)",
+					},
+					&cli.StringFlag{
+						Name:  "based-on",
+						Usage: "Deck name or ID from saved storage to use as template for variations",
+					},
+					&cli.Float64Flag{
+						Name:  "min-elixir",
+						Value: 0.0,
+						Usage: "Minimum average elixir for generated decks",
+					},
+					&cli.Float64Flag{
+						Name:  "max-elixir",
+						Value: 10.0,
+						Usage: "Maximum average elixir for generated decks",
+					},
+					&cli.Float64Flag{
+						Name:  "min-overall",
+						Value: 0.0,
+						Usage: "Minimum overall score to include in results (0.0-10.0)",
+					},
+					&cli.Float64Flag{
+						Name:  "min-synergy",
+						Value: 0.0,
+						Usage: "Minimum synergy score to include in results (0.0-10.0)",
+					},
+					&cli.IntFlag{
+						Name:  "top",
+						Value: 10,
+						Usage: "Number of top decks to display in results",
+					},
+					&cli.StringFlag{
+						Name:  "sort-by",
+						Value: "overall",
+						Usage: "Sort results by: overall, attack, defense, synergy, versatility, elixir",
+					},
+					&cli.StringFlag{
+						Name:  "format",
+						Value: "summary",
+						Usage: "Output format: summary, json, csv, detailed",
+					},
+					&cli.StringFlag{
+						Name:  "output-dir",
+						Usage: "Directory to save results (default: stdout only)",
+					},
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Aliases: []string{"v"},
+						Usage:   "Show detailed progress information",
+					},
+					&cli.BoolFlag{
+						Name:  "from-analysis",
+						Usage: "Load player data from existing analysis file (offline mode)",
+					},
+					&cli.StringFlag{
+						Name:  "analysis-file",
+						Usage: "Path to specific analysis file (for --from-analysis)",
+					},
+					&cli.StringFlag{
+						Name:  "analysis-dir",
+						Usage: "Directory containing analysis files (for --from-analysis)",
+					},
+					&cli.IntFlag{
+						Name:  "seed",
+						Value: 0,
+						Usage: "Random seed for reproducibility (0 = random)",
+					},
+					&cli.StringFlag{
+						Name:  "storage",
+						Usage: "Path to persistent storage database for saving evaluated decks",
+					},
+					&cli.BoolFlag{
+						Name:  "save-top",
+						Usage: "Save top decks to persistent storage for reuse in subsequent fuzz runs",
+					},
+				},
+				Action: deckFuzzCommand,
 			},
 		},
 	}
@@ -1496,6 +1650,27 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 	// Create synergy database (shared for all evaluations)
 	synergyDB := deck.NewSynergyDatabase()
 
+	// Initialize persistent storage if player tag is available
+	var storage *leaderboard.Storage
+	var storageErr error
+	if playerTag != "" {
+		storage, storageErr = leaderboard.NewStorage(playerTag)
+		if storageErr != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", storageErr)
+			}
+		} else {
+			defer func() {
+				if err := storage.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
+				}
+			}()
+			if verbose {
+				fmt.Printf("Initialized persistent storage at: %s\n", storage.GetDBPath())
+			}
+		}
+	}
+
 	// Evaluate all decks
 	type batchEvalResult struct {
 		Name      string
@@ -1536,6 +1711,34 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 			Duration:  elapsed,
 		})
 
+		// Save to persistent storage if available
+		if storage != nil {
+			entry := &leaderboard.DeckEntry{
+				Cards:             result.Deck,
+				OverallScore:      result.OverallScore,
+				AttackScore:       result.Attack.Score,
+				DefenseScore:      result.Defense.Score,
+				SynergyScore:      result.Synergy.Score,
+				VersatilityScore:  result.Versatility.Score,
+				F2PScore:          result.F2PFriendly.Score,
+				PlayabilityScore:  result.Playability.Score,
+				Archetype:         string(result.DetectedArchetype),
+				ArchetypeConf:     result.ArchetypeConfidence,
+				Strategy:          deckData.Strategy,
+				AvgElixir:         result.AvgElixir,
+				EvaluatedAt:       deckStart,
+				PlayerTag:         playerTag,
+				EvaluationVersion: "1.0.0",
+			}
+
+			_, isNew, err := storage.InsertDeck(entry)
+			if err != nil && verbose {
+				fmt.Fprintf(os.Stderr, "  Warning: failed to save deck to storage: %v\n", err)
+			} else if verbose && !isNew {
+				fmt.Printf("  (deck already in storage, updated)\n")
+			}
+		}
+
 		if verbose {
 			fmt.Printf("  [%d/%d] %s: %.2f (%s) - %s\n",
 				i+1, len(decks), deckData.Name, result.OverallScore,
@@ -1554,6 +1757,22 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 
 	if len(results) == 0 {
 		return fmt.Errorf("no decks were successfully evaluated")
+	}
+
+	// Recalculate and update statistics after all insertions
+	if storage != nil {
+		stats, err := storage.RecalculateStats()
+		if err != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: failed to recalculate storage stats: %v\n", err)
+			}
+		} else if verbose {
+			fmt.Printf("\nStorage statistics updated:\n")
+			fmt.Printf("  Total decks evaluated: %d\n", stats.TotalDecksEvaluated)
+			fmt.Printf("  Unique decks: %d\n", stats.TotalUniqueDecks)
+			fmt.Printf("  Top score: %.2f\n", stats.TopScore)
+			fmt.Printf("  Average score: %.2f\n", stats.AvgScore)
+		}
 	}
 
 	// Sort results
@@ -1933,6 +2152,27 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Create shared synergy database
 	synergyDB := deck.NewSynergyDatabase()
 
+	// Initialize persistent storage if player tag is available
+	var storage *leaderboard.Storage
+	var storageErr error
+	if tag != "" {
+		storage, storageErr = leaderboard.NewStorage(tag)
+		if storageErr != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", storageErr)
+			}
+		} else {
+			defer func() {
+				if err := storage.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
+				}
+			}()
+			if verbose {
+				fmt.Printf("Initialized persistent storage at: %s\n", storage.GetDBPath())
+			}
+		}
+	}
+
 	// Evaluate each deck
 	type evalResult struct {
 		Name      string                      `json:"name"`
@@ -1957,7 +2197,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 				Name: cardName,
 				// Use defaults for evaluation
 				Rarity: inferRarity(cardName),
-				Elixir: inferElixir(cardName),
+				Elixir: config.GetCardElixir(cardName, 0),
 				Role:   inferRole(cardName),
 				Stats:  inferStats(cardName),
 			})
@@ -1979,12 +2219,46 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			Duration:  evalDuration.Nanoseconds(),
 		})
 
+		// Save to persistent storage if available
+		if storage != nil {
+			entry := &leaderboard.DeckEntry{
+				Cards:             deckInf.Cards,
+				OverallScore:      deckEvalResult.OverallScore,
+				AttackScore:       deckEvalResult.Attack.Score,
+				DefenseScore:      deckEvalResult.Defense.Score,
+				SynergyScore:      deckEvalResult.Synergy.Score,
+				VersatilityScore:  deckEvalResult.Versatility.Score,
+				F2PScore:          deckEvalResult.F2PFriendly.Score,
+				PlayabilityScore:  deckEvalResult.Playability.Score,
+				Archetype:         string(deckEvalResult.DetectedArchetype),
+				ArchetypeConf:     deckEvalResult.ArchetypeConfidence,
+				Strategy:          deckInf.Strategy,
+				AvgElixir:         deckEvalResult.AvgElixir,
+				EvaluatedAt:       deckStart,
+				PlayerTag:         tag,
+				EvaluationVersion: "1.0.0",
+			}
+
+			_, _, err := storage.InsertDeck(entry)
+			if err != nil && verbose {
+				fmt.Fprintf(os.Stderr, "  Warning: failed to save deck to storage: %v\n", err)
+			}
+		}
+
 		if verbose {
 			fmt.Printf("  ✓ Evaluated %s: %.2f overall (%.0fms)\n", deckName, deckEvalResult.OverallScore, float64(evalDuration.Nanoseconds())/1e6)
 		}
 	}
 
 	evalDuration := time.Since(evalStart)
+
+	// Recalculate and update statistics after all insertions
+	if storage != nil {
+		_, err := storage.RecalculateStats()
+		if err != nil && verbose {
+			fmt.Fprintf(os.Stderr, "Warning: failed to recalculate storage stats: %v\n", err)
+		}
+	}
 
 	// Sort by overall score
 	sortEvaluationResults(results, "overall")
@@ -3288,6 +3562,58 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	// Evaluate the deck
 	result := evaluation.Evaluate(deckCards, synergyDB, playerContext)
 
+	// Save to persistent storage if player tag is available
+	if playerTag != "" {
+		storage, err := leaderboard.NewStorage(playerTag)
+		if err != nil {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", err)
+			}
+		} else {
+			defer func() {
+				if err := storage.Close(); err != nil {
+					fmt.Fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
+				}
+			}()
+
+			entry := &leaderboard.DeckEntry{
+				Cards:             result.Deck,
+				OverallScore:      result.OverallScore,
+				AttackScore:       result.Attack.Score,
+				DefenseScore:      result.Defense.Score,
+				SynergyScore:      result.Synergy.Score,
+				VersatilityScore:  result.Versatility.Score,
+				F2PScore:          result.F2PFriendly.Score,
+				PlayabilityScore:  result.Playability.Score,
+				Archetype:         string(result.DetectedArchetype),
+				ArchetypeConf:     result.ArchetypeConfidence,
+				Strategy:          "", // Single evaluations don't have a strategy
+				AvgElixir:         result.AvgElixir,
+				EvaluatedAt:       time.Now(),
+				PlayerTag:         playerTag,
+				EvaluationVersion: "1.0.0",
+			}
+
+			deckID, isNew, err := storage.InsertDeck(entry)
+			if err != nil {
+				if verbose {
+					fmt.Fprintf(os.Stderr, "Warning: failed to save deck to storage: %v\n", err)
+				}
+			} else {
+				if _, err := storage.RecalculateStats(); err != nil && verbose {
+					fmt.Fprintf(os.Stderr, "Warning: failed to recalculate stats: %v\n", err)
+				}
+				if verbose {
+					if isNew {
+						fmt.Printf("Saved deck to storage (ID: %d) at: %s\n", deckID, storage.GetDBPath())
+					} else {
+						fmt.Printf("Updated existing deck in storage (ID: %d)\n", deckID)
+					}
+				}
+			}
+		}
+	}
+
 	// Format output based on requested format
 	var formattedOutput string
 	var err error
@@ -3641,7 +3967,7 @@ func convertToCardCandidates(cardNames []string) []deck.CardCandidate {
 			Level:    11, // Default level
 			MaxLevel: 15, // Default max level
 			Rarity:   inferRarity(name),
-			Elixir:   inferElixir(name),
+			Elixir:   config.GetCardElixir(name, 0),
 			Role:     inferRole(name),
 			Stats:    inferStats(name),
 		}
@@ -3656,60 +3982,6 @@ func inferRarity(name string) string {
 	// This is a simplified version - in reality, you'd look this up from a database
 	// For now, we'll use common as default
 	return "Common"
-}
-
-// inferElixir infers elixir cost from card name
-func inferElixir(name string) int {
-	// Simplified elixir inference based on common knowledge
-	lowercaseName := strings.ToLower(name)
-
-	// High cost cards (6+ elixir)
-	if strings.Contains(lowercaseName, "golem") ||
-		strings.Contains(lowercaseName, "mega knight") ||
-		strings.Contains(lowercaseName, "pekka") ||
-		strings.Contains(lowercaseName, "three musketeers") {
-		return 7
-	}
-
-	// Medium-high cost cards (5 elixir)
-	if strings.Contains(lowercaseName, "giant") ||
-		strings.Contains(lowercaseName, "balloon") ||
-		strings.Contains(lowercaseName, "prince") ||
-		strings.Contains(lowercaseName, "wizard") {
-		return 5
-	}
-
-	// Medium cost cards (4 elixir)
-	if strings.Contains(lowercaseName, "hog") ||
-		strings.Contains(lowercaseName, "valkyrie") ||
-		strings.Contains(lowercaseName, "mini pekka") ||
-		strings.Contains(lowercaseName, "fireball") {
-		return 4
-	}
-
-	// Low-medium cost cards (3 elixir)
-	if strings.Contains(lowercaseName, "knight") ||
-		strings.Contains(lowercaseName, "miner") ||
-		strings.Contains(lowercaseName, "goblin gang") ||
-		strings.Contains(lowercaseName, "tesla") {
-		return 3
-	}
-
-	// Low cost cards (2 elixir)
-	if strings.Contains(lowercaseName, "skeletons") ||
-		strings.Contains(lowercaseName, "ice spirit") ||
-		strings.Contains(lowercaseName, "bats") ||
-		strings.Contains(lowercaseName, "log") {
-		return 2
-	}
-
-	// Very low cost cards (1 elixir)
-	if strings.Contains(lowercaseName, "skeleton") && !strings.Contains(lowercaseName, "s") {
-		return 1
-	}
-
-	// Default to 3 elixir if unknown
-	return 3
 }
 
 // inferRole infers card role from card name
@@ -4007,14 +4279,26 @@ func sortEvaluationResults[T any](results []T, sortBy string) {
 
 // formatEvaluationBatchSummary formats batch evaluation results as a human-readable summary
 func formatEvaluationBatchSummary[T any](results []T, totalDecks int, totalTime time.Duration, sortBy, playerName, playerTag string) string {
-	type resultType struct {
-		Name      string
-		Strategy  string
-		Deck      []string
-		Result    evaluation.EvaluationResult
-		FilePath  string
-		Evaluated time.Time
-		Duration  time.Duration
+	// Type extraction helpers using reflection
+	getName := func(r T) string {
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Struct {
+			if field := v.FieldByName("Name"); field.IsValid() && field.Kind() == reflect.String {
+				return field.String()
+			}
+		}
+		return ""
+	}
+	getResult := func(r T) evaluation.EvaluationResult {
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Struct {
+			if field := v.FieldByName("Result"); field.IsValid() {
+				if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
+					return result
+				}
+			}
+		}
+		return evaluation.EvaluationResult{}
 	}
 
 	var buf strings.Builder
@@ -4034,21 +4318,24 @@ func formatEvaluationBatchSummary[T any](results []T, totalDecks int, totalTime 
 	buf.WriteString("├─────┼──────────────────────────────┼─────────┼────────┼────────┼────────┼──────────────┤\n")
 
 	for i, r := range results {
-		res := any(r).(resultType)
-		name := res.Name
+		name := getName(r)
+		if name == "" {
+			continue
+		}
 		if len(name) > 28 {
 			name = name[:25] + "..."
 		}
-		archetype := string(res.Result.DetectedArchetype)
+		result := getResult(r)
+		archetype := string(result.DetectedArchetype)
 		if len(archetype) > 12 {
 			archetype = archetype[:9] + "..."
 		}
 		buf.WriteString(fmt.Sprintf("│ %3d │ %-28s │  %5.2f  │  %5.2f │  %5.2f │  %5.2f │ %-12s │\n",
 			i+1, name,
-			res.Result.OverallScore,
-			res.Result.Attack.Score,
-			res.Result.Defense.Score,
-			res.Result.Synergy.Score,
+			result.OverallScore,
+			result.Attack.Score,
+			result.Defense.Score,
+			result.Synergy.Score,
 			archetype))
 	}
 
@@ -4059,14 +4346,46 @@ func formatEvaluationBatchSummary[T any](results []T, totalDecks int, totalTime 
 
 // formatEvaluationBatchCSV formats batch evaluation results as CSV
 func formatEvaluationBatchCSV[T any](results []T) string {
-	type resultType struct {
-		Name      string
-		Strategy  string
-		Deck      []string
-		Result    evaluation.EvaluationResult
-		FilePath  string
-		Evaluated time.Time
-		Duration  time.Duration
+	// Type extraction helpers using reflection
+	getName := func(r T) string {
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Struct {
+			if field := v.FieldByName("Name"); field.IsValid() && field.Kind() == reflect.String {
+				return field.String()
+			}
+		}
+		return ""
+	}
+	getStrategy := func(r T) string {
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Struct {
+			if field := v.FieldByName("Strategy"); field.IsValid() && field.Kind() == reflect.String {
+				return field.String()
+			}
+		}
+		return ""
+	}
+	getDeck := func(r T) []string {
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Struct {
+			if field := v.FieldByName("Deck"); field.IsValid() && field.Kind() == reflect.Slice {
+				if deck, ok := field.Interface().([]string); ok {
+					return deck
+				}
+			}
+		}
+		return nil
+	}
+	getResult := func(r T) evaluation.EvaluationResult {
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Struct {
+			if field := v.FieldByName("Result"); field.IsValid() {
+				if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
+					return result
+				}
+			}
+		}
+		return evaluation.EvaluationResult{}
 	}
 
 	var buf strings.Builder
@@ -4076,21 +4395,27 @@ func formatEvaluationBatchCSV[T any](results []T) string {
 
 	// Data rows
 	for i, r := range results {
-		res := any(r).(resultType)
+		name := getName(r)
+		if name == "" {
+			continue
+		}
+		strategy := getStrategy(r)
+		deck := getDeck(r)
+		result := getResult(r)
 		buf.WriteString(fmt.Sprintf("%d,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%.2f,\"%s\"\n",
 			i+1,
-			res.Name,
-			res.Strategy,
-			res.Result.OverallScore,
-			res.Result.Attack.Score,
-			res.Result.Defense.Score,
-			res.Result.Synergy.Score,
-			res.Result.Versatility.Score,
-			res.Result.F2PFriendly.Score,
-			res.Result.Playability.Score,
-			res.Result.DetectedArchetype,
-			res.Result.AvgElixir,
-			strings.Join(res.Deck, " - ")))
+			name,
+			strategy,
+			result.OverallScore,
+			result.Attack.Score,
+			result.Defense.Score,
+			result.Synergy.Score,
+			result.Versatility.Score,
+			result.F2PFriendly.Score,
+			result.Playability.Score,
+			result.DetectedArchetype,
+			result.AvgElixir,
+			strings.Join(deck, " - ")))
 	}
 
 	return buf.String()
@@ -4098,14 +4423,46 @@ func formatEvaluationBatchCSV[T any](results []T) string {
 
 // formatEvaluationBatchDetailed formats batch evaluation results with detailed analysis
 func formatEvaluationBatchDetailed[T any](results []T, playerName, playerTag string) string {
-	type resultType struct {
-		Name      string
-		Strategy  string
-		Deck      []string
-		Result    evaluation.EvaluationResult
-		FilePath  string
-		Evaluated time.Time
-		Duration  time.Duration
+	// Type extraction helpers using reflection
+	getName := func(r T) string {
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Struct {
+			if field := v.FieldByName("Name"); field.IsValid() && field.Kind() == reflect.String {
+				return field.String()
+			}
+		}
+		return ""
+	}
+	getStrategy := func(r T) string {
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Struct {
+			if field := v.FieldByName("Strategy"); field.IsValid() && field.Kind() == reflect.String {
+				return field.String()
+			}
+		}
+		return ""
+	}
+	getDeck := func(r T) []string {
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Struct {
+			if field := v.FieldByName("Deck"); field.IsValid() && field.Kind() == reflect.Slice {
+				if deck, ok := field.Interface().([]string); ok {
+					return deck
+				}
+			}
+		}
+		return nil
+	}
+	getResult := func(r T) evaluation.EvaluationResult {
+		v := reflect.ValueOf(r)
+		if v.Kind() == reflect.Struct {
+			if field := v.FieldByName("Result"); field.IsValid() {
+				if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
+					return result
+				}
+			}
+		}
+		return evaluation.EvaluationResult{}
 	}
 
 	var buf strings.Builder
@@ -4119,37 +4476,43 @@ func formatEvaluationBatchDetailed[T any](results []T, playerName, playerTag str
 	}
 
 	for i, r := range results {
-		res := any(r).(resultType)
+		name := getName(r)
+		if name == "" {
+			continue
+		}
+		strategy := getStrategy(r)
+		deck := getDeck(r)
+		result := getResult(r)
 
-		buf.WriteString(fmt.Sprintf("═══════════════════ DECK #%d: %s ═══════════════════\n\n", i+1, res.Name))
+		buf.WriteString(fmt.Sprintf("═══════════════════ DECK #%d: %s ═══════════════════\n\n", i+1, name))
 
-		if res.Strategy != "" && res.Strategy != "unknown" {
-			buf.WriteString(fmt.Sprintf("Strategy: %s\n", res.Strategy))
+		if strategy != "" && strategy != "unknown" {
+			buf.WriteString(fmt.Sprintf("Strategy: %s\n", strategy))
 		}
 
-		buf.WriteString(fmt.Sprintf("Deck: %s\n", strings.Join(res.Deck, " - ")))
-		buf.WriteString(fmt.Sprintf("Avg Elixir: %.2f\n", res.Result.AvgElixir))
-		buf.WriteString(fmt.Sprintf("Archetype: %s (%.1f%% confidence)\n\n", res.Result.DetectedArchetype, res.Result.ArchetypeConfidence*100))
+		buf.WriteString(fmt.Sprintf("Deck: %s\n", strings.Join(deck, " - ")))
+		buf.WriteString(fmt.Sprintf("Avg Elixir: %.2f\n", result.AvgElixir))
+		buf.WriteString(fmt.Sprintf("Archetype: %s (%.1f%% confidence)\n\n", result.DetectedArchetype, result.ArchetypeConfidence*100))
 
 		// Category scores
 		buf.WriteString("SCORES:\n")
-		buf.WriteString(fmt.Sprintf("  Overall:     %.2f (%s)\n", res.Result.OverallScore, res.Result.OverallRating))
-		buf.WriteString(fmt.Sprintf("  Attack:      %.2f (%s)\n", res.Result.Attack.Score, res.Result.Attack.Rating))
-		buf.WriteString(fmt.Sprintf("  Defense:     %.2f (%s)\n", res.Result.Defense.Score, res.Result.Defense.Rating))
-		buf.WriteString(fmt.Sprintf("  Synergy:     %.2f (%s)\n", res.Result.Synergy.Score, res.Result.Synergy.Rating))
-		buf.WriteString(fmt.Sprintf("  Versatility: %.2f (%s)\n", res.Result.Versatility.Score, res.Result.Versatility.Rating))
-		buf.WriteString(fmt.Sprintf("  F2P:         %.2f (%s)\n", res.Result.F2PFriendly.Score, res.Result.F2PFriendly.Rating))
-		buf.WriteString(fmt.Sprintf("  Playability: %.2f (%s)\n\n", res.Result.Playability.Score, res.Result.Playability.Rating))
+		buf.WriteString(fmt.Sprintf("  Overall:     %.2f (%s)\n", result.OverallScore, result.OverallRating))
+		buf.WriteString(fmt.Sprintf("  Attack:      %.2f (%s)\n", result.Attack.Score, result.Attack.Rating))
+		buf.WriteString(fmt.Sprintf("  Defense:     %.2f (%s)\n", result.Defense.Score, result.Defense.Rating))
+		buf.WriteString(fmt.Sprintf("  Synergy:     %.2f (%s)\n", result.Synergy.Score, result.Synergy.Rating))
+		buf.WriteString(fmt.Sprintf("  Versatility: %.2f (%s)\n", result.Versatility.Score, result.Versatility.Rating))
+		buf.WriteString(fmt.Sprintf("  F2P:         %.2f (%s)\n", result.F2PFriendly.Score, result.F2PFriendly.Rating))
+		buf.WriteString(fmt.Sprintf("  Playability: %.2f (%s)\n\n", result.Playability.Score, result.Playability.Rating))
 
 		// Key assessments
-		if res.Result.Attack.Assessment != "" {
-			buf.WriteString(fmt.Sprintf("Attack: %s\n", res.Result.Attack.Assessment))
+		if result.Attack.Assessment != "" {
+			buf.WriteString(fmt.Sprintf("Attack: %s\n", result.Attack.Assessment))
 		}
-		if res.Result.Defense.Assessment != "" {
-			buf.WriteString(fmt.Sprintf("Defense: %s\n", res.Result.Defense.Assessment))
+		if result.Defense.Assessment != "" {
+			buf.WriteString(fmt.Sprintf("Defense: %s\n", result.Defense.Assessment))
 		}
-		if res.Result.Synergy.Assessment != "" {
-			buf.WriteString(fmt.Sprintf("Synergy: %s\n", res.Result.Synergy.Assessment))
+		if result.Synergy.Assessment != "" {
+			buf.WriteString(fmt.Sprintf("Synergy: %s\n", result.Synergy.Assessment))
 		}
 
 		buf.WriteString("\n" + strings.Repeat("─", 80) + "\n\n")

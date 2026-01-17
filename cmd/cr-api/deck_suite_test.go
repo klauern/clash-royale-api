@@ -196,6 +196,24 @@ func createMockAnalysisFile(t *testing.T, tempDir string) string {
 	return analysisPath
 }
 
+func TestConvertToCardCandidates_UsesConfigElixir(t *testing.T) {
+	candidates := convertToCardCandidates([]string{"Ice Golem", "The Log", "Golem"})
+	elixirByName := make(map[string]int, len(candidates))
+	for _, candidate := range candidates {
+		elixirByName[candidate.Name] = candidate.Elixir
+	}
+
+	if elixirByName["Ice Golem"] != 2 {
+		t.Fatalf("Ice Golem elixir = %d, want 2", elixirByName["Ice Golem"])
+	}
+	if elixirByName["The Log"] != 2 {
+		t.Fatalf("The Log elixir = %d, want 2", elixirByName["The Log"])
+	}
+	if elixirByName["Golem"] != 8 {
+		t.Fatalf("Golem elixir = %d, want 8", elixirByName["Golem"])
+	}
+}
+
 // TestDeckBuildSuite tests the build-suite command
 func TestDeckBuildSuite(t *testing.T) {
 	tests := []struct {
