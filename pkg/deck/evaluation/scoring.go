@@ -217,6 +217,13 @@ func ScoreSynergy(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabas
 	// Convert 0-100 score to 0-10 scale
 	score := analysis.TotalScore / 10.0
 
+	// Apply baseline for zero-synergy decks
+	// A baseline score indicates "no special synergies but functional deck"
+	// rather than being overly punitive with 0.0
+	if score == 0.0 {
+		score = 2.5
+	}
+
 	// Cap at 10.0
 	if score > 10.0 {
 		score = 10.0
@@ -419,6 +426,8 @@ func generateSynergyAssessment(topSynergies []deck.SynergyPair, pairCount int, s
 		return "Good synergy between cards"
 	} else if score >= 4.0 {
 		return "Moderate synergy, some cards work well together"
+	} else if score == 2.5 && pairCount == 0 {
+		return "No special synergies between cards"
 	} else {
 		return "Poor synergy, cards don't complement each other well"
 	}

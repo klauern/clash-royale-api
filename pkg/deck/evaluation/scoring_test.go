@@ -200,6 +200,21 @@ func TestScoreSynergy(t *testing.T) {
 			minScore: 5.0,
 			maxScore: 5.0,
 		},
+		{
+			name: "Low synergy deck (Fire Spirit + Skeletons cycle)",
+			cards: []deck.CardCandidate{
+				makeCard("Knight", deck.RoleSupport, 11, 11, "Common", 3),
+				makeCard("Archers", deck.RoleSupport, 11, 11, "Common", 3),
+				makeCard("Goblins", deck.RoleSupport, 11, 11, "Common", 2),
+				makeCard("Spear Goblins", deck.RoleSupport, 11, 11, "Common", 2),
+				makeCard("Minions", deck.RoleSupport, 11, 11, "Common", 3),
+				makeCard("Bomber", deck.RoleSupport, 11, 11, "Rare", 2),
+				makeCard("Fire Spirit", deck.RoleCycle, 11, 11, "Common", 1),
+				makeCard("Skeletons", deck.RoleCycle, 11, 11, "Common", 1),
+			},
+			minScore: 0.5,
+			maxScore: 2.0,
+		},
 	}
 
 	for _, tt := range tests {
