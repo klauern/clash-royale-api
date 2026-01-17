@@ -87,7 +87,7 @@ func addDeckCommands() *cli.Command {
 						Name:    "strategy",
 						Aliases: []string{"s"},
 						Value:   "balanced",
-						Usage:   "Deck building strategy: balanced, aggro, control, cycle, splash, spell, all",
+						Usage:   "Deck building strategy: balanced, aggro, control, cycle, splash, spell, synergy-first, all",
 					},
 					&cli.Float64Flag{
 						Name:  "min-elixir",

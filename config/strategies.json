@@ -240,6 +240,53 @@
         "support": 3,
         "cycle": 1
       }
+    },
+    "synergy-first": {
+      "name": "Synergy-First",
+      "description": "Builds decks around powerful card pair synergies, prioritizing combo interactions above all else",
+      "target_elixir_min": 2.8,
+      "target_elixir_max": 4.0,
+      "role_multipliers": {
+        "win_condition": 1.0,
+        "building": 1.0,
+        "spell_big": 1.0,
+        "spell_small": 1.0,
+        "support": 1.5,
+        "cycle": 1.2
+      },
+      "role_bonuses": {
+        "win_condition": 0.0,
+        "building": 0.0,
+        "spell_big": 0.0,
+        "spell_small": 0.0,
+        "support": 0.4,
+        "cycle": 0.2
+      },
+      "archetype_affinity": {
+        "Log": 0.3,
+        "Zap": 0.3,
+        "Fireball": 0.25,
+        "Arrows": 0.25,
+        "Skeleton Dragons": 0.3,
+        "Hog Rider": 0.25,
+        "Royal Hogs": 0.25,
+        "Goblin Barrel": 0.2,
+        "Inferno Tower": 0.2,
+        "Inferno Dragon": 0.2,
+        "Tornado": 0.3,
+        "Tesla": 0.25,
+        "Mighty Miner": 0.2,
+        "Golem": 0.25,
+        "Lava Hound": 0.25,
+        "Balloon": 0.25,
+        "Night Witch": 0.25,
+        "Bowler": 0.2,
+        "Executioner": 0.2,
+        "Witch": 0.2,
+        "Lumberjack": 0.2,
+        "Valkyrie": 0.2,
+        "Magic Archer": 0.2
+      }
     }
   }
 }

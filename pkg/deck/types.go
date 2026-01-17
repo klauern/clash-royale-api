@@ -51,6 +51,9 @@ const (
 
 	// StrategySpell builds spell-heavy decks with multiple big spells
 	StrategySpell Strategy = "spell"
+
+	// StrategySynergy builds decks around card pair synergies
+	StrategySynergy Strategy = "synergy-first"
 )
 
 // ParseStrategy converts a string to a Strategy type with case-insensitive parsing
@@ -70,10 +73,12 @@ func ParseStrategy(s string) (Strategy, error) {
 		return StrategySplash, nil
 	case "spell":
 		return StrategySpell, nil
+	case "synergy-first":
+		return StrategySynergy, nil
 	default:
 		return "", &DeckError{
 			Code:    "INVALID_STRATEGY",
-			Message: fmt.Sprintf("invalid strategy '%s': must be one of [balanced, aggro, control, cycle, splash, spell]", s),
+			Message: fmt.Sprintf("invalid strategy '%s': must be one of [balanced, aggro, control, cycle, splash, spell, synergy-first]", s),
 		}
 	}
 }
@@ -81,12 +86,12 @@ func ParseStrategy(s string) (Strategy, error) {
 // Validate checks if the strategy is one of the valid predefined strategies
 func (s Strategy) Validate() error {
 	switch s {
-	case StrategyBalanced, StrategyAggro, StrategyControl, StrategyCycle, StrategySplash, StrategySpell:
+	case StrategyBalanced, StrategyAggro, StrategyControl, StrategyCycle, StrategySplash, StrategySpell, StrategySynergy:
 		return nil
 	default:
 		return &DeckError{
 			Code:    "INVALID_STRATEGY",
-			Message: fmt.Sprintf("invalid strategy '%s': must be one of [balanced, aggro, control, cycle, splash, spell]", s),
+			Message: fmt.Sprintf("invalid strategy '%s': must be one of [balanced, aggro, control, cycle, splash, spell, synergy-first]", s),
 		}
 	}
 }
