@@ -685,23 +685,45 @@ func formatResultsSummary(
 
 	fmt.Printf("\nTop %d Decks (from %d decks passing filters):\n\n", len(results), totalFiltered)
 
-	// Print table header
+	// Print table header with multi-line deck display
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 2, ' ', 0)
 	fmt.Fprintln(w, "Rank\tDeck\tOverall\tAttack\tDefense\tSynergy\tElixir")
 
-	// Print each deck
+	// Print each deck with all 8 cards
 	for i, result := range results {
-		deckStr := formatDeckString(result.Deck, 40)
-		fmt.Fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
-			i+1,
-			deckStr,
-			result.OverallScore,
-			result.AttackScore,
-			result.DefenseScore,
-			result.SynergyScore,
-			result.AvgElixir,
-		)
+		// Format deck with all cards (no truncation)
+		deckStr := strings.Join(result.Deck, ", ")
+
+		// If deck string is very long, use multi-line format
+		if len(deckStr) > 50 {
+			// First line: Rank, first 4 cards, scores
+			firstLine := strings.Join(result.Deck[:4], ", ")
+			fmt.Fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+				i+1,
+				firstLine+",",
+				result.OverallScore,
+				result.AttackScore,
+				result.DefenseScore,
+				result.SynergyScore,
+				result.AvgElixir,
+			)
+
+			// Second line: continuation with remaining cards
+			secondLine := strings.Join(result.Deck[4:], ", ")
+			fmt.Fprintf(w, "\t%s\n", secondLine)
+		} else {
+			// Single line format for shorter deck strings
+			fmt.Fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+				i+1,
+				deckStr,
+				result.OverallScore,
+				result.AttackScore,
+				result.DefenseScore,
+				result.SynergyScore,
+				result.AvgElixir,
+			)
+		}
 	}
 
 	w.Flush()
@@ -799,15 +821,6 @@ func formatResultsDetailed(
 	}
 
 	return nil
-}
-
-// formatDeckString formats a deck as a truncated string
-func formatDeckString(deck []string, maxLen int) string {
-	deckStr := strings.Join(deck, ", ")
-	if len(deckStr) <= maxLen {
-		return deckStr
-	}
-	return deckStr[:maxLen-3] + "..."
 }
 
 // saveResultsToFile saves results to a file in the specified format
