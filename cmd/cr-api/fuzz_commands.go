@@ -246,16 +246,16 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 
 // FuzzingResult represents a single fuzzing result with deck and evaluation
 type FuzzingResult struct {
-	Deck                  []string
-	OverallScore          float64
-	AttackScore           float64
-	DefenseScore          float64
-	SynergyScore          float64
-	VersatilityScore      float64
-	AvgElixir             float64
-	Archetype             string
-	ArchetypeConfidence   float64
-	EvaluatedAt           time.Time
+	Deck                []string
+	OverallScore        float64
+	AttackScore         float64
+	DefenseScore        float64
+	SynergyScore        float64
+	VersatilityScore    float64
+	AvgElixir           float64
+	Archetype           string
+	ArchetypeConfidence float64
+	EvaluatedAt         time.Time
 }
 
 // evaluateGeneratedDecks evaluates a list of generated decks
@@ -374,12 +374,12 @@ func convertDeckToCandidates(deckCards []string, player *clashroyale.Player) []d
 			// Card not in player's collection, use defaults
 			role = config.GetCardRole(cardName)
 			candidate = deck.CardCandidate{
-				Name:       cardName,
-				Level:      11,
-				MaxLevel:   15,
-				Rarity:     "Common",
-				Elixir:     config.GetCardElixir(cardName, 0),
-				Role:       &role,
+				Name:     cardName,
+				Level:    11,
+				MaxLevel: 15,
+				Rarity:   "Common",
+				Elixir:   config.GetCardElixir(cardName, 0),
+				Role:     &role,
 			}
 		}
 
@@ -534,21 +534,21 @@ func formatResultsJSON(
 	totalFiltered int,
 ) error {
 	output := map[string]interface{}{
-		"player_name": playerName,
-		"player_tag":  playerTag,
-		"generated":   stats.Generated,
-		"success":     stats.Success,
-		"failed":      stats.Failed,
-		"filtered":    totalFiltered,
-		"returned":    len(results),
+		"player_name":             playerName,
+		"player_tag":              playerTag,
+		"generated":               stats.Generated,
+		"success":                 stats.Success,
+		"failed":                  stats.Failed,
+		"filtered":                totalFiltered,
+		"returned":                len(results),
 		"generation_time_seconds": generationTime.Seconds(),
 		"config": map[string]interface{}{
-			"count":            fuzzerConfig.Count,
-			"workers":          fuzzerConfig.Workers,
-			"include_cards":    fuzzerConfig.IncludeCards,
-			"exclude_cards":    fuzzerConfig.ExcludeCards,
-			"min_avg_elixir":   fuzzerConfig.MinAvgElixir,
-			"max_avg_elixir":   fuzzerConfig.MaxAvgElixir,
+			"count":             fuzzerConfig.Count,
+			"workers":           fuzzerConfig.Workers,
+			"include_cards":     fuzzerConfig.IncludeCards,
+			"exclude_cards":     fuzzerConfig.ExcludeCards,
+			"min_avg_elixir":    fuzzerConfig.MinAvgElixir,
+			"max_avg_elixir":    fuzzerConfig.MaxAvgElixir,
 			"min_overall_score": fuzzerConfig.MinOverallScore,
 			"min_synergy_score": fuzzerConfig.MinSynergyScore,
 		},
@@ -717,8 +717,8 @@ func loadPlayerFromAnalysis(analysisFile, analysisDir, playerTag string) (*clash
 
 	// Convert analysis to player object
 	player := &clashroyale.Player{
-		Name: cardAnalysis.PlayerName,
-		Tag:  cardAnalysis.PlayerTag,
+		Name:  cardAnalysis.PlayerName,
+		Tag:   cardAnalysis.PlayerTag,
 		Cards: make([]clashroyale.Card, 0, len(cardAnalysis.CardLevels)),
 	}
 

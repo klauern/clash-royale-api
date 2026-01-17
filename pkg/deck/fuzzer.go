@@ -37,29 +37,29 @@ type FuzzingConfig struct {
 
 // FuzzingStats tracks metrics during deck generation
 type FuzzingStats struct {
-	mu               sync.Mutex
-	Generated        int
-	Success          int
-	Failed           int
-	SkippedElixir    int
-	SkippedInclude   int
-	SkippedExclude   int
-	SkippedScore     int
-	StartTime        time.Time
-	GenerationTimes  []time.Duration
+	mu              sync.Mutex
+	Generated       int
+	Success         int
+	Failed          int
+	SkippedElixir   int
+	SkippedInclude  int
+	SkippedExclude  int
+	SkippedScore    int
+	StartTime       time.Time
+	GenerationTimes []time.Duration
 }
 
 // FuzzedDeck represents a generated deck with its evaluation results
 type FuzzedDeck struct {
-	Deck           []string
-	AvgElixir      float64
-	OverallScore   float64
-	AttackScore    float64
-	DefenseScore   float64
-	SynergyScore   float64
+	Deck             []string
+	AvgElixir        float64
+	OverallScore     float64
+	AttackScore      float64
+	DefenseScore     float64
+	SynergyScore     float64
 	VersatilityScore float64
-	Archetype      string
-	GenerationTime time.Duration
+	Archetype        string
+	GenerationTime   time.Duration
 }
 
 // RoleComposition defines the required card count for each role
@@ -568,4 +568,3 @@ func (df *DeckFuzzer) GetCardsByRole(role config.CardRole) []CardCandidate {
 func (df *DeckFuzzer) GetAllCards() []CardCandidate {
 	return df.allCards
 }
-
