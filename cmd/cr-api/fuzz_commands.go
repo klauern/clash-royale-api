@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strconv"
 	"strings"
@@ -29,6 +30,11 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
 	count := cmd.Int("count")
 	workers := cmd.Int("workers")
+	// Auto-detect CPU count if workers is at default value
+	if workers == 1 {
+		workers = runtime.NumCPU()
+		fmt.Fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", runtime.NumCPU(), workers)
+	}
 	includeCards := cmd.StringSlice("include-cards")
 	excludeCards := cmd.StringSlice("exclude-cards")
 	minElixir := cmd.Float64("min-elixir")
