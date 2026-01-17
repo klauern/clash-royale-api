@@ -38,6 +38,8 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 	includeCards := cmd.StringSlice("include-cards")
 	excludeCards := cmd.StringSlice("exclude-cards")
+	includeFromSaved := cmd.Int("include-from-saved")
+	fromSaved := cmd.Int("from-saved")
 	minElixir := cmd.Float64("min-elixir")
 	maxElixir := cmd.Float64("max-elixir")
 	minOverall := cmd.Float64("min-overall")
@@ -147,6 +149,19 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		MinSynergyScore: minSynergy,
 	}
 
+	// Handle --include-from-saved: extract cards from saved top decks
+	if includeFromSaved > 0 {
+		savedCards, err := loadCardsFromSavedDecks(includeFromSaved, verbose)
+		if err != nil {
+			return fmt.Errorf("failed to load cards from saved decks: %w", err)
+		}
+		// Merge with existing include cards (avoiding duplicates)
+		fuzzerCfg.IncludeCards = mergeUniqueCards(fuzzerCfg.IncludeCards, savedCards)
+		if verbose && len(savedCards) > 0 {
+			fmt.Fprintf(os.Stderr, "Included %d cards from saved top decks\n", len(savedCards))
+		}
+	}
+
 	// Set seed for reproducibility if specified
 	if seed := cmd.Int("seed"); seed != 0 {
 		fuzzerCfg.Seed = int64(seed)
@@ -220,6 +235,21 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		generatedDecks, err = fuzzer.GenerateDecksParallel()
 	} else {
 		generatedDecks, err = fuzzer.GenerateDecks(count)
+	}
+
+	// Handle --from-saved: add mutations of saved decks
+	if fromSaved > 0 {
+		savedDecks, err := loadSavedDecksForSeeding(fromSaved, player, verbose)
+		if err != nil {
+			return fmt.Errorf("failed to load saved decks for seeding: %w", err)
+		}
+		if len(savedDecks) > 0 {
+			mutations := generateDeckMutations(savedDecks, player, count, verbose)
+			generatedDecks = append(generatedDecks, mutations...)
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Added %d mutations from %d saved decks\n", len(mutations), len(savedDecks))
+			}
+		}
 	}
 
 	// Stop progress reporter
@@ -986,6 +1016,296 @@ func saveTopDecksToStorage(results []FuzzingResult, verbose bool) error {
 	}
 
 	return nil
+}
+
+// deckFuzzListCommand lists saved top decks from storage
+func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
+	top := cmd.Int("top")
+	archetype := cmd.String("archetype")
+	minScore := cmd.Float64("min-score")
+	maxScore := cmd.Float64("max-score")
+	minElixir := cmd.Float64("min-elixir")
+	maxElixir := cmd.Float64("max-elixir")
+	format := cmd.String("format")
+
+	storage, err := fuzzstorage.NewStorage("")
+	if err != nil {
+		return fmt.Errorf("failed to open storage: %w", err)
+	}
+	defer storage.Close()
+
+	// Build query options
+	queryOpts := fuzzstorage.QueryOptions{
+		Limit: top,
+	}
+
+	if archetype != "" {
+		queryOpts.Archetype = archetype
+	}
+	if minScore > 0 {
+		queryOpts.MinScore = minScore
+	}
+	if maxScore > 0 {
+		queryOpts.MaxScore = maxScore
+	}
+	if minElixir > 0 {
+		queryOpts.MinAvgElixir = minElixir
+	}
+	if maxElixir > 0 {
+		queryOpts.MaxAvgElixir = maxElixir
+	}
+
+	// Query decks
+	decks, err := storage.Query(queryOpts)
+	if err != nil {
+		return fmt.Errorf("failed to query decks: %w", err)
+	}
+
+	total, _ := storage.Count()
+	dbPath := storage.GetDBPath()
+
+	fmt.Fprintf(os.Stderr, "Top decks from: %s\n", dbPath)
+	fmt.Fprintf(os.Stderr, "Showing %d of %d total decks\n\n", len(decks), total)
+
+	// Format output
+	switch format {
+	case "json":
+		return formatListResultsJSON(decks, dbPath, total)
+	case "csv":
+		return formatListResultsCSV(decks)
+	case "detailed":
+		return formatListResultsDetailed(decks, dbPath, total)
+	default:
+		return formatListResultsSummary(decks, dbPath, total)
+	}
+}
+
+// formatListResultsSummary formats list results in summary format
+func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
+	fmt.Printf("Saved Top Decks\n")
+	fmt.Printf("Database: %s\n", dbPath)
+	fmt.Printf("Total decks: %d\n\n", total)
+
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 2, ' ', 0)
+	fmt.Fprintln(w, "Rank\tDeck\tOverall\tAttack\tDefense\tSynergy\tElixir\tArchetype")
+
+	for i, deck := range decks {
+		deckStr := strings.Join(deck.Cards, ", ")
+		if len(deckStr) > 50 {
+			firstLine := strings.Join(deck.Cards[:4], ", ")
+			fmt.Fprintf(w, "%d\t%s,\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
+				i+1, firstLine, deck.OverallScore, deck.AttackScore, deck.DefenseScore,
+				deck.SynergyScore, deck.AvgElixir, deck.Archetype)
+			secondLine := strings.Join(deck.Cards[4:], ", ")
+			fmt.Fprintf(w, "\t%s\n", secondLine)
+		} else {
+			fmt.Fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
+				i+1, deckStr, deck.OverallScore, deck.AttackScore, deck.DefenseScore,
+				deck.SynergyScore, deck.AvgElixir, deck.Archetype)
+		}
+	}
+
+	w.Flush()
+	return nil
+}
+
+// formatListResultsJSON formats list results in JSON format
+func formatListResultsJSON(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
+	output := map[string]any{
+		"database": dbPath,
+		"total":    total,
+		"returned": len(decks),
+		"results":  decks,
+	}
+
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(output)
+}
+
+// formatListResultsCSV formats list results in CSV format
+func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
+	w := csv.NewWriter(os.Stdout)
+	defer w.Flush()
+
+	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
+	if err := w.Write(header); err != nil {
+		return err
+	}
+
+	for i, deck := range decks {
+		deckStr := strings.Join(deck.Cards, ", ")
+		row := []string{
+			strconv.Itoa(i + 1),
+			deckStr,
+			fmt.Sprintf("%.2f", deck.OverallScore),
+			fmt.Sprintf("%.2f", deck.AttackScore),
+			fmt.Sprintf("%.2f", deck.DefenseScore),
+			fmt.Sprintf("%.2f", deck.SynergyScore),
+			fmt.Sprintf("%.2f", deck.VersatilityScore),
+			fmt.Sprintf("%.2f", deck.AvgElixir),
+			deck.Archetype,
+		}
+		if err := w.Write(row); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// formatListResultsDetailed formats list results in detailed format
+func formatListResultsDetailed(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
+	fmt.Printf("Saved Top Decks\n")
+	fmt.Printf("Database: %s\n", dbPath)
+	fmt.Printf("Total decks: %d\n\n", total)
+
+	for i, deck := range decks {
+		fmt.Printf("=== Deck %d ===\n", i+1)
+		fmt.Printf("Cards: %s\n", strings.Join(deck.Cards, ", "))
+		fmt.Printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
+			deck.OverallScore, deck.AttackScore, deck.DefenseScore, deck.SynergyScore, deck.VersatilityScore)
+		fmt.Printf("Avg Elixir: %.2f | Archetype: %s (%.0f%% confidence)\n",
+			deck.AvgElixir, deck.Archetype, deck.ArchetypeConf*100)
+		fmt.Printf("Evaluated: %s\n\n", deck.EvaluatedAt.Format(time.RFC3339))
+	}
+
+	return nil
+}
+
+// loadCardsFromSavedDecks loads unique cards from top N saved decks
+func loadCardsFromSavedDecks(n int, _ bool) ([]string, error) {
+	storage, err := fuzzstorage.NewStorage("")
+	if err != nil {
+		return nil, err
+	}
+	defer storage.Close()
+
+	decks, err := storage.GetTopN(n)
+	if err != nil {
+		return nil, err
+	}
+
+	// Extract unique cards
+	cardMap := make(map[string]bool)
+	for _, deck := range decks {
+		for _, card := range deck.Cards {
+			cardMap[card] = true
+		}
+	}
+
+	cards := make([]string, 0, len(cardMap))
+	for card := range cardMap {
+		cards = append(cards, card)
+	}
+
+	return cards, nil
+}
+
+// mergeUniqueCards merges two card slices, removing duplicates
+func mergeUniqueCards(base, additional []string) []string {
+	cardMap := make(map[string]bool)
+
+	// Add base cards
+	for _, card := range base {
+		cardMap[card] = true
+	}
+
+	// Add additional cards
+	for _, card := range additional {
+		cardMap[card] = true
+	}
+
+	result := make([]string, 0, len(cardMap))
+	for card := range cardMap {
+		result = append(result, card)
+	}
+
+	return result
+}
+
+// loadSavedDecksForSeeding loads top N saved decks for use as mutation seeds
+func loadSavedDecksForSeeding(n int, _ *clashroyale.Player, verbose bool) ([][]string, error) {
+	storage, err := fuzzstorage.NewStorage("")
+	if err != nil {
+		return nil, err
+	}
+	defer storage.Close()
+
+	entries, err := storage.GetTopN(n)
+	if err != nil {
+		return nil, err
+	}
+
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Loaded %d saved decks for seeding\n", len(entries))
+	}
+
+	// Convert to deck slices
+	decks := make([][]string, len(entries))
+	for i, entry := range entries {
+		decks[i] = entry.Cards
+	}
+
+	return decks, nil
+}
+
+// generateDeckMutations generates mutations of saved decks by swapping cards
+func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, count int, verbose bool) [][]string {
+	if player == nil || len(player.Cards) == 0 {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "No player cards available for mutations\n")
+		}
+		return nil
+	}
+
+	// Build available cards map
+	availableCards := make(map[string]bool)
+	for _, card := range player.Cards {
+		availableCards[card.Name] = true
+	}
+
+	mutations := make([][]string, 0)
+	mutationsPerDeck := count / len(savedDecks)
+	if mutationsPerDeck < 1 {
+		mutationsPerDeck = 1
+	}
+
+	for _, deck := range savedDecks {
+		for i := 0; i < mutationsPerDeck; i++ {
+			// Create mutation by swapping 1-2 random cards
+			mutation := make([]string, len(deck))
+			copy(mutation, deck)
+
+			// Swap 1-2 cards
+			numSwaps := 1 + (i % 2) // Alternate between 1 and 2 swaps
+			for range numSwaps {
+				// Find cards to swap
+				swapIdx := i % len(mutation)
+
+				// Find a replacement card
+				for _, card := range player.Cards {
+					// Skip if card is already in deck
+					alreadyInDeck := false
+					for _, existing := range mutation {
+						if existing == card.Name {
+							alreadyInDeck = true
+							break
+						}
+					}
+					if !alreadyInDeck {
+						mutation[swapIdx] = card.Name
+						break
+					}
+				}
+			}
+
+			mutations = append(mutations, mutation)
+		}
+	}
+
+	return mutations
 }
 
 // printFuzzingProgress prints real-time progress during fuzzing

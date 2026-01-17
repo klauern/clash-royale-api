@@ -619,6 +619,45 @@ func addDeckCommands() *cli.Command {
 			{
 				Name:  "fuzz",
 				Usage: "Generate and evaluate random deck combinations using Monte Carlo sampling",
+				Commands: []*cli.Command{
+					{
+						Name:  "list",
+						Usage: "List saved top decks from storage",
+						Flags: []cli.Flag{
+							&cli.IntFlag{
+								Name:  "top",
+								Value: 10,
+								Usage: "Number of top decks to display",
+							},
+							&cli.StringFlag{
+								Name:  "archetype",
+								Usage: "Filter by archetype",
+							},
+							&cli.Float64Flag{
+								Name:  "min-score",
+								Usage: "Minimum overall score",
+							},
+							&cli.Float64Flag{
+								Name:  "max-score",
+								Usage: "Maximum overall score",
+							},
+							&cli.Float64Flag{
+								Name:  "min-elixir",
+								Usage: "Minimum average elixir",
+							},
+							&cli.Float64Flag{
+								Name:  "max-elixir",
+								Usage: "Maximum average elixir",
+							},
+							&cli.StringFlag{
+								Name:  "format",
+								Value: "summary",
+								Usage: "Output format: summary, json, csv, detailed",
+							},
+						},
+						Action: deckFuzzListCommand,
+					},
+				},
 				Flags: []cli.Flag{
 					&cli.StringFlag{
 						Name:     "tag",
@@ -643,6 +682,14 @@ func addDeckCommands() *cli.Command {
 					&cli.StringSliceFlag{
 						Name:  "exclude-cards",
 						Usage: "Cards that must be excluded from all generated decks",
+					},
+					&cli.IntFlag{
+						Name:  "include-from-saved",
+						Usage: "Include top N decks from saved storage as starting points",
+					},
+					&cli.IntFlag{
+						Name:  "from-saved",
+						Usage: "Use saved top decks as seeds (generates mutations of saved decks)",
 					},
 					&cli.Float64Flag{
 						Name:  "min-elixir",
