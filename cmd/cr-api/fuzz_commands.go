@@ -40,6 +40,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	excludeCards := cmd.StringSlice("exclude-cards")
 	includeFromSaved := cmd.Int("include-from-saved")
 	fromSaved := cmd.Int("from-saved")
+	basedOn := cmd.String("based-on")
 	minElixir := cmd.Float64("min-elixir")
 	maxElixir := cmd.Float64("max-elixir")
 	minOverall := cmd.Float64("min-overall")
@@ -184,6 +185,9 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		if len(excludeCards) > 0 {
 			fmt.Fprintf(os.Stderr, "  Exclude cards: %s\n", strings.Join(excludeCards, ", "))
 		}
+		if basedOn != "" {
+			fmt.Fprintf(os.Stderr, "  Based on deck: %s\n", basedOn)
+		}
 		fmt.Fprintf(os.Stderr, "  Elixir range: %.1f - %.1f\n", minElixir, maxElixir)
 		fmt.Fprintf(os.Stderr, "  Min overall score: %.1f\n", minOverall)
 		fmt.Fprintf(os.Stderr, "  Min synergy score: %.1f\n", minSynergy)
@@ -248,6 +252,21 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			generatedDecks = append(generatedDecks, mutations...)
 			if verbose {
 				fmt.Fprintf(os.Stderr, "Added %d mutations from %d saved decks\n", len(mutations), len(savedDecks))
+			}
+		}
+	}
+
+	// Handle --based-on: load a specific deck and generate variations
+	if basedOn != "" {
+		baseDeck, err := loadDeckFromStorage(basedOn, verbose)
+		if err != nil {
+			return fmt.Errorf("failed to load deck from storage: %w", err)
+		}
+		variations := generateVariations(baseDeck, player, count, verbose)
+		if len(variations) > 0 {
+			generatedDecks = append(generatedDecks, variations...)
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Added %d variations based on deck: %s\n", len(variations), strings.Join(baseDeck, ", "))
 			}
 		}
 	}
@@ -1306,6 +1325,120 @@ func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, co
 	}
 
 	return mutations
+}
+
+// loadDeckFromStorage loads a specific deck from storage by ID or name
+func loadDeckFromStorage(deckRef string, verbose bool) ([]string, error) {
+	storage, err := fuzzstorage.NewStorage("")
+	if err != nil {
+		return nil, fmt.Errorf("failed to open storage: %w", err)
+	}
+	defer storage.Close()
+
+	// Try to parse as integer ID
+	var deckID int
+	if _, err := fmt.Sscanf(deckRef, "%d", &deckID); err == nil {
+		// Query by ID using the database directly
+		entries, err := storage.Query(fuzzstorage.QueryOptions{
+			Limit: 1000, // Get all decks to find by ID
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to query storage: %w", err)
+		}
+
+		for _, entry := range entries {
+			if entry.ID == deckID {
+				if verbose {
+					fmt.Fprintf(os.Stderr, "Loaded deck by ID %d: %s\n", deckID, strings.Join(entry.Cards, ", "))
+				}
+				return entry.Cards, nil
+			}
+		}
+		return nil, fmt.Errorf("no deck found with ID %d", deckID)
+	}
+
+	// Try to find by matching deck cards (partial match)
+	entries, err := storage.Query(fuzzstorage.QueryOptions{
+		Limit: 1000,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to query storage: %w", err)
+	}
+
+	// Try to find deck that matches the reference (could be card names or partial deck)
+	deckRefLower := strings.ToLower(deckRef)
+	for _, entry := range entries {
+		deckStr := strings.ToLower(strings.Join(entry.Cards, " "))
+		if strings.Contains(deckStr, deckRefLower) {
+			if verbose {
+				fmt.Fprintf(os.Stderr, "Loaded matching deck: %s\n", strings.Join(entry.Cards, ", "))
+			}
+			return entry.Cards, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no deck found matching '%s'", deckRef)
+}
+
+// generateVariations generates variations of a base deck by swapping some cards
+func generateVariations(baseDeck []string, player *clashroyale.Player, count int, verbose bool) [][]string {
+	if player == nil || len(player.Cards) == 0 {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "No player cards available for variations\n")
+		}
+		return nil
+	}
+
+	// Build available cards map (excluding cards already in base deck)
+	availableCards := make([]string, 0)
+	baseDeckMap := make(map[string]bool)
+	for _, card := range baseDeck {
+		baseDeckMap[card] = true
+	}
+
+	for _, card := range player.Cards {
+		if !baseDeckMap[card.Name] {
+			availableCards = append(availableCards, card.Name)
+		}
+	}
+
+	if len(availableCards) == 0 {
+		if verbose {
+			fmt.Fprintf(os.Stderr, "No additional cards available for variations\n")
+		}
+		return nil
+	}
+
+	variations := make([][]string, 0, count)
+
+	// Generate variations by swapping 1-3 cards
+	for i := 0; i < count; i++ {
+		variation := make([]string, len(baseDeck))
+		copy(variation, baseDeck)
+
+		// Number of cards to swap (1-3, varying across variations)
+		numSwaps := 1 + (i % 3)
+
+		// Swap random positions with available cards
+		for j := 0; j < numSwaps; j++ {
+			// Pick a random position to swap
+			swapIdx := j % len(variation)
+
+			// Pick a random replacement card
+			if len(availableCards) > 0 {
+				replacementIdx := (i + j) % len(availableCards)
+				variation[swapIdx] = availableCards[replacementIdx]
+			}
+		}
+
+		variations = append(variations, variation)
+	}
+
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Generated %d variations of base deck\n", len(variations))
+	}
+
+	return variations
 }
 
 // printFuzzingProgress prints real-time progress during fuzzing

@@ -691,6 +691,10 @@ func addDeckCommands() *cli.Command {
 						Name:  "from-saved",
 						Usage: "Use saved top decks as seeds (generates mutations of saved decks)",
 					},
+					&cli.StringFlag{
+						Name:  "based-on",
+						Usage: "Deck name or ID from saved storage to use as template for variations",
+					},
 					&cli.Float64Flag{
 						Name:  "min-elixir",
 						Value: 0.0,
