@@ -20,6 +20,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
+	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/schollz/progressbar/v3"
 	"github.com/urfave/cli/v3"
@@ -49,6 +50,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	fromAnalysis := cmd.Bool("from-analysis")
 	apiToken := cmd.String("api-token")
 	storagePath := cmd.String("storage")
+	saveTop := cmd.Bool("save-top")
 
 	// Validate flags
 	if playerTag == "" && !fromAnalysis {
@@ -294,6 +296,13 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
+	// Save top decks to persistent storage if requested
+	if saveTop {
+		if err := saveTopDecksToStorage(topResults, verbose); err != nil {
+			return fmt.Errorf("failed to save top decks to storage: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -426,7 +435,7 @@ func evaluateDecksParallel(
 	}
 
 	// Start workers
-	for w := 0; w < workers; w++ {
+	for range workers {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -506,7 +515,7 @@ func evaluateSingleDeck(
 }
 
 // saveDeckToStorage saves a deck evaluation result to persistent storage
-func saveDeckToStorage(result FuzzingResult, playerTag string, storage *leaderboard.Storage) {
+func saveDeckToStorage(result FuzzingResult, _ string, storage *leaderboard.Storage) {
 	// Reconstruct evalResult for storage (we only store what we need)
 	entry := &leaderboard.DeckEntry{
 		Cards:             result.Deck,
@@ -521,7 +530,7 @@ func saveDeckToStorage(result FuzzingResult, playerTag string, storage *leaderbo
 		ArchetypeConf:     result.ArchetypeConfidence,
 		AvgElixir:         result.AvgElixir,
 		EvaluatedAt:       result.EvaluatedAt,
-		PlayerTag:         playerTag,
+		PlayerTag:         "",
 		EvaluationVersion: "1.0.0",
 	}
 	storage.InsertDeck(entry)
@@ -576,7 +585,7 @@ func convertDeckToCandidates(deckCards []string, player *clashroyale.Player) []d
 }
 
 // filterResultsByScore filters results by minimum score thresholds
-func filterResultsByScore(results []FuzzingResult, minOverall, minSynergy float64, verbose bool) []FuzzingResult {
+func filterResultsByScore(results []FuzzingResult, minOverall, minSynergy float64, _ bool) []FuzzingResult {
 	filtered := make([]FuzzingResult, 0, len(results))
 
 	for _, result := range results {
@@ -741,7 +750,7 @@ func formatResultsJSON(
 	stats *deck.FuzzingStats,
 	totalFiltered int,
 ) error {
-	output := map[string]interface{}{
+	output := map[string]any{
 		"player_name":             playerName,
 		"player_tag":              playerTag,
 		"generated":               stats.Generated,
@@ -750,7 +759,7 @@ func formatResultsJSON(
 		"filtered":                totalFiltered,
 		"returned":                len(results),
 		"generation_time_seconds": generationTime.Seconds(),
-		"config": map[string]interface{}{
+		"config": map[string]any{
 			"count":             fuzzerConfig.Count,
 			"workers":           fuzzerConfig.Workers,
 			"include_cards":     fuzzerConfig.IncludeCards,
@@ -935,6 +944,48 @@ func loadPlayerFromAnalysis(analysisFile, analysisDir, playerTag string) (*clash
 	}
 
 	return player, cardAnalysis.PlayerName, nil
+}
+
+// saveTopDecksToStorage saves the top fuzzing results to persistent storage
+func saveTopDecksToStorage(results []FuzzingResult, verbose bool) error {
+	storage, err := fuzzstorage.NewStorage("")
+	if err != nil {
+		return fmt.Errorf("failed to open storage: %w", err)
+	}
+	defer storage.Close()
+
+	// Convert FuzzingResult to fuzzstorage.DeckEntry
+	entries := make([]fuzzstorage.DeckEntry, len(results))
+	for i, result := range results {
+		entries[i] = fuzzstorage.DeckEntry{
+			Cards:            result.Deck,
+			OverallScore:     result.OverallScore,
+			AttackScore:      result.AttackScore,
+			DefenseScore:     result.DefenseScore,
+			SynergyScore:     result.SynergyScore,
+			VersatilityScore: result.VersatilityScore,
+			AvgElixir:        result.AvgElixir,
+			Archetype:        result.Archetype,
+			ArchetypeConf:    result.ArchetypeConfidence,
+			EvaluatedAt:      result.EvaluatedAt,
+		}
+	}
+
+	saved, err := storage.SaveTopDecks(entries)
+	if err != nil {
+		return fmt.Errorf("failed to save decks: %w", err)
+	}
+
+	total, _ := storage.Count()
+	dbPath := storage.GetDBPath()
+
+	if verbose {
+		fmt.Fprintf(os.Stderr, "\nTop decks saved to storage: %s\n", dbPath)
+		fmt.Fprintf(os.Stderr, "  New decks saved: %d\n", saved)
+		fmt.Fprintf(os.Stderr, "  Total decks in storage: %d\n", total)
+	}
+
+	return nil
 }
 
 // printFuzzingProgress prints real-time progress during fuzzing

@@ -709,6 +709,10 @@ func addDeckCommands() *cli.Command {
 						Name:  "storage",
 						Usage: "Path to persistent storage database for saving evaluated decks",
 					},
+					&cli.BoolFlag{
+						Name:  "save-top",
+						Usage: "Save top decks to persistent storage for reuse in subsequent fuzz runs",
+					},
 				},
 				Action: deckFuzzCommand,
 			},
