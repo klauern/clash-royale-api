@@ -324,14 +324,20 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		fmt.Fprintf(os.Stderr, "%d decks passed score filters\n", len(filteredResults))
 	}
 
+	// Deduplicate results (remove identical decks)
+	dedupedResults := deduplicateResults(filteredResults)
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Removed %d duplicate decks, %d unique decks remaining\n", len(filteredResults)-len(dedupedResults), len(dedupedResults))
+	}
+
 	// Sort results
-	sortFuzzingResults(filteredResults, sortBy)
+	sortFuzzingResults(dedupedResults, sortBy)
 
 	// Get top N results
-	topResults := getTopResults(filteredResults, top)
+	topResults := getTopResults(dedupedResults, top)
 
 	// Format and output results
-	if err := formatFuzzingResults(topResults, format, playerName, playerTag, fuzzerCfg, generationTime, &stats, len(filteredResults)); err != nil {
+	if err := formatFuzzingResults(topResults, format, playerName, playerTag, fuzzerCfg, generationTime, &stats, len(dedupedResults)); err != nil {
 		return fmt.Errorf("failed to format results: %w", err)
 	}
 
@@ -647,6 +653,32 @@ func filterResultsByScore(results []FuzzingResult, minOverall, minSynergy float6
 	}
 
 	return filtered
+}
+
+// deduplicateResults removes duplicate decks based on card composition
+// Keeps the first occurrence (highest score after sorting)
+func deduplicateResults(results []FuzzingResult) []FuzzingResult {
+	seen := make(map[string]bool)
+	deduped := make([]FuzzingResult, 0, len(results))
+
+	for _, result := range results {
+		// Create a canonical key by sorting card names
+		deckKey := deckKeyForResult(result)
+		if !seen[deckKey] {
+			seen[deckKey] = true
+			deduped = append(deduped, result)
+		}
+	}
+
+	return deduped
+}
+
+// deckKeyForResult creates a unique key for a deck based on sorted card names
+func deckKeyForResult(result FuzzingResult) string {
+	cards := make([]string, len(result.Deck))
+	copy(cards, result.Deck)
+	sort.Strings(cards)
+	return strings.Join(cards, "|")
 }
 
 // sortFuzzingResults sorts fuzzing results by the specified field
