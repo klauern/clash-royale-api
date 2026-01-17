@@ -20,6 +20,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
+	"github.com/schollz/progressbar/v3"
 	"github.com/urfave/cli/v3"
 )
 
@@ -185,7 +186,9 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	stats := fuzzer.GetStats()
 
 	if verbose {
-		fmt.Fprintf(os.Stderr, "Generated %d decks in %v\n", len(generatedDecks), generationTime)
+		fmt.Fprintf(os.Stderr, "\nGenerated %d decks in %v (%.1f decks/sec)\n",
+			len(generatedDecks), generationTime.Round(time.Millisecond),
+			float64(len(generatedDecks))/generationTime.Seconds())
 		fmt.Fprintf(os.Stderr, "Success: %d, Failed: %d\n", stats.Success, stats.Failed)
 		if stats.SkippedElixir > 0 {
 			fmt.Fprintf(os.Stderr, "Skipped (elixir): %d\n", stats.SkippedElixir)
@@ -310,19 +313,32 @@ func evaluateDecksSequential(
 	// Create synergy database once for sequential use
 	synergyDB := deck.NewSynergyDatabase()
 
+	// Create progress bar if verbose
+	var bar *progressbar.ProgressBar
+	if verbose {
+		bar = progressbar.NewOptions(len(decks),
+			progressbar.OptionSetWriter(os.Stderr),
+			progressbar.OptionShowCount(),
+			progressbar.OptionShowIts(),
+			progressbar.OptionSetItsString("decks"),
+			progressbar.OptionOnCompletion(func() {
+				fmt.Fprintln(os.Stderr)
+			}),
+		)
+	}
+
 	// Evaluate each deck
-	for i, deckCards := range decks {
-		if verbose && (i+1)%100 == 0 {
-			fmt.Fprintf(os.Stderr, "  Evaluated %d/%d decks...\n", i+1, len(decks))
-		}
-
+	for _, deckCards := range decks {
 		result := evaluateSingleDeck(deckCards, player, playerTag, synergyDB, playerContext)
-
 		results = append(results, result)
 
 		// Save to persistent storage if available
 		if storage != nil {
 			saveDeckToStorage(result, playerTag, storage)
+		}
+
+		if verbose && bar != nil {
+			bar.Add(1)
 		}
 	}
 
@@ -347,12 +363,19 @@ func evaluateDecksParallel(
 	workChan := make(chan []string, len(decks))
 	resultChan := make(chan FuzzingResult, len(decks))
 
-	// Track progress for verbose output
-	type progressCounter struct {
-		count int
-		mu    sync.Mutex
+	// Create progress bar if verbose
+	var bar *progressbar.ProgressBar
+	if verbose {
+		bar = progressbar.NewOptions(len(decks),
+			progressbar.OptionSetWriter(os.Stderr),
+			progressbar.OptionShowCount(),
+			progressbar.OptionShowIts(),
+			progressbar.OptionSetItsString("decks"),
+			progressbar.OptionOnCompletion(func() {
+				fmt.Fprintln(os.Stderr)
+			}),
+		)
 	}
-	progress := &progressCounter{}
 
 	// Start workers
 	for w := 0; w < workers; w++ {
@@ -364,21 +387,9 @@ func evaluateDecksParallel(
 			synergyDB := deck.NewSynergyDatabase()
 
 			for deckCards := range workChan {
-				// Evaluate deck
+				// Evaluate deck and send to result channel
 				result := evaluateSingleDeck(deckCards, player, playerTag, synergyDB, playerContext)
 				resultChan <- result
-
-				// Print progress if verbose
-				if verbose {
-					progress.mu.Lock()
-					progress.count++
-					count := progress.count
-					progress.mu.Unlock()
-
-					if count%100 == 0 {
-						fmt.Fprintf(os.Stderr, "  Evaluated %d/%d decks...\n", count, len(decks))
-					}
-				}
 			}
 		}()
 	}
@@ -397,11 +408,15 @@ func evaluateDecksParallel(
 		close(resultChan)
 	}()
 
-	// Collect results
+	// Collect results and update progress bar
 	for result := range resultChan {
 		mu.Lock()
 		results = append(results, result)
 		mu.Unlock()
+
+		if verbose && bar != nil {
+			bar.Add(1)
+		}
 	}
 
 	// Save all results to storage after collection (storage may not be thread-safe)
