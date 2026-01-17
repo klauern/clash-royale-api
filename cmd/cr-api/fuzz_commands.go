@@ -170,12 +170,54 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	// Generate decks
 	startTime := time.Now()
 
+	// Start progress reporter for generation
+	var generationDone sync.WaitGroup
+	var stopProgress = make(chan struct{})
+	if verbose {
+		generationDone.Add(1)
+		go func() {
+			defer generationDone.Done()
+			ticker := time.NewTicker(500 * time.Millisecond)
+			defer ticker.Stop()
+
+			lastCount := 0
+			startTime := time.Now()
+
+			for {
+				select {
+				case <-stopProgress:
+					return
+				case <-ticker.C:
+					stats := fuzzer.GetStats()
+					currentCount := stats.Generated
+					elapsed := time.Since(startTime)
+
+					// Calculate rate
+					rate := float64(currentCount) / elapsed.Seconds()
+
+					// Only print if progress has been made
+					if currentCount > lastCount {
+						eta := time.Duration(float64(count-currentCount)/rate) * time.Second
+						fmt.Fprintf(os.Stderr, "\rGenerating... %d/%d decks (%.1f decks/sec, ETA: %v) ",
+							currentCount, count, rate, eta.Round(time.Second))
+						lastCount = currentCount
+					}
+				}
+			}
+		}()
+	}
+
 	var generatedDecks [][]string
 	if workers > 1 {
 		generatedDecks, err = fuzzer.GenerateDecksParallel()
 	} else {
 		generatedDecks, err = fuzzer.GenerateDecks(count)
 	}
+
+	// Stop progress reporter
+	close(stopProgress)
+	generationDone.Wait()
+	fmt.Fprintln(os.Stderr) // New line after progress
 
 	if err != nil {
 		return fmt.Errorf("failed to generate decks: %w", err)
