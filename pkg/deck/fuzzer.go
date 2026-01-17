@@ -510,10 +510,12 @@ func (df *DeckFuzzer) generateSynergyDeckAttempt() ([]string, error) {
 		used[cardName] = true
 	}
 
-	// Shuffle valid pairs for randomness
-	df.rng.Shuffle(len(validPairs), func(i, j int) {
+	// Fisher-Yates shuffle using local RNG (safe for concurrent use)
+	n := len(validPairs)
+	for i := n - 1; i > 0; i-- {
+		j := int(df.rng.Int63()) % (i + 1)
 		validPairs[i], validPairs[j] = validPairs[j], validPairs[i]
-	})
+	}
 
 	// Select 4 pairs that don't share cards
 	pairsSelected := 0
