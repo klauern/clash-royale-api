@@ -172,7 +172,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Start progress reporter for generation
 	var generationDone sync.WaitGroup
-	var stopProgress = make(chan struct{})
+	stopProgress := make(chan struct{})
 	if verbose {
 		generationDone.Add(1)
 		go func() {
