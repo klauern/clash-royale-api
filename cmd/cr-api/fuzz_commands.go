@@ -10,6 +10,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"text/tabwriter"
 	"time"
 
@@ -198,7 +199,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Evaluate decks
 	if verbose {
-		fmt.Fprintf(os.Stderr, "Evaluating %d decks...\n", len(generatedDecks))
+		fmt.Fprintf(os.Stderr, "Evaluating %d decks with %d workers...\n", len(generatedDecks), workers)
 	}
 
 	evaluationResults := evaluateGeneratedDecks(
@@ -206,6 +207,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		player,
 		playerTag,
 		storagePath,
+		workers,
 		verbose,
 	)
 
@@ -264,14 +266,10 @@ func evaluateGeneratedDecks(
 	player *clashroyale.Player,
 	playerTag string,
 	storagePath string,
+	workers int,
 	verbose bool,
 ) []FuzzingResult {
-	results := make([]FuzzingResult, 0, len(decks))
-
-	// Create synergy database once
-	synergyDB := deck.NewSynergyDatabase()
-
-	// Create player context if player tag provided
+	// Create player context if player tag provided (shared, read-only)
 	var playerContext *evaluation.PlayerContext
 	if playerTag != "" && player != nil {
 		playerContext = evaluation.NewPlayerContextFromPlayer(player)
@@ -289,56 +287,181 @@ func evaluateGeneratedDecks(
 		}
 	}
 
+	// Use parallel evaluation if workers > 1
+	if workers > 1 {
+		return evaluateDecksParallel(decks, player, playerTag, playerContext, storage, workers, verbose)
+	}
+
+	// Sequential evaluation (original behavior)
+	return evaluateDecksSequential(decks, player, playerTag, playerContext, storage, verbose)
+}
+
+// evaluateDecksSequential evaluates decks sequentially (original implementation)
+func evaluateDecksSequential(
+	decks [][]string,
+	player *clashroyale.Player,
+	playerTag string,
+	playerContext *evaluation.PlayerContext,
+	storage *leaderboard.Storage,
+	verbose bool,
+) []FuzzingResult {
+	results := make([]FuzzingResult, 0, len(decks))
+
+	// Create synergy database once for sequential use
+	synergyDB := deck.NewSynergyDatabase()
+
 	// Evaluate each deck
 	for i, deckCards := range decks {
 		if verbose && (i+1)%100 == 0 {
 			fmt.Fprintf(os.Stderr, "  Evaluated %d/%d decks...\n", i+1, len(decks))
 		}
 
-		// Convert deck strings to CardCandidates
-		candidates := convertDeckToCandidates(deckCards, player)
-
-		// Run evaluation
-		evalResult := evaluation.Evaluate(candidates, synergyDB, playerContext)
-
-		result := FuzzingResult{
-			Deck:                deckCards,
-			OverallScore:        evalResult.OverallScore,
-			AttackScore:         evalResult.Attack.Score,
-			DefenseScore:        evalResult.Defense.Score,
-			SynergyScore:        evalResult.Synergy.Score,
-			VersatilityScore:    evalResult.Versatility.Score,
-			AvgElixir:           evalResult.AvgElixir,
-			Archetype:           string(evalResult.DetectedArchetype),
-			ArchetypeConfidence: evalResult.ArchetypeConfidence,
-			EvaluatedAt:         time.Now(),
-		}
+		result := evaluateSingleDeck(deckCards, player, playerTag, synergyDB, playerContext)
 
 		results = append(results, result)
 
 		// Save to persistent storage if available
 		if storage != nil {
-			entry := &leaderboard.DeckEntry{
-				Cards:             deckCards,
-				OverallScore:      evalResult.OverallScore,
-				AttackScore:       evalResult.Attack.Score,
-				DefenseScore:      evalResult.Defense.Score,
-				SynergyScore:      evalResult.Synergy.Score,
-				VersatilityScore:  evalResult.Versatility.Score,
-				F2PScore:          evalResult.F2PFriendly.Score,
-				PlayabilityScore:  evalResult.Playability.Score,
-				Archetype:         string(evalResult.DetectedArchetype),
-				ArchetypeConf:     evalResult.ArchetypeConfidence,
-				AvgElixir:         evalResult.AvgElixir,
-				EvaluatedAt:       result.EvaluatedAt,
-				PlayerTag:         playerTag,
-				EvaluationVersion: "1.0.0",
-			}
-			storage.InsertDeck(entry)
+			saveDeckToStorage(result, playerTag, storage)
 		}
 	}
 
 	return results
+}
+
+// evaluateDecksParallel evaluates decks using parallel workers
+func evaluateDecksParallel(
+	decks [][]string,
+	player *clashroyale.Player,
+	playerTag string,
+	playerContext *evaluation.PlayerContext,
+	storage *leaderboard.Storage,
+	workers int,
+	verbose bool,
+) []FuzzingResult {
+	results := make([]FuzzingResult, 0, len(decks))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	// Create work channel
+	workChan := make(chan []string, len(decks))
+	resultChan := make(chan FuzzingResult, len(decks))
+
+	// Track progress for verbose output
+	type progressCounter struct {
+		count int
+		mu    sync.Mutex
+	}
+	progress := &progressCounter{}
+
+	// Start workers
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			// Each worker gets its own synergy database to avoid concurrent access
+			synergyDB := deck.NewSynergyDatabase()
+
+			for deckCards := range workChan {
+				// Evaluate deck
+				result := evaluateSingleDeck(deckCards, player, playerTag, synergyDB, playerContext)
+				resultChan <- result
+
+				// Print progress if verbose
+				if verbose {
+					progress.mu.Lock()
+					progress.count++
+					count := progress.count
+					progress.mu.Unlock()
+
+					if count%100 == 0 {
+						fmt.Fprintf(os.Stderr, "  Evaluated %d/%d decks...\n", count, len(decks))
+					}
+				}
+			}
+		}()
+	}
+
+	// Send work
+	go func() {
+		for _, deck := range decks {
+			workChan <- deck
+		}
+		close(workChan)
+	}()
+
+	// Close result channel when workers are done
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	// Collect results
+	for result := range resultChan {
+		mu.Lock()
+		results = append(results, result)
+		mu.Unlock()
+	}
+
+	// Save all results to storage after collection (storage may not be thread-safe)
+	if storage != nil {
+		for _, result := range results {
+			saveDeckToStorage(result, playerTag, storage)
+		}
+	}
+
+	return results
+}
+
+// evaluateSingleDeck evaluates a single deck and returns the result
+func evaluateSingleDeck(
+	deckCards []string,
+	player *clashroyale.Player,
+	playerTag string,
+	synergyDB *deck.SynergyDatabase,
+	playerContext *evaluation.PlayerContext,
+) FuzzingResult {
+	// Convert deck strings to CardCandidates
+	candidates := convertDeckToCandidates(deckCards, player)
+
+	// Run evaluation
+	evalResult := evaluation.Evaluate(candidates, synergyDB, playerContext)
+
+	return FuzzingResult{
+		Deck:                deckCards,
+		OverallScore:        evalResult.OverallScore,
+		AttackScore:         evalResult.Attack.Score,
+		DefenseScore:        evalResult.Defense.Score,
+		SynergyScore:        evalResult.Synergy.Score,
+		VersatilityScore:    evalResult.Versatility.Score,
+		AvgElixir:           evalResult.AvgElixir,
+		Archetype:           string(evalResult.DetectedArchetype),
+		ArchetypeConfidence: evalResult.ArchetypeConfidence,
+		EvaluatedAt:         time.Now(),
+	}
+}
+
+// saveDeckToStorage saves a deck evaluation result to persistent storage
+func saveDeckToStorage(result FuzzingResult, playerTag string, storage *leaderboard.Storage) {
+	// Reconstruct evalResult for storage (we only store what we need)
+	entry := &leaderboard.DeckEntry{
+		Cards:             result.Deck,
+		OverallScore:      result.OverallScore,
+		AttackScore:       result.AttackScore,
+		DefenseScore:      result.DefenseScore,
+		SynergyScore:      result.SynergyScore,
+		VersatilityScore:  result.VersatilityScore,
+		F2PScore:          0,
+		PlayabilityScore:  0,
+		Archetype:         result.Archetype,
+		ArchetypeConf:     result.ArchetypeConfidence,
+		AvgElixir:         result.AvgElixir,
+		EvaluatedAt:       result.EvaluatedAt,
+		PlayerTag:         playerTag,
+		EvaluationVersion: "1.0.0",
+	}
+	storage.InsertDeck(entry)
 }
 
 // convertDeckToCandidates converts a deck of card names to CardCandidates
@@ -739,15 +862,3 @@ func loadPlayerFromAnalysis(analysisFile, analysisDir, playerTag string) (*clash
 }
 
 // printFuzzingProgress prints real-time progress during fuzzing
-func printFuzzingProgress(generated, total int, startTime time.Time) {
-	if total == 0 {
-		return
-	}
-
-	elapsed := time.Since(startTime)
-	remaining := time.Duration(float64(elapsed) / float64(generated) * float64(total-generated))
-
-	percent := float64(generated) / float64(total) * 100
-	fmt.Fprintf(os.Stderr, "\rProgress: %d/%d (%.1f%%) | Elapsed: %v | ETA: %v",
-		generated, total, percent, elapsed.Round(time.Second), remaining.Round(time.Second))
-}
