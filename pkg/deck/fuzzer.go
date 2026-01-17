@@ -33,6 +33,8 @@ type FuzzingConfig struct {
 	MinOverallScore float64
 	// MinSynergyScore is the minimum synergy score threshold
 	MinSynergyScore float64
+	// SynergyFirst enables synergy-first generation (build decks from 4 synergy pairs)
+	SynergyFirst bool
 }
 
 // FuzzingStats tracks metrics during deck generation
@@ -94,6 +96,7 @@ type DeckFuzzer struct {
 	stats       *FuzzingStats
 	excludeMap  map[string]bool
 	includeMap  map[string]bool
+	synergyDB   *SynergyDatabase
 }
 
 // NewDeckFuzzer creates a new deck fuzzer from a player's card collection
@@ -205,6 +208,7 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 		},
 		excludeMap: excludeMap,
 		includeMap: includeMap,
+		synergyDB:  NewSynergyDatabase(),
 	}
 
 	return fuzzer, nil
@@ -214,6 +218,24 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 func (df *DeckFuzzer) GenerateRandomDeck() ([]string, error) {
 	const maxRetries = 100
 
+	// Use synergy-first generation if enabled
+	if df.config.SynergyFirst {
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			deck, err := df.generateSynergyDeckAttempt()
+			if err != nil {
+				df.recordFailure()
+				continue
+			}
+
+			df.recordSuccess()
+			return deck, nil
+		}
+
+		df.recordFailure()
+		return nil, fmt.Errorf("failed to generate valid synergy deck after %d attempts", maxRetries)
+	}
+
+	// Standard role-based generation
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		deck, err := df.generateRandomDeckAttempt()
 		if err != nil {
@@ -448,6 +470,111 @@ func (df *DeckFuzzer) isCardAvailable(cardName string) bool {
 		}
 	}
 	return false
+}
+
+// generateSynergyDeckAttempt attempts to generate a deck from 4 synergy pairs
+func (df *DeckFuzzer) generateSynergyDeckAttempt() ([]string, error) {
+	// Build a map of available cards for quick lookup
+	availableCards := make(map[string]bool)
+	for _, card := range df.allCards {
+		availableCards[card.Name] = true
+	}
+
+	// Get all valid synergy pairs (both cards must be available)
+	validPairs := make([]SynergyPair, 0)
+	for _, pair := range df.synergyDB.Pairs {
+		// Skip if either card is excluded
+		if df.excludeMap[pair.Card1] || df.excludeMap[pair.Card2] {
+			continue
+		}
+		// Both cards must be available
+		if availableCards[pair.Card1] && availableCards[pair.Card2] {
+			validPairs = append(validPairs, pair)
+		}
+	}
+
+	if len(validPairs) < 4 {
+		return nil, fmt.Errorf("not enough valid synergy pairs (found %d, need 4)", len(validPairs))
+	}
+
+	// Select 4 complementary pairs avoiding duplicate cards
+	deck := make([]string, 0, 8)
+	used := make(map[string]bool)
+
+	// Add include cards first
+	for cardName := range df.includeMap {
+		if !availableCards[cardName] {
+			return nil, fmt.Errorf("included card not available: %s", cardName)
+		}
+		deck = append(deck, cardName)
+		used[cardName] = true
+	}
+
+	// Shuffle valid pairs for randomness
+	df.rng.Shuffle(len(validPairs), func(i, j int) {
+		validPairs[i], validPairs[j] = validPairs[j], validPairs[i]
+	})
+
+	// Select 4 pairs that don't share cards
+	pairsSelected := 0
+	for _, pair := range validPairs {
+		if pairsSelected >= 4 {
+			break
+		}
+		// Skip if either card is already used
+		if used[pair.Card1] || used[pair.Card2] {
+			continue
+		}
+		// Add both cards
+		deck = append(deck, pair.Card1, pair.Card2)
+		used[pair.Card1] = true
+		used[pair.Card2] = true
+		pairsSelected++
+	}
+
+	// Fill remaining slots if include cards took up synergy pair slots
+	for len(deck) < 8 {
+		remaining := df.fillRemainingSlots(8-len(deck), used)
+		if len(remaining) == 0 {
+			break
+		}
+		for _, card := range remaining {
+			if !used[card] && len(deck) < 8 {
+				deck = append(deck, card)
+				used[card] = true
+			}
+		}
+	}
+
+	// Validate deck size
+	if len(deck) != 8 {
+		return nil, fmt.Errorf("invalid deck size: %d", len(deck))
+	}
+
+	// Validate average elixir
+	avgElixir := df.calculateAvgElixir(deck)
+	if avgElixir < df.config.MinAvgElixir || avgElixir > df.config.MaxAvgElixir {
+		df.stats.SkippedElixir++
+		return nil, fmt.Errorf("elixir out of range: %.2f", avgElixir)
+	}
+
+	// Validate all include cards are present
+	for cardName := range df.includeMap {
+		if !used[cardName] {
+			df.stats.SkippedInclude++
+			return nil, fmt.Errorf("missing include card: %s", cardName)
+		}
+	}
+
+	// Validate no excluded cards are present
+	for _, cardName := range deck {
+		if df.excludeMap[cardName] {
+			df.stats.SkippedExclude++
+			return nil, fmt.Errorf("excluded card present: %s", cardName)
+		}
+	}
+
+	return deck, nil
 }
 
 // recordSuccess records a successful deck generation

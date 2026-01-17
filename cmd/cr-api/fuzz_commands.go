@@ -54,6 +54,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	apiToken := cmd.String("api-token")
 	storagePath := cmd.String("storage")
 	saveTop := cmd.Bool("save-top")
+	synergyPairs := cmd.Bool("synergy-pairs")
 
 	// Validate flags
 	if playerTag == "" && !fromAnalysis {
@@ -148,6 +149,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		MaxAvgElixir:    maxElixir,
 		MinOverallScore: minOverall,
 		MinSynergyScore: minSynergy,
+		SynergyFirst:    synergyPairs,
 	}
 
 	// Handle --include-from-saved: extract cards from saved top decks
@@ -179,6 +181,9 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		fmt.Fprintf(os.Stderr, "Configuration:\n")
 		fmt.Fprintf(os.Stderr, "  Count: %d\n", count)
 		fmt.Fprintf(os.Stderr, "  Workers: %d\n", workers)
+		if synergyPairs {
+			fmt.Fprintf(os.Stderr, "  Mode: synergy-first (4 pairs)\n")
+		}
 		if len(includeCards) > 0 {
 			fmt.Fprintf(os.Stderr, "  Include cards: %s\n", strings.Join(includeCards, ", "))
 		}

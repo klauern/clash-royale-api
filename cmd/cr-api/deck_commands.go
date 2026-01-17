@@ -764,6 +764,10 @@ func addDeckCommands() *cli.Command {
 						Name:  "save-top",
 						Usage: "Save top decks to persistent storage for reuse in subsequent fuzz runs",
 					},
+					&cli.BoolFlag{
+						Name:  "synergy-pairs",
+						Usage: "Generate decks from 4 synergy pairs instead of role-based composition",
+					},
 				},
 				Action: deckFuzzCommand,
 			},
