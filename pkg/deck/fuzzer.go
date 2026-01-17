@@ -513,7 +513,7 @@ func (df *DeckFuzzer) generateSynergyDeckAttempt() ([]string, error) {
 	// Fisher-Yates shuffle using local RNG (safe for concurrent use)
 	n := len(validPairs)
 	for i := n - 1; i > 0; i-- {
-		j := int(df.rng.Int63()) % (i + 1)
+		j := df.rng.Intn(i + 1)
 		validPairs[i], validPairs[j] = validPairs[j], validPairs[i]
 	}
 
