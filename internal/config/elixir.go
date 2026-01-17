@@ -28,6 +28,7 @@ var fallbackElixir = map[string]int{
 	"Royal Giant":    6,
 	"Hog Rider":      4,
 	"Giant":          5,
+	"Golem":          8,
 	"P.E.K.K.A":      7,
 	"Giant Skeleton": 6,
 	"Goblin Barrel":  3,
@@ -59,6 +60,7 @@ var fallbackElixir = map[string]int{
 	"Barbarian Barrel": 2,
 	"Freeze":           4,
 	"Log":              2,
+	"The Log":          2,
 	"Mirror":           1,
 	"Vines":            2,
 
@@ -89,6 +91,7 @@ var fallbackElixir = map[string]int{
 	"Spear Goblins":  2,
 	"Goblin Gang":    3,
 	"Minions":        3,
+	"Ice Golem":      2,
 }
 
 // CardRole represents the strategic role of a card in a deck (string type)

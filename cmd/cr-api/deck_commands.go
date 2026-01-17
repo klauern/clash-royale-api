@@ -12,6 +12,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/budget"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
@@ -614,6 +615,102 @@ func addDeckCommands() *cli.Command {
 					},
 				},
 				Action: deckPossibleCountCommand,
+			},
+			{
+				Name:  "fuzz",
+				Usage: "Generate and evaluate random deck combinations using Monte Carlo sampling",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #) for card collection context",
+						Required: true,
+					},
+					&cli.IntFlag{
+						Name:  "count",
+						Value: 1000,
+						Usage: "Number of random decks to generate and evaluate",
+					},
+					&cli.IntFlag{
+						Name:  "workers",
+						Value: 1,
+						Usage: "Number of parallel workers for deck generation",
+					},
+					&cli.StringSliceFlag{
+						Name:  "include-cards",
+						Usage: "Cards that must be included in every generated deck",
+					},
+					&cli.StringSliceFlag{
+						Name:  "exclude-cards",
+						Usage: "Cards that must be excluded from all generated decks",
+					},
+					&cli.Float64Flag{
+						Name:  "min-elixir",
+						Value: 0.0,
+						Usage: "Minimum average elixir for generated decks",
+					},
+					&cli.Float64Flag{
+						Name:  "max-elixir",
+						Value: 10.0,
+						Usage: "Maximum average elixir for generated decks",
+					},
+					&cli.Float64Flag{
+						Name:  "min-overall",
+						Value: 0.0,
+						Usage: "Minimum overall score to include in results (0.0-10.0)",
+					},
+					&cli.Float64Flag{
+						Name:  "min-synergy",
+						Value: 0.0,
+						Usage: "Minimum synergy score to include in results (0.0-10.0)",
+					},
+					&cli.IntFlag{
+						Name:  "top",
+						Value: 10,
+						Usage: "Number of top decks to display in results",
+					},
+					&cli.StringFlag{
+						Name:  "sort-by",
+						Value: "overall",
+						Usage: "Sort results by: overall, attack, defense, synergy, versatility, elixir",
+					},
+					&cli.StringFlag{
+						Name:  "format",
+						Value: "summary",
+						Usage: "Output format: summary, json, csv, detailed",
+					},
+					&cli.StringFlag{
+						Name:  "output-dir",
+						Usage: "Directory to save results (default: stdout only)",
+					},
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Aliases: []string{"v"},
+						Usage:   "Show detailed progress information",
+					},
+					&cli.BoolFlag{
+						Name:  "from-analysis",
+						Usage: "Load player data from existing analysis file (offline mode)",
+					},
+					&cli.StringFlag{
+						Name:  "analysis-file",
+						Usage: "Path to specific analysis file (for --from-analysis)",
+					},
+					&cli.StringFlag{
+						Name:  "analysis-dir",
+						Usage: "Directory containing analysis files (for --from-analysis)",
+					},
+					&cli.IntFlag{
+						Name:  "seed",
+						Value: 0,
+						Usage: "Random seed for reproducibility (0 = random)",
+					},
+					&cli.StringFlag{
+						Name:  "storage",
+						Usage: "Path to persistent storage database for saving evaluated decks",
+					},
+				},
+				Action: deckFuzzCommand,
 			},
 		},
 	}
@@ -2045,7 +2142,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 				Name: cardName,
 				// Use defaults for evaluation
 				Rarity: inferRarity(cardName),
-				Elixir: inferElixir(cardName),
+				Elixir: config.GetCardElixir(cardName, 0),
 				Role:   inferRole(cardName),
 				Stats:  inferStats(cardName),
 			})
@@ -3815,7 +3912,7 @@ func convertToCardCandidates(cardNames []string) []deck.CardCandidate {
 			Level:    11, // Default level
 			MaxLevel: 15, // Default max level
 			Rarity:   inferRarity(name),
-			Elixir:   inferElixir(name),
+			Elixir:   config.GetCardElixir(name, 0),
 			Role:     inferRole(name),
 			Stats:    inferStats(name),
 		}
@@ -3830,60 +3927,6 @@ func inferRarity(name string) string {
 	// This is a simplified version - in reality, you'd look this up from a database
 	// For now, we'll use common as default
 	return "Common"
-}
-
-// inferElixir infers elixir cost from card name
-func inferElixir(name string) int {
-	// Simplified elixir inference based on common knowledge
-	lowercaseName := strings.ToLower(name)
-
-	// High cost cards (6+ elixir)
-	if strings.Contains(lowercaseName, "golem") ||
-		strings.Contains(lowercaseName, "mega knight") ||
-		strings.Contains(lowercaseName, "pekka") ||
-		strings.Contains(lowercaseName, "three musketeers") {
-		return 7
-	}
-
-	// Medium-high cost cards (5 elixir)
-	if strings.Contains(lowercaseName, "giant") ||
-		strings.Contains(lowercaseName, "balloon") ||
-		strings.Contains(lowercaseName, "prince") ||
-		strings.Contains(lowercaseName, "wizard") {
-		return 5
-	}
-
-	// Medium cost cards (4 elixir)
-	if strings.Contains(lowercaseName, "hog") ||
-		strings.Contains(lowercaseName, "valkyrie") ||
-		strings.Contains(lowercaseName, "mini pekka") ||
-		strings.Contains(lowercaseName, "fireball") {
-		return 4
-	}
-
-	// Low-medium cost cards (3 elixir)
-	if strings.Contains(lowercaseName, "knight") ||
-		strings.Contains(lowercaseName, "miner") ||
-		strings.Contains(lowercaseName, "goblin gang") ||
-		strings.Contains(lowercaseName, "tesla") {
-		return 3
-	}
-
-	// Low cost cards (2 elixir)
-	if strings.Contains(lowercaseName, "skeletons") ||
-		strings.Contains(lowercaseName, "ice spirit") ||
-		strings.Contains(lowercaseName, "bats") ||
-		strings.Contains(lowercaseName, "log") {
-		return 2
-	}
-
-	// Very low cost cards (1 elixir)
-	if strings.Contains(lowercaseName, "skeleton") && !strings.Contains(lowercaseName, "s") {
-		return 1
-	}
-
-	// Default to 3 elixir if unknown
-	return 3
 }
 
 // inferRole infers card role from card name
