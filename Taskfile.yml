@@ -11,12 +11,17 @@ vars:
 
 dotenv: ['.env']
 
+binary_precondition: &binary_precondition
+  - sh: test -x {{.CR_API_BIN}}
+    msg: "cr-api binary not found. Build it with: task build"
+
 tasks:
+  # Basic Tasks
   default:
     desc: Show available tasks
     cmds:
       - task --list
-
+# Project Setup
   setup:
     desc: Set up the development environment
     cmds:
@@ -33,6 +38,8 @@ tasks:
 
   install:
     desc: Build Go binaries
+    summary: |
+      Alias for 'task build'. Builds Go binaries for local development.
     cmds:
       - task: build
 
@@ -51,7 +58,7 @@ tasks:
           -ldflags="-s -w -X main.version=$VERSION -X main.commit=$COMMIT -X main.buildTime=$BUILD_TIME" \
           -o bin/cr-api ./cmd/cr-api
       - echo "✅ Go binary built successfully!"
-
+# Basic Player Operations
   run:
     desc: Analyze a player's collection using the Go CLI
     summary: |
@@ -74,9 +81,7 @@ tasks:
         CLEAN_TAG="${PLAYER_TAG#\#}"
         echo "Analyzing $CLEAN_TAG with Go CLI..."
         {{.CR_API_BIN}} analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   run-with-save:
     desc: Run Go CLI analysis and save results to JSON files
@@ -100,10 +105,8 @@ tasks:
         CLEAN_TAG="${PLAYER_TAG#\#}"
         echo "Analyzing and saving results for $CLEAN_TAG..."
         {{.CR_API_BIN}} analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --save
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
-
+    preconditions: *binary_precondition
+# Export Operations
   export-csv:
     desc: Export player and reference data to CSV using the Go CLI
     summary: |
@@ -129,9 +132,7 @@ tasks:
 
         echo "Exporting card database to CSV..."
         {{.CR_API_BIN}} cards --data-dir "{{.DATA_DIR}}" --export-csv
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   export-all:
     desc: Export all available data types for a player using the Go CLI
@@ -157,9 +158,7 @@ tasks:
         {{.CR_API_BIN}} player --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --chests --export-csv --save
         {{.CR_API_BIN}} cards --data-dir "{{.DATA_DIR}}" --export-csv
         {{.CR_API_BIN}} analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --save
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   export-player:
     desc: Export player profile data to CSV
@@ -186,9 +185,7 @@ tasks:
 
         echo "Exporting player data for $CLEAN_TAG..."
         {{.CR_API_BIN}} export player --tag "$CLEAN_TAG"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   export-analysis:
     desc: Export card collection analysis to CSV
@@ -215,9 +212,7 @@ tasks:
 
         echo "Exporting analysis data for $CLEAN_TAG..."
         {{.CR_API_BIN}} export analysis --tag "$CLEAN_TAG"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   export-battles:
     desc: Export battle log to CSV
@@ -244,9 +239,7 @@ tasks:
 
         echo "Exporting battle log for $CLEAN_TAG..."
         {{.CR_API_BIN}} export battles --tag "$CLEAN_TAG"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   export-events-csv:
     desc: Export event deck data to CSV using export subcommand
@@ -273,9 +266,7 @@ tasks:
 
         echo "Exporting event data for $CLEAN_TAG..."
         {{.CR_API_BIN}} export events --tag "$CLEAN_TAG"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   export-player-all:
     desc: Export all available player data using export subcommand
@@ -302,10 +293,8 @@ tasks:
 
         echo "Exporting all data for $CLEAN_TAG..."
         {{.CR_API_BIN}} export all --tag "$CLEAN_TAG"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
-
+    preconditions: *binary_precondition
+# Deck Building Operations
   build-deck:
     desc: Build an optimized 1v1 ladder deck from the latest analysis
     summary: |
@@ -338,9 +327,7 @@ tasks:
 
         echo "Building optimized 1v1 deck from latest analysis..."
         {{.CR_API_BIN}} deck build --from-analysis "$ANALYSIS_FILE"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   war-decks:
     desc: Build a 4-deck war lineup with no repeated cards
@@ -366,9 +353,7 @@ tasks:
         CLEAN_TAG="${PLAYER_TAG#\#}"
         echo "Building war deck lineup for $CLEAN_TAG..."
         {{.CR_API_BIN}} deck war --tag "$CLEAN_TAG"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   deck-optimize:
     desc: Optimize existing deck with available cards
@@ -396,9 +381,7 @@ tasks:
 
         echo "Optimizing deck for $CLEAN_TAG..."
         {{.CR_API_BIN}} deck optimize --tag "$CLEAN_TAG" --max-changes 4 --verbose
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   deck-budget:
     desc: Find budget-optimized decks with minimal upgrade investment
@@ -426,9 +409,7 @@ tasks:
 
         echo "Finding budget decks for $CLEAN_TAG..."
         {{.CR_API_BIN}} deck budget --tag "$CLEAN_TAG" --top-n 10 --sort-by roi
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   # Event Deck Tasks
   scan-events:
@@ -463,9 +444,7 @@ tasks:
     vars:
       DAYS_BACK:
         sh: "echo '{{.ARGS}}' | grep -oE '[0-9]+$' || echo '7'"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   export-events:
     desc: Export event decks to CSV using Go CLI
@@ -492,9 +471,7 @@ tasks:
 
         echo "Exporting event decks for $CLEAN_TAG to CSV..."
         {{.CR_API_BIN}} events list --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --export-csv
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   export-decks:
     desc: Export event decks in deck builder format using Go CLI
@@ -524,9 +501,7 @@ tasks:
         # so we'll export the event list which can be used for deck building
         {{.CR_API_BIN}} events list --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --export-csv
         echo "Deck builder format exported to CSV - can be imported into deck building sites"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   analyze-events:
     desc: Analyze event deck performance using Go CLI
@@ -553,9 +528,7 @@ tasks:
 
         echo "Analyzing event performance for $CLEAN_TAG..."
         {{.CR_API_BIN}} events analyze --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --min-battles 5 --export-csv
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   sync-events:
     desc: Sync recent event activity using Go CLI
@@ -583,9 +556,7 @@ tasks:
         echo "Syncing recent events for $CLEAN_TAG (last 7 days)..."
         {{.CR_API_BIN}} events scan --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --days 7 --save
         echo "Sync complete! Use 'task analyze-events -- $CLEAN_TAG' to analyze the data."
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   # Archetype Analysis Tasks
   analyze-archetypes:
@@ -614,9 +585,7 @@ tasks:
 
         echo "Analyzing archetype variety for $CLEAN_TAG..."
         {{.CR_API_BIN}} archetypes --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   export-archetypes:
     desc: Analyze and export archetype data to CSV using Go CLI
@@ -643,9 +612,7 @@ tasks:
 
         echo "Analyzing and exporting archetype data for $CLEAN_TAG to CSV..."
         {{.CR_API_BIN}} archetypes --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --export-csv --save
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   # Evolution Tasks
   evolution-recommend:
@@ -674,9 +641,7 @@ tasks:
 
         echo "Recommending evolutions for $CLEAN_TAG..."
         {{.CR_API_BIN}} evolutions recommend --tag "$CLEAN_TAG"
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   # Upgrade Analysis Tasks
   upgrade-impact:
@@ -705,9 +670,7 @@ tasks:
 
         echo "Analyzing upgrade impact for $CLEAN_TAG..."
         {{.CR_API_BIN}} upgrade-impact --tag "$CLEAN_TAG" --top 10
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   what-if:
     desc: Simulate deck changes with upgraded cards
@@ -767,9 +730,7 @@ tasks:
 
         echo "Simulating upgrades for $CLEAN_TAG: ${UPGRADE_ARGS[*]}"
         {{.CR_API_BIN}} what-if --tag "$CLEAN_TAG" $UPGRADE_FLAGS --show-decks
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
+    preconditions: *binary_precondition
 
   playstyle:
     desc: Analyze player's playstyle and recommend decks
@@ -797,10 +758,8 @@ tasks:
 
         echo "Analyzing playstyle for $CLEAN_TAG..."
         {{.CR_API_BIN}} playstyle --tag "$CLEAN_TAG" --recommend-decks --save
-    preconditions:
-      - sh: test -x {{.CR_API_BIN}}
-        msg: "cr-api binary not found. Build it with: task build"
-
+    preconditions: *binary_precondition
+# Development Commands
   test:
     desc: Run Go tests
     summary: |
@@ -854,6 +813,8 @@ tasks:
 
   clean:
     desc: Clean up generated files
+    summary: |
+      Remove all generated files and directories, including the data/ directory.
     cmds:
       - echo "Cleaning up..."
       - rm -rf {{.DATA_DIR}}/
@@ -884,6 +845,8 @@ tasks:
 
   status:
     desc: Show project status
+    summary: |
+      Display project configuration status, including environment variables and data directory.
     cmds:
       - 'echo "=== Project Status ==="'
       - 'echo "Project name: {{.PROJECT_NAME}}"'
@@ -1077,6 +1040,8 @@ tasks:
 
   help:
     desc: Show API usage examples (Go CLI)
+    summary: |
+      Display detailed usage examples for the Go CLI, including prerequisites and common commands.
     cmds:
       - echo "Clash Royale API - Go CLI Usage Examples:"
       - echo "=========================================="
