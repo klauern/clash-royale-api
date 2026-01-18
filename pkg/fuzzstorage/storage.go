@@ -208,6 +208,31 @@ func (s *Storage) InsertDeck(entry *DeckEntry) (int, bool, error) {
 	return existingID, false, nil
 }
 
+// UpdateDeck updates an existing deck entry by ID with new evaluation data.
+func (s *Storage) UpdateDeck(entry *DeckEntry) error {
+	if entry.ID <= 0 {
+		return fmt.Errorf("invalid deck ID: %d", entry.ID)
+	}
+
+	_, err := s.db.Exec(`
+		UPDATE top_decks SET
+			overall_score = ?, attack_score = ?, defense_score = ?,
+			synergy_score = ?, versatility_score = ?, avg_elixir = ?,
+			archetype = ?, archetype_conf = ?, evaluated_at = ?, run_id = ?
+		WHERE id = ?
+	`,
+		entry.OverallScore, entry.AttackScore, entry.DefenseScore,
+		entry.SynergyScore, entry.VersatilityScore, entry.AvgElixir,
+		entry.Archetype, entry.ArchetypeConf, entry.EvaluatedAt,
+		entry.RunID, entry.ID,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to update deck: %w", err)
+	}
+
+	return nil
+}
+
 // GetTopN retrieves the top N decks by overall score
 func (s *Storage) GetTopN(n int) ([]DeckEntry, error) {
 	query := `
