@@ -110,46 +110,66 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 		return nil, fmt.Errorf("analysis data missing 'card_levels'")
 	}
 
-	// Clear cache at the start of each deck build to prevent unbounded growth
 	b.clearSynergyCache()
-
-	// Convert analysis data to candidates
 	candidates := b.buildCandidates(analysis.CardLevels)
-
-	// Filter out excluded cards
-	if len(b.excludeCards) > 0 {
-		excludeMap := make(map[string]bool)
-		for _, card := range b.excludeCards {
-			excludeMap[card] = true
-		}
-		filtered := make([]*CardCandidate, 0, len(candidates))
-		for _, candidate := range candidates {
-			if !excludeMap[candidate.Name] {
-				filtered = append(filtered, candidate)
-			}
-		}
-		candidates = filtered
-	}
+	candidates = b.filterExcludedCards(candidates)
 
 	deck := make([]*CardCandidate, 0)
 	used := make(map[string]bool)
-	notes := make([]string, 0)
 
-	// Force-include specified cards first
-	if len(b.includeCards) > 0 {
-		for _, cardName := range b.includeCards {
-			// Find the card in candidates
-			for _, candidate := range candidates {
-				if candidate.Name == cardName {
-					deck = append(deck, candidate)
-					used[candidate.Name] = true
-					break
-				}
+	deck, used = b.addIncludedCards(deck, candidates, used)
+	deck, used, notes := b.selectCardsByRole(deck, candidates, used)
+	deck = b.fillRemainingSlots(deck, candidates, used)
+
+	evolutionSlots := b.selectEvolutionSlots(deck)
+	recommendation := b.buildRecommendationDetails(deck, analysis.AnalysisTime, evolutionSlots, notes)
+	b.finalizeRecommendation(recommendation)
+
+	return recommendation, nil
+}
+
+// filterExcludedCards removes excluded cards from the candidate pool
+func (b *Builder) filterExcludedCards(candidates []*CardCandidate) []*CardCandidate {
+	if len(b.excludeCards) == 0 {
+		return candidates
+	}
+
+	excludeMap := make(map[string]bool)
+	for _, card := range b.excludeCards {
+		excludeMap[card] = true
+	}
+	filtered := make([]*CardCandidate, 0, len(candidates))
+	for _, candidate := range candidates {
+		if !excludeMap[candidate.Name] {
+			filtered = append(filtered, candidate)
+		}
+	}
+	return filtered
+}
+
+// addIncludedCards adds force-included cards to deck and marks them as used
+func (b *Builder) addIncludedCards(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool) {
+	if len(b.includeCards) == 0 {
+		return deck, used
+	}
+
+	for _, cardName := range b.includeCards {
+		// Find the card in candidates
+		for _, candidate := range candidates {
+			if candidate.Name == cardName {
+				deck = append(deck, candidate)
+				used[candidate.Name] = true
+				break
 			}
 		}
 	}
+	return deck, used
+}
 
-	// Apply composition overrides if present (e.g., spell strategy)
+// selectCardsByRole selects cards for each role with composition override support
+// Returns notes for missing win conditions
+func (b *Builder) selectCardsByRole(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool, []string) {
+	notes := make([]string, 0)
 	override := b.strategyConfig.CompositionOverrides
 
 	// Core roles: win condition, building, two spells
@@ -222,24 +242,26 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 		used[card.Name] = true
 	}
 
-	// Fill remaining slots with highest score cards
+	return deck, used, notes
+}
+
+// fillRemainingSlots fills remaining deck slots (up to 8) with highest-scoring unused cards
+func (b *Builder) fillRemainingSlots(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) []*CardCandidate {
 	if len(deck) < 8 {
 		remaining := b.getHighestScoreCards(candidates, used, 8-len(deck))
 		deck = append(deck, remaining...)
 	}
-
 	// Ensure exactly 8 cards
-	deck = deck[:8]
+	return deck[:8]
+}
 
-	// Select evolution slots based on role priority
-	evolutionSlots := b.selectEvolutionSlots(deck)
-
-	// Create recommendation
+// buildRecommendationDetails builds the DeckRecommendation struct and populates card details
+func (b *Builder) buildRecommendationDetails(deck []*CardCandidate, analysisTime string, evolutionSlots []string, notes []string) *DeckRecommendation {
 	recommendation := &DeckRecommendation{
 		Deck:           make([]string, 8),
 		DeckDetail:     make([]CardDetail, 8),
 		AvgElixir:      b.calculateAvgElixir(deck),
-		AnalysisTime:   analysis.AnalysisTime,
+		AnalysisTime:   analysisTime,
 		Notes:          notes,
 		EvolutionSlots: evolutionSlots,
 	}
@@ -263,6 +285,11 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 		}
 	}
 
+	return recommendation
+}
+
+// finalizeRecommendation adds strategic notes and evolution slot note to recommendation
+func (b *Builder) finalizeRecommendation(recommendation *DeckRecommendation) {
 	// Add strategic notes
 	b.addStrategicNotes(recommendation)
 
@@ -271,8 +298,6 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 		slotNote := fmt.Sprintf("Evolution slots: %s", strings.Join(recommendation.EvolutionSlots, ", "))
 		recommendation.AddNote(slotNote)
 	}
-
-	return recommendation, nil
 }
 
 // BuildDeckFromFile loads analysis from a file and builds a deck
