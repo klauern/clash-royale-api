@@ -214,13 +214,22 @@ func ScoreSynergy(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabas
 	// Calculate synergy using existing analysis
 	analysis := synergyDB.AnalyzeDeckSynergy(cardNames)
 
-	// Convert 0-100 score to 0-10 scale
-	score := analysis.TotalScore / 10.0
+	pairCount := 0
+	for _, count := range analysis.CategoryScores {
+		pairCount += count
+	}
+	maxPairs := (len(deckCards) * (len(deckCards) - 1)) / 2
+	coverage := 0.0
+	if maxPairs > 0 {
+		coverage = float64(pairCount) / float64(maxPairs)
+	}
 
-	// Apply baseline for zero-synergy decks
-	// A baseline score indicates "no special synergies but functional deck"
-	// rather than being overly punitive with 0.0
-	if score == 0.0 {
+	// Blend average synergy strength with coverage for a 0-10 scale score.
+	// Average synergy drives most of the score, coverage adds context.
+	score := ((analysis.AverageScore * 0.75) + (coverage * 0.25)) * 10.0
+
+	// Baseline for decks with no detected synergies.
+	if pairCount == 0 {
 		score = 2.5
 	}
 
@@ -230,7 +239,7 @@ func ScoreSynergy(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabas
 	}
 
 	// Generate assessment based on synergy pairs found
-	assessment := generateSynergyAssessment(analysis.TopSynergies, len(analysis.TopSynergies), score)
+	assessment := generateSynergyAssessment(analysis.TopSynergies, pairCount, score)
 
 	return CreateCategoryScore(score, assessment)
 }

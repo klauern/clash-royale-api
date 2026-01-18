@@ -764,9 +764,38 @@ func addDeckCommands() *cli.Command {
 						Name:  "save-top",
 						Usage: "Save top decks to persistent storage for reuse in subsequent fuzz runs",
 					},
+					&cli.IntFlag{
+						Name:  "analyze-top",
+						Usage: "analyze top N saved decks and suggest card constraints based on frequency",
+						Value: 0,
+					},
+					&cli.Float64Flag{
+						Name:  "analyze-threshold",
+						Usage: "minimum percentage threshold for card suggestions (0-100)",
+						Value: 30.0,
+					},
 					&cli.BoolFlag{
 						Name:  "synergy-pairs",
 						Usage: "Generate decks from 4 synergy pairs instead of role-based composition",
+					},
+					&cli.BoolFlag{
+						Name:  "evolution-centric",
+						Usage: "Generate decks focused on evolution-eligible cards (default: 3+ evo cards)",
+					},
+					&cli.IntFlag{
+						Name:  "min-evo-cards",
+						Usage: "Minimum number of evolution-eligible cards in deck (default: 3)",
+						Value: 3,
+					},
+					&cli.IntFlag{
+						Name:  "min-evo-level",
+						Usage: "Minimum evolution level for cards to prioritize (default: 1)",
+						Value: 1,
+					},
+					&cli.Float64Flag{
+						Name:  "evo-weight",
+						Usage: "Weight for evolution scoring in card selection (default: 0.3)",
+						Value: 0.3,
 					},
 				},
 				Action: deckFuzzCommand,
@@ -1700,7 +1729,19 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 			continue
 		}
 
-		deckCards := convertToCardCandidates(deckData.Cards)
+		var deckCards []deck.CardCandidate
+		if deckData.FilePath != "" {
+			candidates, ok, err := loadDeckCandidatesFromFile(deckData.FilePath)
+			if err != nil && verbose {
+				fmt.Printf("Warning: Failed to load deck details from %s: %v\n", deckData.FilePath, err)
+			}
+			if ok {
+				deckCards = candidates
+			}
+		}
+		if len(deckCards) == 0 {
+			deckCards = convertToCardCandidates(deckData.Cards)
+		}
 		result := evaluation.Evaluate(deckCards, synergyDB, playerContext)
 
 		elapsed := time.Since(deckStart)
@@ -2194,17 +2235,27 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	for _, deckInf := range builtDecks {
 		deckStart := time.Now()
 
-		// Convert card names to CardCandidate
 		var deckCards []deck.CardCandidate
-		for _, cardName := range deckInf.Cards {
-			deckCards = append(deckCards, deck.CardCandidate{
-				Name: cardName,
-				// Use defaults for evaluation
-				Rarity: inferRarity(cardName),
-				Elixir: config.GetCardElixir(cardName, 0),
-				Role:   inferRole(cardName),
-				Stats:  inferStats(cardName),
-			})
+		if deckInf.FilePath != "" {
+			candidates, ok, err := loadDeckCandidatesFromFile(deckInf.FilePath)
+			if err != nil && verbose {
+				fmt.Printf("Warning: Failed to load deck details from %s: %v\n", deckInf.FilePath, err)
+			}
+			if ok {
+				deckCards = candidates
+			}
+		}
+		if len(deckCards) == 0 {
+			for _, cardName := range deckInf.Cards {
+				deckCards = append(deckCards, deck.CardCandidate{
+					Name: cardName,
+					// Use defaults for evaluation
+					Rarity: inferRarity(cardName),
+					Elixir: config.GetCardElixir(cardName, 0),
+					Role:   inferRole(cardName),
+					Stats:  inferStats(cardName),
+				})
+			}
 		}
 
 		// Evaluate
@@ -4104,6 +4155,59 @@ func loadDeckFromAnalysis(filePath string) ([]string, error) {
 	}
 
 	return cards, nil
+}
+
+type deckFilePayload struct {
+	Deck       []string          `json:"deck"`
+	DeckDetail []deck.CardDetail `json:"deck_detail"`
+}
+
+func buildCandidatesFromDetails(details []deck.CardDetail) []deck.CardCandidate {
+	deckCards := make([]deck.CardCandidate, 0, len(details))
+	for _, detail := range details {
+		role := inferRole(detail.Name)
+		if detail.Role != "" {
+			parsedRole := deck.CardRole(detail.Role)
+			role = &parsedRole
+		}
+
+		rarity := detail.Rarity
+		if rarity == "" {
+			rarity = inferRarity(detail.Name)
+		}
+
+		deckCards = append(deckCards, deck.CardCandidate{
+			Name:              detail.Name,
+			Level:             detail.Level,
+			MaxLevel:          detail.MaxLevel,
+			Rarity:            rarity,
+			Elixir:            config.GetCardElixir(detail.Name, detail.Elixir),
+			Role:              role,
+			EvolutionLevel:    detail.EvolutionLevel,
+			MaxEvolutionLevel: detail.MaxEvolutionLevel,
+			Stats:             inferStats(detail.Name),
+		})
+	}
+
+	return deckCards
+}
+
+func loadDeckCandidatesFromFile(filePath string) ([]deck.CardCandidate, bool, error) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, false, err
+	}
+
+	var payload deckFilePayload
+	if err := json.Unmarshal(data, &payload); err != nil {
+		return nil, false, err
+	}
+
+	if len(payload.DeckDetail) != 8 {
+		return nil, false, nil
+	}
+
+	return buildCandidatesFromDetails(payload.DeckDetail), true, nil
 }
 
 // formatStars formats a star rating as visual stars

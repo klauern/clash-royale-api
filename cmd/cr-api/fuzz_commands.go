@@ -55,6 +55,10 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	storagePath := cmd.String("storage")
 	saveTop := cmd.Bool("save-top")
 	synergyPairs := cmd.Bool("synergy-pairs")
+	evolutionCentric := cmd.Bool("evolution-centric")
+	minEvoCards := cmd.Int("min-evo-cards")
+	minEvoLevel := cmd.Int("min-evo-level")
+	evoWeight := cmd.Float64("evo-weight")
 
 	// Validate flags
 	if playerTag == "" && !fromAnalysis {
@@ -141,15 +145,19 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Initialize fuzzer configuration
 	fuzzerCfg := &deck.FuzzingConfig{
-		Count:           count,
-		Workers:         workers,
-		IncludeCards:    includeCards,
-		ExcludeCards:    excludeCards,
-		MinAvgElixir:    minElixir,
-		MaxAvgElixir:    maxElixir,
-		MinOverallScore: minOverall,
-		MinSynergyScore: minSynergy,
-		SynergyFirst:    synergyPairs,
+		Count:             count,
+		Workers:           workers,
+		IncludeCards:      includeCards,
+		ExcludeCards:      excludeCards,
+		MinAvgElixir:      minElixir,
+		MaxAvgElixir:      maxElixir,
+		MinOverallScore:   minOverall,
+		MinSynergyScore:   minSynergy,
+		SynergyFirst:      synergyPairs,
+		EvolutionCentric:  evolutionCentric,
+		MinEvolutionCards: minEvoCards,
+		MinEvoLevel:       minEvoLevel,
+		EvoWeight:         evoWeight,
 	}
 
 	// Handle --include-from-saved: extract cards from saved top decks
@@ -183,6 +191,9 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		fmt.Fprintf(os.Stderr, "  Workers: %d\n", workers)
 		if synergyPairs {
 			fmt.Fprintf(os.Stderr, "  Mode: synergy-first (4 pairs)\n")
+		}
+		if evolutionCentric {
+			fmt.Fprintf(os.Stderr, "  Mode: evolution-centric (min %d evo cards, level %d+)\n", minEvoCards, minEvoLevel)
 		}
 		if len(includeCards) > 0 {
 			fmt.Fprintf(os.Stderr, "  Include cards: %s\n", strings.Join(includeCards, ", "))

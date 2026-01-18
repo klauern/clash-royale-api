@@ -35,6 +35,14 @@ type FuzzingConfig struct {
 	MinSynergyScore float64
 	// SynergyFirst enables synergy-first generation (build decks from 4 synergy pairs)
 	SynergyFirst bool
+	// EvolutionCentric enables evolution-centric generation (build decks around evolution cards)
+	EvolutionCentric bool
+	// MinEvolutionCards is the minimum number of evolution-eligible cards in deck (default: 3)
+	MinEvolutionCards int
+	// MinEvoLevel is the minimum evolution level for cards to prioritize (default: 1)
+	MinEvoLevel int
+	// EvoWeight is the weight for evolution scoring in card selection (default: 0.3)
+	EvoWeight float64
 }
 
 // FuzzingStats tracks metrics during deck generation
@@ -136,6 +144,15 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 	if cfg.MinSynergyScore > 10 {
 		cfg.MinSynergyScore = 10
 	}
+	if cfg.MinEvolutionCards <= 0 {
+		cfg.MinEvolutionCards = 3
+	}
+	if cfg.MinEvoLevel < 0 {
+		cfg.MinEvoLevel = 1
+	}
+	if cfg.EvoWeight <= 0 {
+		cfg.EvoWeight = 0.3
+	}
 
 	// Initialize random number generator
 	var rng *rand.Rand
@@ -216,12 +233,18 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 
 // GenerateRandomDeck generates a single random valid deck using smart sampling
 func (df *DeckFuzzer) GenerateRandomDeck() ([]string, error) {
+	return df.GenerateRandomDeckWithRng(df.rng)
+}
+
+// GenerateRandomDeckWithRng generates a single random valid deck using the provided RNG.
+// This method is safe for concurrent use when each goroutine provides its own RNG.
+func (df *DeckFuzzer) GenerateRandomDeckWithRng(rng *rand.Rand) ([]string, error) {
 	const maxRetries = 100
 
 	// Use synergy-first generation if enabled
 	if df.config.SynergyFirst {
 		for attempt := 0; attempt < maxRetries; attempt++ {
-			deck, err := df.generateSynergyDeckAttempt()
+			deck, err := df.generateSynergyDeckAttemptWithRng(rng)
 			if err != nil {
 				df.recordFailure()
 				continue
@@ -235,9 +258,26 @@ func (df *DeckFuzzer) GenerateRandomDeck() ([]string, error) {
 		return nil, fmt.Errorf("failed to generate valid synergy deck after %d attempts", maxRetries)
 	}
 
+	// Use evolution-centric generation if enabled
+	if df.config.EvolutionCentric {
+		for attempt := 0; attempt < maxRetries; attempt++ {
+			deck, err := df.generateEvolutionCentricDeckAttemptWithRng(rng)
+			if err != nil {
+				df.recordFailure()
+				continue
+			}
+
+			df.recordSuccess()
+			return deck, nil
+		}
+
+		df.recordFailure()
+		return nil, fmt.Errorf("failed to generate valid evolution deck after %d attempts", maxRetries)
+	}
+
 	// Standard role-based generation
 	for attempt := 0; attempt < maxRetries; attempt++ {
-		deck, err := df.generateRandomDeckAttempt()
+		deck, err := df.generateRandomDeckAttemptWithRng(rng)
 		if err != nil {
 			df.recordFailure()
 			continue
@@ -253,6 +293,11 @@ func (df *DeckFuzzer) GenerateRandomDeck() ([]string, error) {
 
 // generateRandomDeckAttempt attempts to generate a single random valid deck
 func (df *DeckFuzzer) generateRandomDeckAttempt() ([]string, error) {
+	return df.generateRandomDeckAttemptWithRng(df.rng)
+}
+
+// generateRandomDeckAttemptWithRng attempts to generate a single random valid deck using the provided RNG
+func (df *DeckFuzzer) generateRandomDeckAttemptWithRng(rng *rand.Rand) ([]string, error) {
 	deck := make([]string, 0, 8)
 	used := make(map[string]bool)
 
@@ -279,10 +324,10 @@ func (df *DeckFuzzer) generateRandomDeckAttempt() ([]string, error) {
 	}
 
 	for _, selection := range roleSelections {
-		cards := df.selectRandomCards(selection.role, selection.count, used)
+		cards := df.selectRandomCardsWithRng(rng, selection.role, selection.count, used)
 		if len(cards) < selection.count {
 			// Not enough cards of this role, fill with remaining available cards
-			remaining := df.fillRemainingSlots(8-len(deck), used)
+			remaining := df.fillRemainingSlotsWithRng(rng, 8-len(deck), used)
 			cards = append(cards, remaining...)
 		}
 		for _, card := range cards {
@@ -340,6 +385,11 @@ func (df *DeckFuzzer) generateRandomDeckAttempt() ([]string, error) {
 
 // selectRandomCards selects random cards from a role using weighted sampling
 func (df *DeckFuzzer) selectRandomCards(role config.CardRole, count int, used map[string]bool) []string {
+	return df.selectRandomCardsWithRng(df.rng, role, count, used)
+}
+
+// selectRandomCardsWithRng selects random cards from a role using weighted sampling with the provided RNG
+func (df *DeckFuzzer) selectRandomCardsWithRng(rng *rand.Rand, role config.CardRole, count int, used map[string]bool) []string {
 	cards := df.cardsByRole[role]
 	if len(cards) == 0 {
 		return nil
@@ -367,7 +417,7 @@ func (df *DeckFuzzer) selectRandomCards(role config.CardRole, count int, used ma
 		}
 
 		// Select random card weighted by score
-		r := df.rng.Float64() * totalScore
+		r := rng.Float64() * totalScore
 		cumScore := 0.0
 		selectedIdx := -1
 		for idx, card := range available {
@@ -380,7 +430,7 @@ func (df *DeckFuzzer) selectRandomCards(role config.CardRole, count int, used ma
 
 		// Fallback to random if weighted selection failed
 		if selectedIdx == -1 {
-			selectedIdx = df.rng.Intn(len(available))
+			selectedIdx = rng.Intn(len(available))
 		}
 
 		selected = append(selected, available[selectedIdx].Name)
@@ -395,6 +445,11 @@ func (df *DeckFuzzer) selectRandomCards(role config.CardRole, count int, used ma
 
 // fillRemainingSlots fills remaining slots with random available cards
 func (df *DeckFuzzer) fillRemainingSlots(count int, used map[string]bool) []string {
+	return df.fillRemainingSlotsWithRng(df.rng, count, used)
+}
+
+// fillRemainingSlotsWithRng fills remaining slots with random available cards using the provided RNG
+func (df *DeckFuzzer) fillRemainingSlotsWithRng(rng *rand.Rand, count int, used map[string]bool) []string {
 	selected := make([]string, 0, count)
 
 	// Get all available cards
@@ -406,7 +461,7 @@ func (df *DeckFuzzer) fillRemainingSlots(count int, used map[string]bool) []stri
 	}
 
 	// Shuffle and select
-	df.rng.Shuffle(len(available), func(i, j int) {
+	rng.Shuffle(len(available), func(i, j int) {
 		available[i], available[j] = available[j], available[i]
 	})
 
@@ -474,6 +529,11 @@ func (df *DeckFuzzer) isCardAvailable(cardName string) bool {
 
 // generateSynergyDeckAttempt attempts to generate a deck from 4 synergy pairs
 func (df *DeckFuzzer) generateSynergyDeckAttempt() ([]string, error) {
+	return df.generateSynergyDeckAttemptWithRng(df.rng)
+}
+
+// generateSynergyDeckAttemptWithRng attempts to generate a deck from 4 synergy pairs using the provided RNG
+func (df *DeckFuzzer) generateSynergyDeckAttemptWithRng(rng *rand.Rand) ([]string, error) {
 	// Build a map of available cards for quick lookup
 	availableCards := make(map[string]bool)
 	for _, card := range df.allCards {
@@ -510,10 +570,10 @@ func (df *DeckFuzzer) generateSynergyDeckAttempt() ([]string, error) {
 		used[cardName] = true
 	}
 
-	// Fisher-Yates shuffle using local RNG (safe for concurrent use)
+	// Fisher-Yates shuffle using the provided RNG (safe for concurrent use)
 	n := len(validPairs)
 	for i := n - 1; i > 0; i-- {
-		j := df.rng.Intn(i + 1)
+		j := rng.Intn(i + 1)
 		validPairs[i], validPairs[j] = validPairs[j], validPairs[i]
 	}
 
@@ -536,7 +596,7 @@ func (df *DeckFuzzer) generateSynergyDeckAttempt() ([]string, error) {
 
 	// Fill remaining slots if include cards took up synergy pair slots
 	for len(deck) < 8 {
-		remaining := df.fillRemainingSlots(8-len(deck), used)
+		remaining := df.fillRemainingSlotsWithRng(rng, 8-len(deck), used)
 		if len(remaining) == 0 {
 			break
 		}
@@ -577,6 +637,222 @@ func (df *DeckFuzzer) generateSynergyDeckAttempt() ([]string, error) {
 	}
 
 	return deck, nil
+}
+
+// generateEvolutionCentricDeckAttempt attempts to generate a deck focused on evolution-eligible cards
+func (df *DeckFuzzer) generateEvolutionCentricDeckAttempt() ([]string, error) {
+	return df.generateEvolutionCentricDeckAttemptWithRng(df.rng)
+}
+
+// generateEvolutionCentricDeckAttemptWithRng attempts to generate an evolution-centric deck using the provided RNG
+func (df *DeckFuzzer) generateEvolutionCentricDeckAttemptWithRng(rng *rand.Rand) ([]string, error) {
+	deck := make([]string, 0, 8)
+	used := make(map[string]bool)
+
+	// 1. Add include cards first
+	for cardName := range df.includeMap {
+		if !df.isCardAvailable(cardName) {
+			return nil, fmt.Errorf("included card not available: %s", cardName)
+		}
+		deck = append(deck, cardName)
+		used[cardName] = true
+	}
+
+	// 2. Score cards by evolution potential
+	scoredCards := df.scoreCardsByEvolution()
+
+	// 3. Select top evolution cards
+	minEvoCards := df.config.MinEvolutionCards
+	if minEvoCards > 8-len(deck) {
+		minEvoCards = 8 - len(deck)
+	}
+	evoCards := df.selectEvolutionCards(scoredCards, minEvoCards, used)
+	if len(evoCards) < minEvoCards {
+		return nil, fmt.Errorf("not enough evolution-eligible cards (found %d, need %d)", len(evoCards), minEvoCards)
+	}
+	for _, card := range evoCards {
+		deck = append(deck, card)
+		used[card] = true
+	}
+
+	// 4. Fill remaining slots with role-based selection considering evolution synergy
+	df.buildDeckAroundEvolution(rng, deck, used)
+
+	// 5. Validate deck size
+	if len(deck) != 8 {
+		return nil, fmt.Errorf("invalid deck size: %d", len(deck))
+	}
+
+	// 6. Validate evolution requirements
+	if !df.validateEvolutionDeck(deck) {
+		return nil, fmt.Errorf("deck does not meet evolution requirements")
+	}
+
+	// 7. Validate average elixir
+	avgElixir := df.calculateAvgElixir(deck)
+	if avgElixir < df.config.MinAvgElixir || avgElixir > df.config.MaxAvgElixir {
+		df.stats.SkippedElixir++
+		return nil, fmt.Errorf("elixir out of range: %.2f", avgElixir)
+	}
+
+	// 8. Validate all include cards are present
+	for cardName := range df.includeMap {
+		if !used[cardName] {
+			df.stats.SkippedInclude++
+			return nil, fmt.Errorf("missing include card: %s", cardName)
+		}
+	}
+
+	// 9. Validate no excluded cards are present
+	for _, cardName := range deck {
+		if df.excludeMap[cardName] {
+			df.stats.SkippedExclude++
+			return nil, fmt.Errorf("excluded card present: %s", cardName)
+		}
+	}
+
+	return deck, nil
+}
+
+// scoreCardsByEvolution calculates evolution score for each card
+func (df *DeckFuzzer) scoreCardsByEvolution() []CardCandidate {
+	// Create a copy of all cards to avoid modifying the original
+	scored := make([]CardCandidate, len(df.allCards))
+	copy(scored, df.allCards)
+
+	for i := range scored {
+		card := &scored[i]
+		evoScore := 0.0
+
+		// Base score from level
+		levelRatio := float64(card.Level) / float64(card.MaxLevel)
+		if card.MaxLevel == 0 {
+			levelRatio = 0
+		}
+		evoScore = levelRatio * 10
+
+		// Evolution level bonus
+		if card.EvolutionLevel >= df.config.MinEvoLevel {
+			// Higher evolution level = higher bonus
+			evoBonus := float64(card.EvolutionLevel) * 3.0 * df.config.EvoWeight
+			evoScore += evoBonus
+		}
+
+		// Max evolution level bonus (cards that can still evolve)
+		if card.EvolutionLevel < card.MaxEvolutionLevel {
+			evoScore += 2.0 * df.config.EvoWeight
+		}
+
+		card.Score = evoScore
+	}
+
+	// Sort by evolution score descending
+	for i := 0; i < len(scored); i++ {
+		for j := i + 1; j < len(scored); j++ {
+			if scored[j].Score > scored[i].Score {
+				scored[i], scored[j] = scored[j], scored[i]
+			}
+		}
+	}
+
+	return scored
+}
+
+// selectEvolutionCards selects the top N evolution-eligible cards
+func (df *DeckFuzzer) selectEvolutionCards(scoredCards []CardCandidate, count int, used map[string]bool) []string {
+	selected := make([]string, 0, count)
+
+	for _, card := range scoredCards {
+		if len(selected) >= count {
+			break
+		}
+		// Skip used cards
+		if used[card.Name] {
+			continue
+		}
+		// Only select cards that meet evolution criteria
+		if card.EvolutionLevel >= df.config.MinEvoLevel ||
+			(card.MaxEvolutionLevel > 0 && card.EvolutionLevel < card.MaxEvolutionLevel) {
+			selected = append(selected, card.Name)
+		}
+	}
+
+	return selected
+}
+
+// buildDeckAroundEvolution fills remaining slots considering role and synergy
+func (df *DeckFuzzer) buildDeckAroundEvolution(rng *rand.Rand, deck []string, used map[string]bool) {
+	// Fill remaining slots with role-based selection
+	roleSelections := []struct {
+		role  config.CardRole
+		count int
+	}{
+		{config.RoleWinCondition, df.composition.WinConditions},
+		{config.RoleBuilding, df.composition.Buildings},
+		{config.RoleSpellBig, df.composition.BigSpells},
+		{config.RoleSpellSmall, df.composition.SmallSpells},
+		{config.RoleSupport, df.composition.Support},
+		{config.RoleCycle, df.composition.Cycle},
+	}
+
+	// Track how many cards we need
+	remainingNeeded := 8 - len(deck)
+
+	for _, selection := range roleSelections {
+		if remainingNeeded <= 0 {
+			break
+		}
+
+		// Adjust count based on remaining slots
+		count := selection.count
+		if count > remainingNeeded {
+			count = remainingNeeded
+		}
+
+		cards := df.selectRandomCardsWithRng(rng, selection.role, count, used)
+		for _, card := range cards {
+			if !used[card] && len(deck) < 8 {
+				deck = append(deck, card)
+				used[card] = true
+				remainingNeeded--
+			}
+		}
+	}
+
+	// Fill any remaining slots with highest-score available cards
+	for len(deck) < 8 {
+		remaining := df.getHighestScoreAvailableCards(used, 8-len(deck))
+		if len(remaining) == 0 {
+			break
+		}
+		for _, card := range remaining {
+			if !used[card] && len(deck) < 8 {
+				deck = append(deck, card)
+				used[card] = true
+			}
+		}
+	}
+}
+
+// validateEvolutionDeck ensures deck meets evolution requirements
+func (df *DeckFuzzer) validateEvolutionDeck(deck []string) bool {
+	minEvoCards := df.config.MinEvolutionCards
+	evoCardCount := 0
+
+	for _, cardName := range deck {
+		for _, card := range df.allCards {
+			if card.Name == cardName {
+				// Count evolution-eligible cards
+				if card.EvolutionLevel >= df.config.MinEvoLevel ||
+					(card.MaxEvolutionLevel > 0 && card.EvolutionLevel < card.MaxEvolutionLevel) {
+					evoCardCount++
+				}
+				break
+			}
+		}
+	}
+
+	return evoCardCount >= minEvoCards
 }
 
 // recordSuccess records a successful deck generation
@@ -643,18 +919,22 @@ func (df *DeckFuzzer) GenerateDecksParallel() ([][]string, error) {
 	workChan := make(chan int, df.config.Count)
 	resultChan := make(chan []string, df.config.Count)
 
-	// Start workers
+	// Start workers with thread-local RNGs
 	for w := 0; w < df.config.Workers; w++ {
 		wg.Add(1)
-		go func() {
+		go func(workerID int) {
 			defer wg.Done()
+			// Create local RNG with unique seed for this worker to avoid concurrent access
+			localSeed := df.config.Seed + int64(workerID)*int64(df.config.Workers)
+			localRng := rand.New(rand.NewSource(localSeed))
+
 			for range workChan {
-				deck, err := df.GenerateRandomDeck()
+				deck, err := df.GenerateRandomDeckWithRng(localRng)
 				if err == nil {
 					resultChan <- deck
 				}
 			}
-		}()
+		}(w)
 	}
 
 	// Send work

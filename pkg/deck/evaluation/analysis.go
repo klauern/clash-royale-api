@@ -1132,15 +1132,22 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 	var synergyMatrix SynergyMatrix
 	if synergyDB != nil {
 		synergyAnalysis := synergyDB.AnalyzeDeckSynergy(deckNames)
-		if synergyAnalysis != nil && len(synergyAnalysis.TopSynergies) > 0 {
-			maxPairs := 28 // C(8,2)
-			coverage := float64(len(synergyAnalysis.TopSynergies)) / float64(maxPairs) * 100.0
+		if synergyAnalysis != nil {
+			maxPairs := (len(deckNames) * (len(deckNames) - 1)) / 2
+			pairCount := 0
+			for _, count := range synergyAnalysis.CategoryScores {
+				pairCount += count
+			}
+			coverage := 0.0
+			if maxPairs > 0 {
+				coverage = float64(pairCount) / float64(maxPairs) * 100.0
+			}
 
 			synergyMatrix = SynergyMatrix{
 				Pairs:            synergyAnalysis.TopSynergies,
 				TotalScore:       synergyScore.Score,
 				AverageSynergy:   synergyAnalysis.AverageScore,
-				PairCount:        len(synergyAnalysis.TopSynergies),
+				PairCount:        pairCount,
 				MaxPossiblePairs: maxPairs,
 				SynergyCoverage:  coverage,
 			}

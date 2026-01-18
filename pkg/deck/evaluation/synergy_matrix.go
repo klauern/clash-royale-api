@@ -26,9 +26,13 @@ func GenerateSynergyMatrix(deckCards []string, synergyDB *deck.SynergyDatabase) 
 	maxPairs := (len(deckCards) * (len(deckCards) - 1)) / 2
 
 	// Calculate coverage: percentage of possible pairs that have synergies
+	pairCount := 0
+	for _, count := range analysis.CategoryScores {
+		pairCount += count
+	}
 	coverage := 0.0
 	if maxPairs > 0 {
-		coverage = (float64(len(analysis.TopSynergies)) / float64(maxPairs)) * 100.0
+		coverage = (float64(pairCount) / float64(maxPairs)) * 100.0
 	}
 
 	// Create the matrix structure
@@ -36,7 +40,7 @@ func GenerateSynergyMatrix(deckCards []string, synergyDB *deck.SynergyDatabase) 
 		Pairs:            analysis.TopSynergies,
 		TotalScore:       0.0, // Will be set by caller from ScoreSynergy
 		AverageSynergy:   analysis.AverageScore,
-		PairCount:        len(analysis.TopSynergies),
+		PairCount:        pairCount,
 		MaxPossiblePairs: maxPairs,
 		SynergyCoverage:  coverage,
 	}
