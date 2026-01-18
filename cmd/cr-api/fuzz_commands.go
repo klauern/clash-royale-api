@@ -62,7 +62,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	// Auto-detect CPU count if workers is at default value
 	if workers == 1 {
 		workers = runtime.NumCPU()
-		fmt.Fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", runtime.NumCPU(), workers)
+		fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", runtime.NumCPU(), workers)
 	}
 	includeCards := cmd.StringSlice("include-cards")
 	excludeCards := cmd.StringSlice("exclude-cards")
@@ -98,11 +98,11 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	go func() {
 		<-interrupts
 		if interrupted.CompareAndSwap(false, true) {
-			fmt.Fprintln(os.Stderr, "\nInterrupt received; stopping current stage and saving partial results (press Ctrl+C again to exit immediately)")
+			fprintln(os.Stderr, "\nInterrupt received; stopping current stage and saving partial results (press Ctrl+C again to exit immediately)")
 			canceler.Cancel()
 		}
 		<-interrupts
-		fmt.Fprintln(os.Stderr, "\nSecond interrupt received; exiting immediately.")
+		fprintln(os.Stderr, "\nSecond interrupt received; exiting immediately.")
 		os.Exit(130)
 	}()
 
@@ -185,8 +185,8 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Fprintf(os.Stderr, "Loaded player: %s (%s)\n", playerName, player.Tag)
-		fmt.Fprintf(os.Stderr, "Cards available: %d\n", len(player.Cards))
+		fprintf(os.Stderr, "Loaded player: %s (%s)\n", playerName, player.Tag)
+		fprintf(os.Stderr, "Cards available: %d\n", len(player.Cards))
 	}
 
 	// Initialize fuzzer configuration
@@ -215,7 +215,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		// Merge with existing include cards (avoiding duplicates)
 		fuzzerCfg.IncludeCards = mergeUniqueCards(fuzzerCfg.IncludeCards, savedCards)
 		if verbose && len(savedCards) > 0 {
-			fmt.Fprintf(os.Stderr, "Included %d cards from saved top decks\n", len(savedCards))
+			fprintf(os.Stderr, "Included %d cards from saved top decks\n", len(savedCards))
 		}
 	}
 
@@ -231,29 +231,29 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Fprintf(os.Stderr, "\nStarting deck fuzzing...\n")
-		fmt.Fprintf(os.Stderr, "Configuration:\n")
-		fmt.Fprintf(os.Stderr, "  Count: %d\n", count)
-		fmt.Fprintf(os.Stderr, "  Workers: %d\n", workers)
+		fprintf(os.Stderr, "\nStarting deck fuzzing...\n")
+		fprintf(os.Stderr, "Configuration:\n")
+		fprintf(os.Stderr, "  Count: %d\n", count)
+		fprintf(os.Stderr, "  Workers: %d\n", workers)
 		if synergyPairs {
-			fmt.Fprintf(os.Stderr, "  Mode: synergy-first (4 pairs)\n")
+			fprintf(os.Stderr, "  Mode: synergy-first (4 pairs)\n")
 		}
 		if evolutionCentric {
-			fmt.Fprintf(os.Stderr, "  Mode: evolution-centric (min %d evo cards, level %d+)\n", minEvoCards, minEvoLevel)
+			fprintf(os.Stderr, "  Mode: evolution-centric (min %d evo cards, level %d+)\n", minEvoCards, minEvoLevel)
 		}
 		if len(includeCards) > 0 {
-			fmt.Fprintf(os.Stderr, "  Include cards: %s\n", strings.Join(includeCards, ", "))
+			fprintf(os.Stderr, "  Include cards: %s\n", strings.Join(includeCards, ", "))
 		}
 		if len(excludeCards) > 0 {
-			fmt.Fprintf(os.Stderr, "  Exclude cards: %s\n", strings.Join(excludeCards, ", "))
+			fprintf(os.Stderr, "  Exclude cards: %s\n", strings.Join(excludeCards, ", "))
 		}
 		if basedOn != "" {
-			fmt.Fprintf(os.Stderr, "  Based on deck: %s\n", basedOn)
+			fprintf(os.Stderr, "  Based on deck: %s\n", basedOn)
 		}
-		fmt.Fprintf(os.Stderr, "  Elixir range: %.1f - %.1f\n", minElixir, maxElixir)
-		fmt.Fprintf(os.Stderr, "  Min overall score: %.1f\n", minOverall)
-		fmt.Fprintf(os.Stderr, "  Min synergy score: %.1f\n", minSynergy)
-		fmt.Fprintf(os.Stderr, "\n")
+		fprintf(os.Stderr, "  Elixir range: %.1f - %.1f\n", minElixir, maxElixir)
+		fprintf(os.Stderr, "  Min overall score: %.1f\n", minOverall)
+		fprintf(os.Stderr, "  Min synergy score: %.1f\n", minSynergy)
+		fprintf(os.Stderr, "\n")
 	}
 
 	// Generate decks
@@ -287,7 +287,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 					// Only print if progress has been made
 					if currentCount > lastCount {
 						eta := time.Duration(float64(count-currentCount)/rate) * time.Second
-						fmt.Fprintf(os.Stderr, "\rGenerating... %d/%d decks (%.1f decks/sec, ETA: %v) ",
+						fprintf(os.Stderr, "\rGenerating... %d/%d decks (%.1f decks/sec, ETA: %v) ",
 							currentCount, count, rate, eta.Round(time.Second))
 						lastCount = currentCount
 					}
@@ -320,7 +320,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			mutations := generateDeckMutations(savedDecks, player, count, verbose)
 			generatedDecks = append(generatedDecks, mutations...)
 			if verbose {
-				fmt.Fprintf(os.Stderr, "Added %d mutations from %d saved decks\n", len(mutations), len(savedDecks))
+				fprintf(os.Stderr, "Added %d mutations from %d saved decks\n", len(mutations), len(savedDecks))
 			}
 		}
 	}
@@ -335,7 +335,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		if len(variations) > 0 {
 			generatedDecks = append(generatedDecks, variations...)
 			if verbose {
-				fmt.Fprintf(os.Stderr, "Added %d variations based on deck: %s\n", len(variations), strings.Join(baseDeck, ", "))
+				fprintf(os.Stderr, "Added %d variations based on deck: %s\n", len(variations), strings.Join(baseDeck, ", "))
 			}
 		}
 	}
@@ -343,26 +343,26 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	// Stop progress reporter
 	close(stopProgress)
 	generationDone.Wait()
-	fmt.Fprintln(os.Stderr) // New line after progress
+	fprintln(os.Stderr) // New line after progress
 
 	generationTime := time.Since(startTime)
 
 	stats := fuzzer.GetStats()
 
 	if verbose {
-		fmt.Fprintf(os.Stderr, "\nGenerated %d decks in %v (%.1f decks/sec)\n",
+		fprintf(os.Stderr, "\nGenerated %d decks in %v (%.1f decks/sec)\n",
 			len(generatedDecks), generationTime.Round(time.Millisecond),
 			float64(len(generatedDecks))/generationTime.Seconds())
-		fmt.Fprintf(os.Stderr, "Success: %d, Failed: %d\n", stats.Success, stats.Failed)
+		fprintf(os.Stderr, "Success: %d, Failed: %d\n", stats.Success, stats.Failed)
 		if stats.SkippedElixir > 0 {
-			fmt.Fprintf(os.Stderr, "Skipped (elixir): %d\n", stats.SkippedElixir)
+			fprintf(os.Stderr, "Skipped (elixir): %d\n", stats.SkippedElixir)
 		}
-		fmt.Fprintf(os.Stderr, "\n")
+		fprintf(os.Stderr, "\n")
 	}
 
 	if len(generatedDecks) == 0 {
 		if interrupted.Load() {
-			fmt.Fprintln(os.Stderr, "\nInterrupted before any decks were generated.")
+			fprintln(os.Stderr, "\nInterrupted before any decks were generated.")
 			return nil
 		}
 		return fmt.Errorf("no decks were successfully generated")
@@ -370,7 +370,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Evaluate decks
 	if verbose {
-		fmt.Fprintf(os.Stderr, "Evaluating %d decks with %d workers...\n", len(generatedDecks), workers)
+		fprintf(os.Stderr, "Evaluating %d decks with %d workers...\n", len(generatedDecks), workers)
 	}
 
 	evaluationCtx, cancelEvaluation := context.WithCancel(ctx)
@@ -391,7 +391,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 	if len(evaluationResults) == 0 {
 		if interrupted.Load() {
-			fmt.Fprintln(os.Stderr, "\nInterrupted before any decks were evaluated.")
+			fprintln(os.Stderr, "\nInterrupted before any decks were evaluated.")
 			return nil
 		}
 		return fmt.Errorf("no decks were evaluated")
@@ -405,13 +405,13 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Fprintf(os.Stderr, "%d decks passed score filters\n", len(filteredResults))
+		fprintf(os.Stderr, "%d decks passed score filters\n", len(filteredResults))
 	}
 
 	// Deduplicate results (remove identical decks)
 	dedupedResults := deduplicateResults(filteredResults)
 	if verbose {
-		fmt.Fprintf(os.Stderr, "Removed %d duplicate decks, %d unique decks remaining\n", len(filteredResults)-len(dedupedResults), len(dedupedResults))
+		fprintf(os.Stderr, "Removed %d duplicate decks, %d unique decks remaining\n", len(filteredResults)-len(dedupedResults), len(dedupedResults))
 	}
 
 	// Sort results
@@ -431,7 +431,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to save results: %w", err)
 		}
 		if verbose {
-			fmt.Fprintf(os.Stderr, "\nResults saved to %s\n", outputDir)
+			fprintf(os.Stderr, "\nResults saved to %s\n", outputDir)
 		}
 	}
 
@@ -480,10 +480,10 @@ func evaluateGeneratedDecks(
 	if storagePath != "" {
 		storage, storageErr = leaderboard.NewStorage(storagePath)
 		if storageErr != nil && verbose {
-			fmt.Fprintf(os.Stderr, "Warning: failed to open storage: %v\n", storageErr)
+			fprintf(os.Stderr, "Warning: failed to open storage: %v\n", storageErr)
 		}
 		if storage != nil {
-			defer storage.Close()
+			defer closeFile(storage)
 		}
 	}
 
@@ -520,7 +520,7 @@ func evaluateDecksSequential(
 			progressbar.OptionShowIts(),
 			progressbar.OptionSetItsString("decks"),
 			progressbar.OptionOnCompletion(func() {
-				fmt.Fprintln(os.Stderr)
+				fprintln(os.Stderr)
 			}),
 		)
 	}
@@ -577,7 +577,7 @@ func evaluateDecksParallel(
 			progressbar.OptionShowIts(),
 			progressbar.OptionSetItsString("decks"),
 			progressbar.OptionOnCompletion(func() {
-				fmt.Fprintln(os.Stderr)
+				fprintln(os.Stderr)
 			}),
 		)
 	}
@@ -867,30 +867,30 @@ func formatResultsSummary(
 	stats *deck.FuzzingStats,
 	totalFiltered int,
 ) error {
-	fmt.Printf("\nDeck Fuzzing Results for %s (%s)\n", playerName, playerTag)
-	fmt.Printf("Generated %d random decks in %v\n", stats.Generated, generationTime.Round(time.Millisecond))
-	fmt.Printf("Configuration:\n")
+	printf("\nDeck Fuzzing Results for %s (%s)\n", playerName, playerTag)
+	printf("Generated %d random decks in %v\n", stats.Generated, generationTime.Round(time.Millisecond))
+	printf("Configuration:\n")
 
 	if len(fuzzerConfig.IncludeCards) > 0 {
-		fmt.Printf("  Include cards: %s\n", strings.Join(fuzzerConfig.IncludeCards, ", "))
+		printf("  Include cards: %s\n", strings.Join(fuzzerConfig.IncludeCards, ", "))
 	}
 	if len(fuzzerConfig.ExcludeCards) > 0 {
-		fmt.Printf("  Exclude cards: %s\n", strings.Join(fuzzerConfig.ExcludeCards, ", "))
+		printf("  Exclude cards: %s\n", strings.Join(fuzzerConfig.ExcludeCards, ", "))
 	}
-	fmt.Printf("  Elixir range: %.1f - %.1f\n", fuzzerConfig.MinAvgElixir, fuzzerConfig.MaxAvgElixir)
+	printf("  Elixir range: %.1f - %.1f\n", fuzzerConfig.MinAvgElixir, fuzzerConfig.MaxAvgElixir)
 	if fuzzerConfig.MinOverallScore > 0 {
-		fmt.Printf("  Min overall score: %.1f\n", fuzzerConfig.MinOverallScore)
+		printf("  Min overall score: %.1f\n", fuzzerConfig.MinOverallScore)
 	}
 	if fuzzerConfig.MinSynergyScore > 0 {
-		fmt.Printf("  Min synergy score: %.1f\n", fuzzerConfig.MinSynergyScore)
+		printf("  Min synergy score: %.1f\n", fuzzerConfig.MinSynergyScore)
 	}
 
-	fmt.Printf("\nTop %d Decks (from %d decks passing filters):\n\n", len(results), totalFiltered)
+	printf("\nTop %d Decks (from %d decks passing filters):\n\n", len(results), totalFiltered)
 
 	// Print table header with multi-line deck display
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 2, ' ', 0)
-	fmt.Fprintln(w, "Rank\tDeck\tOverall\tAttack\tDefense\tSynergy\tElixir")
+	fprintln(w, "Rank\tDeck\tOverall\tAttack\tDefense\tSynergy\tElixir")
 
 	// Print each deck with all 8 cards
 	for i, result := range results {
@@ -901,7 +901,7 @@ func formatResultsSummary(
 		if len(deckStr) > 50 {
 			// First line: Rank, first 4 cards, scores
 			firstLine := strings.Join(result.Deck[:4], ", ")
-			fmt.Fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
 				i+1,
 				firstLine+",",
 				result.OverallScore,
@@ -913,10 +913,10 @@ func formatResultsSummary(
 
 			// Second line: continuation with remaining cards
 			secondLine := strings.Join(result.Deck[4:], ", ")
-			fmt.Fprintf(w, "\t%s\n", secondLine)
+			fprintf(w, "\t%s\n", secondLine)
 		} else {
 			// Single line format for shorter deck strings
-			fmt.Fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
 				i+1,
 				deckStr,
 				result.OverallScore,
@@ -928,7 +928,7 @@ func formatResultsSummary(
 		}
 	}
 
-	w.Flush()
+	flushWriter(w)
 
 	return nil
 }
@@ -973,7 +973,7 @@ func formatResultsJSON(
 // formatResultsCSV outputs results in CSV format
 func formatResultsCSV(results []FuzzingResult) error {
 	w := csv.NewWriter(os.Stdout)
-	defer w.Flush()
+	defer flushCSVWriter(w)
 
 	// Write header
 	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
@@ -1009,17 +1009,17 @@ func formatResultsDetailed(
 	playerName string,
 	playerTag string,
 ) error {
-	fmt.Printf("\nDeck Fuzzing Results for %s (%s)\n", playerName, playerTag)
-	fmt.Printf("\nTop %d Decks:\n\n", len(results))
+	printf("\nDeck Fuzzing Results for %s (%s)\n", playerName, playerTag)
+	printf("\nTop %d Decks:\n\n", len(results))
 
 	for i, result := range results {
-		fmt.Printf("=== Deck %d ===\n", i+1)
-		fmt.Printf("Cards: %s\n", strings.Join(result.Deck, ", "))
-		fmt.Printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
+		printf("=== Deck %d ===\n", i+1)
+		printf("Cards: %s\n", strings.Join(result.Deck, ", "))
+		printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
 			result.OverallScore, result.AttackScore, result.DefenseScore, result.SynergyScore, result.VersatilityScore)
-		fmt.Printf("Avg Elixir: %.2f | Archetype: %s (%.0f%% confidence)\n",
+		printf("Avg Elixir: %.2f | Archetype: %s (%.0f%% confidence)\n",
 			result.AvgElixir, result.Archetype, result.ArchetypeConfidence*100)
-		fmt.Printf("Evaluated: %s\n\n", result.EvaluatedAt.Format(time.RFC3339))
+		printf("Evaluated: %s\n\n", result.EvaluatedAt.Format(time.RFC3339))
 	}
 
 	return nil
@@ -1050,7 +1050,7 @@ func saveResultsToFile(results []FuzzingResult, outputDir, format, playerTag str
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer closeFile(file)
 
 	// Redirect stdout to file for formatting
 	oldStdout := os.Stdout
@@ -1145,7 +1145,7 @@ func saveTopDecksToStorage(results []FuzzingResult, verbose bool) error {
 	if err != nil {
 		return fmt.Errorf("failed to open storage: %w", err)
 	}
-	defer storage.Close()
+	defer closeFile(storage)
 
 	// Convert FuzzingResult to fuzzstorage.DeckEntry
 	entries := make([]fuzzstorage.DeckEntry, len(results))
@@ -1173,9 +1173,9 @@ func saveTopDecksToStorage(results []FuzzingResult, verbose bool) error {
 	dbPath := storage.GetDBPath()
 
 	if verbose {
-		fmt.Fprintf(os.Stderr, "\nTop decks saved to storage: %s\n", dbPath)
-		fmt.Fprintf(os.Stderr, "  New decks saved: %d\n", saved)
-		fmt.Fprintf(os.Stderr, "  Total decks in storage: %d\n", total)
+		fprintf(os.Stderr, "\nTop decks saved to storage: %s\n", dbPath)
+		fprintf(os.Stderr, "  New decks saved: %d\n", saved)
+		fprintf(os.Stderr, "  Total decks in storage: %d\n", total)
 	}
 
 	return nil
@@ -1195,7 +1195,7 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to open storage: %w", err)
 	}
-	defer storage.Close()
+	defer closeFile(storage)
 
 	// Build query options
 	queryOpts := fuzzstorage.QueryOptions{
@@ -1227,8 +1227,8 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	total, _ := storage.Count()
 	dbPath := storage.GetDBPath()
 
-	fmt.Fprintf(os.Stderr, "Top decks from: %s\n", dbPath)
-	fmt.Fprintf(os.Stderr, "Showing %d of %d total decks\n\n", len(decks), total)
+	fprintf(os.Stderr, "Top decks from: %s\n", dbPath)
+	fprintf(os.Stderr, "Showing %d of %d total decks\n\n", len(decks), total)
 
 	// Format output
 	switch format {
@@ -1257,7 +1257,7 @@ func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 	if workers == 1 {
 		workers = runtime.NumCPU()
 		if verbose {
-			fmt.Fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", runtime.NumCPU(), workers)
+			fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", runtime.NumCPU(), workers)
 		}
 	}
 
@@ -1265,7 +1265,7 @@ func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to open storage: %w", err)
 	}
-	defer storage.Close()
+	defer closeFile(storage)
 
 	queryOpts := fuzzstorage.QueryOptions{
 		Limit: top,
@@ -1307,11 +1307,11 @@ func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Fprintf(os.Stderr, "Updated %d decks in %v\n", updated, time.Since(start).Round(time.Millisecond))
-		fmt.Fprintf(os.Stderr, "Database: %s\n", storage.GetDBPath())
+		fprintf(os.Stderr, "Updated %d decks in %v\n", updated, time.Since(start).Round(time.Millisecond))
+		fprintf(os.Stderr, "Database: %s\n", storage.GetDBPath())
 	}
 
-	fmt.Printf("Updated %d saved decks\n", updated)
+	printf("Updated %d saved decks\n", updated)
 	return nil
 }
 
@@ -1343,7 +1343,7 @@ func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, workers int, verbose
 			progressbar.OptionShowIts(),
 			progressbar.OptionSetItsString("decks"),
 			progressbar.OptionOnCompletion(func() {
-				fmt.Fprintln(os.Stderr)
+				fprintln(os.Stderr)
 			}),
 		)
 	}
@@ -1403,7 +1403,7 @@ func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, verbose bo
 			progressbar.OptionShowIts(),
 			progressbar.OptionSetItsString("decks"),
 			progressbar.OptionOnCompletion(func() {
-				fmt.Fprintln(os.Stderr)
+				fprintln(os.Stderr)
 			}),
 		)
 	}
@@ -1431,31 +1431,31 @@ func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, verbose bo
 
 // formatListResultsSummary formats list results in summary format
 func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
-	fmt.Printf("Saved Top Decks\n")
-	fmt.Printf("Database: %s\n", dbPath)
-	fmt.Printf("Total decks: %d\n\n", total)
+	printf("Saved Top Decks\n")
+	printf("Database: %s\n", dbPath)
+	printf("Total decks: %d\n\n", total)
 
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 2, ' ', 0)
-	fmt.Fprintln(w, "Rank\tDeck\tOverall\tAttack\tDefense\tSynergy\tElixir\tArchetype")
+	fprintln(w, "Rank\tDeck\tOverall\tAttack\tDefense\tSynergy\tElixir\tArchetype")
 
 	for i, deck := range decks {
 		deckStr := strings.Join(deck.Cards, ", ")
 		if len(deckStr) > 50 {
 			firstLine := strings.Join(deck.Cards[:4], ", ")
-			fmt.Fprintf(w, "%d\t%s,\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
+			fprintf(w, "%d\t%s,\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
 				i+1, firstLine, deck.OverallScore, deck.AttackScore, deck.DefenseScore,
 				deck.SynergyScore, deck.AvgElixir, deck.Archetype)
 			secondLine := strings.Join(deck.Cards[4:], ", ")
-			fmt.Fprintf(w, "\t%s\n", secondLine)
+			fprintf(w, "\t%s\n", secondLine)
 		} else {
-			fmt.Fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
+			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
 				i+1, deckStr, deck.OverallScore, deck.AttackScore, deck.DefenseScore,
 				deck.SynergyScore, deck.AvgElixir, deck.Archetype)
 		}
 	}
 
-	w.Flush()
+	flushWriter(w)
 	return nil
 }
 
@@ -1476,7 +1476,7 @@ func formatListResultsJSON(decks []fuzzstorage.DeckEntry, dbPath string, total i
 // formatListResultsCSV formats list results in CSV format
 func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
 	w := csv.NewWriter(os.Stdout)
-	defer w.Flush()
+	defer flushCSVWriter(w)
 
 	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
 	if err := w.Write(header); err != nil {
@@ -1506,18 +1506,18 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
 
 // formatListResultsDetailed formats list results in detailed format
 func formatListResultsDetailed(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
-	fmt.Printf("Saved Top Decks\n")
-	fmt.Printf("Database: %s\n", dbPath)
-	fmt.Printf("Total decks: %d\n\n", total)
+	printf("Saved Top Decks\n")
+	printf("Database: %s\n", dbPath)
+	printf("Total decks: %d\n\n", total)
 
 	for i, deck := range decks {
-		fmt.Printf("=== Deck %d ===\n", i+1)
-		fmt.Printf("Cards: %s\n", strings.Join(deck.Cards, ", "))
-		fmt.Printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
+		printf("=== Deck %d ===\n", i+1)
+		printf("Cards: %s\n", strings.Join(deck.Cards, ", "))
+		printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
 			deck.OverallScore, deck.AttackScore, deck.DefenseScore, deck.SynergyScore, deck.VersatilityScore)
-		fmt.Printf("Avg Elixir: %.2f | Archetype: %s (%.0f%% confidence)\n",
+		printf("Avg Elixir: %.2f | Archetype: %s (%.0f%% confidence)\n",
 			deck.AvgElixir, deck.Archetype, deck.ArchetypeConf*100)
-		fmt.Printf("Evaluated: %s\n\n", deck.EvaluatedAt.Format(time.RFC3339))
+		printf("Evaluated: %s\n\n", deck.EvaluatedAt.Format(time.RFC3339))
 	}
 
 	return nil
@@ -1529,7 +1529,7 @@ func loadCardsFromSavedDecks(n int, _ bool) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer storage.Close()
+	defer closeFile(storage)
 
 	decks, err := storage.GetTopN(n)
 	if err != nil {
@@ -1580,7 +1580,7 @@ func loadSavedDecksForSeeding(n int, _ *clashroyale.Player, verbose bool) ([][]s
 	if err != nil {
 		return nil, err
 	}
-	defer storage.Close()
+	defer closeFile(storage)
 
 	entries, err := storage.GetTopN(n)
 	if err != nil {
@@ -1588,7 +1588,7 @@ func loadSavedDecksForSeeding(n int, _ *clashroyale.Player, verbose bool) ([][]s
 	}
 
 	if verbose {
-		fmt.Fprintf(os.Stderr, "Loaded %d saved decks for seeding\n", len(entries))
+		fprintf(os.Stderr, "Loaded %d saved decks for seeding\n", len(entries))
 	}
 
 	// Convert to deck slices
@@ -1604,7 +1604,7 @@ func loadSavedDecksForSeeding(n int, _ *clashroyale.Player, verbose bool) ([][]s
 func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, count int, verbose bool) [][]string {
 	if player == nil || len(player.Cards) == 0 {
 		if verbose {
-			fmt.Fprintf(os.Stderr, "No player cards available for mutations\n")
+			fprintf(os.Stderr, "No player cards available for mutations\n")
 		}
 		return nil
 	}
@@ -1663,7 +1663,7 @@ func loadDeckFromStorage(deckRef string, verbose bool) ([]string, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open storage: %w", err)
 	}
-	defer storage.Close()
+	defer closeFile(storage)
 
 	// Try to parse as integer ID
 	var deckID int
@@ -1679,7 +1679,7 @@ func loadDeckFromStorage(deckRef string, verbose bool) ([]string, error) {
 		for _, entry := range entries {
 			if entry.ID == deckID {
 				if verbose {
-					fmt.Fprintf(os.Stderr, "Loaded deck by ID %d: %s\n", deckID, strings.Join(entry.Cards, ", "))
+					fprintf(os.Stderr, "Loaded deck by ID %d: %s\n", deckID, strings.Join(entry.Cards, ", "))
 				}
 				return entry.Cards, nil
 			}
@@ -1701,7 +1701,7 @@ func loadDeckFromStorage(deckRef string, verbose bool) ([]string, error) {
 		deckStr := strings.ToLower(strings.Join(entry.Cards, " "))
 		if strings.Contains(deckStr, deckRefLower) {
 			if verbose {
-				fmt.Fprintf(os.Stderr, "Loaded matching deck: %s\n", strings.Join(entry.Cards, ", "))
+				fprintf(os.Stderr, "Loaded matching deck: %s\n", strings.Join(entry.Cards, ", "))
 			}
 			return entry.Cards, nil
 		}
@@ -1714,7 +1714,7 @@ func loadDeckFromStorage(deckRef string, verbose bool) ([]string, error) {
 func generateVariations(baseDeck []string, player *clashroyale.Player, count int, verbose bool) [][]string {
 	if player == nil || len(player.Cards) == 0 {
 		if verbose {
-			fmt.Fprintf(os.Stderr, "No player cards available for variations\n")
+			fprintf(os.Stderr, "No player cards available for variations\n")
 		}
 		return nil
 	}
@@ -1734,7 +1734,7 @@ func generateVariations(baseDeck []string, player *clashroyale.Player, count int
 
 	if len(availableCards) == 0 {
 		if verbose {
-			fmt.Fprintf(os.Stderr, "No additional cards available for variations\n")
+			fprintf(os.Stderr, "No additional cards available for variations\n")
 		}
 		return nil
 	}
@@ -1765,7 +1765,7 @@ func generateVariations(baseDeck []string, player *clashroyale.Player, count int
 	}
 
 	if verbose {
-		fmt.Fprintf(os.Stderr, "Generated %d variations of base deck\n", len(variations))
+		fprintf(os.Stderr, "Generated %d variations of base deck\n", len(variations))
 	}
 
 	return variations

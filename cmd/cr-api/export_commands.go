@@ -66,18 +66,18 @@ func addExportCommands() *cli.Command {
 							if err := exporter.Export(dataDir, player); err != nil {
 								return fmt.Errorf("failed to export player summary: %w", err)
 							}
-							fmt.Printf("✓ Exported player summary to %s\n", filepath.Join(exportDir, "players.csv"))
+							printf("✓ Exported player summary to %s\n", filepath.Join(exportDir, "players.csv"))
 
 						case "cards":
 							exporter := csv.NewPlayerCardsExporter()
 							if err := exporter.Export(dataDir, player); err != nil {
 								return fmt.Errorf("failed to export player cards: %w", err)
 							}
-							fmt.Printf("✓ Exported player cards to %s\n", filepath.Join(exportDir, "player_cards.csv"))
+							printf("✓ Exported player cards to %s\n", filepath.Join(exportDir, "player_cards.csv"))
 						}
 					}
 
-					fmt.Printf("Successfully exported player data for %s\n", player.Name)
+					printf("Successfully exported player data for %s\n", player.Name)
 					return nil
 				},
 			},
@@ -109,11 +109,11 @@ func addExportCommands() *cli.Command {
 
 					// Export cards
 					exporter := csv.NewCardsExporter()
-					if err := exporter.Export(dataDir, cardList); err != nil {
+					if err := exporter.Export(dataDir, cardList.Items); err != nil {
 						return fmt.Errorf("failed to export cards: %w", err)
 					}
 
-					fmt.Printf("✓ Exported %d cards to %s\n", len(cards), filepath.Join(exportDir, "cards.csv"))
+					printf("✓ Exported %d cards to %s\n", len(cards), filepath.Join(exportDir, "cards.csv"))
 					return nil
 				},
 			},
@@ -171,7 +171,7 @@ func addExportCommands() *cli.Command {
 						return fmt.Errorf("failed to export analysis: %w", err)
 					}
 
-					fmt.Printf("✓ Exported collection analysis to %s\n", filepath.Join(exportDir, "analysis.csv"))
+					printf("✓ Exported collection analysis to %s\n", filepath.Join(exportDir, "analysis.csv"))
 					return nil
 				},
 			},
@@ -225,7 +225,7 @@ func addExportCommands() *cli.Command {
 						return fmt.Errorf("failed to export battles: %w", err)
 					}
 
-					fmt.Printf("✓ Exported %d battles to %s\n", len(battles), filepath.Join(exportDir, "battles.csv"))
+					printf("✓ Exported %d battles to %s\n", len(battles), filepath.Join(exportDir, "battles.csv"))
 					return nil
 				},
 			},
@@ -274,13 +274,28 @@ func addExportCommands() *cli.Command {
 						return fmt.Errorf("failed to create export directory: %w", err)
 					}
 
-					// Export event battles
-					exporter := csv.NewEventBattlesExporter()
+					// Export event battles using battle log exporter
+					exporter := csv.NewBattleLogExporter()
 					if err := exporter.Export(dataDir, eventBattles); err != nil {
-						return fmt.Errorf("failed to export events: %w", err)
+						return fmt.Errorf("failed to export event battles: %w", err)
 					}
 
-					fmt.Printf("✓ Exported %d event battles to %s\n", len(eventBattles), filepath.Join(exportDir, "events.csv"))
+					// Move the output file to events directory
+					battlesFile := filepath.Join(dataDir, "csv", "battles", "battle_log.csv")
+					eventsFile := filepath.Join(exportDir, "event_battles.csv")
+					if err := os.Rename(battlesFile, eventsFile); err != nil {
+						// If rename fails, try copy
+						content, err := os.ReadFile(battlesFile)
+						if err != nil {
+							return fmt.Errorf("failed to read battles file: %w", err)
+						}
+						if err := os.WriteFile(eventsFile, content, 0o644); err != nil {
+							return fmt.Errorf("failed to write events file: %w", err)
+						}
+						os.Remove(battlesFile)
+					}
+
+					printf("✓ Exported %d event battles to %s\n", len(eventBattles), eventsFile)
 					return nil
 				},
 			},
@@ -310,7 +325,7 @@ func addExportCommands() *cli.Command {
 
 					client := clashroyale.NewClient(apiToken)
 
-					fmt.Printf("Starting full export for player %s...\n\n", tag)
+					printf("Starting full export for player %s...\n\n", tag)
 
 					// Get player data
 					player, err := client.GetPlayer(tag)
@@ -343,13 +358,13 @@ func addExportCommands() *cli.Command {
 					if err := playerExporter.Export(dataDir, player); err != nil {
 						return fmt.Errorf("failed to export player summary: %w", err)
 					}
-					fmt.Printf("   ✓ Player summary: %s\n", filepath.Join(playerExportDir, "players.csv"))
+					printf("   ✓ Player summary: %s\n", filepath.Join(playerExportDir, "players.csv"))
 
 					playerCardsExporter := csv.NewPlayerCardsExporter()
 					if err := playerCardsExporter.Export(dataDir, player); err != nil {
 						return fmt.Errorf("failed to export player cards: %w", err)
 					}
-					fmt.Printf("   ✓ Player cards: %s\n", filepath.Join(playerExportDir, "player_cards.csv"))
+					printf("   ✓ Player cards: %s\n", filepath.Join(playerExportDir, "player_cards.csv"))
 
 					// Note: Current deck is included in the main player export
 
@@ -370,7 +385,7 @@ func addExportCommands() *cli.Command {
 					if err := analysisExporter.Export(dataDir, analysisResult); err != nil {
 						return fmt.Errorf("failed to export analysis: %w", err)
 					}
-					fmt.Printf("   ✓ Collection analysis: %s\n", filepath.Join(analysisExportDir, "analysis.csv"))
+					printf("   ✓ Collection analysis: %s\n", filepath.Join(analysisExportDir, "analysis.csv"))
 
 					// 3. Export battles
 					fmt.Println("\n3. Exporting battle log...")
@@ -383,7 +398,7 @@ func addExportCommands() *cli.Command {
 					if err := battleExporter.Export(dataDir, battles); err != nil {
 						return fmt.Errorf("failed to export battles: %w", err)
 					}
-					fmt.Printf("   ✓ Battles (%d records): %s\n", len(battles), filepath.Join(battleExportDir, "battles.csv"))
+					printf("   ✓ Battles (%d records): %s\n", len(battles), filepath.Join(battleExportDir, "battles.csv"))
 
 					// 4. Export event battles from battle log
 					fmt.Println("\n4. Extracting event battles...")
@@ -402,11 +417,27 @@ func addExportCommands() *cli.Command {
 							return fmt.Errorf("failed to create event export directory: %w", err)
 						}
 
-						eventExporter := csv.NewEventBattlesExporter()
+						// Use battle log exporter for event battles (simplified export)
+						eventExporter := csv.NewBattleLogExporter()
 						if err := eventExporter.Export(dataDir, eventBattles); err != nil {
-							return fmt.Errorf("failed to export events: %w", err)
+							return fmt.Errorf("failed to export event battles: %w", err)
 						}
-						fmt.Printf("   ✓ Event battles (%d records): %s\n", len(eventBattles), filepath.Join(eventExportDir, "events.csv"))
+
+						// Move the output file to events directory
+						battlesFile := filepath.Join(dataDir, "csv", "battles", "battle_log.csv")
+						eventsFile := filepath.Join(eventExportDir, "event_battles.csv")
+						if err := os.Rename(battlesFile, eventsFile); err != nil {
+							// If rename fails, try copy
+							content, err := os.ReadFile(battlesFile)
+							if err != nil {
+								return fmt.Errorf("failed to read battles file: %w", err)
+							}
+							if err := os.WriteFile(eventsFile, content, 0o644); err != nil {
+								return fmt.Errorf("failed to write events file: %w", err)
+							}
+							os.Remove(battlesFile)
+						}
+						printf("   ✓ Event battles (%d records): %s\n", len(eventBattles), eventsFile)
 					} else {
 						fmt.Println("   ℹ No event battles found in recent battles")
 					}
@@ -419,17 +450,17 @@ func addExportCommands() *cli.Command {
 					}
 
 					cardExporter := csv.NewCardsExporter()
-					if err := cardExporter.Export(dataDir, cardList); err != nil {
+					if err := cardExporter.Export(dataDir, cardList.Items); err != nil {
 						return fmt.Errorf("failed to export cards: %w", err)
 					}
-					fmt.Printf("   ✓ Card database: %s\n", filepath.Join(cardExportDir, "cards.csv"))
+					printf("   ✓ Card database: %s\n", filepath.Join(cardExportDir, "cards.csv"))
 
 					// Summary
-					fmt.Printf("\n✅ Export complete for %s!\n", player.Name)
-					fmt.Printf("   Player: %s (%d trophies)\n", player.Name, player.Trophies)
-					fmt.Printf("   Cards: %d collected\n", len(player.Cards))
-					fmt.Printf("   Battles: %d recent games\n", len(battles))
-					fmt.Printf("   Location: %s\n", filepath.Join(dataDir, "csv"))
+					printf("\n✅ Export complete for %s!\n", player.Name)
+					printf("   Player: %s (%d trophies)\n", player.Name, player.Trophies)
+					printf("   Cards: %d collected\n", len(player.Cards))
+					printf("   Battles: %d recent games\n", len(battles))
+					printf("   Location: %s\n", filepath.Join(dataDir, "csv"))
 
 					return nil
 				},

@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"text/tabwriter"
 )
 
 func printf(format string, args ...any) {
@@ -26,10 +25,22 @@ func fprintln(w io.Writer, args ...any) {
 	}
 }
 
-func flushWriter(w *tabwriter.Writer) {
+type flusher interface {
+	Flush() error
+}
+
+func flushWriter(w flusher) {
 	if err := w.Flush(); err != nil {
 		log.Printf("flush failed: %v", err)
 	}
+}
+
+type csvFlusher interface {
+	Flush()
+}
+
+func flushCSVWriter(w csvFlusher) {
+	w.Flush()
 }
 
 func closeFile(c io.Closer) {
