@@ -110,7 +110,7 @@ func analyzeArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	client := clashroyale.NewClient(apiToken)
 
 	if verbose {
-		fmt.Printf("Fetching player data for tag: %s\n", playerTag)
+		printf("Fetching player data for tag: %s\n", playerTag)
 	}
 
 	// Fetch player data
@@ -120,8 +120,8 @@ func analyzeArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-		fmt.Printf("Building archetype decks from %d cards...\n\n", len(player.Cards))
+		printf("Player: %s (%s)\n", player.Name, player.Tag)
+		printf("Building archetype decks from %d cards...\n\n", len(player.Cards))
 	}
 
 	// Load or generate card analysis
@@ -130,7 +130,7 @@ func analyzeArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	analysis, err := builder.LoadLatestAnalysis(playerTag, filepath.Join(dataDir, "analysis"))
 	if err != nil {
 		if verbose {
-			fmt.Printf("No existing analysis found, generating from player data...\n")
+			printf("No existing analysis found, generating from player data...\n")
 		}
 		// Convert player cards to analysis format
 		analysis = convertPlayerToAnalysis(player)
@@ -157,9 +157,9 @@ func analyzeArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	// Save JSON if requested
 	if saveJSON {
 		if err := saveArchetypeAnalysis(result, dataDir); err != nil {
-			fmt.Printf("\nWarning: Failed to save analysis: %v\n", err)
+			printf("\nWarning: Failed to save analysis: %v\n", err)
 		} else {
-			fmt.Printf("\n✓ Analysis saved to: %s/archetypes/\n", dataDir)
+			printf("\n✓ Analysis saved to: %s/archetypes/\n", dataDir)
 		}
 	}
 
@@ -167,15 +167,15 @@ func analyzeArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	if exportCSV {
 		exporter := csv.NewArchetypeExporter()
 		if err := exporter.Export(dataDir, result); err != nil {
-			fmt.Printf("\nWarning: CSV export failed: %v\n", err)
+			printf("\nWarning: CSV export failed: %v\n", err)
 		} else {
-			fmt.Printf("\n✓ CSV exported to: %s/csv/archetypes/\n", dataDir)
+			printf("\n✓ CSV exported to: %s/csv/archetypes/\n", dataDir)
 		}
 
 		// Also export detailed upgrade breakdown
 		detailsExporter := csv.NewArchetypeDetailsExporter()
 		if err := detailsExporter.Export(dataDir, result); err != nil {
-			fmt.Printf("Warning: CSV details export failed: %v\n", err)
+			printf("Warning: CSV details export failed: %v\n", err)
 		}
 	}
 
@@ -188,20 +188,20 @@ func displayArchetypeComparison(result *archetypes.ArchetypeAnalysisResult, verb
 	w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
 
 	// Header - print directly to stdout (not through tabwriter)
-	fmt.Printf("\n")
-	fmt.Printf("═══════════════════════════════════════════════════════════════════════════════\n")
-	fmt.Printf("  ARCHETYPE VARIETY ANALYSIS - %s (##%s)\n", result.PlayerName, strings.TrimPrefix(result.PlayerTag, "#"))
-	fmt.Printf("  Target Level: %d\n", result.TargetLevel)
-	fmt.Printf("═══════════════════════════════════════════════════════════════════════════════\n")
-	fmt.Printf("\n")
+	printf("\n")
+	printf("═══════════════════════════════════════════════════════════════════════════════\n")
+	printf("  ARCHETYPE VARIETY ANALYSIS - %s (##%s)\n", result.PlayerName, strings.TrimPrefix(result.PlayerTag, "#"))
+	printf("  Target Level: %d\n", result.TargetLevel)
+	printf("═══════════════════════════════════════════════════════════════════════════════\n")
+	printf("\n")
 
 	// Table headers through tabwriter for proper alignment
-	fmt.Fprintf(w, "Archetype\tAvg Elixir\tCurrent Lvl\tCards Needed\tGold Needed\tGems Needed\tDistance\n")
-	fmt.Fprintf(w, "────────\t──────────\t────────────\t─────────────\t────────────\t────────────\t──────────\t\n")
+	fprintf(w, "Archetype\tAvg Elixir\tCurrent Lvl\tCards Needed\tGold Needed\tGems Needed\tDistance\n")
+	fprintf(w, "────────\t──────────\t────────────\t─────────────\t────────────\t────────────\t──────────\t\n")
 
 	// Data rows - table only
 	for _, arch := range result.Archetypes {
-		fmt.Fprintf(w, "%s\t%.1f\t%.1f\t%s\t%s\t%s\t%.2f\n",
+		fprintf(w, "%s\t%.1f\t%.1f\t%s\t%s\t%s\t%.2f\n",
 			arch.Archetype,
 			arch.AvgElixir,
 			arch.CurrentAvgLevel,
@@ -213,31 +213,31 @@ func displayArchetypeComparison(result *archetypes.ArchetypeAnalysisResult, verb
 	}
 
 	// Flush the tabwriter to print the table
-	w.Flush()
+	flushWriter(w)
 
 	// Deck compositions section
-	fmt.Printf("\n")
-	fmt.Printf("Archetype Deck Breakdown:\n")
-	fmt.Printf("─────────────────────────\n")
+	printf("\n")
+	printf("Archetype Deck Breakdown:\n")
+	printf("─────────────────────────\n")
 
 	for _, arch := range result.Archetypes {
-		fmt.Printf("\n")
-		fmt.Printf("%s (%.1f elixir)\n", cases.Title(language.English).String(string(arch.Archetype)), arch.AvgElixir)
-		fmt.Printf("├─ Win Condition: %s\n", findCardByRole(arch.DeckDetail, string(deck.RoleWinCondition)))
-		fmt.Printf("├─ Spells: %s\n", findSpells(arch.DeckDetail))
-		fmt.Printf("├─ Support: %s\n", findCardsByRole(arch.DeckDetail, string(deck.RoleSupport)))
-		fmt.Printf("├─ Cycle: %s\n", findCardsByRole(arch.DeckDetail, string(deck.RoleCycle)))
-		fmt.Printf("└─ Building: %s\n", findCardByRole(arch.DeckDetail, string(deck.RoleBuilding)))
+		printf("\n")
+		printf("%s (%.1f elixir)\n", cases.Title(language.English).String(string(arch.Archetype)), arch.AvgElixir)
+		printf("├─ Win Condition: %s\n", findCardByRole(arch.DeckDetail, string(deck.RoleWinCondition)))
+		printf("├─ Spells: %s\n", findSpells(arch.DeckDetail))
+		printf("├─ Support: %s\n", findCardsByRole(arch.DeckDetail, string(deck.RoleSupport)))
+		printf("├─ Cycle: %s\n", findCardsByRole(arch.DeckDetail, string(deck.RoleCycle)))
+		printf("└─ Building: %s\n", findCardByRole(arch.DeckDetail, string(deck.RoleBuilding)))
 	}
 
 	// Footer with interpretation guide
-	fmt.Printf("\n")
-	fmt.Printf("Interpretation Guide:\n")
-	fmt.Printf("  • Distance: 0.00 (perfect match) to 1.00 (far from target)\n")
-	fmt.Printf("  • Lower distance = more viable archetype for your collection\n")
-	fmt.Printf("  • Cards/Gold/Gems Needed = upgrade investment to reach target level\n")
-	fmt.Printf("  • Gem cost: ~1 gem per 17 gold (based on shop conversion rates)\n")
-	fmt.Printf("\n")
+	printf("\n")
+	printf("Interpretation Guide:\n")
+	printf("  • Distance: 0.00 (perfect match) to 1.00 (far from target)\n")
+	printf("  • Lower distance = more viable archetype for your collection\n")
+	printf("  • Cards/Gold/Gems Needed = upgrade investment to reach target level\n")
+	printf("  • Gem cost: ~1 gem per 17 gold (based on shop conversion rates)\n")
+	printf("\n")
 }
 
 // Helper functions for card role breakdown
@@ -454,7 +454,7 @@ func detectArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	client := clashroyale.NewClient(apiToken)
 
 	if verbose {
-		fmt.Printf("Fetching player data for tag: %s\n", playerTag)
+		printf("Fetching player data for tag: %s\n", playerTag)
 	}
 
 	// Fetch player data
@@ -464,8 +464,8 @@ func detectArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-		fmt.Printf("Analyzing %d cards across archetype templates...\n\n", len(player.Cards))
+		printf("Player: %s (%s)\n", player.Name, player.Tag)
+		printf("Analyzing %d cards across archetype templates...\n\n", len(player.Cards))
 	}
 
 	// Convert player data to analysis format
@@ -511,9 +511,9 @@ func detectArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	// Save JSON if requested
 	if saveJSON {
 		if err := saveDynamicArchetypeAnalysis(result, dataDir); err != nil {
-			fmt.Printf("\nWarning: Failed to save analysis: %v\n", err)
+			printf("\nWarning: Failed to save analysis: %v\n", err)
 		} else {
-			fmt.Printf("\n✓ Analysis saved to: %s/archetype_analysis/\n", dataDir)
+			printf("\n✓ Analysis saved to: %s/archetype_analysis/\n", dataDir)
 		}
 	}
 
@@ -523,13 +523,13 @@ func detectArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 // displayDetectedArchetypes shows formatted archetype detection results
 func displayDetectedArchetypes(result *analysis.DynamicArchetypeAnalysis, showStrategies, showUpgrades, verbose bool) {
 	// Header
-	fmt.Printf("\n")
-	fmt.Printf("════════════════════════════════════════════════════════════════════════════════\n")
-	fmt.Printf("               DYNAMIC ARCHETYPE DETECTION\n")
-	fmt.Printf("════════════════════════════════════════════════════════════════════════════════\n")
-	fmt.Printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
-	fmt.Printf("Analysis Time: %s\n", result.AnalysisTime.Format("2006-01-02 15:04:05"))
-	fmt.Printf("════════════════════════════════════════════════════════════════════════════════\n\n")
+	printf("\n")
+	printf("════════════════════════════════════════════════════════════════════════════════\n")
+	printf("               DYNAMIC ARCHETYPE DETECTION\n")
+	printf("════════════════════════════════════════════════════════════════════════════════\n")
+	printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
+	printf("Analysis Time: %s\n", result.AnalysisTime.Format("2006-01-02 15:04:05"))
+	printf("════════════════════════════════════════════════════════════════════════════════\n\n")
 
 	// Display archetypes by tier
 	tiers := []struct {
@@ -548,18 +548,18 @@ func displayDetectedArchetypes(result *analysis.DynamicArchetypeAnalysis, showSt
 			continue
 		}
 
-		fmt.Printf("%s %s\n", tier.symbol, tier.name)
-		fmt.Printf("────────────────────────────────────────────────────────────────────────────────\n")
+		printf("%s %s\n", tier.symbol, tier.name)
+		printf("────────────────────────────────────────────────────────────────────────────────\n")
 
 		// Create tabwriter for aligned columns
 		w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
-		fmt.Fprintf(w, "Archetype\tScore\tWin Con Lvl\tSupport Avg\tSynergy\n")
+		fprintf(w, "Archetype\tScore\tWin Con Lvl\tSupport Avg\tSynergy\n")
 
 		// Find and display each archetype in this tier
 		for _, archName := range tier.archetypes {
 			for _, arch := range result.DetectedArchetypes {
 				if arch.Name == archName {
-					fmt.Fprintf(w, "%s\t%.1f\t%d/%d\t%.1f\t%.1f\n",
+					fprintf(w, "%s\t%.1f\t%d/%d\t%.1f\t%.1f\n",
 						arch.Name,
 						arch.ViabilityScore,
 						arch.WinConditionLevel,
@@ -569,32 +569,32 @@ func displayDetectedArchetypes(result *analysis.DynamicArchetypeAnalysis, showSt
 					)
 
 					if showStrategies && len(arch.RecommendedStrategies) > 0 {
-						fmt.Fprintf(w, "  └─ Strategies:\t%s\t\t\t\n", formatStrategies(arch.RecommendedStrategies))
+						fprintf(w, "  └─ Strategies:\t%s\t\t\t\n", formatStrategies(arch.RecommendedStrategies))
 					}
 
 					break
 				}
 			}
 		}
-		w.Flush()
-		fmt.Printf("\n")
+		flushWriter(w)
+		printf("\n")
 	}
 
 	// Display top cross-archetype upgrades
 	if showUpgrades && len(result.TopUpgradeImpacts) > 0 {
-		fmt.Printf("═══════════════════════════════════════════════════════════════════════════════\n")
-		fmt.Printf("TOP UPGRADE RECOMMENDATIONS (Cross-Archetype Impact)\n")
-		fmt.Printf("═══════════════════════════════════════════════════════════════════════════════\n\n")
+		printf("═══════════════════════════════════════════════════════════════════════════════\n")
+		printf("TOP UPGRADE RECOMMENDATIONS (Cross-Archetype Impact)\n")
+		printf("═══════════════════════════════════════════════════════════════════════════════\n\n")
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
-		fmt.Fprintf(w, "Card\tLevel\tGold\tArchetypes Affected\tTotal Impact\tUnlocks\n")
-		fmt.Fprintf(w, "────\t─────\t────\t───────────────────\t────────────\t───────\n")
+		fprintf(w, "Card\tLevel\tGold\tArchetypes Affected\tTotal Impact\tUnlocks\n")
+		fprintf(w, "────\t─────\t────\t───────────────────\t────────────\t───────\n")
 
 		for i, upgrade := range result.TopUpgradeImpacts {
 			if i >= 10 {
 				break // Limit to top 10
 			}
-			fmt.Fprintf(w, "%s\t%d\t%s\t%d\t+%.1f\t%d\n",
+			fprintf(w, "%s\t%d\t%s\t%d\t+%.1f\t%d\n",
 				upgrade.CardName,
 				upgrade.CurrentLevel,
 				formatNumber(upgrade.GoldCost),
@@ -603,18 +603,18 @@ func displayDetectedArchetypes(result *analysis.DynamicArchetypeAnalysis, showSt
 				upgrade.ArchetypesUnlocked,
 			)
 		}
-		w.Flush()
-		fmt.Printf("\n")
+		flushWriter(w)
+		printf("\n")
 	}
 
 	// Footer
-	fmt.Printf("Interpretation Guide:\n")
-	fmt.Printf("  • Viability Score: 0-100 based on card levels, synergies, and completeness\n")
-	fmt.Printf("  • Optimal (90+): Tournament-ready, high-level cards\n")
-	fmt.Printf("  • Competitive (75-89): Ladder-viable, solid for ranked play\n")
-	fmt.Printf("  • Playable (60-74): Functional but needs upgrades\n")
-	fmt.Printf("  • Blocked (<60): Missing cards or severely underleveled\n")
-	fmt.Printf("\n")
+	printf("Interpretation Guide:\n")
+	printf("  • Viability Score: 0-100 based on card levels, synergies, and completeness\n")
+	printf("  • Optimal (90+): Tournament-ready, high-level cards\n")
+	printf("  • Competitive (75-89): Ladder-viable, solid for ranked play\n")
+	printf("  • Playable (60-74): Functional but needs upgrades\n")
+	printf("  • Blocked (<60): Missing cards or severely underleveled\n")
+	printf("\n")
 }
 
 // formatStrategies formats strategy recommendations for display

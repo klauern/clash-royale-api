@@ -56,7 +56,7 @@ func NewStorage(dbPath string) (*Storage, error) {
 
 	// Initialize schema
 	if err := storage.initSchema(); err != nil {
-		db.Close()
+		closeWithLog(db, "fuzz storage database")
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -247,7 +247,7 @@ func (s *Storage) GetTopN(n int) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query top decks: %w", err)
 	}
-	defer rows.Close()
+	defer closeWithLog(rows, "top decks rows")
 
 	return s.scanRows(rows)
 }
@@ -267,7 +267,7 @@ func (s *Storage) GetByArchetype(archetype string, limit int) ([]DeckEntry, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to query by archetype: %w", err)
 	}
-	defer rows.Close()
+	defer closeWithLog(rows, "deck rows by archetype")
 
 	return s.scanRows(rows)
 }
@@ -361,7 +361,7 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
-	defer rows.Close()
+	defer closeWithLog(rows, "stats rows")
 
 	return s.scanRows(rows)
 }

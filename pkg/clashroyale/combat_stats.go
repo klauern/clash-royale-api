@@ -37,7 +37,7 @@ func LoadStats(filepath string) (*CardStatsRegistry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open stats file: %w", err)
 	}
-	defer file.Close()
+	defer closeWithLog(file, "combat stats file")
 
 	bytes, err := io.ReadAll(file)
 	if err != nil {

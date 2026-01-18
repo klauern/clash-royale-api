@@ -41,21 +41,21 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Configure combat stats weight
 	if disableCombatStats {
-		os.Setenv("COMBAT_STATS_WEIGHT", "0")
+		setEnv("COMBAT_STATS_WEIGHT", "0")
 		if verbose {
-			fmt.Printf("Combat stats disabled (using traditional scoring only)\n")
+			printf("Combat stats disabled (using traditional scoring only)\n")
 		}
 	} else if combatStatsWeight >= 0 && combatStatsWeight <= 1.0 {
-		os.Setenv("COMBAT_STATS_WEIGHT", fmt.Sprintf("%.2f", combatStatsWeight))
+		setEnv("COMBAT_STATS_WEIGHT", fmt.Sprintf("%.2f", combatStatsWeight))
 		if verbose {
-			fmt.Printf("Combat stats weight set to: %.2f\n", combatStatsWeight)
+			printf("Combat stats weight set to: %.2f\n", combatStatsWeight)
 		}
 	}
 
 	client := clashroyale.NewClient(apiToken)
 
 	if verbose {
-		fmt.Printf("Building war decks for player %s (%d decks)\n", tag, deckCount)
+		printf("Building war decks for player %s (%d decks)\n", tag, deckCount)
 	}
 
 	player, err := client.GetPlayer(tag)
@@ -64,8 +64,8 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-		fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+		printf("Player: %s (%s)\n", player.Name, player.Tag)
+		printf("Analyzing %d cards...\n", len(player.Cards))
 	}
 
 	analysisOptions := analysis.DefaultAnalysisOptions()
@@ -165,31 +165,31 @@ func displayWarDecks(player *clashroyale.Player, warDecks []warDeckCandidate) {
 		}
 	}
 
-	fmt.Printf("\nWAR DECK SET (NO REPEATS)\n")
-	fmt.Printf("========================\n\n")
-	fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-	fmt.Printf("Decks: %d\n", len(warDecks))
-	fmt.Printf("Unique cards: %d\n", len(uniqueCards))
-	fmt.Printf("Total score: %.3f\n", totalScore)
+	printf("\nWAR DECK SET (NO REPEATS)\n")
+	printf("========================\n\n")
+	printf("Player: %s (%s)\n", player.Name, player.Tag)
+	printf("Decks: %d\n", len(warDecks))
+	printf("Unique cards: %d\n", len(uniqueCards))
+	printf("Total score: %.3f\n", totalScore)
 
 	if combatWeight := os.Getenv("COMBAT_STATS_WEIGHT"); combatWeight != "" {
 		if combatWeight == "0" {
-			fmt.Printf("Scoring: Traditional only (combat stats disabled)\n")
+			printf("Scoring: Traditional only (combat stats disabled)\n")
 		} else {
-			fmt.Printf("Scoring: %.0f%% traditional, %.0f%% combat stats\n",
+			printf("Scoring: %.0f%% traditional, %.0f%% combat stats\n",
 				(1-mustParseFloat(combatWeight))*100,
 				mustParseFloat(combatWeight)*100)
 		}
 	}
 
 	for i, deck := range warDecks {
-		fmt.Printf("\nDeck %d - %s\n", i+1, formatArchetypeName(deck.Archetype))
-		fmt.Printf("Average Elixir: %.2f\n", deck.Deck.AvgElixir)
-		fmt.Printf("Deck score: %.3f\n", deck.Score)
+		printf("\nDeck %d - %s\n", i+1, formatArchetypeName(deck.Archetype))
+		printf("Average Elixir: %.2f\n", deck.Deck.AvgElixir)
+		printf("Deck score: %.3f\n", deck.Score)
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
-		fmt.Fprintf(w, "-\t----\t-----\t\t------\t----\n")
+		fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
+		fprintf(w, "-\t----\t-----\t\t------\t----\n")
 
 		for j, card := range deck.Deck.DeckDetail {
 			evoBadge := deckpkg.FormatEvolutionBadge(card.EvolutionLevel)
@@ -197,19 +197,19 @@ func displayWarDecks(player *clashroyale.Player, warDecks []warDeckCandidate) {
 			if evoBadge != "" {
 				levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
 			}
-			fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
+			fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
 				j+1,
 				card.Name,
 				levelStr,
 				card.Elixir,
 				card.Role)
 		}
-		w.Flush()
+		flushWriter(w)
 
 		if len(deck.Deck.Notes) > 0 {
-			fmt.Printf("\nNotes:\n")
+			printf("\nNotes:\n")
 			for _, note := range deck.Deck.Notes {
-				fmt.Printf("- %s\n", note)
+				printf("- %s\n", note)
 			}
 		}
 	}

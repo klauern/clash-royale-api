@@ -4,6 +4,7 @@ package whatif
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -261,8 +262,10 @@ func calculateDeckScore(deck *deck.DeckRecommendation) float64 {
 // Helper functions
 
 func parseInt(s string) int {
-	var i int
-	fmt.Sscanf(s, "%d", &i)
+	i, err := strconv.Atoi(s)
+	if err != nil {
+		return 0
+	}
 	return i
 }
 

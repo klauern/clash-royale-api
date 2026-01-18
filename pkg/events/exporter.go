@@ -163,7 +163,7 @@ func (e *Exporter) groupByEventType(collection *EventDeckCollection) *EventDeckC
 }
 
 // exportCSV exports the collection to CSV format
-func (e *Exporter) exportCSV(collection *EventDeckCollection) error {
+func (e *Exporter) exportCSV(collection *EventDeckCollection) (returnErr error) {
 	if err := os.MkdirAll(e.options.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -175,7 +175,11 @@ func (e *Exporter) exportCSV(collection *EventDeckCollection) error {
 	if err != nil {
 		return fmt.Errorf("failed to create CSV file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil && returnErr == nil {
+			returnErr = fmt.Errorf("failed to close CSV file: %w", err)
+		}
+	}()
 
 	// Write headers
 	headers := []string{
@@ -249,7 +253,7 @@ func (e *Exporter) exportCSV(collection *EventDeckCollection) error {
 }
 
 // exportJSON exports the collection to JSON format
-func (e *Exporter) exportJSON(collection *EventDeckCollection) error {
+func (e *Exporter) exportJSON(collection *EventDeckCollection) (returnErr error) {
 	if err := os.MkdirAll(e.options.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -261,7 +265,11 @@ func (e *Exporter) exportJSON(collection *EventDeckCollection) error {
 	if err != nil {
 		return fmt.Errorf("failed to create JSON file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil && returnErr == nil {
+			returnErr = fmt.Errorf("failed to close JSON file: %w", err)
+		}
+	}()
 
 	encoder := json.NewEncoder(file)
 	encoder.SetIndent("", "  ")
@@ -274,7 +282,7 @@ func (e *Exporter) exportJSON(collection *EventDeckCollection) error {
 }
 
 // exportDeckList exports decks in a simple deck list format
-func (e *Exporter) exportDeckList(collection *EventDeckCollection) error {
+func (e *Exporter) exportDeckList(collection *EventDeckCollection) (returnErr error) {
 	if err := os.MkdirAll(e.options.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -286,7 +294,11 @@ func (e *Exporter) exportDeckList(collection *EventDeckCollection) error {
 	if err != nil {
 		return fmt.Errorf("failed to create deck list file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil && returnErr == nil {
+			returnErr = fmt.Errorf("failed to close deck list file: %w", err)
+		}
+	}()
 
 	currentEventType := ""
 	for _, deck := range collection.Decks {
@@ -322,7 +334,7 @@ func (e *Exporter) exportDeckList(collection *EventDeckCollection) error {
 }
 
 // exportRoyaleAPI exports decks in RoyaleAPI deck link format
-func (e *Exporter) exportRoyaleAPI(collection *EventDeckCollection) error {
+func (e *Exporter) exportRoyaleAPI(collection *EventDeckCollection) (returnErr error) {
 	if err := os.MkdirAll(e.options.OutputDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
@@ -334,7 +346,11 @@ func (e *Exporter) exportRoyaleAPI(collection *EventDeckCollection) error {
 	if err != nil {
 		return fmt.Errorf("failed to create deck links file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil && returnErr == nil {
+			returnErr = fmt.Errorf("failed to close deck links file: %w", err)
+		}
+	}()
 
 	currentEventType := ""
 	for i, deck := range collection.Decks {

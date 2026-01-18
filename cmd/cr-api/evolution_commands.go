@@ -96,7 +96,7 @@ func evolutionShardsListCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if len(inventory.Shards) == 0 {
-		fmt.Printf("No evolution shard inventory found.\n")
+		printf("No evolution shard inventory found.\n")
 		return nil
 	}
 
@@ -113,7 +113,7 @@ func evolutionShardsListCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if filter != "" && len(rows) == 0 {
-		fmt.Printf("No evolution shard count recorded for %s.\n", filter)
+		printf("No evolution shard count recorded for %s.\n", filter)
 		return nil
 	}
 
@@ -126,20 +126,20 @@ func evolutionShardsListCommand(ctx context.Context, cmd *cli.Command) error {
 		total += entry.count
 	}
 
-	fmt.Printf("Evolution Shards:\n")
+	printf("Evolution Shards:\n")
 	if !inventory.LastUpdated.IsZero() {
-		fmt.Printf("Last updated: %s\n", inventory.LastUpdated.Format(time.RFC3339))
+		printf("Last updated: %s\n", inventory.LastUpdated.Format(time.RFC3339))
 	}
-	fmt.Printf("Tracked cards: %d\n", len(rows))
-	fmt.Printf("Total shards: %d\n\n", total)
+	printf("Tracked cards: %d\n", len(rows))
+	printf("Total shards: %d\n\n", total)
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "Card\tShards\n")
-	fmt.Fprintf(w, "----\t------\n")
+	fprintf(w, "Card\tShards\n")
+	fprintf(w, "----\t------\n")
 	for _, entry := range rows {
-		fmt.Fprintf(w, "%s\t%d\n", entry.name, entry.count)
+		fprintf(w, "%s\t%d\n", entry.name, entry.count)
 	}
-	w.Flush()
+	flushWriter(w)
 
 	return nil
 }
@@ -183,7 +183,7 @@ func evolutionShardsSetCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to save evolution shard inventory: %w", err)
 	}
 
-	fmt.Printf("Set %s evolution shards to %d.\n", cardName, count)
+	printf("Set %s evolution shards to %d.\n", cardName, count)
 	return nil
 }
 
@@ -237,7 +237,7 @@ func loadStaticCards(dataDir, apiToken string, verbose bool) ([]clashroyale.Card
 	}
 
 	if verbose {
-		fmt.Printf("Fetching card database for validation...\n")
+		printf("Fetching card database for validation...\n")
 	}
 
 	client := clashroyale.NewClient(apiToken)
@@ -247,7 +247,7 @@ func loadStaticCards(dataDir, apiToken string, verbose bool) ([]clashroyale.Card
 	}
 
 	if err := cacheStaticCards(dataDir, cards); err != nil && verbose {
-		fmt.Printf("Warning: Failed to cache card database: %v\n", err)
+		printf("Warning: Failed to cache card database: %v\n", err)
 	}
 
 	return cards.Items, nil
@@ -282,7 +282,7 @@ func evolutionRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	// Load player data
 	client := clashroyale.NewClient(apiToken)
 	if verbose {
-		fmt.Printf("Fetching player data for %s...\n", playerTag)
+		printf("Fetching player data for %s...\n", playerTag)
 	}
 
 	player, err := client.GetPlayer(playerTag)
@@ -298,7 +298,7 @@ func evolutionRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Loaded shard inventory with %d cards tracked.\n", len(shardInventory.Shards))
+		printf("Loaded shard inventory with %d cards tracked.\n", len(shardInventory.Shards))
 	}
 
 	// Load static cards for max evolution levels

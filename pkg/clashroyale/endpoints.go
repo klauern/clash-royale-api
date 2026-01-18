@@ -22,7 +22,7 @@ func (c *Client) GetPlayer(tag string) (*Player, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer closeWithLog(resp.Body, "response body")
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, APIError{
@@ -53,7 +53,7 @@ func (c *Client) GetPlayerUpcomingChests(tag string) (*ChestCycle, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer closeWithLog(resp.Body, "response body")
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, APIError{
@@ -84,7 +84,7 @@ func (c *Client) GetPlayerBattleLog(tag string) (*BattleLogResponse, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer closeWithLog(resp.Body, "response body")
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, APIError{
@@ -114,7 +114,7 @@ func (c *Client) GetCards() (*CardList, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer closeWithLog(resp.Body, "response body")
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, APIError{
@@ -144,7 +144,7 @@ func (c *Client) GetLocations() (*LocationList, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer closeWithLog(resp.Body, "response body")
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, APIError{

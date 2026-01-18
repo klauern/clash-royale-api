@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -292,7 +293,9 @@ func addExportCommands() *cli.Command {
 						if err := os.WriteFile(eventsFile, content, 0o644); err != nil {
 							return fmt.Errorf("failed to write events file: %w", err)
 						}
-						os.Remove(battlesFile)
+						if err := os.Remove(battlesFile); err != nil && !errors.Is(err, os.ErrNotExist) {
+							return fmt.Errorf("failed to remove battles file: %w", err)
+						}
 					}
 
 					printf("✓ Exported %d event battles to %s\n", len(eventBattles), eventsFile)
@@ -435,7 +438,9 @@ func addExportCommands() *cli.Command {
 							if err := os.WriteFile(eventsFile, content, 0o644); err != nil {
 								return fmt.Errorf("failed to write events file: %w", err)
 							}
-							os.Remove(battlesFile)
+							if err := os.Remove(battlesFile); err != nil && !errors.Is(err, os.ErrNotExist) {
+								return fmt.Errorf("failed to remove battles file: %w", err)
+							}
 						}
 						printf("   ✓ Event battles (%d records): %s\n", len(eventBattles), eventsFile)
 					} else {

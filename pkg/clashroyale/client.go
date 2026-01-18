@@ -84,13 +84,13 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 
 		// Check for rate limit (429) or server errors (5xx) - retry these
 		if resp.StatusCode == 429 || (resp.StatusCode >= 500 && resp.StatusCode < 600) {
-			resp.Body.Close()
+			closeWithLog(resp.Body, "response body")
 			continue
 		}
 
 		// Check for client errors (4xx except 429) - don't retry these
 		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != 429 {
-			resp.Body.Close()
+			closeWithLog(resp.Body, "response body")
 			return nil, APIError{
 				StatusCode: resp.StatusCode,
 				Message:    fmt.Sprintf("Client error: %d", resp.StatusCode),
@@ -103,7 +103,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 
 	// All retries exhausted
 	if resp != nil {
-		resp.Body.Close()
+		closeWithLog(resp.Body, "response body")
 	}
 	return nil, fmt.Errorf("max retries exceeded: %w", err)
 }

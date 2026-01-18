@@ -127,7 +127,7 @@ func deckBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		deckNames = loadedNames
 
 		if verbose {
-			fmt.Printf("Loaded %d decks from %s\n", len(deckStrings), inputFile)
+			printf("Loaded %d decks from %s\n", len(deckStrings), inputFile)
 		}
 	} else {
 		// Use decks from command line
@@ -142,7 +142,7 @@ func deckBatchCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Evaluating %d decks...\n", len(deckStrings))
+		printf("Evaluating %d decks...\n", len(deckStrings))
 	}
 
 	// Create synergy database (shared for all evaluations)
@@ -175,7 +175,7 @@ func deckBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		if verbose {
-			fmt.Printf("  [%d/%d] %s: %.2f (%s)\n",
+			printf("  [%d/%d] %s: %.2f (%s)\n",
 				i+1, len(deckStrings), deckNames[i], result.OverallScore, result.OverallRating)
 		}
 	}
@@ -183,8 +183,8 @@ func deckBatchCommand(ctx context.Context, cmd *cli.Command) error {
 	totalTime := time.Since(startTime)
 
 	if verbose || showTiming {
-		fmt.Printf("\nBatch evaluation completed in %v\n", totalTime)
-		fmt.Printf("Average time per deck: %v\n", totalTime/time.Duration(len(deckStrings)))
+		printf("\nBatch evaluation completed in %v\n", totalTime)
+		printf("Average time per deck: %v\n", totalTime/time.Duration(len(deckStrings)))
 	}
 
 	// Sort results
@@ -194,7 +194,7 @@ func deckBatchCommand(ctx context.Context, cmd *cli.Command) error {
 	if filterArchetype && archetypeFilter != "" {
 		results = filterByArchetype(results, archetypeFilter)
 		if len(results) == 0 {
-			fmt.Printf("No decks found matching archetype: %s\n", archetypeFilter)
+			printf("No decks found matching archetype: %s\n", archetypeFilter)
 			return nil
 		}
 	}
@@ -237,7 +237,7 @@ func deckBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		if err := os.WriteFile(outputFile, []byte(formattedOutput), 0o644); err != nil {
 			return fmt.Errorf("failed to write output file: %w", err)
 		}
-		fmt.Printf("Batch evaluation saved to: %s\n", outputFile)
+		printf("Batch evaluation saved to: %s\n", outputFile)
 	} else {
 		fmt.Print(formattedOutput)
 	}
@@ -292,7 +292,7 @@ func loadDecksFromCSV(filePath string) ([]string, []string, error) {
 	if err != nil {
 		return nil, nil, err
 	}
-	defer file.Close()
+	defer closeFile(file)
 
 	reader := csv.NewReader(file)
 	records, err := reader.ReadAll()

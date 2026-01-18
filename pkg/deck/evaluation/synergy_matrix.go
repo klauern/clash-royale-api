@@ -83,46 +83,60 @@ func FormatSynergyMatrixText(matrix *SynergyMatrix, deckCards []string, synergyD
 	// Use tabwriter for alignment
 	tw := new(tabwriter.Writer)
 	tw.Init(&sb, 0, 8, 2, ' ', 0)
+	var writeErr error
+	writef := func(format string, args ...any) {
+		if writeErr != nil {
+			return
+		}
+		if _, err := fmt.Fprintf(tw, format, args...); err != nil {
+			writeErr = err
+		}
+	}
 
 	// Header row with card names (abbreviated to 10 chars max)
-	fmt.Fprint(tw, "Card\t")
+	writef("Card\t")
 	for _, card := range deckCards {
 		abbrev := abbreviateCardName(card)
-		fmt.Fprintf(tw, "%s\t", abbrev)
+		writef("%s\t", abbrev)
 	}
-	fmt.Fprintln(tw)
+	writef("\n")
 
 	// Separator
-	fmt.Fprint(tw, "────\t")
+	writef("────\t")
 	for range deckCards {
-		fmt.Fprint(tw, "──────\t")
+		writef("──────\t")
 	}
-	fmt.Fprintln(tw)
+	writef("\n")
 
 	// Data rows
 	for i, card1 := range deckCards {
 		abbrev1 := abbreviateCardName(card1)
-		fmt.Fprintf(tw, "%s\t", abbrev1)
+		writef("%s\t", abbrev1)
 
 		for j, card2 := range deckCards {
 			if i == j {
 				// Same card - show dash
-				fmt.Fprint(tw, "  -   \t")
+				writef("  -   \t")
 			} else {
 				// Look up synergy score
 				key := card1 + "|" + card2
 				score := synergyMap[key]
 				if score > 0 {
-					fmt.Fprintf(tw, "%.2f\t", score)
+					writef("%.2f\t", score)
 				} else {
-					fmt.Fprint(tw, "  .   \t")
+					writef("  .   \t")
 				}
 			}
 		}
-		fmt.Fprintln(tw)
+		writef("\n")
 	}
 
-	tw.Flush()
+	if err := tw.Flush(); err != nil && writeErr == nil {
+		writeErr = err
+	}
+	if writeErr != nil {
+		return fmt.Sprintf("Failed to format synergy matrix: %v", writeErr)
+	}
 	sb.WriteString("\n")
 
 	// Top synergies section

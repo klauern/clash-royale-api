@@ -882,14 +882,14 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Configure combat stats weight
 	if disableCombatStats {
-		os.Setenv("COMBAT_STATS_WEIGHT", "0")
+		setEnv("COMBAT_STATS_WEIGHT", "0")
 		if verbose {
-			fmt.Printf("Combat stats disabled (using traditional scoring only)\n")
+			printf("Combat stats disabled (using traditional scoring only)\n")
 		}
 	} else if combatStatsWeight >= 0 && combatStatsWeight <= 1.0 {
-		os.Setenv("COMBAT_STATS_WEIGHT", fmt.Sprintf("%.2f", combatStatsWeight))
+		setEnv("COMBAT_STATS_WEIGHT", fmt.Sprintf("%.2f", combatStatsWeight))
 		if verbose {
-			fmt.Printf("Combat stats weight set to: %.2f\n", combatStatsWeight)
+			printf("Combat stats weight set to: %.2f\n", combatStatsWeight)
 		}
 	}
 
@@ -924,7 +924,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to set strategy: %w", err)
 		}
 		if verbose {
-			fmt.Printf("Using deck building strategy: %s\n", parsedStrategy)
+			printf("Using deck building strategy: %s\n", parsedStrategy)
 		}
 	}
 
@@ -935,7 +935,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 			builder.SetSynergyWeight(synergyWeight)
 		}
 		if verbose {
-			fmt.Printf("Synergy scoring enabled (weight: %.2f)\n", cmd.Float64("synergy-weight"))
+			printf("Synergy scoring enabled (weight: %.2f)\n", cmd.Float64("synergy-weight"))
 		}
 	}
 
@@ -945,7 +945,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	if fromAnalysis {
 		// OFFLINE MODE: Load from existing analysis JSON
 		if verbose {
-			fmt.Printf("Building deck from offline analysis for player %s\n", tag)
+			printf("Building deck from offline analysis for player %s\n", tag)
 		}
 
 		// Default analysis dir to data/analysis if not specified
@@ -963,7 +963,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 				return fmt.Errorf("failed to load analysis file %s: %w", analysisFile, err)
 			}
 			if verbose {
-				fmt.Printf("Loaded analysis from: %s\n", analysisFile)
+				printf("Loaded analysis from: %s\n", analysisFile)
 			}
 		} else {
 			// Load latest analysis for player tag
@@ -972,7 +972,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 				return fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
 			}
 			if verbose {
-				fmt.Printf("Loaded latest analysis from: %s\n", analysisDir)
+				printf("Loaded latest analysis from: %s\n", analysisDir)
 			}
 		}
 
@@ -988,7 +988,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		client := clashroyale.NewClient(apiToken)
 
 		if verbose {
-			fmt.Printf("Building deck for player %s\n", tag)
+			printf("Building deck for player %s\n", tag)
 		}
 
 		// Get player information
@@ -1001,8 +1001,8 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		playerTag = player.Tag
 
 		if verbose {
-			fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-			fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+			printf("Player: %s (%s)\n", player.Name, player.Tag)
+			printf("Analyzing %d cards...\n", len(player.Cards))
 		}
 
 		// Perform card collection analysis
@@ -1061,7 +1061,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Validate elixir constraints
 	if deckRec.AvgElixir < minElixir || deckRec.AvgElixir > maxElixir {
-		fmt.Printf("\n⚠ Warning: Deck average elixir (%.2f) is outside requested range (%.1f-%.1f)\n",
+		printf("\n⚠ Warning: Deck average elixir (%.2f) is outside requested range (%.1f-%.1f)\n",
 			deckRec.AvgElixir, minElixir, maxElixir)
 	}
 
@@ -1071,12 +1071,12 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	// Display upgrade recommendations by default (unless disabled)
 	var upgrades *deck.UpgradeRecommendations
 	if !noSuggestUpgrades {
-		fmt.Printf("\n")
+		printf("\n")
 		var err error
 		upgrades, err = builder.GetUpgradeRecommendations(deckCardAnalysis, deckRec, upgradeCount)
 		if err != nil {
 			if verbose {
-				fmt.Printf("Warning: Failed to generate upgrade recommendations: %v\n", err)
+				printf("Warning: Failed to generate upgrade recommendations: %v\n", err)
 			}
 		} else {
 			displayUpgradeRecommendations(upgrades)
@@ -1085,10 +1085,10 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Show ideal deck with recommended upgrades applied
 	if idealDeck && upgrades != nil && len(upgrades.Recommendations) > 0 {
-		fmt.Printf("\n")
-		fmt.Printf("============================================================================\n")
-		fmt.Printf("                        IDEAL DECK (WITH UPGRADES)\n")
-		fmt.Printf("============================================================================\n\n")
+		printf("\n")
+		printf("============================================================================\n")
+		printf("                        IDEAL DECK (WITH UPGRADES)\n")
+		printf("============================================================================\n\n")
 
 		// Create a copy of the card analysis with simulated upgrades
 		idealAnalysis := deck.CardAnalysis{
@@ -1102,29 +1102,29 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		// Apply upgrades
-		fmt.Printf("Simulating upgrades:\n")
+		printf("Simulating upgrades:\n")
 		for _, rec := range upgrades.Recommendations {
 			if cardData, exists := idealAnalysis.CardLevels[rec.CardName]; exists {
 				oldLevel := cardData.Level
 				cardData.Level = rec.TargetLevel
 				idealAnalysis.CardLevels[rec.CardName] = cardData
-				fmt.Printf("  • %s: Level %d → %d\n", rec.CardName, oldLevel, rec.TargetLevel)
+				printf("  • %s: Level %d → %d\n", rec.CardName, oldLevel, rec.TargetLevel)
 			}
 		}
-		fmt.Printf("\n")
+		printf("\n")
 
 		// Build ideal deck with upgraded cards
 		idealDeckRec, err := builder.BuildDeckFromAnalysis(idealAnalysis)
 		if err != nil {
-			fmt.Printf("Warning: Failed to build ideal deck: %v\n", err)
+			printf("Warning: Failed to build ideal deck: %v\n", err)
 		} else {
 			displayDeckRecommendationOffline(idealDeckRec, playerName, playerTag)
 
 			// Show comparison
-			fmt.Printf("\n")
-			fmt.Printf("Comparison:\n")
-			fmt.Printf("  Current Deck:  %.2f avg elixir\n", deckRec.AvgElixir)
-			fmt.Printf("  Ideal Deck:    %.2f avg elixir\n", idealDeckRec.AvgElixir)
+			printf("\n")
+			printf("Comparison:\n")
+			printf("  Current Deck:  %.2f avg elixir\n", deckRec.AvgElixir)
+			printf("  Ideal Deck:    %.2f avg elixir\n", idealDeckRec.AvgElixir)
 
 			// Show cards that changed
 			currentCards := make(map[string]bool)
@@ -1153,15 +1153,15 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 			}
 
 			if len(addedCards) > 0 || len(removedCards) > 0 {
-				fmt.Printf("\n  Deck Changes:\n")
+				printf("\n  Deck Changes:\n")
 				if len(removedCards) > 0 {
-					fmt.Printf("    Removed: %s\n", strings.Join(removedCards, ", "))
+					printf("    Removed: %s\n", strings.Join(removedCards, ", "))
 				}
 				if len(addedCards) > 0 {
-					fmt.Printf("    Added:   %s\n", strings.Join(addedCards, ", "))
+					printf("    Added:   %s\n", strings.Join(addedCards, ", "))
 				}
 			} else {
-				fmt.Printf("\n  Deck composition remains the same (upgrades strengthen existing cards)\n")
+				printf("\n  Deck composition remains the same (upgrades strengthen existing cards)\n")
 			}
 		}
 	}
@@ -1169,13 +1169,13 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	// Save deck if requested
 	if saveData {
 		if verbose {
-			fmt.Printf("\nSaving deck to: %s\n", dataDir)
+			printf("\nSaving deck to: %s\n", dataDir)
 		}
 		deckPath, err := builder.SaveDeck(deckRec, "", playerTag)
 		if err != nil {
-			fmt.Printf("Warning: Failed to save deck: %v\n", err)
+			printf("Warning: Failed to save deck: %v\n", err)
 		} else {
-			fmt.Printf("\nDeck saved to: %s\n", deckPath)
+			printf("\nDeck saved to: %s\n", deckPath)
 		}
 	}
 
@@ -1234,7 +1234,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Building deck suite with %d strategies x %d variations = %d total decks\n",
+		printf("Building deck suite with %d strategies x %d variations = %d total decks\n",
 			len(strategies), variations, len(strategies)*variations)
 	}
 
@@ -1256,7 +1256,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	if fromAnalysis {
 		// OFFLINE MODE: Load from existing analysis JSON
 		if verbose {
-			fmt.Printf("Building deck suite from offline analysis for player %s\n", tag)
+			printf("Building deck suite from offline analysis for player %s\n", tag)
 		}
 
 		analysisDir := filepath.Join(dataDir, "analysis")
@@ -1277,7 +1277,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		client := clashroyale.NewClient(apiToken)
 
 		if verbose {
-			fmt.Printf("Building deck suite for player %s\n", tag)
+			printf("Building deck suite for player %s\n", tag)
 		}
 
 		// Get player information
@@ -1290,8 +1290,8 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		playerTag = player.Tag
 
 		if verbose {
-			fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-			fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+			printf("Player: %s (%s)\n", player.Name, player.Tag)
+			printf("Analyzing %d cards...\n", len(player.Cards))
 		}
 
 		// Perform card collection analysis
@@ -1349,16 +1349,16 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	startTime := time.Now()
 	results := []deckResult{}
 
-	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	fmt.Printf("║                    DECK BUILD SUITE                                ║\n")
-	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
-	fmt.Printf("Player: %s (%s)\n", playerName, playerTag)
-	fmt.Printf("Output: %s\n\n", outputDir)
+	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	printf("║                    DECK BUILD SUITE                                ║\n")
+	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printf("Player: %s (%s)\n", playerName, playerTag)
+	printf("Output: %s\n\n", outputDir)
 
 	// Build decks for each strategy
 	for _, strategy := range strategies {
 		if verbose {
-			fmt.Printf("Building decks for strategy: %s\n", strategy)
+			printf("Building decks for strategy: %s\n", strategy)
 		}
 
 		for v := 1; v <= variations; v++ {
@@ -1380,7 +1380,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 					Variation:  v,
 					BuildError: err,
 				})
-				fmt.Printf("  ⚠ Variation %d: Failed to set strategy: %v\n", v, err)
+				printf("  ⚠ Variation %d: Failed to set strategy: %v\n", v, err)
 				continue
 			}
 
@@ -1392,14 +1392,14 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 					Variation:  v,
 					BuildError: err,
 				})
-				fmt.Printf("  ⚠ Variation %d: Failed to build deck: %v\n", v, err)
+				printf("  ⚠ Variation %d: Failed to build deck: %v\n", v, err)
 				continue
 			}
 
 			// Validate elixir constraints
 			if deckRec.AvgElixir < minElixir || deckRec.AvgElixir > maxElixir {
 				if verbose {
-					fmt.Printf("  ⚠ Variation %d: Deck average elixir (%.2f) outside range (%.1f-%.1f)\n",
+					printf("  ⚠ Variation %d: Deck average elixir (%.2f) outside range (%.1f-%.1f)\n",
 						v, deckRec.AvgElixir, minElixir, maxElixir)
 				}
 			}
@@ -1415,7 +1415,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 				savedPath, err := deckBuilder.SaveDeck(deckRec, outputDir, fmt.Sprintf("%s_var%d_%s", strategy, v, playerTag))
 				if err != nil {
 					if verbose {
-						fmt.Printf("  ⚠ Variation %d: Failed to save deck: %v\n", v, err)
+						printf("  ⚠ Variation %d: Failed to save deck: %v\n", v, err)
 					}
 				} else {
 					filePath = savedPath
@@ -1429,7 +1429,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 				FilePath:  filePath,
 			})
 
-			fmt.Printf("  ✓ %s variation %d: %.2f avg elixir, %d cards\n",
+			printf("  ✓ %s variation %d: %.2f avg elixir, %d cards\n",
 				strategy, v, deckRec.AvgElixir, len(deckRec.Deck))
 		}
 	}
@@ -1437,10 +1437,10 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	totalTime := time.Since(startTime)
 
 	// Display summary
-	fmt.Printf("\n")
-	fmt.Printf("════════════════════════════════════════════════════════════════════\n")
-	fmt.Printf("                           SUMMARY\n")
-	fmt.Printf("════════════════════════════════════════════════════════════════════\n\n")
+	printf("\n")
+	printf("════════════════════════════════════════════════════════════════════\n")
+	printf("                           SUMMARY\n")
+	printf("════════════════════════════════════════════════════════════════════\n\n")
 
 	successful := 0
 	failed := 0
@@ -1452,11 +1452,11 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	fmt.Printf("Total decks:     %d\n", len(results))
-	fmt.Printf("Successful:      %d\n", successful)
-	fmt.Printf("Failed:          %d\n", failed)
-	fmt.Printf("Build time:      %v\n", totalTime)
-	fmt.Printf("Avg per deck:    %v\n\n", totalTime/time.Duration(len(results)))
+	printf("Total decks:     %d\n", len(results))
+	printf("Successful:      %d\n", successful)
+	printf("Failed:          %d\n", failed)
+	printf("Build time:      %v\n", totalTime)
+	printf("Avg per deck:    %v\n\n", totalTime/time.Duration(len(results)))
 
 	// Save summary JSON if requested
 	if saveData && successful > 0 {
@@ -1502,15 +1502,15 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		// Write summary JSON
 		summaryJSON, err := json.MarshalIndent(summary, "", "  ")
 		if err != nil {
-			fmt.Printf("Warning: Failed to marshal summary JSON: %v\n", err)
+			printf("Warning: Failed to marshal summary JSON: %v\n", err)
 		} else {
 			if err := os.MkdirAll(outputDir, 0o755); err != nil {
-				fmt.Printf("Warning: Failed to create output directory: %v\n", err)
+				printf("Warning: Failed to create output directory: %v\n", err)
 			} else {
 				if err := os.WriteFile(summaryPath, summaryJSON, 0o644); err != nil {
-					fmt.Printf("Warning: Failed to write summary file: %v\n", err)
+					printf("Warning: Failed to write summary file: %v\n", err)
 				} else {
-					fmt.Printf("Summary saved to: %s\n", summaryPath)
+					printf("Summary saved to: %s\n", summaryPath)
 				}
 			}
 		}
@@ -1620,7 +1620,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		if verbose {
-			fmt.Printf("Loaded %d decks from suite: %s\n", len(decks), fromSuite)
+			printf("Loaded %d decks from suite: %s\n", len(decks), fromSuite)
 		}
 	} else {
 		// Load from directory
@@ -1638,7 +1638,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 			data, err := os.ReadFile(deckPath)
 			if err != nil {
 				if verbose {
-					fmt.Printf("Warning: Failed to read %s: %v\n", entry.Name(), err)
+					printf("Warning: Failed to read %s: %v\n", entry.Name(), err)
 				}
 				continue
 			}
@@ -1646,7 +1646,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 			var deckData map[string]interface{}
 			if err := json.Unmarshal(data, &deckData); err != nil {
 				if verbose {
-					fmt.Printf("Warning: Failed to parse %s: %v\n", entry.Name(), err)
+					printf("Warning: Failed to parse %s: %v\n", entry.Name(), err)
 				}
 				continue
 			}
@@ -1669,7 +1669,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 
 			if len(cards) != 8 {
 				if verbose {
-					fmt.Printf("Warning: Skipping %s (expected 8 cards, got %d)\n", entry.Name(), len(cards))
+					printf("Warning: Skipping %s (expected 8 cards, got %d)\n", entry.Name(), len(cards))
 				}
 				continue
 			}
@@ -1692,7 +1692,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		if verbose {
-			fmt.Printf("Loaded %d decks from directory: %s\n", len(decks), deckDir)
+			printf("Loaded %d decks from directory: %s\n", len(decks), deckDir)
 		}
 	}
 
@@ -1713,7 +1713,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 			player, err := client.GetPlayer(playerTag)
 			if err != nil {
 				if verbose {
-					fmt.Printf("Warning: Failed to load player data: %v\n", err)
+					printf("Warning: Failed to load player data: %v\n", err)
 					fmt.Println("Continuing with generic evaluation (no player context)")
 				}
 			} else {
@@ -1722,14 +1722,14 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 					playerName = player.Name
 				}
 				if verbose {
-					fmt.Printf("Loaded player context for %s (%s)\n", player.Name, playerTag)
+					printf("Loaded player context for %s (%s)\n", player.Name, playerTag)
 				}
 			}
 		}
 	}
 
 	if verbose {
-		fmt.Printf("Evaluating %d decks...\n", len(decks))
+		printf("Evaluating %d decks...\n", len(decks))
 	}
 
 	// Create synergy database (shared for all evaluations)
@@ -1742,16 +1742,16 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		storage, storageErr = leaderboard.NewStorage(playerTag)
 		if storageErr != nil {
 			if verbose {
-				fmt.Fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", storageErr)
+				fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", storageErr)
 			}
 		} else {
 			defer func() {
 				if err := storage.Close(); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
+					fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
 				}
 			}()
 			if verbose {
-				fmt.Printf("Initialized persistent storage at: %s\n", storage.GetDBPath())
+				printf("Initialized persistent storage at: %s\n", storage.GetDBPath())
 			}
 		}
 	}
@@ -1775,7 +1775,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 
 		if len(deckData.Cards) != 8 {
 			if verbose {
-				fmt.Printf("  [%d/%d] Skipping %s: invalid card count (%d)\n",
+				printf("  [%d/%d] Skipping %s: invalid card count (%d)\n",
 					i+1, len(decks), deckData.Name, len(deckData.Cards))
 			}
 			continue
@@ -1785,7 +1785,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		if deckData.FilePath != "" {
 			candidates, ok, err := loadDeckCandidatesFromFile(deckData.FilePath)
 			if err != nil && verbose {
-				fmt.Printf("Warning: Failed to load deck details from %s: %v\n", deckData.FilePath, err)
+				printf("Warning: Failed to load deck details from %s: %v\n", deckData.FilePath, err)
 			}
 			if ok {
 				deckCards = candidates
@@ -1830,14 +1830,14 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 
 			_, isNew, err := storage.InsertDeck(entry)
 			if err != nil && verbose {
-				fmt.Fprintf(os.Stderr, "  Warning: failed to save deck to storage: %v\n", err)
+				fprintf(os.Stderr, "  Warning: failed to save deck to storage: %v\n", err)
 			} else if verbose && !isNew {
-				fmt.Printf("  (deck already in storage, updated)\n")
+				printf("  (deck already in storage, updated)\n")
 			}
 		}
 
 		if verbose {
-			fmt.Printf("  [%d/%d] %s: %.2f (%s) - %s\n",
+			printf("  [%d/%d] %s: %.2f (%s) - %s\n",
 				i+1, len(decks), deckData.Name, result.OverallScore,
 				result.OverallRating, result.DetectedArchetype)
 		}
@@ -1846,9 +1846,9 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 	totalTime := time.Since(startTime)
 
 	if verbose || showTiming {
-		fmt.Printf("\nBatch evaluation completed in %v\n", totalTime)
+		printf("\nBatch evaluation completed in %v\n", totalTime)
 		if len(results) > 0 {
-			fmt.Printf("Average time per deck: %v\n", totalTime/time.Duration(len(results)))
+			printf("Average time per deck: %v\n", totalTime/time.Duration(len(results)))
 		}
 	}
 
@@ -1861,14 +1861,14 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		stats, err := storage.RecalculateStats()
 		if err != nil {
 			if verbose {
-				fmt.Fprintf(os.Stderr, "Warning: failed to recalculate storage stats: %v\n", err)
+				fprintf(os.Stderr, "Warning: failed to recalculate storage stats: %v\n", err)
 			}
 		} else if verbose {
-			fmt.Printf("\nStorage statistics updated:\n")
-			fmt.Printf("  Total decks evaluated: %d\n", stats.TotalDecksEvaluated)
-			fmt.Printf("  Unique decks: %d\n", stats.TotalUniqueDecks)
-			fmt.Printf("  Top score: %.2f\n", stats.TopScore)
-			fmt.Printf("  Average score: %.2f\n", stats.AvgScore)
+			printf("\nStorage statistics updated:\n")
+			printf("  Total decks evaluated: %d\n", stats.TotalDecksEvaluated)
+			printf("  Unique decks: %d\n", stats.TotalUniqueDecks)
+			printf("  Top score: %.2f\n", stats.TopScore)
+			printf("  Average score: %.2f\n", stats.AvgScore)
 		}
 	}
 
@@ -1885,7 +1885,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 		results = filtered
 		if len(results) == 0 {
-			fmt.Printf("No decks found matching archetype: %s\n", archetypeFilter)
+			printf("No decks found matching archetype: %s\n", archetypeFilter)
 			return nil
 		}
 	}
@@ -1951,7 +1951,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to write output file: %w", err)
 		}
 
-		fmt.Printf("\nEvaluation results saved to: %s\n", outputPath)
+		printf("\nEvaluation results saved to: %s\n", outputPath)
 	} else {
 		fmt.Print(output)
 	}
@@ -2037,9 +2037,9 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Strategies: %v\n", strategies)
-		fmt.Printf("Variations per strategy: %d\n", variations)
-		fmt.Printf("Total decks to build: %d\n", len(strategies)*variations)
+		printf("Strategies: %v\n", strategies)
+		printf("Variations per strategy: %d\n", variations)
+		printf("Total decks to build: %d\n", len(strategies)*variations)
 	}
 
 	// Build decks using build-suite logic
@@ -2059,7 +2059,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		playerName = tag
 		playerTag = tag
 		if verbose {
-			fmt.Printf("✓ Loaded analysis from: %s\n", analysisDir)
+			printf("✓ Loaded analysis from: %s\n", analysisDir)
 		}
 	} else {
 		if apiToken == "" {
@@ -2098,7 +2098,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		if verbose {
-			fmt.Printf("✓ Fetched player data for: %s (%s)\n", playerName, playerTag)
+			printf("✓ Fetched player data for: %s (%s)\n", playerName, playerTag)
 		}
 	}
 
@@ -2132,7 +2132,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 
 			// Set strategy
 			if err := deckBuilder.SetStrategy(strategy); err != nil {
-				fmt.Printf("  ✗ Failed to set strategy %s variation %d: %v\n", strategy, v, err)
+				printf("  ✗ Failed to set strategy %s variation %d: %v\n", strategy, v, err)
 				failCount++
 				continue
 			}
@@ -2140,7 +2140,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			// Build deck
 			deckRec, err := deckBuilder.BuildDeckFromAnalysis(deckCardAnalysis)
 			if err != nil {
-				fmt.Printf("  ✗ Failed to build %s variation %d: %v\n", strategy, v, err)
+				printf("  ✗ Failed to build %s variation %d: %v\n", strategy, v, err)
 				failCount++
 				continue
 			}
@@ -2157,13 +2157,13 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 
 			deckJSON, err := json.MarshalIndent(deckData, "", "  ")
 			if err != nil {
-				fmt.Printf("  ✗ Failed to marshal deck %s variation %d: %v\n", strategy, v, err)
+				printf("  ✗ Failed to marshal deck %s variation %d: %v\n", strategy, v, err)
 				failCount++
 				continue
 			}
 
 			if err := os.WriteFile(deckFilePath, deckJSON, 0o644); err != nil {
-				fmt.Printf("  ✗ Failed to save deck %s variation %d: %v\n", strategy, v, err)
+				printf("  ✗ Failed to save deck %s variation %d: %v\n", strategy, v, err)
 				failCount++
 				continue
 			}
@@ -2178,7 +2178,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 
 			successCount++
 			if verbose {
-				fmt.Printf("  ✓ Built %s variation %d (%.2f avg elixir)\n", strategy, v, deckRec.AvgElixir)
+				printf("  ✓ Built %s variation %d (%.2f avg elixir)\n", strategy, v, deckRec.AvgElixir)
 			}
 		}
 	}
@@ -2217,8 +2217,8 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	fmt.Println()
-	fmt.Printf("✓ Built %d/%d decks successfully in %s\n", successCount, successCount+failCount, buildDuration.Round(time.Millisecond))
-	fmt.Printf("  Suite summary: %s\n", suiteSummaryPath)
+	printf("✓ Built %d/%d decks successfully in %s\n", successCount, successCount+failCount, buildDuration.Round(time.Millisecond))
+	printf("  Suite summary: %s\n", suiteSummaryPath)
 	fmt.Println()
 
 	if successCount == 0 {
@@ -2256,16 +2256,16 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		storage, storageErr = leaderboard.NewStorage(tag)
 		if storageErr != nil {
 			if verbose {
-				fmt.Fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", storageErr)
+				fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", storageErr)
 			}
 		} else {
 			defer func() {
 				if err := storage.Close(); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
+					fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
 				}
 			}()
 			if verbose {
-				fmt.Printf("Initialized persistent storage at: %s\n", storage.GetDBPath())
+				printf("Initialized persistent storage at: %s\n", storage.GetDBPath())
 			}
 		}
 	}
@@ -2291,7 +2291,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		if deckInf.FilePath != "" {
 			candidates, ok, err := loadDeckCandidatesFromFile(deckInf.FilePath)
 			if err != nil && verbose {
-				fmt.Printf("Warning: Failed to load deck details from %s: %v\n", deckInf.FilePath, err)
+				printf("Warning: Failed to load deck details from %s: %v\n", deckInf.FilePath, err)
 			}
 			if ok {
 				deckCards = candidates
@@ -2348,12 +2348,12 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 
 			_, _, err := storage.InsertDeck(entry)
 			if err != nil && verbose {
-				fmt.Fprintf(os.Stderr, "  Warning: failed to save deck to storage: %v\n", err)
+				fprintf(os.Stderr, "  Warning: failed to save deck to storage: %v\n", err)
 			}
 		}
 
 		if verbose {
-			fmt.Printf("  ✓ Evaluated %s: %.2f overall (%.0fms)\n", deckName, deckEvalResult.OverallScore, float64(evalDuration.Nanoseconds())/1e6)
+			printf("  ✓ Evaluated %s: %.2f overall (%.0fms)\n", deckName, deckEvalResult.OverallScore, float64(evalDuration.Nanoseconds())/1e6)
 		}
 	}
 
@@ -2363,7 +2363,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	if storage != nil {
 		_, err := storage.RecalculateStats()
 		if err != nil && verbose {
-			fmt.Fprintf(os.Stderr, "Warning: failed to recalculate storage stats: %v\n", err)
+			fprintf(os.Stderr, "Warning: failed to recalculate storage stats: %v\n", err)
 		}
 	}
 
@@ -2400,8 +2400,8 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	fmt.Println()
-	fmt.Printf("✓ Evaluated %d decks in %s\n", len(results), evalDuration.Round(time.Millisecond))
-	fmt.Printf("  Evaluation results: %s\n", evalFilePath)
+	printf("✓ Evaluated %d decks in %s\n", len(results), evalDuration.Round(time.Millisecond))
+	printf("  Evaluation results: %s\n", evalFilePath)
 	fmt.Println()
 
 	// ========================================================================
@@ -2449,8 +2449,8 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to save comparison report: %w", err)
 	}
 
-	fmt.Printf("✓ Generated comparison report for top %d decks\n", compareCount)
-	fmt.Printf("  Report: %s\n", reportFilePath)
+	printf("✓ Generated comparison report for top %d decks\n", compareCount)
+	printf("  Report: %s\n", reportFilePath)
 	fmt.Println()
 
 	// ========================================================================
@@ -2460,15 +2460,15 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Println("║                      ANALYSIS SUITE COMPLETE                       ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
-	fmt.Printf("Player: %s (%s)\n", playerName, playerTag)
-	fmt.Printf("Decks built: %d\n", successCount)
-	fmt.Printf("Decks evaluated: %d\n", len(results))
-	fmt.Printf("Top performers compared: %d\n", compareCount)
+	printf("Player: %s (%s)\n", playerName, playerTag)
+	printf("Decks built: %d\n", successCount)
+	printf("Decks evaluated: %d\n", len(results))
+	printf("Top performers compared: %d\n", compareCount)
 	fmt.Println()
 	fmt.Println("📂 Output files:")
-	fmt.Printf("  • Suite summary:  %s\n", suiteSummaryPath)
-	fmt.Printf("  • Evaluations:    %s\n", evalFilePath)
-	fmt.Printf("  • Final report:   %s\n", reportFilePath)
+	printf("  • Suite summary:  %s\n", suiteSummaryPath)
+	printf("  • Evaluations:    %s\n", evalFilePath)
+	printf("  • Final report:   %s\n", reportFilePath)
 	fmt.Println()
 
 	if len(results) > 0 {
@@ -2476,7 +2476,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		for i := 0; i < 3 && i < len(results); i++ {
 			medal := []string{"🥇", "🥈", "🥉"}[i]
 			res := results[i]
-			fmt.Printf("  %s %s: %.2f (%.2f avg elixir, %s archetype)\n",
+			printf("  %s %s: %.2f (%.2f avg elixir, %s archetype)\n",
 				medal, res.Name, res.Result.OverallScore, res.Result.AvgElixir,
 				res.Result.DetectedArchetype)
 		}
@@ -2492,7 +2492,7 @@ func deckAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("exactly 8 cards are required for deck analysis")
 	}
 
-	fmt.Printf("Analyzing deck with cards: %v\n", cardNames)
+	printf("Analyzing deck with cards: %v\n", cardNames)
 	fmt.Println("Note: Full deck analysis not yet implemented")
 
 	return nil
@@ -2517,7 +2517,7 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	// If no cards provided, fetch player's current deck from API
 	if len(cardNames) == 0 {
 		if verbose {
-			fmt.Printf("Fetching player data for tag: %s\n", tag)
+			printf("Fetching player data for tag: %s\n", tag)
 		}
 
 		player, err := client.GetPlayer(tag)
@@ -2540,7 +2540,7 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		if verbose {
-			fmt.Printf("Using player's current deck: %v\n", cardNames)
+			printf("Using player's current deck: %v\n", cardNames)
 		}
 	} else if len(cardNames) != 8 {
 		return fmt.Errorf("exactly 8 cards are required for optimization")
@@ -2584,36 +2584,36 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Println("║                    DECK OPTIMIZATION REPORT                    ║")
 	fmt.Println("╚════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
-	fmt.Printf("🃏 Current Deck: %s\n", strings.Join(cardNames, " • "))
-	fmt.Printf("📊 Average Elixir: %.2f\n", currentResult.AvgElixir)
-	fmt.Printf("🎯 Archetype: %s (%.0f%% confidence)\n",
+	printf("🃏 Current Deck: %s\n", strings.Join(cardNames, " • "))
+	printf("📊 Average Elixir: %.2f\n", currentResult.AvgElixir)
+	printf("🎯 Archetype: %s (%.0f%% confidence)\n",
 		strings.Title(string(currentResult.DetectedArchetype)),
 		currentResult.ArchetypeConfidence*100)
 	fmt.Println()
-	fmt.Printf("⭐ Current Overall Score: %.1f/10 - %s\n",
+	printf("⭐ Current Overall Score: %.1f/10 - %s\n",
 		currentResult.OverallScore,
 		currentResult.OverallRating)
 	fmt.Println()
 
 	// Display current category scores
 	fmt.Println("Current Category Scores:")
-	fmt.Printf("  ⚔️  Attack:        %s  %.1f/10 - %s\n",
+	printf("  ⚔️  Attack:        %s  %.1f/10 - %s\n",
 		formatStars(currentResult.Attack.Stars),
 		currentResult.Attack.Score,
 		currentResult.Attack.Rating)
-	fmt.Printf("  🛡️  Defense:       %s  %.1f/10 - %s\n",
+	printf("  🛡️  Defense:       %s  %.1f/10 - %s\n",
 		formatStars(currentResult.Defense.Stars),
 		currentResult.Defense.Score,
 		currentResult.Defense.Rating)
-	fmt.Printf("  🔗 Synergy:       %s  %.1f/10 - %s\n",
+	printf("  🔗 Synergy:       %s  %.1f/10 - %s\n",
 		formatStars(currentResult.Synergy.Stars),
 		currentResult.Synergy.Score,
 		currentResult.Synergy.Rating)
-	fmt.Printf("  🎭 Versatility:   %s  %.1f/10 - %s\n",
+	printf("  🎭 Versatility:   %s  %.1f/10 - %s\n",
 		formatStars(currentResult.Versatility.Stars),
 		currentResult.Versatility.Score,
 		currentResult.Versatility.Rating)
-	fmt.Printf("  💰 F2P Friendly:  %s  %.1f/10 - %s\n",
+	printf("  💰 F2P Friendly:  %s  %.1f/10 - %s\n",
 		formatStars(currentResult.F2PFriendly.Stars),
 		currentResult.F2PFriendly.Score,
 		currentResult.F2PFriendly.Rating)
@@ -2626,7 +2626,7 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	fmt.Println("═══════════════════════════════════════════════════════════════")
-	fmt.Printf("                OPTIMIZATION SUGGESTIONS (%d found)\n", len(alternatives.Suggestions))
+	printf("                OPTIMIZATION SUGGESTIONS (%d found)\n", len(alternatives.Suggestions))
 	fmt.Println("═══════════════════════════════════════════════════════════════")
 	fmt.Println()
 
@@ -2637,13 +2637,13 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	for i, alt := range alternatives.Suggestions[:displayCount] {
-		fmt.Printf("Suggestion #%d: %s\n", i+1, alt.Impact)
+		printf("Suggestion #%d: %s\n", i+1, alt.Impact)
 		fmt.Println("───────────────────────────────────────────────────────────────")
-		fmt.Printf("  Replace: %s  →  %s\n", alt.OriginalCard, alt.ReplacementCard)
-		fmt.Printf("  Score Improvement: %.1f → %.1f (+%.1f)\n",
+		printf("  Replace: %s  →  %s\n", alt.OriginalCard, alt.ReplacementCard)
+		printf("  Score Improvement: %.1f → %.1f (+%.1f)\n",
 			alt.OriginalScore, alt.NewScore, alt.ScoreDelta)
-		fmt.Printf("  Rationale: %s\n", alt.Rationale)
-		fmt.Printf("  New Deck: %s\n", strings.Join(alt.Deck, " • "))
+		printf("  Rationale: %s\n", alt.Rationale)
+		printf("  New Deck: %s\n", strings.Join(alt.Deck, " • "))
 		fmt.Println()
 	}
 
@@ -2651,9 +2651,9 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	if exportCSV {
 		csvPath := filepath.Join(dataDir, fmt.Sprintf("deck-optimize-%s-%d.csv", tag, time.Now().Unix()))
 		if err := exportOptimizationCSV(csvPath, tag, cardNames, currentResult, *alternatives); err != nil {
-			fmt.Fprintf(os.Stderr, "Warning: Failed to export CSV: %v\n", err)
+			fprintf(os.Stderr, "Warning: Failed to export CSV: %v\n", err)
 		} else {
-			fmt.Printf("✓ Optimization results exported to: %s\n", csvPath)
+			printf("✓ Optimization results exported to: %s\n", csvPath)
 		}
 	}
 
@@ -2681,7 +2681,7 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	if fromAnalysis {
 		// OFFLINE MODE: Load from existing analysis JSON
 		if verbose {
-			fmt.Printf("Generating recommendations from offline analysis for player %s\n", tag)
+			printf("Generating recommendations from offline analysis for player %s\n", tag)
 		}
 
 		// Default analysis dir to data/analysis if not specified
@@ -2700,7 +2700,7 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 				return fmt.Errorf("failed to load analysis file %s: %w", analysisFile, err)
 			}
 			if verbose {
-				fmt.Printf("Loaded analysis from: %s\n", analysisFile)
+				printf("Loaded analysis from: %s\n", analysisFile)
 			}
 		} else {
 			// Load latest analysis for player tag
@@ -2709,7 +2709,7 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 				return fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
 			}
 			if verbose {
-				fmt.Printf("Loaded latest analysis from: %s\n", analysisDir)
+				printf("Loaded latest analysis from: %s\n", analysisDir)
 			}
 		}
 
@@ -2725,7 +2725,7 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 		client := clashroyale.NewClient(apiToken)
 
 		if verbose {
-			fmt.Printf("Generating recommendations for player %s\n", tag)
+			printf("Generating recommendations for player %s\n", tag)
 		}
 
 		// Get player information
@@ -2738,8 +2738,8 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 		playerTag = player.Tag
 
 		if verbose {
-			fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-			fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+			printf("Player: %s (%s)\n", player.Name, player.Tag)
+			printf("Analyzing %d cards...\n", len(player.Cards))
 		}
 
 		// Perform card collection analysis
@@ -2789,7 +2789,7 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 		if err := exportRecommendationsToCSV(dataDir, result); err != nil {
 			return fmt.Errorf("failed to export CSV: %w", err)
 		}
-		fmt.Printf("\nExported to CSV: %s\n", getRecommendationsCSVPath(dataDir, playerTag))
+		printf("\nExported to CSV: %s\n", getRecommendationsCSVPath(dataDir, playerTag))
 	}
 
 	return nil
@@ -2797,16 +2797,16 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 
 // displayRecommendations displays deck recommendations in a formatted table
 func displayRecommendations(result *recommend.RecommendationResult, verbose bool) {
-	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	fmt.Printf("║              DECK RECOMMENDATIONS                                  ║\n")
-	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	printf("║              DECK RECOMMENDATIONS                                  ║\n")
+	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
-	fmt.Printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
+	printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
 	if result.TopArchetype != "" {
-		fmt.Printf("Top Archetype Match: %s\n", result.TopArchetype)
+		printf("Top Archetype Match: %s\n", result.TopArchetype)
 	}
-	fmt.Printf("Generated: %s\n", result.GeneratedAt)
-	fmt.Printf("\n")
+	printf("Generated: %s\n", result.GeneratedAt)
+	printf("\n")
 
 	if len(result.Recommendations) == 0 {
 		fmt.Println("No recommendations found. Your card collection may be too limited.")
@@ -2826,45 +2826,45 @@ func displaySingleRecommendation(rank int, rec *recommend.DeckRecommendation, ve
 		typeLabel = "Custom"
 	}
 
-	fmt.Printf("Deck #%d [%s - %s]\n", rank, rec.ArchetypeName, typeLabel)
-	fmt.Printf("─────────────────────────────────────────────────────\n")
-	fmt.Printf("Compatibility: %.1f%% | Synergy: %.1f%% | Overall: %.1f%%\n",
+	printf("Deck #%d [%s - %s]\n", rank, rec.ArchetypeName, typeLabel)
+	printf("─────────────────────────────────────────────────────\n")
+	printf("Compatibility: %.1f%% | Synergy: %.1f%% | Overall: %.1f%%\n",
 		rec.CompatibilityScore, rec.SynergyScore, rec.OverallScore)
-	fmt.Printf("Avg Elixir: %.2f\n", rec.Deck.AvgElixir)
+	printf("Avg Elixir: %.2f\n", rec.Deck.AvgElixir)
 
 	// Display cards in table format
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "Card\t\tLevel\tElixir\n")
+	fprintf(w, "Card\t\tLevel\tElixir\n")
 	for _, card := range rec.Deck.DeckDetail {
-		fmt.Fprintf(w, "%s\t\t%d\t%d\n", card.Name, card.Level, card.Elixir)
+		fprintf(w, "%s\t\t%d\t%d\n", card.Name, card.Level, card.Elixir)
 	}
-	w.Flush()
+	flushWriter(w)
 
 	// Display evolution slots if any
 	if len(rec.Deck.EvolutionSlots) > 0 {
-		fmt.Printf("Evolution Slots: %s\n", strings.Join(rec.Deck.EvolutionSlots, ", "))
+		printf("Evolution Slots: %s\n", strings.Join(rec.Deck.EvolutionSlots, ", "))
 	}
 
 	// Display reasons
 	if len(rec.Reasons) > 0 {
-		fmt.Printf("\nWhy Recommended:\n")
+		printf("\nWhy Recommended:\n")
 		for _, reason := range rec.Reasons {
-			fmt.Printf("  • %s\n", reason)
+			printf("  • %s\n", reason)
 		}
 	}
 
 	if verbose {
 		// Display upgrade cost if available
 		if rec.UpgradeCost.CardsNeeded > 0 {
-			fmt.Printf("\nUpgrade needed: %d cards, %d gold\n",
+			printf("\nUpgrade needed: %d cards, %d gold\n",
 				rec.UpgradeCost.CardsNeeded, rec.UpgradeCost.GoldNeeded)
 		}
 
 		// Display notes
 		if len(rec.Deck.Notes) > 0 {
-			fmt.Printf("\nNotes:\n")
+			printf("\nNotes:\n")
 			for _, note := range rec.Deck.Notes {
-				fmt.Printf("  • %s\n", note)
+				printf("  • %s\n", note)
 			}
 		}
 	}
@@ -2883,7 +2883,7 @@ func exportRecommendationsToCSV(dataDir string, result *recommend.Recommendation
 	if err != nil {
 		return fmt.Errorf("failed to create CSV file: %w", err)
 	}
-	defer file.Close()
+	defer closeFile(file)
 
 	// Write header
 	header := []string{
@@ -2943,8 +2943,8 @@ func deckMulliganCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Generating mulligan guide for deck: %s\n", deckName)
-		fmt.Printf("Cards: %v\n", cardNames)
+		printf("Generating mulligan guide for deck: %s\n", deckName)
+		printf("Cards: %v\n", cardNames)
 	}
 
 	// Create mulligan generator
@@ -2966,12 +2966,12 @@ func deckMulliganCommand(ctx context.Context, cmd *cli.Command) error {
 	// Save guide if requested
 	if saveData {
 		if verbose {
-			fmt.Printf("\nSaving mulligan guide to: %s\n", dataDir)
+			printf("\nSaving mulligan guide to: %s\n", dataDir)
 		}
 		if err := saveMulliganGuide(dataDir, guide); err != nil {
-			fmt.Printf("Warning: Failed to save mulligan guide: %v\n", err)
+			printf("Warning: Failed to save mulligan guide: %v\n", err)
 		} else {
-			fmt.Printf("\nMulligan guide saved to file\n")
+			printf("\nMulligan guide saved to file\n")
 		}
 	}
 
@@ -2980,52 +2980,52 @@ func deckMulliganCommand(ctx context.Context, cmd *cli.Command) error {
 
 // displayMulliganGuide displays a formatted mulligan guide
 func displayMulliganGuide(guide *mulligan.MulliganGuide) {
-	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	fmt.Printf("║                    MULLIGAN GUIDE - OPENING PLAYS               ║\n")
-	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	printf("║                    MULLIGAN GUIDE - OPENING PLAYS               ║\n")
+	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
-	fmt.Printf("Deck: %s (%s)\n", guide.DeckName, guide.Archetype.String())
-	fmt.Printf("Generated: %s\n\n", guide.GeneratedAt.Format("2006-01-02 15:04:05"))
+	printf("Deck: %s (%s)\n", guide.DeckName, guide.Archetype.String())
+	printf("Generated: %s\n\n", guide.GeneratedAt.Format("2006-01-02 15:04:05"))
 
-	fmt.Printf("📋 General Principles:\n")
+	printf("📋 General Principles:\n")
 	for _, principle := range guide.GeneralPrinciples {
-		fmt.Printf("   • %s\n", principle)
+		printf("   • %s\n", principle)
 	}
 	fmt.Println()
 
-	fmt.Printf("🃏 Deck Composition:\n")
-	fmt.Printf("   Cards: %s\n", strings.Join(guide.DeckCards, ", "))
+	printf("🃏 Deck Composition:\n")
+	printf("   Cards: %s\n", strings.Join(guide.DeckCards, ", "))
 	fmt.Println()
 
 	if len(guide.IdealOpenings) > 0 {
-		fmt.Printf("✅ Ideal Opening Cards:\n")
+		printf("✅ Ideal Opening Cards:\n")
 		for _, opening := range guide.IdealOpenings {
-			fmt.Printf("   ✓ %s\n", opening)
+			printf("   ✓ %s\n", opening)
 		}
 		fmt.Println()
 	}
 
 	if len(guide.NeverOpenWith) > 0 {
-		fmt.Printf("❌ Never Open With:\n")
+		printf("❌ Never Open With:\n")
 		for _, never := range guide.NeverOpenWith {
-			fmt.Printf("   ✗ %s\n", never)
+			printf("   ✗ %s\n", never)
 		}
 		fmt.Println()
 	}
 
-	fmt.Printf("🎮 Matchup-Specific Openings:\n\n")
+	printf("🎮 Matchup-Specific Openings:\n\n")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	for i, matchup := range guide.Matchups {
-		fmt.Printf("%d. VS %s\n", i+1, matchup.OpponentType)
-		fmt.Printf("   ▶ Opening Play: %s\n", matchup.OpeningPlay)
-		fmt.Printf("   ▶ Why: %s\n", matchup.Reason)
-		fmt.Printf("   ▶ Backup: %s\n", matchup.Backup)
-		fmt.Printf("   ▶ Key Cards: %s\n", strings.Join(matchup.KeyCards, ", "))
-		fmt.Printf("   ▶ Danger Level: %s\n", matchup.DangerLevel)
+		printf("%d. VS %s\n", i+1, matchup.OpponentType)
+		printf("   ▶ Opening Play: %s\n", matchup.OpeningPlay)
+		printf("   ▶ Why: %s\n", matchup.Reason)
+		printf("   ▶ Backup: %s\n", matchup.Backup)
+		printf("   ▶ Key Cards: %s\n", strings.Join(matchup.KeyCards, ", "))
+		printf("   ▶ Danger Level: %s\n", matchup.DangerLevel)
 		fmt.Println()
 	}
-	w.Flush()
+	flushWriter(w)
 }
 
 // outputMulliganGuideJSON outputs the guide in JSON format
@@ -3067,29 +3067,29 @@ func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
 // displayDeckRecommendationOffline displays a formatted deck recommendation without full player object
 // Used for offline mode where we only have player name and tag as strings
 func displayDeckRecommendationOffline(rec *deck.DeckRecommendation, playerName, playerTag string) {
-	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	fmt.Printf("║              RECOMMENDED 1v1 LADDER DECK                           ║\n")
-	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	printf("║              RECOMMENDED 1v1 LADDER DECK                           ║\n")
+	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
-	fmt.Printf("Player: %s (%s)\n", playerName, playerTag)
-	fmt.Printf("Average Elixir: %.2f\n", rec.AvgElixir)
+	printf("Player: %s (%s)\n", playerName, playerTag)
+	printf("Average Elixir: %.2f\n", rec.AvgElixir)
 
 	// Display combat stats information if available
 	if combatWeight := os.Getenv("COMBAT_STATS_WEIGHT"); combatWeight != "" {
 		if combatWeight == "0" {
-			fmt.Printf("Scoring: Traditional only (combat stats disabled)\n")
+			printf("Scoring: Traditional only (combat stats disabled)\n")
 		} else {
-			fmt.Printf("Scoring: %.0f%% traditional, %.0f%% combat stats\n",
+			printf("Scoring: %.0f%% traditional, %.0f%% combat stats\n",
 				(1-mustParseFloat(combatWeight))*100,
 				mustParseFloat(combatWeight)*100)
 		}
 	}
-	fmt.Printf("\n")
+	printf("\n")
 
 	// Display deck cards in a table
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
-	fmt.Fprintf(w, "─\t────\t─────\t\t──────\t────\n")
+	fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
+	fprintf(w, "─\t────\t─────\t\t──────\t────\n")
 
 	for i, card := range rec.DeckDetail {
 		evoBadge := deck.FormatEvolutionBadge(card.EvolutionLevel)
@@ -3097,41 +3097,41 @@ func displayDeckRecommendationOffline(rec *deck.DeckRecommendation, playerName, 
 		if evoBadge != "" {
 			levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
 		}
-		fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
+		fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
 			i+1,
 			card.Name,
 			levelStr,
 			card.Elixir,
 			card.Role)
 	}
-	w.Flush()
+	flushWriter(w)
 
 	// Display strategic notes
 	if len(rec.Notes) > 0 {
-		fmt.Printf("\nStrategic Notes:\n")
-		fmt.Printf("════════════════\n")
+		printf("\nStrategic Notes:\n")
+		printf("════════════════\n")
 		for _, note := range rec.Notes {
-			fmt.Printf("• %s\n", note)
+			printf("• %s\n", note)
 		}
 	}
 }
 
 // displayUpgradeRecommendations displays upgrade recommendations in a formatted table
 func displayUpgradeRecommendations(upgrades *deck.UpgradeRecommendations) {
-	fmt.Printf("╔════════════════════════════════════════════════════════════════════╗\n")
-	fmt.Printf("║              UPGRADE RECOMMENDATIONS                                ║\n")
-	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printf("╔════════════════════════════════════════════════════════════════════╗\n")
+	printf("║              UPGRADE RECOMMENDATIONS                                ║\n")
+	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
 	if len(upgrades.Recommendations) == 0 {
 		fmt.Println("No upgrade recommendations - all cards are at max level!")
 		return
 	}
 
-	fmt.Printf("Total Gold Needed: %d\n\n", upgrades.TotalGoldNeeded)
+	printf("Total Gold Needed: %d\n\n", upgrades.TotalGoldNeeded)
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "#\tCard\t\tLevel\t\tRarity\t\tImpact\tGold\t\tValue/1k\n")
-	fmt.Fprintf(w, "─\t────\t\t─────\t\t──────\t\t──────\t────\t\t────────\n")
+	fprintf(w, "#\tCard\t\tLevel\t\tRarity\t\tImpact\tGold\t\tValue/1k\n")
+	fprintf(w, "─\t────\t\t─────\t\t──────\t\t──────\t────\t\t────────\n")
 
 	for i, rec := range upgrades.Recommendations {
 		goldDisplay := fmt.Sprintf("%dk", rec.GoldCost/1000)
@@ -3139,7 +3139,7 @@ func displayUpgradeRecommendations(upgrades *deck.UpgradeRecommendations) {
 			goldDisplay = fmt.Sprintf("%d", rec.GoldCost)
 		}
 
-		fmt.Fprintf(w, "%d\t%s\t\t%d->%d\t\t%s\t\t%.1f\t%s\t\t%.2f\n",
+		fprintf(w, "%d\t%s\t\t%d->%d\t\t%s\t\t%.1f\t%s\t\t%.2f\n",
 			i+1,
 			rec.CardName,
 			rec.CurrentLevel,
@@ -3150,17 +3150,17 @@ func displayUpgradeRecommendations(upgrades *deck.UpgradeRecommendations) {
 			rec.ValuePerGold,
 		)
 	}
-	w.Flush()
+	flushWriter(w)
 
 	// Display reasons
-	fmt.Printf("\nWhy These Upgrades:\n")
-	fmt.Printf("──────────────────\n")
+	printf("\nWhy These Upgrades:\n")
+	printf("──────────────────\n")
 	for i, rec := range upgrades.Recommendations {
 		if i >= 3 {
-			fmt.Printf("... and %d more\n", len(upgrades.Recommendations)-3)
+			printf("... and %d more\n", len(upgrades.Recommendations)-3)
 			break
 		}
-		fmt.Printf("%d. %s: %s\n", i+1, rec.CardName, rec.Reason)
+		printf("%d. %s: %s\n", i+1, rec.CardName, rec.Reason)
 	}
 }
 
@@ -3187,11 +3187,11 @@ func buildAllStrategies(ctx context.Context, cmd *cli.Command, builder *deck.Bui
 		deck.StrategySpell,
 	}
 
-	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	fmt.Printf("║              ALL DECK BUILDING STRATEGIES                          ║\n")
-	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	printf("║              ALL DECK BUILDING STRATEGIES                          ║\n")
+	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
-	fmt.Printf("Player: %s (%s)\n\n", playerName, playerTag)
+	printf("Player: %s (%s)\n\n", playerName, playerTag)
 
 	// Build a deck for each strategy
 	for i, strategy := range strategies {
@@ -3214,7 +3214,7 @@ func buildAllStrategies(ctx context.Context, cmd *cli.Command, builder *deck.Bui
 
 		// Set the strategy
 		if err := strategyBuilder.SetStrategy(strategy); err != nil {
-			fmt.Printf("⚠ Failed to set strategy %s: %v\n\n", strategy, err)
+			printf("⚠ Failed to set strategy %s: %v\n\n", strategy, err)
 			continue
 		}
 
@@ -3241,7 +3241,7 @@ func buildAllStrategies(ctx context.Context, cmd *cli.Command, builder *deck.Bui
 		// Build deck
 		deckRec, err := strategyBuilder.BuildDeckFromAnalysis(filteredAnalysis)
 		if err != nil {
-			fmt.Printf("⚠ Failed to build deck for strategy %s: %v\n\n", strategy, err)
+			printf("⚠ Failed to build deck for strategy %s: %v\n\n", strategy, err)
 			continue
 		}
 
@@ -3254,14 +3254,14 @@ func buildAllStrategies(ctx context.Context, cmd *cli.Command, builder *deck.Bui
 
 // displayStrategyDeck displays a single deck with its strategy label
 func displayStrategyDeck(rank int, strategy deck.Strategy, rec *deck.DeckRecommendation, verbose bool) {
-	fmt.Printf("Strategy #%d: %s\n", rank, strings.ToUpper(string(strategy)))
-	fmt.Printf("═══════════════════════════════════════════════════════════════════\n")
-	fmt.Printf("Average Elixir: %.2f\n\n", rec.AvgElixir)
+	printf("Strategy #%d: %s\n", rank, strings.ToUpper(string(strategy)))
+	printf("═══════════════════════════════════════════════════════════════════\n")
+	printf("Average Elixir: %.2f\n\n", rec.AvgElixir)
 
 	// Display deck cards in a table
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
-	fmt.Fprintf(w, "─\t────\t─────\t\t──────\t────\n")
+	fprintf(w, "#\tCard\tLevel\t\tElixir\tRole\n")
+	fprintf(w, "─\t────\t─────\t\t──────\t────\n")
 
 	for i, card := range rec.DeckDetail {
 		evoBadge := deck.FormatEvolutionBadge(card.EvolutionLevel)
@@ -3269,24 +3269,24 @@ func displayStrategyDeck(rank int, strategy deck.Strategy, rec *deck.DeckRecomme
 		if evoBadge != "" {
 			levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
 		}
-		fmt.Fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
+		fprintf(w, "%d\t%s\t%s\t%d\t%s\n",
 			i+1,
 			card.Name,
 			levelStr,
 			card.Elixir,
 			card.Role)
 	}
-	w.Flush()
+	flushWriter(w)
 
 	// Display strategic notes if verbose
 	if verbose && len(rec.Notes) > 0 {
-		fmt.Printf("\nStrategic Notes:\n")
+		printf("\nStrategic Notes:\n")
 		for _, note := range rec.Notes {
-			fmt.Printf("• %s\n", note)
+			printf("• %s\n", note)
 		}
 	}
 
-	fmt.Printf("\n")
+	printf("\n")
 }
 
 func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
@@ -3313,7 +3313,7 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	client := clashroyale.NewClient(apiToken)
 
 	if verbose {
-		fmt.Printf("Finding budget-optimized decks for player %s\n", tag)
+		printf("Finding budget-optimized decks for player %s\n", tag)
 	}
 
 	// Get player information
@@ -3323,8 +3323,8 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-		fmt.Printf("Analyzing %d cards...\n", len(player.Cards))
+		printf("Player: %s (%s)\n", player.Name, player.Tag)
+		printf("Analyzing %d cards...\n", len(player.Cards))
 	}
 
 	// Perform card collection analysis
@@ -3399,12 +3399,12 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	// Save results if requested
 	if saveData {
 		if verbose {
-			fmt.Printf("\nSaving budget analysis to: %s\n", dataDir)
+			printf("\nSaving budget analysis to: %s\n", dataDir)
 		}
 		if err := saveBudgetResult(dataDir, result); err != nil {
-			fmt.Printf("Warning: Failed to save budget analysis: %v\n", err)
+			printf("Warning: Failed to save budget analysis: %v\n", err)
 		} else {
-			fmt.Printf("\nBudget analysis saved to file\n")
+			printf("\nBudget analysis saved to file\n")
 		}
 	}
 
@@ -3433,46 +3433,46 @@ func parseSortCriteria(s string) budget.SortCriteria {
 
 // displayBudgetResult displays budget analysis results in a formatted way
 func displayBudgetResult(result *budget.BudgetFinderResult, player *clashroyale.Player, options budget.BudgetFinderOptions) {
-	fmt.Printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	fmt.Printf("║              BUDGET-OPTIMIZED DECK FINDER                          ║\n")
-	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	printf("║              BUDGET-OPTIMIZED DECK FINDER                          ║\n")
+	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
-	fmt.Printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
-	fmt.Printf("Average Card Level: %.2f\n\n", result.Summary.PlayerAverageLevel)
+	printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
+	printf("Average Card Level: %.2f\n\n", result.Summary.PlayerAverageLevel)
 
 	// Display summary
-	fmt.Printf("Summary:\n")
-	fmt.Printf("════════\n")
-	fmt.Printf("Total Decks Analyzed:    %d\n", result.Summary.TotalDecksAnalyzed)
-	fmt.Printf("Ready Decks:             %d\n", result.Summary.ReadyDeckCount)
-	fmt.Printf("Quick Win Decks:         %d\n", result.Summary.QuickWinCount)
-	fmt.Printf("Best ROI:                %.4f\n", result.Summary.BestROI)
-	fmt.Printf("Lowest Cards Needed:     %d\n", result.Summary.LowestCardsNeeded)
-	fmt.Printf("\n")
+	printf("Summary:\n")
+	printf("════════\n")
+	printf("Total Decks Analyzed:    %d\n", result.Summary.TotalDecksAnalyzed)
+	printf("Ready Decks:             %d\n", result.Summary.ReadyDeckCount)
+	printf("Quick Win Decks:         %d\n", result.Summary.QuickWinCount)
+	printf("Best ROI:                %.4f\n", result.Summary.BestROI)
+	printf("Lowest Cards Needed:     %d\n", result.Summary.LowestCardsNeeded)
+	printf("\n")
 
 	// Display quick wins if available
 	if len(result.QuickWins) > 0 {
-		fmt.Printf("Quick Wins (1-2 upgrades away):\n")
-		fmt.Printf("════════════════════════════════\n")
+		printf("Quick Wins (1-2 upgrades away):\n")
+		printf("════════════════════════════════\n")
 		for i, analysis := range result.QuickWins {
 			if i >= 3 {
 				break // Show top 3 quick wins
 			}
 			displayBudgetDeckSummary(i+1, analysis)
 		}
-		fmt.Printf("\n")
+		printf("\n")
 	}
 
 	// Display all decks
 	if len(result.AllDecks) > 0 {
-		fmt.Printf("Top Decks (sorted by %s):\n", options.SortBy)
-		fmt.Printf("═════════════════════════════════════\n\n")
+		printf("Top Decks (sorted by %s):\n", options.SortBy)
+		printf("═════════════════════════════════════\n\n")
 
 		for i, analysis := range result.AllDecks {
 			displayBudgetDeckDetail(i+1, analysis)
 		}
 	} else {
-		fmt.Printf("No decks found matching criteria.\n")
+		printf("No decks found matching criteria.\n")
 	}
 }
 
@@ -3487,8 +3487,8 @@ func displayBudgetDeckSummary(rank int, analysis *budget.DeckBudgetAnalysis) {
 		cards = append(cards, card.Name)
 	}
 
-	fmt.Printf("#%d: %s\n", rank, strings.Join(cards[:min(3, len(cards))], ", ")+"...")
-	fmt.Printf("    Cards Needed: %d | Gold: %d | ROI: %.4f\n",
+	printf("#%d: %s\n", rank, strings.Join(cards[:min(3, len(cards))], ", ")+"...")
+	printf("    Cards Needed: %d | Gold: %d | ROI: %.4f\n",
 		analysis.TotalCardsNeeded, analysis.TotalGoldNeeded, analysis.ROI)
 }
 
@@ -3498,13 +3498,13 @@ func displayBudgetDeckDetail(rank int, analysis *budget.DeckBudgetAnalysis) {
 		return
 	}
 
-	fmt.Printf("Deck #%d [%s]\n", rank, analysis.BudgetCategory)
-	fmt.Printf("─────────────────────────────────────\n")
+	printf("Deck #%d [%s]\n", rank, analysis.BudgetCategory)
+	printf("─────────────────────────────────────\n")
 
 	// Deck cards table
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "Card\tLevel\t\tElixir\tRole\n")
-	fmt.Fprintf(w, "────\t─────\t\t──────\t────\n")
+	fprintf(w, "Card\tLevel\t\tElixir\tRole\n")
+	fprintf(w, "────\t─────\t\t──────\t────\n")
 
 	for _, card := range analysis.Deck.DeckDetail {
 		evoBadge := deck.FormatEvolutionBadge(card.EvolutionLevel)
@@ -3512,38 +3512,38 @@ func displayBudgetDeckDetail(rank int, analysis *budget.DeckBudgetAnalysis) {
 		if evoBadge != "" {
 			levelStr = fmt.Sprintf("%s (%s)", levelStr, evoBadge)
 		}
-		fmt.Fprintf(w, "%s\t%s\t%d\t%s\n",
+		fprintf(w, "%s\t%s\t%d\t%s\n",
 			card.Name,
 			levelStr,
 			card.Elixir,
 			card.Role)
 	}
-	w.Flush()
+	flushWriter(w)
 
-	fmt.Printf("\n")
-	fmt.Printf("Average Elixir: %.2f\n", analysis.Deck.AvgElixir)
-	fmt.Printf("Current Score: %.4f | Projected Score: %.4f\n",
+	printf("\n")
+	printf("Average Elixir: %.2f\n", analysis.Deck.AvgElixir)
+	printf("Current Score: %.4f | Projected Score: %.4f\n",
 		analysis.CurrentScore, analysis.ProjectedScore)
-	fmt.Printf("Cards Needed: %d | Gold Needed: %d\n",
+	printf("Cards Needed: %d | Gold Needed: %d\n",
 		analysis.TotalCardsNeeded, analysis.TotalGoldNeeded)
-	fmt.Printf("ROI: %.4f | Cost Efficiency: %.4f\n",
+	printf("ROI: %.4f | Cost Efficiency: %.4f\n",
 		analysis.ROI, analysis.CostEfficiency)
 
 	// Display upgrade priorities if there are upgrades needed
 	if len(analysis.CardUpgrades) > 0 {
-		fmt.Printf("\nUpgrade Priorities:\n")
+		printf("\nUpgrade Priorities:\n")
 		for i, upgrade := range analysis.CardUpgrades {
 			if i >= 3 {
-				fmt.Printf("  ... and %d more\n", len(analysis.CardUpgrades)-3)
+				printf("  ... and %d more\n", len(analysis.CardUpgrades)-3)
 				break
 			}
-			fmt.Printf("  %d. %s: Level %d -> %d (%d cards, %d gold)\n",
+			printf("  %d. %s: Level %d -> %d (%d cards, %d gold)\n",
 				i+1, upgrade.CardName, upgrade.CurrentLevel, upgrade.TargetLevel,
 				upgrade.CardsNeeded, upgrade.GoldNeeded)
 		}
 	}
 
-	fmt.Printf("\n")
+	printf("\n")
 }
 
 // outputBudgetResultJSON outputs budget analysis in JSON format
@@ -3580,7 +3580,7 @@ func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 		return fmt.Errorf("failed to write budget file: %w", err)
 	}
 
-	fmt.Printf("Budget analysis saved to: %s\n", filename)
+	printf("Budget analysis saved to: %s\n", filename)
 	return nil
 }
 
@@ -3634,8 +3634,8 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Evaluating deck: %v\n", deckCardNames)
-		fmt.Printf("Output format: %s\n", format)
+		printf("Evaluating deck: %v\n", deckCardNames)
+		printf("Output format: %s\n", format)
 	}
 
 	// Convert card names to CardCandidates with default card data
@@ -3648,19 +3648,19 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	var playerContext *evaluation.PlayerContext
 	if playerTag != "" && apiToken != "" {
 		if verbose {
-			fmt.Printf("Fetching player data for context-aware evaluation...\n")
+			printf("Fetching player data for context-aware evaluation...\n")
 		}
 
 		client := clashroyale.NewClient(apiToken)
 		player, err := client.GetPlayer(playerTag)
 		if err != nil {
 			// Log warning but continue with evaluation without context
-			fmt.Fprintf(os.Stderr, "Warning: Failed to fetch player data: %v\n", err)
-			fmt.Fprintf(os.Stderr, "Continuing with evaluation without player context.\n")
+			fprintf(os.Stderr, "Warning: Failed to fetch player data: %v\n", err)
+			fprintf(os.Stderr, "Continuing with evaluation without player context.\n")
 		} else {
 			playerContext = evaluation.NewPlayerContextFromPlayer(player)
 			if verbose {
-				fmt.Printf("Player context loaded: %s (%s), Arena: %s\n",
+				printf("Player context loaded: %s (%s), Arena: %s\n",
 					player.Name, player.Tag, player.Arena.Name)
 			}
 		}
@@ -3674,12 +3674,12 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 		storage, err := leaderboard.NewStorage(playerTag)
 		if err != nil {
 			if verbose {
-				fmt.Fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", err)
+				fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", err)
 			}
 		} else {
 			defer func() {
 				if err := storage.Close(); err != nil {
-					fmt.Fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
+					fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
 				}
 			}()
 
@@ -3704,17 +3704,17 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 			deckID, isNew, err := storage.InsertDeck(entry)
 			if err != nil {
 				if verbose {
-					fmt.Fprintf(os.Stderr, "Warning: failed to save deck to storage: %v\n", err)
+					fprintf(os.Stderr, "Warning: failed to save deck to storage: %v\n", err)
 				}
 			} else {
 				if _, err := storage.RecalculateStats(); err != nil && verbose {
-					fmt.Fprintf(os.Stderr, "Warning: failed to recalculate stats: %v\n", err)
+					fprintf(os.Stderr, "Warning: failed to recalculate stats: %v\n", err)
 				}
 				if verbose {
 					if isNew {
-						fmt.Printf("Saved deck to storage (ID: %d) at: %s\n", deckID, storage.GetDBPath())
+						printf("Saved deck to storage (ID: %d) at: %s\n", deckID, storage.GetDBPath())
 					} else {
-						fmt.Printf("Updated existing deck in storage (ID: %d)\n", deckID)
+						printf("Updated existing deck in storage (ID: %d)\n", deckID)
 					}
 				}
 			}
@@ -3746,7 +3746,7 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to write output file: %w", err)
 		}
 		if verbose {
-			fmt.Printf("Evaluation saved to: %s\n", outputFile)
+			printf("Evaluation saved to: %s\n", outputFile)
 		}
 	} else {
 		fmt.Print(formattedOutput)
@@ -3758,10 +3758,10 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 		if format == "human" || format == "detailed" {
 			if err := performDeckUpgradeImpactAnalysis(deckCardNames, playerTag, topUpgrades, apiToken, dataDir, verbose); err != nil {
 				// Log error but don't fail the entire command
-				fmt.Fprintf(os.Stderr, "\nWarning: Failed to perform upgrade impact analysis: %v\n", err)
+				fprintf(os.Stderr, "\nWarning: Failed to perform upgrade impact analysis: %v\n", err)
 			}
 		} else if verbose {
-			fmt.Fprintf(os.Stderr, "\nNote: Upgrade impact analysis only available for human and detailed output formats\n")
+			fprintf(os.Stderr, "\nNote: Upgrade impact analysis only available for human and detailed output formats\n")
 		}
 	}
 
@@ -3775,7 +3775,7 @@ func performDeckUpgradeImpactAnalysis(deckCardNames []string, playerTag string, 
 	client := clashroyale.NewClient(apiToken)
 
 	if verbose {
-		fmt.Printf("\nFetching player data for upgrade impact analysis...\n")
+		printf("\nFetching player data for upgrade impact analysis...\n")
 	}
 
 	// Get player information
@@ -3785,8 +3785,8 @@ func performDeckUpgradeImpactAnalysis(deckCardNames []string, playerTag string, 
 	}
 
 	if verbose {
-		fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-		fmt.Printf("Analyzing deck: %v\n", deckCardNames)
+		printf("Player: %s (%s)\n", player.Name, player.Tag)
+		printf("Analyzing deck: %v\n", deckCardNames)
 	}
 
 	// Perform card collection analysis
@@ -3988,16 +3988,16 @@ func sortUpgradeImpactsByScore(impacts []DeckCardUpgrade) {
 
 // displayDeckUpgradeImpactAnalysis displays the upgrade impact analysis for deck cards
 func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCardUpgrade, topN int, player *clashroyale.Player) {
-	fmt.Printf("\n")
-	fmt.Printf("╔════════════════════════════════════════════════════════════════════╗\n")
-	fmt.Printf("║                    UPGRADE IMPACT ANALYSIS                          ║\n")
-	fmt.Printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printf("\n")
+	printf("╔════════════════════════════════════════════════════════════════════╗\n")
+	printf("║                    UPGRADE IMPACT ANALYSIS                          ║\n")
+	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
-	fmt.Printf("Player: %s (%s)\n", player.Name, player.Tag)
-	fmt.Printf("Deck: %v\n\n", deckCardNames)
+	printf("Player: %s (%s)\n", player.Name, player.Tag)
+	printf("Deck: %v\n\n", deckCardNames)
 
 	if len(impacts) == 0 {
-		fmt.Printf("✨ All deck cards are already at max level!\n")
+		printf("✨ All deck cards are already at max level!\n")
 		return
 	}
 
@@ -4015,17 +4015,17 @@ func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCard
 		totalCards += impacts[i].CardsNeeded
 	}
 
-	fmt.Printf("Summary:\n")
-	fmt.Printf("════════\n")
-	fmt.Printf("Upgradable Cards: %d\n", len(impacts))
-	fmt.Printf("Top %d Upgrades: %d gold total\n\n", displayCount, totalGold)
+	printf("Summary:\n")
+	printf("════════\n")
+	printf("Upgradable Cards: %d\n", len(impacts))
+	printf("Top %d Upgrades: %d gold total\n\n", displayCount, totalGold)
 
-	fmt.Printf("Most Impactful Upgrades:\n")
-	fmt.Printf("════════════════════════\n")
+	printf("Most Impactful Upgrades:\n")
+	printf("════════════════════════\n")
 
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "#\tCard\tLevel\t\tRarity\t\tImpact\tGold\t\tCards\n")
-	fmt.Fprintf(w, "─\t────\t─────\t\t──────\t\t──────\t────\t\t─────\n")
+	fprintf(w, "#\tCard\tLevel\t\tRarity\t\tImpact\tGold\t\tCards\n")
+	fprintf(w, "─\t────\t─────\t\t──────\t\t──────\t────\t\t─────\n")
 
 	for i := 0; i < displayCount; i++ {
 		upgrade := impacts[i]
@@ -4035,7 +4035,7 @@ func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCard
 		}
 
 		goldDisplay := formatGoldCost(upgrade.GoldCost)
-		fmt.Fprintf(w, "%d\t%s%s\t%d->%d\t\t%s\t\t%.1f\t%s\t\t%d\n",
+		fprintf(w, "%d\t%s%s\t%d->%d\t\t%s\t\t%.1f\t%s\t\t%d\n",
 			i+1,
 			upgrade.CardName,
 			keyMarker,
@@ -4047,11 +4047,11 @@ func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCard
 			upgrade.CardsNeeded,
 		)
 	}
-	w.Flush()
+	flushWriter(w)
 
-	fmt.Printf("\n")
-	fmt.Printf("💡 Tip: Focus on upgrading cards with the highest impact score first.\n")
-	fmt.Printf("   Win conditions and Legendary/Champion cards typically provide the best ROI.\n")
+	printf("\n")
+	printf("💡 Tip: Focus on upgrading cards with the highest impact score first.\n")
+	printf("   Win conditions and Legendary/Champion cards typically provide the best ROI.\n")
 }
 
 // formatGoldCost formats a gold cost for display
@@ -4290,46 +4290,46 @@ func exportOptimizationCSV(
 	if err != nil {
 		return fmt.Errorf("failed to create CSV file: %w", err)
 	}
-	defer file.Close()
+	defer closeFile(file)
 
 	// Write header
-	fmt.Fprintln(file, "# DECK OPTIMIZATION RESULTS")
-	fmt.Fprintf(file, "Player Tag,%s\n", playerTag)
-	fmt.Fprintf(file, "Current Deck,%s\n", strings.Join(currentDeck, ";"))
-	fmt.Fprintf(file, "Current Score,%.2f\n", currentResult.OverallScore)
-	fmt.Fprintf(file, "Archetype,%s\n", currentResult.DetectedArchetype)
-	fmt.Fprintln(file, "")
+	fprintln(file, "# DECK OPTIMIZATION RESULTS")
+	fprintf(file, "Player Tag,%s\n", playerTag)
+	fprintf(file, "Current Deck,%s\n", strings.Join(currentDeck, ";"))
+	fprintf(file, "Current Score,%.2f\n", currentResult.OverallScore)
+	fprintf(file, "Archetype,%s\n", currentResult.DetectedArchetype)
+	fprintln(file, "")
 
 	// Write category scores
-	fmt.Fprintln(file, "# CURRENT CATEGORY SCORES")
-	fmt.Fprintln(file, "Category,Score,Rating,Stars")
-	fmt.Fprintf(file, "Attack,%.2f,%s,%d\n",
+	fprintln(file, "# CURRENT CATEGORY SCORES")
+	fprintln(file, "Category,Score,Rating,Stars")
+	fprintf(file, "Attack,%.2f,%s,%d\n",
 		currentResult.Attack.Score,
 		currentResult.Attack.Rating,
 		currentResult.Attack.Stars)
-	fmt.Fprintf(file, "Defense,%.2f,%s,%d\n",
+	fprintf(file, "Defense,%.2f,%s,%d\n",
 		currentResult.Defense.Score,
 		currentResult.Defense.Rating,
 		currentResult.Defense.Stars)
-	fmt.Fprintf(file, "Synergy,%.2f,%s,%d\n",
+	fprintf(file, "Synergy,%.2f,%s,%d\n",
 		currentResult.Synergy.Score,
 		currentResult.Synergy.Rating,
 		currentResult.Synergy.Stars)
-	fmt.Fprintf(file, "Versatility,%.2f,%s,%d\n",
+	fprintf(file, "Versatility,%.2f,%s,%d\n",
 		currentResult.Versatility.Score,
 		currentResult.Versatility.Rating,
 		currentResult.Versatility.Stars)
-	fmt.Fprintf(file, "F2P Friendly,%.2f,%s,%d\n",
+	fprintf(file, "F2P Friendly,%.2f,%s,%d\n",
 		currentResult.F2PFriendly.Score,
 		currentResult.F2PFriendly.Rating,
 		currentResult.F2PFriendly.Stars)
-	fmt.Fprintln(file, "")
+	fprintln(file, "")
 
 	// Write optimization suggestions
-	fmt.Fprintln(file, "# OPTIMIZATION SUGGESTIONS")
-	fmt.Fprintln(file, "Rank,Original Card,Replacement Card,Score Before,Score After,Improvement,Impact,Rationale,New Deck")
+	fprintln(file, "# OPTIMIZATION SUGGESTIONS")
+	fprintln(file, "Rank,Original Card,Replacement Card,Score Before,Score After,Improvement,Impact,Rationale,New Deck")
 	for i, alt := range alternatives.Suggestions {
-		fmt.Fprintf(file, "%d,%s,%s,%.2f,%.2f,%.2f,%s,\"%s\",%s\n",
+		fprintf(file, "%d,%s,%s,%.2f,%.2f,%.2f,%s,\"%s\",%s\n",
 			i+1,
 			alt.OriginalCard,
 			alt.ReplacementCard,
@@ -4733,7 +4733,7 @@ func deckPossibleCountCommand(ctx context.Context, cmd *cli.Command) error {
 		if err != nil {
 			return fmt.Errorf("failed to write output file: %w", err)
 		}
-		fmt.Printf("Results saved to: %s\n", outputFile)
+		printf("Results saved to: %s\n", outputFile)
 	} else {
 		fmt.Print(output)
 	}
@@ -4766,8 +4766,8 @@ func formatPossibleCountHuman(player *clashroyale.Player, stats *deck.DeckSpaceS
 		// Cards by role
 		buf.WriteString("═══ CARDS BY ROLE ═══\n\n")
 		w := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
-		fmt.Fprintf(w, "Role\tCount\n")
-		fmt.Fprintf(w, "────\t─────\n")
+		fprintf(w, "Role\tCount\n")
+		fprintf(w, "────\t─────\n")
 
 		// Print in a specific order
 		roles := []deck.CardRole{
@@ -4790,26 +4790,26 @@ func formatPossibleCountHuman(player *clashroyale.Player, stats *deck.DeckSpaceS
 		for _, role := range roles {
 			count := stats.CardsByRole[role]
 			label := roleLabels[role]
-			fmt.Fprintf(w, "%s\t%d\n", label, count)
+			fprintf(w, "%s\t%d\n", label, count)
 		}
-		w.Flush()
+		flushWriter(w)
 		buf.WriteString("\n")
 
 		// Combinations by elixir range
 		if len(stats.ByElixirRange) > 0 {
 			buf.WriteString("═══ ESTIMATED BY ELIXIR RANGE ═══\n\n")
 			w2 := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
-			fmt.Fprintf(w2, "Range\tCombinations\n")
-			fmt.Fprintf(w2, "─────\t────────────\n")
+			fprintf(w2, "Range\tCombinations\n")
+			fprintf(w2, "─────\t────────────\n")
 
 			for _, elixirRange := range deck.StandardElixirRanges {
 				if count, exists := stats.ByElixirRange[elixirRange.Label]; exists {
-					fmt.Fprintf(w2, "%s\t%s\n",
+					fprintf(w2, "%s\t%s\n",
 						elixirRange.Label,
 						deck.FormatLargeNumber(count))
 				}
 			}
-			w2.Flush()
+			flushWriter(w2)
 			buf.WriteString("\n")
 		}
 
@@ -4817,18 +4817,18 @@ func formatPossibleCountHuman(player *clashroyale.Player, stats *deck.DeckSpaceS
 		if len(stats.ByArchetype) > 0 {
 			buf.WriteString("═══ ESTIMATED BY ARCHETYPE ═══\n\n")
 			w3 := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
-			fmt.Fprintf(w3, "Archetype\tCombinations\n")
-			fmt.Fprintf(w3, "─────────\t────────────\n")
+			fprintf(w3, "Archetype\tCombinations\n")
+			fprintf(w3, "─────────\t────────────\n")
 
 			archetypes := []string{"Beatdown", "Control", "Cycle", "Siege", "Bridge Spam", "Bait"}
 			for _, archetype := range archetypes {
 				if count, exists := stats.ByArchetype[archetype]; exists {
-					fmt.Fprintf(w3, "%s\t%s\n",
+					fprintf(w3, "%s\t%s\n",
 						archetype,
 						deck.FormatLargeNumber(count))
 				}
 			}
-			w3.Flush()
+			flushWriter(w3)
 			buf.WriteString("\n")
 		}
 	}

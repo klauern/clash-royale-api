@@ -35,14 +35,6 @@ func flushWriter(w flusher) {
 	}
 }
 
-type csvFlusher interface {
-	Flush()
-}
-
-func flushCSVWriter(w csvFlusher) {
-	w.Flush()
-}
-
 func closeFile(c io.Closer) {
 	if err := c.Close(); err != nil {
 		log.Printf("close failed: %v", err)

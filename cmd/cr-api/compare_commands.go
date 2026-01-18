@@ -193,7 +193,7 @@ func deckCompareCommand(ctx context.Context, cmd *cli.Command) error {
 		if err := os.WriteFile(outputFile, []byte(formattedOutput), 0o644); err != nil {
 			return fmt.Errorf("failed to write output file: %w", err)
 		}
-		fmt.Printf("Comparison saved to: %s\n", outputFile)
+		printf("Comparison saved to: %s\n", outputFile)
 	} else {
 		fmt.Print(formattedOutput)
 	}
@@ -204,7 +204,7 @@ func deckCompareCommand(ctx context.Context, cmd *cli.Command) error {
 		if err := os.WriteFile(reportOutput, []byte(report), 0o644); err != nil {
 			return fmt.Errorf("failed to write report: %w", err)
 		}
-		fmt.Printf("Comprehensive report saved to: %s\n", reportOutput)
+		printf("Comprehensive report saved to: %s\n", reportOutput)
 	}
 
 	return nil

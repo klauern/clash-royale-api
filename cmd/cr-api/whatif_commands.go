@@ -80,7 +80,7 @@ func whatIfCommand(ctx context.Context, cmd *cli.Command) error {
 	if fromAnalysis != "" {
 		// Load from existing analysis file
 		if verbose {
-			fmt.Printf("Loading analysis from: %s\n", fromAnalysis)
+			printf("Loading analysis from: %s\n", fromAnalysis)
 		}
 		cardAnalysis, err := loadCardAnalysis(fromAnalysis)
 		if err != nil {
@@ -97,7 +97,7 @@ func whatIfCommand(ctx context.Context, cmd *cli.Command) error {
 		client := clashroyale.NewClient(apiToken)
 
 		if verbose {
-			fmt.Printf("Fetching player data for tag: %s\n", tag)
+			printf("Fetching player data for tag: %s\n", tag)
 		}
 
 		player, err := client.GetPlayer(tag)
@@ -120,9 +120,9 @@ func whatIfCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if verbose {
-		fmt.Printf("Analyzing %d upgrade scenario(s)...\n", len(upgrades))
+		printf("Analyzing %d upgrade scenario(s)...\n", len(upgrades))
 		for _, u := range upgrades {
-			fmt.Printf("  - %s: Lv%d -> Lv%d\n", u.CardName, u.FromLevel, u.ToLevel)
+			printf("  - %s: Lv%d -> Lv%d\n", u.CardName, u.FromLevel, u.ToLevel)
 		}
 	}
 
@@ -156,9 +156,9 @@ func whatIfCommand(ctx context.Context, cmd *cli.Command) error {
 	// Save if requested
 	if saveData {
 		if err := saveWhatIfScenario(dataDir, scenario); err != nil {
-			fmt.Printf("Warning: Failed to save scenario: %v\n", err)
+			printf("Warning: Failed to save scenario: %v\n", err)
 		} else {
-			fmt.Printf("\nScenario saved to: %s/whatif/%s_%s.json\n", dataDir, tag, time.Now().Format("20060102_150405"))
+			printf("\nScenario saved to: %s/whatif/%s_%s.json\n", dataDir, tag, time.Now().Format("20060102_150405"))
 		}
 	}
 
@@ -166,62 +166,62 @@ func whatIfCommand(ctx context.Context, cmd *cli.Command) error {
 }
 
 func displayWhatIfScenario(scenario *whatif.WhatIfScenario, showDecks bool) {
-	fmt.Printf("\n")
-	fmt.Printf("============================================================================\n")
-	fmt.Printf("                        WHAT-IF ANALYSIS                                    \n")
-	fmt.Printf("============================================================================\n\n")
+	printf("\n")
+	printf("============================================================================\n")
+	printf("                        WHAT-IF ANALYSIS                                    \n")
+	printf("============================================================================\n\n")
 
-	fmt.Printf("Scenario: %s\n", scenario.Name)
+	printf("Scenario: %s\n", scenario.Name)
 	if scenario.Description != "" {
-		fmt.Printf("%s\n", scenario.Description)
+		printf("%s\n", scenario.Description)
 	}
-	fmt.Printf("\n")
+	printf("\n")
 
 	// Upgrades section
-	fmt.Printf("Upgrades Simulated\n")
-	fmt.Printf("-------------------\n")
+	printf("Upgrades Simulated\n")
+	printf("-------------------\n")
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "Card\tFrom\tTo\tGold\n")
-	fmt.Fprintf(w, "----\t----\t--\t----\n")
+	fprintf(w, "Card\tFrom\tTo\tGold\n")
+	fprintf(w, "----\t----\t--\t----\n")
 	for _, u := range scenario.Upgrades {
-		fmt.Fprintf(w, "%s\t%d\t%d\t%d\n", u.CardName, u.FromLevel, u.ToLevel, u.GoldCost)
+		fprintf(w, "%s\t%d\t%d\t%d\n", u.CardName, u.FromLevel, u.ToLevel, u.GoldCost)
 	}
-	w.Flush()
-	fmt.Printf("\n")
+	flushWriter(w)
+	printf("\n")
 
-	fmt.Printf("Total Gold Cost: %d\n", scenario.TotalGold)
-	fmt.Printf("\n")
+	printf("Total Gold Cost: %d\n", scenario.TotalGold)
+	printf("\n")
 
 	// Impact section
-	fmt.Printf("Impact Analysis\n")
-	fmt.Printf("---------------\n")
-	fmt.Printf("Deck Score Delta:     %+f\n", scenario.Impact.DeckScoreDelta)
-	fmt.Printf("Viability Change:     %+.1f%%\n", scenario.Impact.ViabilityImprovement)
+	printf("Impact Analysis\n")
+	printf("---------------\n")
+	printf("Deck Score Delta:     %+f\n", scenario.Impact.DeckScoreDelta)
+	printf("Viability Change:     %+.1f%%\n", scenario.Impact.ViabilityImprovement)
 
 	if len(scenario.Impact.NewCardsInDeck) > 0 {
-		fmt.Printf("New Cards in Deck:     %s\n", formatCardList(scenario.Impact.NewCardsInDeck))
+		printf("New Cards in Deck:     %s\n", formatCardList(scenario.Impact.NewCardsInDeck))
 	}
 	if len(scenario.Impact.RemovedCards) > 0 {
-		fmt.Printf("Removed from Deck:     %s\n", formatCardList(scenario.Impact.RemovedCards))
+		printf("Removed from Deck:     %s\n", formatCardList(scenario.Impact.RemovedCards))
 	}
-	fmt.Printf("\n")
+	printf("\n")
 
 	// Recommendation
-	fmt.Printf("Recommendation\n")
-	fmt.Printf("-------------\n")
-	fmt.Printf("%s\n", scenario.Impact.Recommendation)
-	fmt.Printf("\n")
+	printf("Recommendation\n")
+	printf("-------------\n")
+	printf("%s\n", scenario.Impact.Recommendation)
+	printf("\n")
 
 	// Show decks if requested
 	if showDecks && scenario.OriginalDeck != nil && scenario.SimulatedDeck != nil {
-		fmt.Printf("Deck Comparison\n")
-		fmt.Printf("===============\n")
+		printf("Deck Comparison\n")
+		printf("===============\n")
 
-		fmt.Printf("\nOriginal Deck (Score: %.3f, Avg Elixir: %.1f)\n",
+		printf("\nOriginal Deck (Score: %.3f, Avg Elixir: %.1f)\n",
 			calculateDeckScore(scenario.OriginalDeck), scenario.OriginalDeck.AvgElixir)
 		displayDeck(scenario.OriginalDeck)
 
-		fmt.Printf("\nSimulated Deck (Score: %.3f, Avg Elixir: %.1f)\n",
+		printf("\nSimulated Deck (Score: %.3f, Avg Elixir: %.1f)\n",
 			calculateDeckScore(scenario.SimulatedDeck), scenario.SimulatedDeck.AvgElixir)
 		displayDeck(scenario.SimulatedDeck)
 	}
@@ -229,24 +229,24 @@ func displayWhatIfScenario(scenario *whatif.WhatIfScenario, showDecks bool) {
 
 func displayDeck(deck *deck.DeckRecommendation) {
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintf(w, "  Card                 Level       Role        Score     Elixir\n")
-	fmt.Fprintf(w, "  ----                 -----       ----        -----     ------\n")
+	fprintf(w, "  Card                 Level       Role        Score     Elixir\n")
+	fprintf(w, "  ----                 -----       ----        -----     ------\n")
 
 	for _, card := range deck.DeckDetail {
 		levelStr := fmt.Sprintf("%d/%d", card.Level, card.MaxLevel)
-		fmt.Fprintf(w, "  %-20s %-11s %-10s %+.3f    %d\n",
+		fprintf(w, "  %-20s %-11s %-10s %+.3f    %d\n",
 			card.Name, levelStr, card.Role, card.Score, card.Elixir)
 	}
-	w.Flush()
+	flushWriter(w)
 
 	if len(deck.EvolutionSlots) > 0 {
-		fmt.Printf("  Evolution Slots: %s\n", formatCardList(deck.EvolutionSlots))
+		printf("  Evolution Slots: %s\n", formatCardList(deck.EvolutionSlots))
 	}
 
 	if len(deck.Notes) > 0 {
-		fmt.Printf("\n  Notes:\n")
+		printf("\n  Notes:\n")
 		for _, note := range deck.Notes {
-			fmt.Printf("  • %s\n", note)
+			printf("  • %s\n", note)
 		}
 	}
 }

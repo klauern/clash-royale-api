@@ -13,7 +13,7 @@ type BaseExporter struct {
 }
 
 // writeCSV writes data to a CSV file
-func (e *BaseExporter) writeCSV(filePath string, headers []string, rows [][]string) error {
+func (e *BaseExporter) writeCSV(filePath string, headers []string, rows [][]string) (returnErr error) {
 	// Create directory if it doesn't exist
 	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
 		return fmt.Errorf("failed to create directory: %w", err)
@@ -24,11 +24,14 @@ func (e *BaseExporter) writeCSV(filePath string, headers []string, rows [][]stri
 	if err != nil {
 		return fmt.Errorf("failed to create file: %w", err)
 	}
-	defer file.Close()
+	defer func() {
+		if err := file.Close(); err != nil && returnErr == nil {
+			returnErr = fmt.Errorf("failed to close file: %w", err)
+		}
+	}()
 
 	// Create CSV writer
 	writer := csv.NewWriter(file)
-	defer writer.Flush()
 
 	// Write headers
 	if err := writer.Write(headers); err != nil {
@@ -40,6 +43,11 @@ func (e *BaseExporter) writeCSV(filePath string, headers []string, rows [][]stri
 		if err := writer.Write(row); err != nil {
 			return fmt.Errorf("failed to write row: %w", err)
 		}
+	}
+
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return fmt.Errorf("failed to flush csv: %w", err)
 	}
 
 	return nil

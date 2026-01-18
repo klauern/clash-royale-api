@@ -539,7 +539,9 @@ func evaluateDecksSequential(
 		}
 
 		if verbose && bar != nil {
-			bar.Add(1)
+			if err := bar.Add(1); err != nil {
+				return results, err
+			}
 		}
 	}
 
@@ -635,7 +637,9 @@ func evaluateDecksParallel(
 		results = append(results, result)
 
 		if verbose && bar != nil {
-			bar.Add(1)
+			if err := bar.Add(1); err != nil {
+				return results, err
+			}
 		}
 	}
 
@@ -700,7 +704,9 @@ func saveDeckToStorage(result FuzzingResult, _ string, storage *leaderboard.Stor
 		PlayerTag:         "",
 		EvaluationVersion: "1.0.0",
 	}
-	storage.InsertDeck(entry)
+	if _, _, err := storage.InsertDeck(entry); err != nil {
+		fprintf(os.Stderr, "Warning: failed to store deck: %v\n", err)
+	}
 }
 
 // convertDeckToCandidates converts a deck of card names to CardCandidates
@@ -973,7 +979,6 @@ func formatResultsJSON(
 // formatResultsCSV outputs results in CSV format
 func formatResultsCSV(results []FuzzingResult) error {
 	w := csv.NewWriter(os.Stdout)
-	defer flushCSVWriter(w)
 
 	// Write header
 	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
@@ -998,6 +1003,11 @@ func formatResultsCSV(results []FuzzingResult) error {
 		if err := w.Write(row); err != nil {
 			return err
 		}
+	}
+
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return err
 	}
 
 	return nil
@@ -1384,7 +1394,9 @@ func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, workers int, verbose
 	for result := range resultChan {
 		results[result.index] = result.entry
 		if verbose && bar != nil {
-			bar.Add(1)
+			if err := bar.Add(1); err != nil {
+				fprintf(os.Stderr, "Warning: progress update failed: %v\n", err)
+			}
 		}
 	}
 
@@ -1422,7 +1434,9 @@ func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, verbose bo
 		results[i] = entry
 
 		if verbose && bar != nil {
-			bar.Add(1)
+			if err := bar.Add(1); err != nil {
+				fprintf(os.Stderr, "Warning: progress update failed: %v\n", err)
+			}
 		}
 	}
 
@@ -1476,7 +1490,6 @@ func formatListResultsJSON(decks []fuzzstorage.DeckEntry, dbPath string, total i
 // formatListResultsCSV formats list results in CSV format
 func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
 	w := csv.NewWriter(os.Stdout)
-	defer flushCSVWriter(w)
 
 	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
 	if err := w.Write(header); err != nil {
@@ -1499,6 +1512,11 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
 		if err := w.Write(row); err != nil {
 			return err
 		}
+	}
+
+	w.Flush()
+	if err := w.Error(); err != nil {
+		return err
 	}
 
 	return nil

@@ -54,7 +54,7 @@ func NewStorage(playerTag string) (*Storage, error) {
 
 	// Initialize schema
 	if err := storage.initSchema(); err != nil {
-		db.Close()
+		closeWithLog(db, "leaderboard database")
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -286,7 +286,7 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
-	defer rows.Close()
+	defer closeWithLog(rows, "deck rows")
 
 	// Parse results
 	entries := []DeckEntry{}
