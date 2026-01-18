@@ -676,7 +676,7 @@ func (df *DeckFuzzer) generateEvolutionCentricDeckAttemptWithRng(rng *rand.Rand)
 	}
 
 	// 4. Fill remaining slots with role-based selection considering evolution synergy
-	df.buildDeckAroundEvolution(rng, deck, used)
+	deck = df.buildDeckAroundEvolution(rng, deck, used)
 
 	// 5. Validate deck size
 	if len(deck) != 8 {
@@ -781,7 +781,7 @@ func (df *DeckFuzzer) selectEvolutionCards(scoredCards []CardCandidate, count in
 }
 
 // buildDeckAroundEvolution fills remaining slots considering role and synergy
-func (df *DeckFuzzer) buildDeckAroundEvolution(rng *rand.Rand, deck []string, used map[string]bool) {
+func (df *DeckFuzzer) buildDeckAroundEvolution(rng *rand.Rand, deck []string, used map[string]bool) []string {
 	// Fill remaining slots with role-based selection
 	roleSelections := []struct {
 		role  config.CardRole
@@ -832,6 +832,8 @@ func (df *DeckFuzzer) buildDeckAroundEvolution(rng *rand.Rand, deck []string, us
 			}
 		}
 	}
+
+	return deck
 }
 
 // validateEvolutionDeck ensures deck meets evolution requirements

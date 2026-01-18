@@ -333,6 +333,68 @@ func TestGenerateRandomDeckWithElixirConstraints(t *testing.T) {
 	}
 }
 
+func TestGenerateEvolutionCentricDeck(t *testing.T) {
+	player := &clashroyale.Player{
+		Name: "TestPlayer",
+		Tag:  "#TEST123",
+		Cards: []clashroyale.Card{
+			{Name: "Hog Rider", Level: 8, MaxLevel: 13, Rarity: "Rare", ElixirCost: 4},
+			{Name: "Fireball", Level: 7, MaxLevel: 11, Rarity: "Rare", ElixirCost: 4},
+			{Name: "Zap", Level: 11, MaxLevel: 13, Rarity: "Common", ElixirCost: 2},
+			{Name: "Cannon", Level: 11, MaxLevel: 13, Rarity: "Common", ElixirCost: 3},
+			{Name: "Archers", Level: 10, MaxLevel: 13, Rarity: "Common", ElixirCost: 3, EvolutionLevel: 1, MaxEvolutionLevel: 3},
+			{Name: "Knight", Level: 11, MaxLevel: 13, Rarity: "Common", ElixirCost: 3, EvolutionLevel: 1, MaxEvolutionLevel: 3},
+			{Name: "Skeletons", Level: 11, MaxLevel: 13, Rarity: "Common", ElixirCost: 1, EvolutionLevel: 1, MaxEvolutionLevel: 1},
+			{Name: "Valkyrie", Level: 7, MaxLevel: 11, Rarity: "Rare", ElixirCost: 4},
+			{Name: "Baby Dragon", Level: 5, MaxLevel: 11, Rarity: "Epic", ElixirCost: 4},
+			{Name: "Musketeer", Level: 8, MaxLevel: 13, Rarity: "Rare", ElixirCost: 4, EvolutionLevel: 1, MaxEvolutionLevel: 3},
+			{Name: "Ice Spirit", Level: 11, MaxLevel: 13, Rarity: "Common", ElixirCost: 1, EvolutionLevel: 1, MaxEvolutionLevel: 1},
+			{Name: "Giant", Level: 7, MaxLevel: 11, Rarity: "Rare", ElixirCost: 5},
+			{Name: "Log", Level: 11, MaxLevel: 13, Rarity: "Legendary", ElixirCost: 2},
+			{Name: "Tesla", Level: 7, MaxLevel: 11, Rarity: "Common", ElixirCost: 3},
+		},
+	}
+
+	cfg := &FuzzingConfig{
+		Count:             10,
+		Workers:           1,
+		EvolutionCentric:  true,
+		MinEvolutionCards: 3,
+		MinEvoLevel:       1,
+	}
+
+	fuzzer, err := NewDeckFuzzer(player, cfg)
+	if err != nil {
+		t.Fatalf("Failed to create fuzzer: %v", err)
+	}
+
+	deck, err := fuzzer.GenerateRandomDeck()
+	if err != nil {
+		t.Fatalf("Failed to generate evolution deck: %v", err)
+	}
+
+	if len(deck) != 8 {
+		t.Fatalf("Expected 8 cards, got %d", len(deck))
+	}
+
+	evoCount := 0
+	for _, cardName := range deck {
+		for _, card := range player.Cards {
+			if card.Name == cardName {
+				if card.EvolutionLevel >= cfg.MinEvoLevel ||
+					(card.MaxEvolutionLevel > 0 && card.EvolutionLevel < card.MaxEvolutionLevel) {
+					evoCount++
+				}
+				break
+			}
+		}
+	}
+
+	if evoCount < cfg.MinEvolutionCards {
+		t.Errorf("Expected at least %d evolution cards, got %d", cfg.MinEvolutionCards, evoCount)
+	}
+}
+
 func TestGenerateDecks(t *testing.T) {
 	player := &clashroyale.Player{
 		Name: "TestPlayer",
