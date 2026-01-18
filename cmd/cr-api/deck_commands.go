@@ -657,6 +657,48 @@ func addDeckCommands() *cli.Command {
 						},
 						Action: deckFuzzListCommand,
 					},
+					{
+						Name:  "update",
+						Usage: "Re-evaluate saved decks with current scoring and update storage",
+						Flags: []cli.Flag{
+							&cli.IntFlag{
+								Name:  "top",
+								Value: 0,
+								Usage: "Maximum number of decks to update (0 = all)",
+							},
+							&cli.StringFlag{
+								Name:  "archetype",
+								Usage: "Filter by archetype",
+							},
+							&cli.Float64Flag{
+								Name:  "min-score",
+								Usage: "Minimum overall score",
+							},
+							&cli.Float64Flag{
+								Name:  "max-score",
+								Usage: "Maximum overall score",
+							},
+							&cli.Float64Flag{
+								Name:  "min-elixir",
+								Usage: "Minimum average elixir",
+							},
+							&cli.Float64Flag{
+								Name:  "max-elixir",
+								Usage: "Maximum average elixir",
+							},
+							&cli.IntFlag{
+								Name:  "workers",
+								Value: 1,
+								Usage: "Number of parallel workers for re-evaluation",
+							},
+							&cli.BoolFlag{
+								Name:    "verbose",
+								Aliases: []string{"v"},
+								Usage:   "Show detailed progress information",
+							},
+						},
+						Action: deckFuzzUpdateCommand,
+					},
 				},
 				Flags: []cli.Flag{
 					&cli.StringFlag{
@@ -4301,17 +4343,19 @@ func sortEvaluationResults[T any](results []T, sortBy string) {
 	// Type assertion helper
 	getResult := func(r T) evaluation.EvaluationResult {
 		switch v := any(r).(type) {
-		case struct {
-			Name      string
-			Strategy  string
-			Deck      []string
-			Result    evaluation.EvaluationResult
-			FilePath  string
-			Evaluated time.Time
-			Duration  time.Duration
-		}:
-			return v.Result
+		case resultInterface:
+			return v.GetResult()
 		default:
+			rv := reflect.ValueOf(r)
+			if rv.Kind() == reflect.Pointer {
+				rv = rv.Elem()
+			}
+			if rv.IsValid() && rv.Kind() == reflect.Struct {
+				field := rv.FieldByName("Result")
+				if field.IsValid() && field.Type() == reflect.TypeOf(evaluation.EvaluationResult{}) {
+					return field.Interface().(evaluation.EvaluationResult)
+				}
+			}
 			return evaluation.EvaluationResult{}
 		}
 	}

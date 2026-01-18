@@ -1147,6 +1147,192 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 }
 
+// deckFuzzUpdateCommand re-evaluates saved decks with current scoring and updates storage.
+func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
+	top := cmd.Int("top")
+	archetype := cmd.String("archetype")
+	minScore := cmd.Float64("min-score")
+	maxScore := cmd.Float64("max-score")
+	minElixir := cmd.Float64("min-elixir")
+	maxElixir := cmd.Float64("max-elixir")
+	workers := cmd.Int("workers")
+	verbose := cmd.Bool("verbose")
+
+	if workers == 1 {
+		workers = runtime.NumCPU()
+		if verbose {
+			fmt.Fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", runtime.NumCPU(), workers)
+		}
+	}
+
+	storage, err := fuzzstorage.NewStorage("")
+	if err != nil {
+		return fmt.Errorf("failed to open storage: %w", err)
+	}
+	defer storage.Close()
+
+	queryOpts := fuzzstorage.QueryOptions{
+		Limit: top,
+	}
+	if archetype != "" {
+		queryOpts.Archetype = archetype
+	}
+	if minScore > 0 {
+		queryOpts.MinScore = minScore
+	}
+	if maxScore > 0 {
+		queryOpts.MaxScore = maxScore
+	}
+	if minElixir > 0 {
+		queryOpts.MinAvgElixir = minElixir
+	}
+	if maxElixir > 0 {
+		queryOpts.MaxAvgElixir = maxElixir
+	}
+
+	entries, err := storage.Query(queryOpts)
+	if err != nil {
+		return fmt.Errorf("failed to query decks: %w", err)
+	}
+	if len(entries) == 0 {
+		fmt.Println("No decks found for update.")
+		return nil
+	}
+
+	start := time.Now()
+	updatedEntries := reevaluateStoredDecks(entries, workers, verbose)
+
+	updated := 0
+	for i := range updatedEntries {
+		if err := storage.UpdateDeck(&updatedEntries[i]); err != nil {
+			return fmt.Errorf("failed to update deck %d: %w", updatedEntries[i].ID, err)
+		}
+		updated++
+	}
+
+	if verbose {
+		fmt.Fprintf(os.Stderr, "Updated %d decks in %v\n", updated, time.Since(start).Round(time.Millisecond))
+		fmt.Fprintf(os.Stderr, "Database: %s\n", storage.GetDBPath())
+	}
+
+	fmt.Printf("Updated %d saved decks\n", updated)
+	return nil
+}
+
+type storedDeckWork struct {
+	index int
+	entry fuzzstorage.DeckEntry
+}
+
+type storedDeckResult struct {
+	index int
+	entry fuzzstorage.DeckEntry
+}
+
+func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, workers int, verbose bool) []fuzzstorage.DeckEntry {
+	if workers <= 1 {
+		return reevaluateStoredDecksSequential(entries, verbose)
+	}
+
+	results := make([]fuzzstorage.DeckEntry, len(entries))
+	workChan := make(chan storedDeckWork, len(entries))
+	resultChan := make(chan storedDeckResult, len(entries))
+	var wg sync.WaitGroup
+
+	var bar *progressbar.ProgressBar
+	if verbose {
+		bar = progressbar.NewOptions(len(entries),
+			progressbar.OptionSetWriter(os.Stderr),
+			progressbar.OptionShowCount(),
+			progressbar.OptionShowIts(),
+			progressbar.OptionSetItsString("decks"),
+			progressbar.OptionOnCompletion(func() {
+				fmt.Fprintln(os.Stderr)
+			}),
+		)
+	}
+
+	for range workers {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			synergyDB := deck.NewSynergyDatabase()
+
+			for work := range workChan {
+				result := evaluateSingleDeck(work.entry.Cards, nil, "", synergyDB, nil)
+				updated := work.entry
+				updated.OverallScore = result.OverallScore
+				updated.AttackScore = result.AttackScore
+				updated.DefenseScore = result.DefenseScore
+				updated.SynergyScore = result.SynergyScore
+				updated.VersatilityScore = result.VersatilityScore
+				updated.AvgElixir = result.AvgElixir
+				updated.Archetype = result.Archetype
+				updated.ArchetypeConf = result.ArchetypeConfidence
+				updated.EvaluatedAt = result.EvaluatedAt
+				resultChan <- storedDeckResult{index: work.index, entry: updated}
+			}
+		}()
+	}
+
+	for i, entry := range entries {
+		workChan <- storedDeckWork{index: i, entry: entry}
+	}
+	close(workChan)
+
+	go func() {
+		wg.Wait()
+		close(resultChan)
+	}()
+
+	for result := range resultChan {
+		results[result.index] = result.entry
+		if verbose && bar != nil {
+			bar.Add(1)
+		}
+	}
+
+	return results
+}
+
+func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, verbose bool) []fuzzstorage.DeckEntry {
+	results := make([]fuzzstorage.DeckEntry, len(entries))
+	synergyDB := deck.NewSynergyDatabase()
+
+	var bar *progressbar.ProgressBar
+	if verbose {
+		bar = progressbar.NewOptions(len(entries),
+			progressbar.OptionSetWriter(os.Stderr),
+			progressbar.OptionShowCount(),
+			progressbar.OptionShowIts(),
+			progressbar.OptionSetItsString("decks"),
+			progressbar.OptionOnCompletion(func() {
+				fmt.Fprintln(os.Stderr)
+			}),
+		)
+	}
+
+	for i, entry := range entries {
+		result := evaluateSingleDeck(entry.Cards, nil, "", synergyDB, nil)
+		entry.OverallScore = result.OverallScore
+		entry.AttackScore = result.AttackScore
+		entry.DefenseScore = result.DefenseScore
+		entry.SynergyScore = result.SynergyScore
+		entry.VersatilityScore = result.VersatilityScore
+		entry.AvgElixir = result.AvgElixir
+		entry.Archetype = result.Archetype
+		entry.ArchetypeConf = result.ArchetypeConfidence
+		entry.EvaluatedAt = result.EvaluatedAt
+		results[i] = entry
+
+		if verbose && bar != nil {
+			bar.Add(1)
+		}
+	}
+
+	return results
+}
+
 // formatListResultsSummary formats list results in summary format
 func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
 	fmt.Printf("Saved Top Decks\n")
