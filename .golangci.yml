@@ -3,6 +3,11 @@ version: "2"
 run:
   timeout: 5m
 
+issues:
+  new-from-rev: HEAD
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
 linters:
   default: none
   enable:
@@ -15,21 +20,45 @@ linters:
     - gocyclo
     - gocognit
     - funlen
+    - staticcheck
+    - errcheck
+    - revive
+    - gocritic
+    - depguard
+    - interfacebloat
+    - ireturn
   settings:
     misspell:
       locale: US
     dupl:
-      threshold: 150
+      threshold: 100
     goconst:
       min-len: 2
       min-occurrences: 3
     gocyclo:
-      min-complexity: 15
+      min-complexity: 10
     gocognit:
       min-complexity: 20
     funlen:
-      lines: 100
+      lines: 60
       statements: 50
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    revive:
+      rules:
+        - name: exported
+          disabled: true
+    depguard:
+      rules:
+        cmd-internal:
+          files:
+            - cmd/**
+          deny:
+            - pkg: github.com/klauer/clash-royale-api/go/internal
+              desc: cmd should not import internal packages
+    interfacebloat:
+      max: 10
   exclusions:
     rules:
       - path: _test\.go
@@ -38,6 +67,12 @@ linters:
           - gocyclo
           - gocognit
           - funlen
+          - interfacebloat
+          - revive
+          - gocritic
+          - staticcheck
+          - ireturn
+          - depguard
 
 formatters:
   enable:
