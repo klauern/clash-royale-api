@@ -161,6 +161,151 @@ tasks:
       - sh: test -x {{.CR_API_BIN}}
         msg: "cr-api binary not found. Build it with: task build"
 
+  export-player:
+    desc: Export player profile data to CSV
+    summary: |
+      Export player profile information to CSV using the export subcommand
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Exporting player data for $CLEAN_TAG..."
+        {{.CR_API_BIN}} export player --tag "$CLEAN_TAG"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  export-analysis:
+    desc: Export card collection analysis to CSV
+    summary: |
+      Export detailed card collection analysis including upgrade paths to CSV
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Exporting analysis data for $CLEAN_TAG..."
+        {{.CR_API_BIN}} export analysis --tag "$CLEAN_TAG"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  export-battles:
+    desc: Export battle log to CSV
+    summary: |
+      Export recent battle history with deck compositions and outcomes to CSV
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Exporting battle log for $CLEAN_TAG..."
+        {{.CR_API_BIN}} export battles --tag "$CLEAN_TAG"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  export-events-csv:
+    desc: Export event deck data to CSV using export subcommand
+    summary: |
+      Export event deck performance data to CSV format using the export subcommand
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Exporting event data for $CLEAN_TAG..."
+        {{.CR_API_BIN}} export events --tag "$CLEAN_TAG"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  export-player-all:
+    desc: Export all available player data using export subcommand
+    summary: |
+      Export all available data types for a player in one command using export all
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Exporting all data for $CLEAN_TAG..."
+        {{.CR_API_BIN}} export all --tag "$CLEAN_TAG"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
   build-deck:
     desc: Build an optimized 1v1 ladder deck from the latest analysis
     summary: |
@@ -221,6 +366,66 @@ tasks:
         CLEAN_TAG="${PLAYER_TAG#\#}"
         echo "Building war deck lineup for $CLEAN_TAG..."
         {{.CR_API_BIN}} deck war --tag "$CLEAN_TAG"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  deck-optimize:
+    desc: Optimize existing deck with available cards
+    summary: |
+      Optimize an existing deck by suggesting card replacements from your collection
+      that maintain archetype identity while improving overall deck quality.
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Optimizing deck for $CLEAN_TAG..."
+        {{.CR_API_BIN}} deck optimize --tag "$CLEAN_TAG" --max-changes 4 --verbose
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  deck-budget:
+    desc: Find budget-optimized decks with minimal upgrade investment
+    summary: |
+      Analyze all viable decks and rank them by upgrade efficiency (ROI).
+      Shows which decks give you the best competitive value for your upgrade resources.
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Finding budget decks for $CLEAN_TAG..."
+        {{.CR_API_BIN}} deck budget --tag "$CLEAN_TAG" --top-n 10 --sort-by roi
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
         msg: "cr-api binary not found. Build it with: task build"
@@ -438,6 +643,160 @@ tasks:
 
         echo "Analyzing and exporting archetype data for $CLEAN_TAG to CSV..."
         {{.CR_API_BIN}} archetypes --tag "$CLEAN_TAG" --data-dir "{{.DATA_DIR}}" --export-csv --save
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  # Evolution Tasks
+  evolution-recommend:
+    desc: Recommend optimal evolutions based on shards and card levels
+    summary: |
+      Analyze your evolution shard inventory and card levels to recommend
+      which evolutions would have the biggest impact on your deck viability.
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Recommending evolutions for $CLEAN_TAG..."
+        {{.CR_API_BIN}} evolutions recommend --tag "$CLEAN_TAG"
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  # Upgrade Analysis Tasks
+  upgrade-impact:
+    desc: Analyze which card upgrades have biggest impact on deck viability
+    summary: |
+      Analyze your card collection and identify which upgrades would unlock
+      the most new viable decks or improve existing deck quality the most.
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Analyzing upgrade impact for $CLEAN_TAG..."
+        {{.CR_API_BIN}} upgrade-impact --tag "$CLEAN_TAG" --top 10
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  what-if:
+    desc: Simulate deck changes with upgraded cards
+    summary: |
+      Simulate what decks would be available if you upgraded specific cards.
+      Useful for planning upgrade investments.
+
+      Args:
+        upgrades: Card upgrade specs in format "CardName:Level" (required)
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+
+      Example:
+        task what-if -- Knight:14 Archers:13 Fireball:12
+        task what-if -- #PLAYER_TAG Knight:14 Archers:13
+    cmds:
+      - |
+        # Parse arguments - first check if first arg is a player tag
+        ARGS="{{.CLI_ARGS}}"
+        if [ -z "$ARGS" ]; then
+          echo "Please provide upgrade specifications (e.g., Knight:14 Archers:13)" >&2
+          echo "Usage: task what-if -- [#PLAYER_TAG] CardName:Level [CardName:Level...]" >&2
+          exit 1
+        fi
+
+        # Split args into array
+        read -ra ARG_ARRAY <<< "$ARGS"
+
+        # Check if first arg is a player tag (starts with # or looks like a tag)
+        FIRST_ARG="${ARG_ARRAY[0]}"
+        if [[ "$FIRST_ARG" =~ ^#.+ ]] || [[ -z "${DEFAULT_PLAYER_TAG}" && ! "$FIRST_ARG" =~ : ]]; then
+          PLAYER_TAG="$FIRST_ARG"
+          UPGRADE_ARGS=("${ARG_ARRAY[@]:1}")
+        else
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+          UPGRADE_ARGS=("${ARG_ARRAY[@]}")
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        if [ ${#UPGRADE_ARGS[@]} -eq 0 ]; then
+          echo "Please provide at least one upgrade specification (e.g., Knight:14)" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        # Build upgrade flags
+        UPGRADE_FLAGS=""
+        for upgrade in "${UPGRADE_ARGS[@]}"; do
+          UPGRADE_FLAGS="$UPGRADE_FLAGS --upgrade $upgrade"
+        done
+
+        echo "Simulating upgrades for $CLEAN_TAG: ${UPGRADE_ARGS[*]}"
+        {{.CR_API_BIN}} what-if --tag "$CLEAN_TAG" $UPGRADE_FLAGS --show-decks
+    preconditions:
+      - sh: test -x {{.CR_API_BIN}}
+        msg: "cr-api binary not found. Build it with: task build"
+
+  playstyle:
+    desc: Analyze player's playstyle and recommend decks
+    summary: |
+      Analyze your battle history to identify your preferred playstyle
+      (aggro, control, beatdown, etc.) and recommend decks that match it.
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Analyzing playstyle for $CLEAN_TAG..."
+        {{.CR_API_BIN}} playstyle --tag "$CLEAN_TAG" --recommend-decks --save
     preconditions:
       - sh: test -x {{.CR_API_BIN}}
         msg: "cr-api binary not found. Build it with: task build"
@@ -716,7 +1075,7 @@ tasks:
         echo "✅ Completion placeholders created in dist/completion/"
         echo "TODO: Implement actual shell completions"
 
-help:
+  help:
     desc: Show API usage examples (Go CLI)
     cmds:
       - echo "Clash Royale API - Go CLI Usage Examples:"
@@ -725,22 +1084,44 @@ help:
       - echo "Prerequisites:"
       - 'echo "1. Build binaries: task build"'
       - 'echo "2. Set CLASH_ROYALE_API_TOKEN in .env file"'
-      - 'echo "3. Install dev tools: task install-tools (optional, for linting)"'
+      - 'echo "3. Set DEFAULT_PLAYER_TAG in .env to skip providing tag each time"'
+      - 'echo "4. Install dev tools: task install-tools (optional, for linting)"'
       - echo ''
       - echo "Basic Player Operations:"
       - 'echo "1. Basic player analysis: task run -- #PLAYER_TAG"'
       - 'echo "2. Save results: task run-with-save -- #PLAYER_TAG"'
       - 'echo "3. Export to CSV: task export-csv -- #PLAYER_TAG"'
       - 'echo "4. Export all data: task export-all -- #PLAYER_TAG"'
-      - 'echo "5. Build optimized deck: task build-deck -- #PLAYER_TAG"'
-      - 'echo "6. Build war deck lineup: task war-decks -- #PLAYER_TAG"'
       - echo ''
-      - echo "Event Deck Operations (using Go CLI):"
-      - 'echo "7. Scan for event decks: task scan-events -- #PLAYER_TAG"'
-      - 'echo "8. Export event decks: task export-events -- #PLAYER_TAG"'
-      - 'echo "9. Export deck builder format: task export-decks -- #PLAYER_TAG"'
-      - 'echo "10. Analyze events: task analyze-events -- #PLAYER_TAG"'
-      - 'echo "11. Sync recent events: task sync-events -- #PLAYER_TAG"'
+      - echo "Export Operations:"
+      - 'echo "5. Export player profile: task export-player -- #PLAYER_TAG"'
+      - 'echo "6. Export card analysis: task export-analysis -- #PLAYER_TAG"'
+      - 'echo "7. Export battle log: task export-battles -- #PLAYER_TAG"'
+      - 'echo "8. Export event data: task export-events-csv -- #PLAYER_TAG"'
+      - 'echo "9. Export everything: task export-player-all -- #PLAYER_TAG"'
+      - echo ''
+      - echo "Deck Operations:"
+      - 'echo "10. Build optimized deck: task build-deck -- #PLAYER_TAG"'
+      - 'echo "11. Build war deck lineup: task war-decks -- #PLAYER_TAG"'
+      - 'echo "12. Optimize existing deck: task deck-optimize -- #PLAYER_TAG"'
+      - 'echo "13. Find budget decks: task deck-budget -- #PLAYER_TAG"'
+      - echo ''
+      - echo "Event Deck Operations:"
+      - 'echo "14. Scan for event decks: task scan-events -- #PLAYER_TAG"'
+      - 'echo "15. Export event decks: task export-events -- #PLAYER_TAG"'
+      - 'echo "16. Export deck builder format: task export-decks -- #PLAYER_TAG"'
+      - 'echo "17. Analyze events: task analyze-events -- #PLAYER_TAG"'
+      - 'echo "18. Sync recent events: task sync-events -- #PLAYER_TAG"'
+      - echo ''
+      - echo "Archetype Analysis:"
+      - 'echo "19. Analyze archetypes: task analyze-archetypes -- #PLAYER_TAG"'
+      - 'echo "20. Export archetypes: task export-archetypes -- #PLAYER_TAG"'
+      - echo ''
+      - echo "Evolution & Upgrade Analysis:"
+      - 'echo "21. Recommend evolutions: task evolution-recommend -- #PLAYER_TAG"'
+      - 'echo "22. Analyze upgrade impact: task upgrade-impact -- #PLAYER_TAG"'
+      - 'echo "23. Simulate upgrades: task what-if -- Knight:14 Archers:13"'
+      - 'echo "24. Analyze playstyle: task playstyle -- #PLAYER_TAG"'
       - echo ''
       - echo "Development Commands:"
       - 'echo "- Build: task build"'
@@ -750,10 +1131,9 @@ help:
       - 'echo "- Security scan: task security-scan"'
       - echo ''
       - echo "Release/CI Commands:"
-      - 'echo "- Build all platforms: task build-all"'
-      - 'echo "- Build release artifacts: task build-release"'
+      - 'echo "- Build snapshot: task snapshot"'
       - 'echo "- Generate shell completion: task generate-completion"'
       - 'echo "- Install dev tools: task install-tools"'
       - echo ''
       - 'echo "Replace #PLAYER_TAG with actual tag (e.g., '#PLAYERTAG')"'
-      - 'echo "Project is now Go-only with CI/CD support!"'
+      - 'echo "Or set DEFAULT_PLAYER_TAG in .env and omit -- #PLAYER_TAG from commands"'
