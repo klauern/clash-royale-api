@@ -500,6 +500,29 @@ tasks:
       - rm -rf {{.DATA_DIR}}/
       - echo "✅ Clean complete!"
 
+  clean-data:
+    desc: Clean up generated data files (keeps example configs)
+    summary: |
+      Remove temporary/generated files from data/ directory while preserving
+      tracked example files (upgrade_plan_example.json, evolution_shards.example.json,
+      static/cards_stats.json, README.md)
+    cmds:
+      - |
+        echo "Cleaning data/ directory (preserving tracked files)..."
+        # Remove generated directories
+        rm -rf {{.DATA_DIR}}/analysis/ {{.DATA_DIR}}/decks/ {{.DATA_DIR}}/csv/ {{.DATA_DIR}}/evaluations/
+        rm -rf {{.DATA_DIR}}/players/ {{.DATA_DIR}}/reports/ {{.DATA_DIR}}/clans/ {{.DATA_DIR}}/reference/
+        # Remove generated files (excluding README.md)
+        find {{.DATA_DIR}} -maxdepth 1 -type f \( -name "*.md" ! -name "README.md" -o -name "*.txt" -o -name "*.csv" \) -delete 2>/dev/null || true
+        rm -f {{.DATA_DIR}}/decks_to_compare.json {{.DATA_DIR}}/evolution_shards.json
+        rm -f {{.DATA_DIR}}/static/cards.json
+        # Restore tracked files if they were accidentally deleted
+        git checkout {{.DATA_DIR}}/upgrade_plan_example.json 2>/dev/null || true
+        git checkout {{.DATA_DIR}}/evolution_shards.example.json 2>/dev/null || true
+        git checkout {{.DATA_DIR}}/static/cards_stats.json 2>/dev/null || true
+        git checkout {{.DATA_DIR}}/README.md 2>/dev/null || true
+        echo "✅ Cleanup complete. Kept: upgrade_plan_example.json, evolution_shards.example.json, static/cards_stats.json, README.md"
+
   status:
     desc: Show project status
     cmds:

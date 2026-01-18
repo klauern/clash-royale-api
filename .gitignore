@@ -138,6 +138,7 @@ data/*
 !data/upgrade_plan_example.json
 !data/evolution_shards.example.json
 !data/static/cards_stats.json
+!data/README.md
 
 # AI planning documents (ephemeral)
 history/
