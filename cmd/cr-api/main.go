@@ -469,14 +469,16 @@ func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func displayAnalysis(a *analysis.CardAnalysis) {
+func displayAnalysisHeader(a *analysis.CardAnalysis) {
 	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
 	printf("║                   CARD COLLECTION ANALYSIS                         ║\n")
 	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
 	printf("Player: %s (%s)\n", a.PlayerName, a.PlayerTag)
 	printf("Analysis Time: %s\n\n", a.AnalysisTime.Format("2006-01-02 15:04:05"))
+}
 
+func displayAnalysisSummary(a *analysis.CardAnalysis) {
 	// Display summary
 	printf("Summary:\n")
 	printf("════════\n")
@@ -492,7 +494,9 @@ func displayAnalysis(a *analysis.CardAnalysis) {
 	}
 	printf("Near Max (1-2 lvl): %d\n", cardsNearMax)
 	printf("\n")
+}
 
+func displayRarityBreakdown(a *analysis.CardAnalysis) {
 	// Display rarity breakdown
 	if len(a.RarityBreakdown) > 0 {
 		printf("Rarity Breakdown:\n")
@@ -517,7 +521,9 @@ func displayAnalysis(a *analysis.CardAnalysis) {
 		flushWriter(w)
 		printf("\n")
 	}
+}
 
+func displayUpgradePriorities(a *analysis.CardAnalysis) {
 	// Display upgrade priorities
 	if len(a.UpgradePriority) > 0 {
 		printf("Upgrade Priorities:\n")
@@ -550,6 +556,13 @@ func displayAnalysis(a *analysis.CardAnalysis) {
 	} else {
 		printf("No upgrade priorities found.\n")
 	}
+}
+
+func displayAnalysis(a *analysis.CardAnalysis) {
+	displayAnalysisHeader(a)
+	displayAnalysisSummary(a)
+	displayRarityBreakdown(a)
+	displayUpgradePriorities(a)
 }
 
 func saveAnalysisData(dataDir string, a *analysis.CardAnalysis) error {
