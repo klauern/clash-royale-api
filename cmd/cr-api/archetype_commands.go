@@ -21,6 +21,8 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const noCardsLabel = "None"
+
 // addArchetypeCommands adds archetype analysis commands to the CLI
 func addArchetypeCommands() *cli.Command {
 	return &cli.Command{
@@ -248,7 +250,7 @@ func findCardByRole(cards []deck.CardDetail, role string) string {
 	}
 
 	if len(matches) == 0 {
-		return "None"
+		return noCardsLabel
 	}
 	return strings.Join(matches, ", ")
 }
@@ -262,7 +264,7 @@ func findCardsByRole(cards []deck.CardDetail, role string) string {
 	}
 
 	if len(matches) == 0 {
-		return "None"
+		return noCardsLabel
 	}
 	return strings.Join(matches, ", ")
 }

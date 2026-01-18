@@ -15,6 +15,15 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const (
+	compareFormatTable    = "table"
+	compareFormatHuman    = "human"
+	compareFormatJSON     = "json"
+	compareFormatCSV      = "csv"
+	compareFormatMarkdown = "markdown"
+	compareFormatMD       = "md"
+)
+
 // addCompareCommands adds deck comparison subcommands to the CLI
 func addCompareCommands() *cli.Command {
 	return &cli.Command{
@@ -164,16 +173,16 @@ func deckCompareCommand(ctx context.Context, cmd *cli.Command) error {
 	var formattedOutput string
 	var err error
 	switch strings.ToLower(format) {
-	case "table", "human":
+	case compareFormatTable, compareFormatHuman:
 		formattedOutput = formatComparisonTable(deckNames, results, verbose, showWinRate)
-	case "json":
+	case compareFormatJSON:
 		formattedOutput, err = formatComparisonJSON(deckNames, results)
 		if err != nil {
 			return fmt.Errorf("failed to format JSON: %w", err)
 		}
-	case "csv":
+	case compareFormatCSV:
 		formattedOutput = formatComparisonCSV(deckNames, results)
-	case "markdown", "md":
+	case compareFormatMarkdown, compareFormatMD:
 		formattedOutput = formatComparisonMarkdown(deckNames, results, verbose)
 	default:
 		return fmt.Errorf("unknown format: %s (supported: table, json, csv, markdown)", format)

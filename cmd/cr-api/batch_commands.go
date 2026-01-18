@@ -15,6 +15,21 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const (
+	batchFormatSummary  = "summary"
+	batchFormatHuman    = "human"
+	batchFormatJSON     = "json"
+	batchFormatCSV      = "csv"
+	batchFormatDetailed = "detailed"
+
+	batchSortOverall     = "overall"
+	batchSortAttack      = "attack"
+	batchSortDefense     = "defense"
+	batchSortSynergy     = "synergy"
+	batchSortVersatility = "versatility"
+	batchSortElixir      = "elixir"
+)
+
 // addBatchCommands adds batch evaluation subcommands to the CLI
 func addBatchCommands() *cli.Command {
 	return &cli.Command{
@@ -32,7 +47,7 @@ func addBatchCommands() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:  "format",
-				Value: "summary",
+				Value: batchFormatSummary,
 				Usage: "Output format: summary, json, csv, detailed",
 			},
 			&cli.StringFlag{
@@ -41,7 +56,7 @@ func addBatchCommands() *cli.Command {
 			},
 			&cli.StringFlag{
 				Name:  "sort-by",
-				Value: "overall",
+				Value: batchSortOverall,
 				Usage: "Sort results by: overall, attack, defense, synergy, versatility, elixir",
 			},
 			&cli.BoolFlag{
@@ -202,16 +217,16 @@ func deckBatchCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	switch strings.ToLower(format) {
-	case "summary", "human":
+	case batchFormatSummary, batchFormatHuman:
 		formattedOutput = formatBatchSummary(batchResult, verbose)
-	case "json":
+	case batchFormatJSON:
 		formattedOutput, err = formatBatchJSON(batchResult)
 		if err != nil {
 			return fmt.Errorf("failed to format JSON: %w", err)
 		}
-	case "csv":
+	case batchFormatCSV:
 		formattedOutput = formatBatchCSV(batchResult)
-	case "detailed":
+	case batchFormatDetailed:
 		formattedOutput = formatBatchDetailed(batchResult)
 	default:
 		return fmt.Errorf("unknown format: %s (supported: summary, json, csv, detailed)", format)
@@ -402,9 +417,9 @@ func parseCardCount(s string) (int, error) {
 // sortResults sorts batch results by the specified criteria
 func sortResults(results []BatchEvaluationResult, sortBy string) {
 	switch strings.ToLower(sortBy) {
-	case "overall":
+	case batchSortOverall:
 		// Already sorted by overall by default
-	case "attack":
+	case batchSortAttack:
 		// Sort by attack score (descending)
 		for i := 0; i < len(results)-1; i++ {
 			for j := i + 1; j < len(results); j++ {
@@ -413,7 +428,7 @@ func sortResults(results []BatchEvaluationResult, sortBy string) {
 				}
 			}
 		}
-	case "defense":
+	case batchSortDefense:
 		for i := 0; i < len(results)-1; i++ {
 			for j := i + 1; j < len(results); j++ {
 				if results[j].Result.Defense.Score > results[i].Result.Defense.Score {
@@ -421,7 +436,7 @@ func sortResults(results []BatchEvaluationResult, sortBy string) {
 				}
 			}
 		}
-	case "synergy":
+	case batchSortSynergy:
 		for i := 0; i < len(results)-1; i++ {
 			for j := i + 1; j < len(results); j++ {
 				if results[j].Result.Synergy.Score > results[i].Result.Synergy.Score {
@@ -429,7 +444,7 @@ func sortResults(results []BatchEvaluationResult, sortBy string) {
 				}
 			}
 		}
-	case "versatility":
+	case batchSortVersatility:
 		for i := 0; i < len(results)-1; i++ {
 			for j := i + 1; j < len(results); j++ {
 				if results[j].Result.Versatility.Score > results[i].Result.Versatility.Score {
@@ -437,7 +452,7 @@ func sortResults(results []BatchEvaluationResult, sortBy string) {
 				}
 			}
 		}
-	case "elixir":
+	case batchSortElixir:
 		// Sort by elixir (ascending)
 		for i := 0; i < len(results)-1; i++ {
 			for j := i + 1; j < len(results); j++ {

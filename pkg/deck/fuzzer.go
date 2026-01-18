@@ -3,6 +3,7 @@
 package deck
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"strings"
@@ -291,11 +292,6 @@ func (df *DeckFuzzer) GenerateRandomDeckWithRng(rng *rand.Rand) ([]string, error
 	return nil, fmt.Errorf("failed to generate valid deck after %d attempts", maxRetries)
 }
 
-// generateRandomDeckAttempt attempts to generate a single random valid deck
-func (df *DeckFuzzer) generateRandomDeckAttempt() ([]string, error) {
-	return df.generateRandomDeckAttemptWithRng(df.rng)
-}
-
 // generateRandomDeckAttemptWithRng attempts to generate a single random valid deck using the provided RNG
 func (df *DeckFuzzer) generateRandomDeckAttemptWithRng(rng *rand.Rand) ([]string, error) {
 	deck := make([]string, 0, 8)
@@ -383,11 +379,6 @@ func (df *DeckFuzzer) generateRandomDeckAttemptWithRng(rng *rand.Rand) ([]string
 	return deck, nil
 }
 
-// selectRandomCards selects random cards from a role using weighted sampling
-func (df *DeckFuzzer) selectRandomCards(role config.CardRole, count int, used map[string]bool) []string {
-	return df.selectRandomCardsWithRng(df.rng, role, count, used)
-}
-
 // selectRandomCardsWithRng selects random cards from a role using weighted sampling with the provided RNG
 func (df *DeckFuzzer) selectRandomCardsWithRng(rng *rand.Rand, role config.CardRole, count int, used map[string]bool) []string {
 	cards := df.cardsByRole[role]
@@ -441,11 +432,6 @@ func (df *DeckFuzzer) selectRandomCardsWithRng(rng *rand.Rand, role config.CardR
 	}
 
 	return selected
-}
-
-// fillRemainingSlots fills remaining slots with random available cards
-func (df *DeckFuzzer) fillRemainingSlots(count int, used map[string]bool) []string {
-	return df.fillRemainingSlotsWithRng(df.rng, count, used)
 }
 
 // fillRemainingSlotsWithRng fills remaining slots with random available cards using the provided RNG
@@ -525,11 +511,6 @@ func (df *DeckFuzzer) isCardAvailable(cardName string) bool {
 		}
 	}
 	return false
-}
-
-// generateSynergyDeckAttempt attempts to generate a deck from 4 synergy pairs
-func (df *DeckFuzzer) generateSynergyDeckAttempt() ([]string, error) {
-	return df.generateSynergyDeckAttemptWithRng(df.rng)
 }
 
 // generateSynergyDeckAttemptWithRng attempts to generate a deck from 4 synergy pairs using the provided RNG
@@ -637,11 +618,6 @@ func (df *DeckFuzzer) generateSynergyDeckAttemptWithRng(rng *rand.Rand) ([]strin
 	}
 
 	return deck, nil
-}
-
-// generateEvolutionCentricDeckAttempt attempts to generate a deck focused on evolution-eligible cards
-func (df *DeckFuzzer) generateEvolutionCentricDeckAttempt() ([]string, error) {
-	return df.generateEvolutionCentricDeckAttemptWithRng(df.rng)
 }
 
 // generateEvolutionCentricDeckAttemptWithRng attempts to generate an evolution-centric deck using the provided RNG
@@ -891,11 +867,14 @@ func (df *DeckFuzzer) GetStats() FuzzingStats {
 	}
 }
 
-// GenerateDecks generates the specified number of decks
-func (df *DeckFuzzer) GenerateDecks(count int) ([][]string, error) {
+// GenerateDecksWithContext generates the specified number of decks or stops when ctx is done.
+func (df *DeckFuzzer) GenerateDecksWithContext(ctx context.Context, count int) ([][]string, error) {
 	decks := make([][]string, 0, count)
 
 	for i := 0; i < count; i++ {
+		if err := ctx.Err(); err != nil {
+			return decks, err
+		}
 		deck, err := df.GenerateRandomDeck()
 		if err != nil {
 			// Continue on error, just skip this deck
@@ -907,14 +886,18 @@ func (df *DeckFuzzer) GenerateDecks(count int) ([][]string, error) {
 	return decks, nil
 }
 
-// GenerateDecksParallel generates decks using parallel workers
-func (df *DeckFuzzer) GenerateDecksParallel() ([][]string, error) {
+// GenerateDecks generates the specified number of decks.
+func (df *DeckFuzzer) GenerateDecks(count int) ([][]string, error) {
+	return df.GenerateDecksWithContext(context.Background(), count)
+}
+
+// GenerateDecksParallelWithContext generates decks using parallel workers or stops when ctx is done.
+func (df *DeckFuzzer) GenerateDecksParallelWithContext(ctx context.Context) ([][]string, error) {
 	if df.config.Workers <= 1 {
-		return df.GenerateDecks(df.config.Count)
+		return df.GenerateDecksWithContext(ctx, df.config.Count)
 	}
 
 	decks := make([][]string, 0, df.config.Count)
-	var mu sync.Mutex
 	var wg sync.WaitGroup
 
 	// Create a worker pool
@@ -930,10 +913,22 @@ func (df *DeckFuzzer) GenerateDecksParallel() ([][]string, error) {
 			localSeed := df.config.Seed + int64(workerID)*int64(df.config.Workers)
 			localRng := rand.New(rand.NewSource(localSeed))
 
-			for range workChan {
-				deck, err := df.GenerateRandomDeckWithRng(localRng)
-				if err == nil {
-					resultChan <- deck
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case _, ok := <-workChan:
+					if !ok {
+						return
+					}
+					deck, err := df.GenerateRandomDeckWithRng(localRng)
+					if err == nil {
+						select {
+						case <-ctx.Done():
+							return
+						case resultChan <- deck:
+						}
+					}
 				}
 			}
 		}(w)
@@ -942,7 +937,12 @@ func (df *DeckFuzzer) GenerateDecksParallel() ([][]string, error) {
 	// Send work
 	go func() {
 		for i := 0; i < df.config.Count; i++ {
-			workChan <- i
+			select {
+			case <-ctx.Done():
+				close(workChan)
+				return
+			case workChan <- i:
+			}
 		}
 		close(workChan)
 	}()
@@ -955,12 +955,19 @@ func (df *DeckFuzzer) GenerateDecksParallel() ([][]string, error) {
 
 	// Collect results
 	for deck := range resultChan {
-		mu.Lock()
 		decks = append(decks, deck)
-		mu.Unlock()
+	}
+
+	if err := ctx.Err(); err != nil {
+		return decks, err
 	}
 
 	return decks, nil
+}
+
+// GenerateDecksParallel generates decks using parallel workers.
+func (df *DeckFuzzer) GenerateDecksParallel() ([][]string, error) {
+	return df.GenerateDecksParallelWithContext(context.Background())
 }
 
 // SetRoleComposition sets a custom role composition

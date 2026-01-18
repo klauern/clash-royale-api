@@ -488,6 +488,200 @@ cat data/analysis/reports/20240110_120200_deck_analysis_report_R8QGUQRCV.md
 
 See [DECK_ANALYSIS_SUITE.md](DECK_ANALYSIS_SUITE.md) for comprehensive guide and advanced workflows.
 
+### Deck Optimization Commands
+
+#### Deck Mulligan Guide (Opening Hand Strategy)
+
+Generate mulligan guides that recommend opening hand strategies for your deck:
+
+```bash
+# Generate mulligan guide for a deck
+./bin/cr-api deck mulligan --cards Knight Archers Fireball Musketeer "Hog Rider" "Ice Spirit" Cannon Log
+
+# Save to file
+./bin/cr-api deck mulligan --cards Knight Archers Fireball Musketeer "Hog Rider" "Ice Spirit" Cannon Log --save
+
+# Output as JSON
+./bin/cr-api deck mulligan --cards Knight Archers Fireball Musketeer "Hog Rider" "Ice Spirit" Cannon Log --json
+
+# With custom deck name
+./bin/cr-api deck mulligan --cards Knight Archers Fireball Musketeer "Hog Rider" "Ice Spirit" Cannon Log --deck-name "Hog Cycle v3"
+```
+
+**Mulligan Flags:**
+- `--cards <card>` - 8 card names (required, can specify multiple times)
+- `--deck-name <name>` - Custom name for the deck (optional)
+- `--save` - Save guide to file
+- `--json` - Output in JSON format instead of human-readable table
+
+#### Deck War Builder
+
+Build 4-deck war sets with zero card overlap for clan war:
+
+```bash
+# Build war deck set for your collection
+./bin/cr-api deck war --tag <TAG>
+
+# Build 5-deck war set instead of default 4
+./bin/cr-api deck war --tag <TAG> --deck-count 5
+
+# With custom evolution settings
+./bin/cr-api deck war --tag <TAG> --unlocked-evolutions "Archers,Knight,Musketeer" --evolution-slots 3
+
+# Disable combat stats weighting
+./bin/cr-api deck war --tag <TAG> --disable-combat-stats
+```
+
+**War Deck Flags:**
+- `--tag <TAG>` - Player tag (required)
+- `--deck-count <n>` - Number of decks to build (default: 4)
+- `--unlocked-evolutions <cards>` - Comma-separated evolution cards
+- `--evolution-slots <n>` - Number of evolution slots available (default: 2)
+- `--combat-stats-weight <float>` - Weight for combat stats (0.0-1.0, default: 0.25)
+- `--disable-combat-stats` - Use traditional scoring only
+
+#### Deck Budget Finder
+
+Find budget-optimized decks that maximize impact with minimal upgrade investment:
+
+```bash
+# Find decks requiring minimal upgrades
+./bin/cr-api deck budget --tag <TAG> --sort-by roi
+
+# Find quick-win decks (1-2 upgrades away from viability)
+./bin/cr-api deck budget --tag <TAG> --quick-wins --ready-only
+
+# Find decks requiring specific gold/cards
+./bin/cr-api deck budget --tag <TAG> --max-gold 10000 --max-cards 50
+
+# With deck constraints
+./bin/cr-api deck budget --tag <TAG> \
+  --include-cards "Hog Rider,Log" \
+  --max-variations 5 \
+  --target-level 12.0
+
+# Generate deck variations for different budgets
+./bin/cr-api deck budget --tag <TAG> \
+  --include-variations \
+  --max-variations 3 \
+  --sort-by cost_efficiency
+```
+
+**Budget Finder Flags:**
+- `--tag <TAG>` - Player tag (required)
+- `--max-cards <n>` - Maximum cards needed for upgrades (0 = unlimited)
+- `--max-gold <n>` - Maximum gold needed for upgrades (0 = unlimited)
+- `--target-level <float>` - Target average card level (default: 12.0)
+- `--sort-by <criteria>` - Sort by: roi, cost_efficiency, total_cards, total_gold, current_score, projected_score
+- `--top-n <n>` - Number of top decks to display (default: 10)
+- `--include-variations` - Generate and analyze deck variations
+- `--max-variations <n>` - Maximum variations per base deck (default: 5)
+- `--quick-wins` - Show only quick-win decks (1-2 upgrades)
+- `--ready-only` - Show only already-competitive decks
+- `--json` - Output as JSON
+- `--save` - Save results to file
+
+#### Deck Possible Count
+
+Calculate realistic deck combination possibilities from your card collection:
+
+```bash
+# Calculate possible deck combinations
+./bin/cr-api deck possible-count --tag <TAG>
+
+# Show detailed breakdown by role and archetype
+./bin/cr-api deck possible-count --tag <TAG> --verbose
+
+# Output as JSON
+./bin/cr-api deck possible-count --tag <TAG> --format json
+
+# Export to file
+./bin/cr-api deck possible-count --tag <TAG> --format csv --output stats.csv
+```
+
+**Possible Count Flags:**
+- `--tag <TAG>` - Player tag (required)
+- `--format <format>` - Output format: human, json, csv (default: human)
+- `--verbose` - Show detailed breakdown by role/archetype
+- `--output <file>` - Save output to file
+
+### Archetype Analysis
+
+#### Dynamic Archetype Detection
+
+Detect deck archetypes dynamically with confidence scoring:
+
+```bash
+# Analyze archetypes in player's collection
+./bin/cr-api archetype detect --tag <TAG>
+
+# Show detailed strategy recommendations per archetype
+./bin/cr-api archetype detect --tag <TAG> --show-strategies --show-upgrades
+
+# Verbose output with full archetype details
+./bin/cr-api archetype detect --tag <TAG> --verbose
+
+# Save analysis results
+./bin/cr-api archetype detect --tag <TAG> --save
+```
+
+**Archetype Detect Flags:**
+- `--tag <TAG>` - Player tag (required)
+- `--show-strategies` - Display strategy recommendations
+- `--show-upgrades` - Display upgrade recommendations per archetype
+- `--verbose` - Show detailed information
+- `--save` - Save results to file
+
+#### Archetype Variety Analysis
+
+Analyze variety and synergy within supported archetypes:
+
+```bash
+# Analyze archetype variety in collection
+./bin/cr-api archetype variety --tag <TAG>
+
+# Show specific archetype details
+./bin/cr-api archetype variety --tag <TAG> --archetype cycle
+
+# Full analysis with recommendations
+./bin/cr-api archetype variety --tag <TAG> --verbose --show-recommendations
+```
+
+**Archetype Variety Flags:**
+- `--tag <TAG>` - Player tag (required)
+- `--archetype <type>` - Analyze specific archetype
+- `--verbose` - Show detailed analysis
+- `--show-recommendations` - Display building recommendations
+
+### Evolution System
+
+#### Recommend Evolution Paths
+
+Get personalized evolution upgrade recommendations:
+
+```bash
+# Recommend top 5 evolution upgrades
+./bin/cr-api evolution recommend --tag <TAG> --top 5
+
+# Show all evolution options with analysis
+./bin/cr-api evolution recommend --tag <TAG> --verbose
+
+# Check specific evolution card
+./bin/cr-api evolution shards list --tag <TAG>
+
+# Update evolution shard inventory
+./bin/cr-api evolution shards set --tag <TAG> --card "Archers" --shards 50
+```
+
+**Evolution Flags:**
+- `--tag <TAG>` - Player tag (required)
+- `--top <n>` - Number of recommendations (default: 5)
+- `--verbose` - Show detailed evolution analysis
+
+**Shards Subcommands:**
+- `shards list` - Show current evolution shard inventory
+- `shards set` - Update shards for a specific card
+
 ### Event Tracking
 
 ```bash

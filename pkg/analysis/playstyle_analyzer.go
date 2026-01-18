@@ -9,6 +9,8 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
+const balancedLabel = "Balanced"
+
 // PlaystyleAnalysis represents the analysis of a player's playstyle
 type PlaystyleAnalysis struct {
 	PlayerTag    string    `json:"player_tag"`
@@ -174,7 +176,7 @@ func determineDeckStyle(avgElixir float64) string {
 	} else if avgElixir < 3.5 {
 		return "Fast cycle"
 	} else if avgElixir < 4.0 {
-		return "Balanced"
+		return balancedLabel
 	} else {
 		return "Beatdown/Heavy"
 	}
@@ -196,7 +198,7 @@ func determineConsistency(winRate float64) string {
 	if winRate > 55 {
 		return "High"
 	} else if winRate > 48 {
-		return "Balanced"
+		return balancedLabel
 	} else {
 		return "Learning"
 	}

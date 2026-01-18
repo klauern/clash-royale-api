@@ -4,14 +4,18 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"syscall"
 	"text/tabwriter"
 	"time"
 
@@ -25,6 +29,30 @@ import (
 	"github.com/schollz/progressbar/v3"
 	"github.com/urfave/cli/v3"
 )
+
+type stageCanceler struct {
+	mu     sync.Mutex
+	cancel context.CancelFunc
+}
+
+func (sc *stageCanceler) Set(cancel context.CancelFunc) {
+	sc.mu.Lock()
+	sc.cancel = cancel
+	sc.mu.Unlock()
+}
+
+func (sc *stageCanceler) Clear() {
+	sc.Set(nil)
+}
+
+func (sc *stageCanceler) Cancel() {
+	sc.mu.Lock()
+	cancel := sc.cancel
+	sc.mu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+}
 
 // deckFuzzCommand is the action function for the deck fuzz command
 func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
@@ -59,6 +87,24 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	minEvoCards := cmd.Int("min-evo-cards")
 	minEvoLevel := cmd.Int("min-evo-level")
 	evoWeight := cmd.Float64("evo-weight")
+
+	var interrupted atomic.Bool
+	var canceler stageCanceler
+
+	interrupts := make(chan os.Signal, 2)
+	signal.Notify(interrupts, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(interrupts)
+
+	go func() {
+		<-interrupts
+		if interrupted.CompareAndSwap(false, true) {
+			fmt.Fprintln(os.Stderr, "\nInterrupt received; stopping current stage and saving partial results (press Ctrl+C again to exit immediately)")
+			canceler.Cancel()
+		}
+		<-interrupts
+		fmt.Fprintln(os.Stderr, "\nSecond interrupt received; exiting immediately.")
+		os.Exit(130)
+	}()
 
 	// Validate flags
 	if playerTag == "" && !fromAnalysis {
@@ -251,14 +297,21 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	var generatedDecks [][]string
+	generationCtx, cancelGeneration := context.WithCancel(ctx)
+	canceler.Set(cancelGeneration)
 	if workers > 1 {
-		generatedDecks, err = fuzzer.GenerateDecksParallel()
+		generatedDecks, err = fuzzer.GenerateDecksParallelWithContext(generationCtx)
 	} else {
-		generatedDecks, err = fuzzer.GenerateDecks(count)
+		generatedDecks, err = fuzzer.GenerateDecksWithContext(generationCtx, count)
+	}
+	canceler.Clear()
+	cancelGeneration()
+	if err != nil && !(interrupted.Load() && errors.Is(err, context.Canceled)) {
+		return fmt.Errorf("failed to generate decks: %w", err)
 	}
 
 	// Handle --from-saved: add mutations of saved decks
-	if fromSaved > 0 {
+	if fromSaved > 0 && !interrupted.Load() {
 		savedDecks, err := loadSavedDecksForSeeding(fromSaved, player, verbose)
 		if err != nil {
 			return fmt.Errorf("failed to load saved decks for seeding: %w", err)
@@ -273,7 +326,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Handle --based-on: load a specific deck and generate variations
-	if basedOn != "" {
+	if basedOn != "" && !interrupted.Load() {
 		baseDeck, err := loadDeckFromStorage(basedOn, verbose)
 		if err != nil {
 			return fmt.Errorf("failed to load deck from storage: %w", err)
@@ -292,10 +345,6 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	generationDone.Wait()
 	fmt.Fprintln(os.Stderr) // New line after progress
 
-	if err != nil {
-		return fmt.Errorf("failed to generate decks: %w", err)
-	}
-
 	generationTime := time.Since(startTime)
 
 	stats := fuzzer.GetStats()
@@ -312,6 +361,10 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if len(generatedDecks) == 0 {
+		if interrupted.Load() {
+			fmt.Fprintln(os.Stderr, "\nInterrupted before any decks were generated.")
+			return nil
+		}
 		return fmt.Errorf("no decks were successfully generated")
 	}
 
@@ -320,7 +373,10 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		fmt.Fprintf(os.Stderr, "Evaluating %d decks with %d workers...\n", len(generatedDecks), workers)
 	}
 
-	evaluationResults := evaluateGeneratedDecks(
+	evaluationCtx, cancelEvaluation := context.WithCancel(ctx)
+	canceler.Set(cancelEvaluation)
+	evaluationResults, evalErr := evaluateGeneratedDecks(
+		evaluationCtx,
 		generatedDecks,
 		player,
 		playerTag,
@@ -328,6 +384,18 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		workers,
 		verbose,
 	)
+	canceler.Clear()
+	cancelEvaluation()
+	if evalErr != nil && !(interrupted.Load() && errors.Is(evalErr, context.Canceled)) {
+		return fmt.Errorf("failed to evaluate decks: %w", evalErr)
+	}
+	if len(evaluationResults) == 0 {
+		if interrupted.Load() {
+			fmt.Fprintln(os.Stderr, "\nInterrupted before any decks were evaluated.")
+			return nil
+		}
+		return fmt.Errorf("no decks were evaluated")
+	}
 
 	// Filter by score thresholds
 	filteredResults := filterResultsByScore(evaluationResults, minOverall, minSynergy, verbose)
@@ -393,13 +461,14 @@ type FuzzingResult struct {
 
 // evaluateGeneratedDecks evaluates a list of generated decks
 func evaluateGeneratedDecks(
+	ctx context.Context,
 	decks [][]string,
 	player *clashroyale.Player,
 	playerTag string,
 	storagePath string,
 	workers int,
 	verbose bool,
-) []FuzzingResult {
+) ([]FuzzingResult, error) {
 	// Create player context if player tag provided (shared, read-only)
 	var playerContext *evaluation.PlayerContext
 	if playerTag != "" && player != nil {
@@ -420,22 +489,23 @@ func evaluateGeneratedDecks(
 
 	// Use parallel evaluation if workers > 1
 	if workers > 1 {
-		return evaluateDecksParallel(decks, player, playerTag, playerContext, storage, workers, verbose)
+		return evaluateDecksParallel(ctx, decks, player, playerTag, playerContext, storage, workers, verbose)
 	}
 
 	// Sequential evaluation (original behavior)
-	return evaluateDecksSequential(decks, player, playerTag, playerContext, storage, verbose)
+	return evaluateDecksSequential(ctx, decks, player, playerTag, playerContext, storage, verbose)
 }
 
 // evaluateDecksSequential evaluates decks sequentially (original implementation)
 func evaluateDecksSequential(
+	ctx context.Context,
 	decks [][]string,
 	player *clashroyale.Player,
 	playerTag string,
 	playerContext *evaluation.PlayerContext,
 	storage *leaderboard.Storage,
 	verbose bool,
-) []FuzzingResult {
+) ([]FuzzingResult, error) {
 	results := make([]FuzzingResult, 0, len(decks))
 
 	// Create synergy database once for sequential use
@@ -457,6 +527,9 @@ func evaluateDecksSequential(
 
 	// Evaluate each deck
 	for _, deckCards := range decks {
+		if err := ctx.Err(); err != nil {
+			return results, err
+		}
 		result := evaluateSingleDeck(deckCards, player, playerTag, synergyDB, playerContext)
 		results = append(results, result)
 
@@ -470,11 +543,16 @@ func evaluateDecksSequential(
 		}
 	}
 
-	return results
+	if err := ctx.Err(); err != nil {
+		return results, err
+	}
+
+	return results, nil
 }
 
 // evaluateDecksParallel evaluates decks using parallel workers
 func evaluateDecksParallel(
+	ctx context.Context,
 	decks [][]string,
 	player *clashroyale.Player,
 	playerTag string,
@@ -482,9 +560,8 @@ func evaluateDecksParallel(
 	storage *leaderboard.Storage,
 	workers int,
 	verbose bool,
-) []FuzzingResult {
+) ([]FuzzingResult, error) {
 	results := make([]FuzzingResult, 0, len(decks))
-	var mu sync.Mutex
 	var wg sync.WaitGroup
 
 	// Create work channel
@@ -514,10 +591,22 @@ func evaluateDecksParallel(
 			// Each worker gets its own synergy database to avoid concurrent access
 			synergyDB := deck.NewSynergyDatabase()
 
-			for deckCards := range workChan {
-				// Evaluate deck and send to result channel
-				result := evaluateSingleDeck(deckCards, player, playerTag, synergyDB, playerContext)
-				resultChan <- result
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case deckCards, ok := <-workChan:
+					if !ok {
+						return
+					}
+					// Evaluate deck and send to result channel
+					result := evaluateSingleDeck(deckCards, player, playerTag, synergyDB, playerContext)
+					select {
+					case <-ctx.Done():
+						return
+					case resultChan <- result:
+					}
+				}
 			}
 		}()
 	}
@@ -525,7 +614,12 @@ func evaluateDecksParallel(
 	// Send work
 	go func() {
 		for _, deck := range decks {
-			workChan <- deck
+			select {
+			case <-ctx.Done():
+				close(workChan)
+				return
+			case workChan <- deck:
+			}
 		}
 		close(workChan)
 	}()
@@ -538,9 +632,7 @@ func evaluateDecksParallel(
 
 	// Collect results and update progress bar
 	for result := range resultChan {
-		mu.Lock()
 		results = append(results, result)
-		mu.Unlock()
 
 		if verbose && bar != nil {
 			bar.Add(1)
@@ -554,7 +646,11 @@ func evaluateDecksParallel(
 		}
 	}
 
-	return results
+	if err := ctx.Err(); err != nil {
+		return results, err
+	}
+
+	return results, nil
 }
 
 // evaluateSingleDeck evaluates a single deck and returns the result

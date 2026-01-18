@@ -24,6 +24,16 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+const (
+	deckStrategyAll = "all"
+
+	rarityCommon    = "Common"
+	rarityRare      = "Rare"
+	rarityEpic      = "Epic"
+	rarityLegendary = "Legendary"
+	rarityChampion  = "Champion"
+)
+
 // addDeckCommands adds deck-related subcommands to the CLI
 func addDeckCommands() *cli.Command {
 	return &cli.Command{
@@ -313,7 +323,7 @@ func addDeckCommands() *cli.Command {
 					&cli.StringFlag{
 						Name:    "strategies",
 						Aliases: []string{"s"},
-						Value:   "all",
+						Value:   deckStrategyAll,
 						Usage:   "Deck building strategies (comma-separated or 'all'): balanced, aggro, control, cycle, splash, spell",
 					},
 					&cli.IntFlag{
@@ -905,7 +915,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Parse and set strategy if provided (skip for "all" which is handled later)
-	if strategy != "" && strings.ToLower(strings.TrimSpace(strategy)) != "all" {
+	if strategy != "" && strings.ToLower(strings.TrimSpace(strategy)) != deckStrategyAll {
 		parsedStrategy, err := deck.ParseStrategy(strategy)
 		if err != nil {
 			return fmt.Errorf("invalid strategy: %w", err)
@@ -1039,7 +1049,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Handle --strategy all
-	if strings.ToLower(strings.TrimSpace(strategy)) == "all" {
+	if strings.ToLower(strings.TrimSpace(strategy)) == deckStrategyAll {
 		return buildAllStrategies(ctx, cmd, builder, deckCardAnalysis, playerName, playerTag)
 	}
 
@@ -1195,7 +1205,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Parse strategies
 	var strategies []deck.Strategy
 	strategiesStr = strings.ToLower(strings.TrimSpace(strategiesStr))
-	if strategiesStr == "all" {
+	if strategiesStr == deckStrategyAll {
 		strategies = []deck.Strategy{
 			deck.StrategyBalanced,
 			deck.StrategyAggro,
@@ -1998,7 +2008,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Parse strategies
 	var strategies []deck.Strategy
 	strategiesStr = strings.ToLower(strings.TrimSpace(strategiesStr))
-	if strategiesStr == "all" {
+	if strategiesStr == deckStrategyAll {
 		strategies = []deck.Strategy{
 			deck.StrategyBalanced,
 			deck.StrategyAggro,
@@ -3866,7 +3876,7 @@ func calculateDeckCardUpgrades(deckCardNames []string, cardAnalysis deck.CardAna
 		impactScore := baseImpact * levelGap
 
 		// Determine if this is a key upgrade
-		isKeyUpgrade := cardData.Rarity == "Legendary" || cardData.Rarity == "Champion"
+		isKeyUpgrade := cardData.Rarity == rarityLegendary || cardData.Rarity == rarityChampion
 
 		// Generate reason
 		reason := fmt.Sprintf("Upgrade %s from level %d to %d (%s)", cardName, cardData.Level, targetLevel, cardData.Rarity)
@@ -3895,15 +3905,15 @@ func calculateBaseImpact(rarity string, level int) float64 {
 	// Higher level = slightly diminishing returns
 	rarityMultiplier := 1.0
 	switch rarity {
-	case "Common":
+	case rarityCommon:
 		rarityMultiplier = 1.0
-	case "Rare":
+	case rarityRare:
 		rarityMultiplier = 2.0
-	case "Epic":
+	case rarityEpic:
 		rarityMultiplier = 4.0
-	case "Legendary":
+	case rarityLegendary:
 		rarityMultiplier = 8.0
-	case "Champion":
+	case rarityChampion:
 		rarityMultiplier = 10.0
 	}
 

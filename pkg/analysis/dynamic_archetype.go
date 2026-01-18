@@ -9,6 +9,24 @@ import (
 	"time"
 )
 
+const (
+	viabilityOptimal     = "optimal"
+	viabilityCompetitive = "competitive"
+	viabilityPlayable    = "playable"
+	viabilityBlocked     = "blocked"
+
+	priorityCritical = "critical"
+	priorityHigh     = "high"
+	priorityMedium   = "medium"
+	priorityLow      = "low"
+
+	rarityCommon    = "Common"
+	rarityRare      = "Rare"
+	rarityEpic      = "Epic"
+	rarityLegendary = "Legendary"
+	rarityChampion  = "Champion"
+)
+
 // Strategy represents a deck building strategy (mirrors deck.Strategy to avoid circular dependency)
 type Strategy string
 
@@ -211,13 +229,13 @@ func (d *DynamicArchetypeDetector) DetectArchetypes(
 
 	for _, arch := range detectedArchetypes {
 		switch arch.ViabilityTier {
-		case "optimal":
+		case viabilityOptimal:
 			optimal = append(optimal, arch.Name)
-		case "competitive":
+		case viabilityCompetitive:
 			competitive = append(competitive, arch.Name)
-		case "playable":
+		case viabilityPlayable:
 			playable = append(playable, arch.Name)
-		case "blocked":
+		case viabilityBlocked:
 			blocked = append(blocked, arch.Name)
 		}
 	}
@@ -687,14 +705,14 @@ func (d *DynamicArchetypeDetector) calculateArchetypeUpgrades(
 
 // calculateGoldToCompetitive estimates gold needed to reach competitive tier
 func (d *DynamicArchetypeDetector) calculateGoldToCompetitive(arch *DetectedArchetype) int {
-	if arch.ViabilityTier == "competitive" || arch.ViabilityTier == "optimal" {
+	if arch.ViabilityTier == viabilityCompetitive || arch.ViabilityTier == viabilityOptimal {
 		return 0 // Already competitive
 	}
 
 	// Simplified estimate based on upgrade priority
 	totalGold := 0
 	for _, upgrade := range arch.UpgradePriority {
-		if upgrade.Priority == "critical" || upgrade.Priority == "high" {
+		if upgrade.Priority == priorityCritical || upgrade.Priority == priorityHigh {
 			totalGold += upgrade.GoldCost
 		}
 	}
@@ -709,13 +727,13 @@ func estimateGoldCost(cardInfo CardLevelInfo) int {
 	// Simplified gold cost estimation
 	// TODO: Use actual upgrade costs from configuration
 	switch cardInfo.Rarity {
-	case "Common":
+	case rarityCommon:
 		return 2000 + (cardInfo.Level * 200)
-	case "Rare":
+	case rarityRare:
 		return 4000 + (cardInfo.Level * 400)
-	case "Epic":
+	case rarityEpic:
 		return 8000 + (cardInfo.Level * 800)
-	case "Legendary", "Champion":
+	case rarityLegendary, rarityChampion:
 		return 20000 + (cardInfo.Level * 2000)
 	default:
 		return 5000
@@ -748,23 +766,23 @@ func getUpgradePriority(impact float64, isWinCondition bool) string {
 	// Win conditions always get priority boost
 	if isWinCondition {
 		if impact >= 8 {
-			return "critical"
+			return priorityCritical
 		}
 		if impact >= 5 {
-			return "high"
+			return priorityHigh
 		}
-		return "medium"
+		return priorityMedium
 	}
 
 	// Support cards
 	if impact >= 10 {
-		return "critical"
+		return priorityCritical
 	}
 	if impact >= 7 {
-		return "high"
+		return priorityHigh
 	}
 	if impact >= 4 {
-		return "medium"
+		return priorityMedium
 	}
-	return "low"
+	return priorityLow
 }
