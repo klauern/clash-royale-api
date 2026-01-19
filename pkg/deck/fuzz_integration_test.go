@@ -1,7 +1,6 @@
 package deck
 
 import (
-	"fmt"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -370,18 +369,20 @@ func TestFuzzIntegrationApplyFuzzBoost(t *testing.T) {
 
 // TestFuzzIntegrationAnalyzeFromStorage verifies analysis of stored fuzz results
 func TestFuzzIntegrationAnalyzeFromStorage(t *testing.T) {
-	// Create a temporary storage
-	storage, err := fuzzstorage.NewStorage("")
+	// Create a temporary database to avoid conflicts with default storage
+	tmpDir := t.TempDir()
+	dbPath := filepath.Join(tmpDir, "test_analyze.db")
+	storage, err := fuzzstorage.NewStorage(dbPath)
 	if err != nil {
 		t.Fatalf("Failed to create storage: %v", err)
 	}
 	defer storage.Close()
 
-	// Add some test decks
+	// Add some test decks with valid card names
 	now := time.Now()
 	testDecks := []fuzzstorage.DeckEntry{
 		{
-			Cards:            []string{"Card1", "Card2", "Card3", "Card4", "Card5", "Card6", "Card7", "Card8"},
+			Cards:            []string{"Hog Rider", "Fireball", "Inferno Tower", "Zap", "Ice Spirit", "Skeletons", "Cannon", "Knight"},
 			OverallScore:     9.0,
 			AttackScore:      8.5,
 			DefenseScore:     9.5,
@@ -394,7 +395,7 @@ func TestFuzzIntegrationAnalyzeFromStorage(t *testing.T) {
 			RunID:            "test1",
 		},
 		{
-			Cards:            []string{"Card1", "Card2", "Card3", "Card4", "Card9", "Card10", "Card11", "Card12"},
+			Cards:            []string{"Hog Rider", "Fireball", "Inferno Tower", "Zap", "Musketeer", "Archers", "Cannon", "Knight"},
 			OverallScore:     8.5,
 			AttackScore:      8.0,
 			DefenseScore:     9.0,
@@ -407,7 +408,7 @@ func TestFuzzIntegrationAnalyzeFromStorage(t *testing.T) {
 			RunID:            "test2",
 		},
 		{
-			Cards:            []string{"Card5", "Card6", "Card7", "Card8", "Card9", "Card10", "Card11", "Card12"},
+			Cards:            []string{"Ice Spirit", "Skeletons", "Cannon", "Knight", "Musketeer", "Archers", "Valkyrie", "Log"},
 			OverallScore:     7.0,
 			AttackScore:      7.0,
 			DefenseScore:     7.0,
@@ -439,32 +440,31 @@ func TestFuzzIntegrationAnalyzeFromStorage(t *testing.T) {
 		t.Error("Expected stats to be collected")
 	}
 
-	// Card1 appears in top 2 decks (9.0 and 8.5 scores)
+	// Hog Rider appears in top 2 decks (9.0 and 8.5 scores)
 	// AvgScore = (9.0 + 8.5) / 2 = 8.75
-	stats := fi.GetFuzzStats("Card1")
+	stats := fi.GetFuzzStats("Hog Rider")
 	if stats == nil {
-		t.Fatal("Expected stats for Card1, got nil")
+		t.Fatal("Expected stats for Hog Rider, got nil")
 	}
 
 	if stats.Frequency != 2 {
-		t.Errorf("Expected Card1 frequency 2, got %d", stats.Frequency)
+		t.Errorf("Expected Hog Rider frequency 2, got %d", stats.Frequency)
 	}
 
 	expectedAvgScore := 8.75
 	if stats.AvgScore != expectedAvgScore {
-		t.Errorf("Expected Card1 AvgScore %f, got %f", expectedAvgScore, stats.AvgScore)
+		t.Errorf("Expected Hog Rider AvgScore %f, got %f", expectedAvgScore, stats.AvgScore)
 	}
 
-	// Card5 appears in deck 1 (9.0) and deck 3 (7.0)
-	// But with topPercentile=1.0 and 3 decks, we analyze all 3
-	// AvgScore = (9.0 + 7.0) / 2 = 8.0
-	stats = fi.GetFuzzStats("Card5")
+	// Cannon appears in all 3 decks (9.0, 8.5, and 7.0)
+	// AvgScore = (9.0 + 8.5 + 7.0) / 3 = 8.17
+	stats = fi.GetFuzzStats("Cannon")
 	if stats == nil {
-		t.Fatal("Expected stats for Card5, got nil")
+		t.Fatal("Expected stats for Cannon, got nil")
 	}
 
-	if stats.Frequency != 2 {
-		t.Errorf("Expected Card5 frequency 2, got %d", stats.Frequency)
+	if stats.Frequency != 3 {
+		t.Errorf("Expected Cannon frequency 3, got %d", stats.Frequency)
 	}
 
 	// Verify boost is in expected range (between minBoost and maxBoost)
@@ -478,12 +478,18 @@ func TestFuzzIntegrationConcurrentAccess(t *testing.T) {
 	fi := NewFuzzIntegration()
 	var wg sync.WaitGroup
 
+	// Use 10 unique valid card names for concurrent writes
+	cardNames := []string{
+		"Hog Rider", "Fireball", "Inferno Tower", "Zap", "Skeletons",
+		"Ice Spirit", "Musketeer", "Archers", "Cannon", "Knight",
+	}
+
 	// Concurrent writes
 	for i := 0; i < 10; i++ {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
-			cardName := fmt.Sprintf("Card%d", n)
+			cardName := cardNames[n]
 			fi.mu.Lock()
 			fi.stats[cardName] = &FuzzCardStats{
 				CardName:  cardName,
@@ -499,7 +505,7 @@ func TestFuzzIntegrationConcurrentAccess(t *testing.T) {
 		wg.Add(1)
 		go func(n int) {
 			defer wg.Done()
-			cardName := fmt.Sprintf("Card%d", n)
+			cardName := cardNames[n]
 			fi.GetFuzzBoost(cardName)
 		}(i)
 	}

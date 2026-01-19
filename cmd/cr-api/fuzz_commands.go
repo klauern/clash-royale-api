@@ -88,6 +88,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	minEvoCards := cmd.Int("min-evo-cards")
 	minEvoLevel := cmd.Int("min-evo-level")
 	evoWeight := cmd.Float64("evo-weight")
+	mutationIntensity := cmd.Int("mutation-intensity")
 
 	var interrupted atomic.Bool
 	var canceler stageCanceler
@@ -205,6 +206,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		MinEvolutionCards: minEvoCards,
 		MinEvoLevel:       minEvoLevel,
 		EvoWeight:         evoWeight,
+		MutationIntensity: mutationIntensity,
 	}
 
 	// Handle --include-from-saved: extract cards from saved top decks
@@ -364,7 +366,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to load saved decks for seeding: %w", err)
 		}
 		if len(savedDecks) > 0 {
-			mutations := generateDeckMutations(savedDecks, player, count, verbose)
+			mutations := generateDeckMutations(savedDecks, player, count, fuzzerCfg.MutationIntensity, verbose)
 			generatedDecks = append(generatedDecks, mutations...)
 			if verbose {
 				fprintf(os.Stderr, "Added %d mutations from %d saved decks\n", len(mutations), len(savedDecks))
@@ -378,7 +380,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		if err != nil {
 			return fmt.Errorf("failed to load deck from storage: %w", err)
 		}
-		variations := generateVariations(baseDeck, player, count, verbose)
+		variations := generateVariations(baseDeck, player, count, fuzzerCfg.MutationIntensity, verbose)
 		if len(variations) > 0 {
 			generatedDecks = append(generatedDecks, variations...)
 			if verbose {
@@ -1666,7 +1668,7 @@ func loadSavedDecksForSeeding(n int, _ *clashroyale.Player, verbose bool) ([][]s
 }
 
 // generateDeckMutations generates mutations of saved decks by swapping cards
-func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, count int, verbose bool) [][]string {
+func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, count int, mutationIntensity int, verbose bool) [][]string {
 	if player == nil || len(player.Cards) == 0 {
 		if verbose {
 			fprintf(os.Stderr, "No player cards available for mutations\n")
@@ -1692,8 +1694,8 @@ func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, co
 			mutation := make([]string, len(deck))
 			copy(mutation, deck)
 
-			// Swap 1-2 cards
-			numSwaps := 1 + (i % 2) // Alternate between 1 and 2 swaps
+			// Swap cards based on mutation intensity
+			numSwaps := 1 + (i % mutationIntensity) // Vary from 1 to mutationIntensity
 			for range numSwaps {
 				// Find cards to swap
 				swapIdx := i % len(mutation)
@@ -1776,7 +1778,7 @@ func loadDeckFromStorage(deckRef string, verbose bool) ([]string, error) {
 }
 
 // generateVariations generates variations of a base deck by swapping some cards
-func generateVariations(baseDeck []string, player *clashroyale.Player, count int, verbose bool) [][]string {
+func generateVariations(baseDeck []string, player *clashroyale.Player, count int, mutationIntensity int, verbose bool) [][]string {
 	if player == nil || len(player.Cards) == 0 {
 		if verbose {
 			fprintf(os.Stderr, "No player cards available for variations\n")
@@ -1811,8 +1813,8 @@ func generateVariations(baseDeck []string, player *clashroyale.Player, count int
 		variation := make([]string, len(baseDeck))
 		copy(variation, baseDeck)
 
-		// Number of cards to swap (1-3, varying across variations)
-		numSwaps := 1 + (i % 3)
+		// Number of cards to swap (1-mutationIntensity, varying across variations)
+		numSwaps := 1 + (i % mutationIntensity)
 
 		// Swap random positions with available cards
 		for j := 0; j < numSwaps; j++ {

@@ -44,6 +44,9 @@ type FuzzingConfig struct {
 	MinEvoLevel int
 	// EvoWeight is the weight for evolution scoring in card selection (default: 0.3)
 	EvoWeight float64
+	// MutationIntensity controls how many cards are swapped during deck mutations (1-5, default: 2)
+	// Higher values create more diverse mutations from saved decks
+	MutationIntensity int
 }
 
 // FuzzingStats tracks metrics during deck generation
@@ -153,6 +156,12 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 	}
 	if cfg.EvoWeight <= 0 {
 		cfg.EvoWeight = 0.3
+	}
+	if cfg.MutationIntensity <= 0 {
+		cfg.MutationIntensity = 2
+	}
+	if cfg.MutationIntensity > 5 {
+		cfg.MutationIntensity = 5
 	}
 
 	// Initialize random number generator

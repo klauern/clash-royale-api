@@ -879,6 +879,11 @@ func addDeckCommands() *cli.Command {
 						Usage: "Weight for evolution scoring in card selection (default: 0.3)",
 						Value: 0.3,
 					},
+					&cli.IntFlag{
+						Name:  "mutation-intensity",
+						Usage: "Number of cards to swap during deck mutations (1-5, default: 2). Higher values create more diverse decks.",
+						Value: 2,
+					},
 				},
 				Action: deckFuzzCommand,
 			},
