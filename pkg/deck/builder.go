@@ -31,6 +31,7 @@ type Builder struct {
 	synergyCache       map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
 	includeCards       []string           // Cards to force into the deck
 	excludeCards       []string           // Cards to exclude from consideration
+	fuzzIntegration    *FuzzIntegration   // Fuzz stats integration for data-driven card scoring
 }
 
 // NewBuilder creates a new deck builder instance
@@ -441,6 +442,11 @@ func (b *Builder) buildCandidate(name string, data CardLevelData) *CardCandidate
 	// Apply archetype-preferred card boost (if any)
 	if data.ScoreBoost > 0 {
 		score *= (1 + data.ScoreBoost)
+	}
+
+	// Apply fuzz boost if available
+	if b.fuzzIntegration != nil && b.fuzzIntegration.HasStats() {
+		score = b.fuzzIntegration.ApplyFuzzBoost(score, name)
 	}
 
 	candidate.Score = score
@@ -871,6 +877,12 @@ func (b *Builder) SetIncludeCards(cards []string) {
 // These cards will never be selected for the deck
 func (b *Builder) SetExcludeCards(cards []string) {
 	b.excludeCards = cards
+}
+
+// SetFuzzIntegration sets the fuzz integration instance for data-driven card scoring
+// Pass nil to disable fuzz integration
+func (b *Builder) SetFuzzIntegration(fi *FuzzIntegration) {
+	b.fuzzIntegration = fi
 }
 
 // GetUpgradeRecommendations generates upgrade recommendations for a deck.

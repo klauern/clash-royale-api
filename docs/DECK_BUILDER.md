@@ -209,6 +209,120 @@ Heavily prioritizes big spells (1.5x) and small spells (1.2x) with forced compos
 
 **Composition Overrides**: Spell strategy forces specific role counts, overriding the default 1-1-1-1-2-2 distribution.
 
+## Fuzz Integration
+
+The deck builder supports **fuzz integration** - a data-driven approach that uses Monte Carlo deck fuzzing results to enhance card scoring with real performance data.
+
+### What is Fuzz Integration?
+
+Fuzz integration analyzes thousands of randomly generated decks and their evaluation scores to discover which cards consistently perform well in top-scoring decks. Cards that appear frequently in high-scoring fuzz decks receive a scoring boost during intelligent deck building.
+
+### How It Works
+
+1. **Generate Fuzz Data**: Run `deck fuzz` to generate and evaluate hundreds/thousands of random decks
+2. **Store Top Results**: Top-performing decks are saved to persistent SQLite storage
+3. **Analyze Card Performance**: The system analyzes which cards appear most often in top decks
+4. **Apply Boosts**: During deck building, cards with strong fuzz performance receive a score multiplier
+
+### Usage
+
+```bash
+# 1. First, generate fuzz data for your player
+./bin/cr-api deck fuzz --tag '#PLAYERTAG' --count 1000 --save-storage
+
+# 2. Build deck with fuzz integration enabled
+./bin/cr-api deck build --tag '#PLAYERTAG' --fuzz-storage ~/.cr-api/fuzz_top_decks.db --verbose
+```
+
+### Configuration Options
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--fuzz-storage` | *required* | Path to fuzz storage database (SQLite) |
+| `--fuzz-weight` | 0.10 | Weight for fuzz-based scoring (0.0-1.0) |
+| `--fuzz-deck-limit` | 100 | Number of top decks to analyze for stats |
+
+### Fuzz Weight
+
+The `--fuzz-weight` parameter controls how much fuzz results influence card scoring:
+
+- **0.0**: Disabled - fuzz integration has no effect
+- **0.10** (default): Subtle boost - fuzz contributes 10% to final card score
+- **0.20-0.30**: Moderate boost - fuzz has significant influence
+- **1.0**: Extreme boost - card selection is dominated by fuzz results
+
+**Recommended**: Start with 0.10-0.15 to maintain balance between traditional scoring and fuzz data.
+
+### How Boosts Are Calculated
+
+For each card in the top N fuzz decks:
+
+```
+frequency_factor = card_appearance_count / total_decks
+score_factor = avg_deck_score / 10.0
+combined_factor = (frequency_factor × 0.6) + (score_factor × 0.4)
+boost = min_boost + combined_factor × (max_boost - min_boost)
+```
+
+- **Cards in many top decks** → higher boost (up to 1.5x)
+- **Cards in high-scoring decks** → higher boost
+- **Cards rarely in top decks** → minimal boost (1.0x)
+
+### Example Workflow
+
+```bash
+# Complete workflow showing fuzz-enhanced deck building
+
+# Step 1: Generate comprehensive fuzz data
+./bin/cr-api deck fuzz \
+  --tag '#PLAYERTAG' \
+  --count 2000 \
+  --workers 4 \
+  --save-storage
+
+# Step 2: Build with fuzz integration
+./bin/cr-api deck build \
+  --tag '#PLAYERTAG' \
+  --fuzz-storage ~/.cr-api/fuzz_top_decks.db \
+  --fuzz-weight 0.15 \
+  --fuzz-deck-limit 100 \
+  --verbose
+
+# Output will show:
+# "Fuzz integration enabled with 87 card stats (weight: 0.15)"
+```
+
+### Benefits
+
+- **Data-Driven Selection**: Cards are chosen based on actual deck performance, not just theoretical strength
+- **Hidden Synergy Discovery**: Uncovers card combinations that work well together
+- **Meta Adaptation**: Automatically adapts to current meta based on top-performing decks
+- **Objective Ranking**: Removes bias from card selection
+
+### Storage Management
+
+View and manage fuzz storage:
+
+```bash
+# List top decks in storage
+./bin/cr-api deck fuzz-list --limit 20
+
+# Query by archetype
+./bin/cr-api deck fuzz-list --archetype beatdown --limit 10
+
+# Clear old data
+./bin/cr-api deck fuzz-clear
+```
+
+### Environment Variable
+
+Set default fuzz weight via environment:
+
+```bash
+# .env file
+FUZZ_SCORING_WEIGHT=0.15
+```
+
 ## Best Practices
 
 1. Rebuild decks regularly as card levels change

@@ -19,6 +19,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/events"
+	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/klauer/clash-royale-api/go/pkg/recommend"
@@ -187,6 +188,20 @@ func addDeckCommands() *cli.Command {
 					&cli.BoolFlag{
 						Name:  "ideal-deck",
 						Usage: "Show ideal deck composition after applying recommended upgrades",
+					},
+					&cli.StringFlag{
+						Name:  "fuzz-storage",
+						Usage: "Path to fuzz storage database for data-driven card scoring (default: ~/.cr-api/fuzz_top_decks.db)",
+					},
+					&cli.Float64Flag{
+						Name:  "fuzz-weight",
+						Value: 0.10,
+						Usage: "Weight for fuzz-based card scoring (0.0-1.0, default 0.10 = 10%)",
+					},
+					&cli.IntFlag{
+						Name:  "fuzz-deck-limit",
+						Value: 100,
+						Usage: "Number of top fuzz decks to analyze for card stats (default 100)",
 					},
 				},
 				Action: deckBuildCommand,
@@ -951,6 +966,44 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 		if verbose {
 			printf("Synergy scoring enabled (weight: %.2f)\n", cmd.Float64("synergy-weight"))
+		}
+	}
+
+	// Configure fuzz integration if storage path provided
+	if fuzzStoragePath := cmd.String("fuzz-storage"); fuzzStoragePath != "" {
+		fuzzIntegration := deck.NewFuzzIntegration()
+
+		// Set custom weight if provided
+		if fuzzWeight := cmd.Float64("fuzz-weight"); fuzzWeight > 0 {
+			fuzzIntegration.SetWeight(fuzzWeight)
+		}
+
+		// Open storage and analyze
+		storage, err := fuzzstorage.NewStorage(fuzzStoragePath)
+		if err != nil {
+			return fmt.Errorf("failed to open fuzz storage: %w", err)
+		}
+		defer storage.Close()
+
+		deckLimit := cmd.Int("fuzz-deck-limit")
+		if deckLimit <= 0 {
+			deckLimit = 100
+		}
+
+		if err := fuzzIntegration.AnalyzeFromStorage(storage, deckLimit); err != nil {
+			return fmt.Errorf("failed to analyze fuzz results: %w", err)
+		}
+
+		if fuzzIntegration.HasStats() {
+			builder.SetFuzzIntegration(fuzzIntegration)
+			if verbose {
+				printf("Fuzz integration enabled with %d card stats (weight: %.2f)\n",
+					fuzzIntegration.StatsCount(), fuzzIntegration.GetWeight())
+			}
+		} else {
+			if verbose {
+				printf("No fuzz statistics available in storage\n")
+			}
 		}
 	}
 
