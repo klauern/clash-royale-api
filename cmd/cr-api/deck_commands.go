@@ -754,6 +754,10 @@ func addDeckCommands() *cli.Command {
 						Name:  "from-saved",
 						Usage: "Use saved top decks as seeds (generates mutations of saved decks)",
 					},
+					&cli.IntFlag{
+						Name:  "resume-from",
+						Usage: "Load top N saved decks as initial seed population (before random generation)",
+					},
 					&cli.StringFlag{
 						Name:  "based-on",
 						Usage: "Deck name or ID from saved storage to use as template for variations",

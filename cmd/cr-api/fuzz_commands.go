@@ -68,6 +68,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	excludeCards := cmd.StringSlice("exclude-cards")
 	includeFromSaved := cmd.Int("include-from-saved")
 	fromSaved := cmd.Int("from-saved")
+	resumeFrom := cmd.Int("resume-from")
 	basedOn := cmd.String("based-on")
 	minElixir := cmd.Float64("min-elixir")
 	maxElixir := cmd.Float64("max-elixir")
@@ -321,13 +322,34 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		}()
 	}
 
-	var generatedDecks [][]string
+	// Handle --resume-from: load top N saved decks as initial seed population
+	var seedDecks [][]string
+	if resumeFrom > 0 && !interrupted.Load() {
+		savedDecks, err := loadSavedDecksForSeeding(resumeFrom, player, verbose)
+		if err != nil {
+			return fmt.Errorf("failed to load saved decks for resume: %w", err)
+		}
+		if len(savedDecks) > 0 {
+			seedDecks = savedDecks
+			if verbose {
+				fprintf(os.Stderr, "Loaded %d saved decks as initial seed population\n", len(savedDecks))
+			}
+		}
+	}
+
 	generationCtx, cancelGeneration := context.WithCancel(ctx)
 	canceler.Set(cancelGeneration)
+
+	var generatedDecks [][]string
 	if workers > 1 {
 		generatedDecks, err = fuzzer.GenerateDecksParallelWithContext(generationCtx)
 	} else {
 		generatedDecks, err = fuzzer.GenerateDecksWithContext(generationCtx, count)
+	}
+
+	// Prepend seed decks to generated decks
+	if len(seedDecks) > 0 {
+		generatedDecks = append(seedDecks, generatedDecks...)
 	}
 	canceler.Clear()
 	cancelGeneration()
