@@ -234,7 +234,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	// Runtime estimation for large batches
 	const sampleSize = 1000
 	var estimate *runtimeEstimate
-	if count > sampleSize && verbose {
+	if count > sampleSize {
 		estimate, err = estimateRuntime(fuzzer, count, sampleSize)
 		if err != nil {
 			fprintf(os.Stderr, "Warning: could not estimate runtime: %v\n", err)
