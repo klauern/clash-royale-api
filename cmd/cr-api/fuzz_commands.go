@@ -89,6 +89,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	minEvoLevel := cmd.Int("min-evo-level")
 	evoWeight := cmd.Float64("evo-weight")
 	mutationIntensity := cmd.Int("mutation-intensity")
+	archetypes := cmd.StringSlice("archetypes")
 
 	var interrupted atomic.Bool
 	var canceler stageCanceler
@@ -111,6 +112,25 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	// Validate flags
 	if playerTag == "" && !fromAnalysis {
 		return fmt.Errorf("--tag is required (or use --from-analysis for offline mode)")
+	}
+
+	// Validate archetypes
+	validArchetypes := map[string]bool{
+		"beatdown":  true,
+		"control":   true,
+		"cycle":     true,
+		"bridge":    true,
+		"siege":     true,
+		"bait":      true,
+		"graveyard": true,
+		"miner":     true,
+		"hybrid":    true,
+	}
+	for _, arch := range archetypes {
+		arch = strings.ToLower(strings.TrimSpace(arch))
+		if !validArchetypes[arch] {
+			return fmt.Errorf("invalid archetype '%s' (must be one of: beatdown, control, cycle, bridge, siege, bait, graveyard, miner, hybrid)", arch)
+		}
 	}
 
 	if minOverall < 0 || minOverall > 10 {
@@ -191,6 +211,12 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		fprintf(os.Stderr, "Cards available: %d\n", len(player.Cards))
 	}
 
+	// Normalize archetypes to lowercase
+	normalizedArchetypes := make([]string, 0, len(archetypes))
+	for _, arch := range archetypes {
+		normalizedArchetypes = append(normalizedArchetypes, strings.ToLower(strings.TrimSpace(arch)))
+	}
+
 	// Initialize fuzzer configuration
 	fuzzerCfg := &deck.FuzzingConfig{
 		Count:             count,
@@ -207,6 +233,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		MinEvoLevel:       minEvoLevel,
 		EvoWeight:         evoWeight,
 		MutationIntensity: mutationIntensity,
+		ArchetypeFilter:   normalizedArchetypes,
 	}
 
 	// Handle --include-from-saved: extract cards from saved top decks
@@ -268,6 +295,9 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 		if evolutionCentric {
 			fprintf(os.Stderr, "  Mode: evolution-centric (min %d evo cards, level %d+)\n", minEvoCards, minEvoLevel)
+		}
+		if len(normalizedArchetypes) > 0 {
+			fprintf(os.Stderr, "  Archetype filter: %s\n", strings.Join(normalizedArchetypes, ", "))
 		}
 		if len(includeCards) > 0 {
 			fprintf(os.Stderr, "  Include cards: %s\n", strings.Join(includeCards, ", "))
@@ -455,6 +485,20 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 
 	if verbose {
 		fprintf(os.Stderr, "%d decks passed score filters\n", len(filteredResults))
+	}
+
+	// Filter by archetype if specified
+	archetypeFilteredResults := filterResultsByArchetype(filteredResults, normalizedArchetypes, verbose)
+
+	if len(archetypeFilteredResults) == 0 && len(normalizedArchetypes) > 0 {
+		return fmt.Errorf("no decks matched the specified archetypes: %s", strings.Join(normalizedArchetypes, ", "))
+	}
+
+	if len(normalizedArchetypes) > 0 {
+		if verbose {
+			fprintf(os.Stderr, "%d decks passed archetype filter (%s)\n", len(archetypeFilteredResults), strings.Join(normalizedArchetypes, ", "))
+		}
+		filteredResults = archetypeFilteredResults
 	}
 
 	// Deduplicate results (remove identical decks)
@@ -815,6 +859,27 @@ func filterResultsByScore(results []FuzzingResult, minOverall, minSynergy float6
 		passesSynergy := result.SynergyScore >= minSynergy
 
 		if passesOverall && passesSynergy {
+			filtered = append(filtered, result)
+		}
+	}
+
+	return filtered
+}
+
+// filterResultsByArchetype filters results to only include decks matching specified archetypes
+func filterResultsByArchetype(results []FuzzingResult, archetypes []string, _ bool) []FuzzingResult {
+	if len(archetypes) == 0 {
+		return results
+	}
+
+	filtered := make([]FuzzingResult, 0, len(results))
+	archetypeSet := make(map[string]bool, len(archetypes))
+	for _, arch := range archetypes {
+		archetypeSet[arch] = true
+	}
+
+	for _, result := range results {
+		if archetypeSet[result.Archetype] {
 			filtered = append(filtered, result)
 		}
 	}

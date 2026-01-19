@@ -884,6 +884,10 @@ func addDeckCommands() *cli.Command {
 						Usage: "Number of cards to swap during deck mutations (1-5, default: 2). Higher values create more diverse decks.",
 						Value: 2,
 					},
+					&cli.StringSliceFlag{
+						Name:  "archetypes",
+						Usage: "Force generation from specific archetypes (comma-separated: beatdown,control,cycle,bridge,siege,bait,graveyard,miner,hybrid)",
+					},
 				},
 				Action: deckFuzzCommand,
 			},

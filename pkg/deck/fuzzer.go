@@ -47,6 +47,8 @@ type FuzzingConfig struct {
 	// MutationIntensity controls how many cards are swapped during deck mutations (1-5, default: 2)
 	// Higher values create more diverse mutations from saved decks
 	MutationIntensity int
+	// ArchetypeFilter specifies archetypes to force generation from (empty = no filter)
+	ArchetypeFilter []string
 }
 
 // FuzzingStats tracks metrics during deck generation
