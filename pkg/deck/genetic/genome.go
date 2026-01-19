@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
+	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 )
 
 // DeckGenome represents an individual deck in the genetic algorithm population.
@@ -134,22 +135,43 @@ func (g *DeckGenome) initializeRandomDeck() error {
 	return nil
 }
 
+// getCardCandidates converts the genome's card names to CardCandidate instances.
+// It looks up each card name in the candidates pool.
+func (g *DeckGenome) getCardCandidates() []deck.CardCandidate {
+	cardMap := make(map[string]*deck.CardCandidate)
+	for _, c := range g.candidates {
+		cardMap[c.Name] = c
+	}
+
+	result := make([]deck.CardCandidate, 0, 8)
+	for _, name := range g.Cards {
+		if c, ok := cardMap[name]; ok {
+			result = append(result, *c)
+		}
+	}
+	return result
+}
+
 // Evaluate calculates the fitness of this deck genome.
 // Higher fitness indicates a better deck according to the strategy.
 //
 // This method implements the eaopt.Genome interface requirement.
 func (g *DeckGenome) Evaluate() (float64, error) {
-	// TODO: Implement fitness calculation using deck scoring system
-	// This will integrate with the existing pkg/deck/scorer functionality
-	//
-	// Fitness factors:
-	// 1. Strategy compatibility (from deck.Scoring)
-	// 2. Role balance and archetype validity
-	// 3. Synergy between cards
-	// 4. Average elixir cost appropriateness
-	// 5. Evolution potential
+	// Convert card names to CardCandidate slice
+	deckCards := g.getCardCandidates()
+	if len(deckCards) != 8 {
+		return 0, fmt.Errorf("failed to resolve all cards: got %d, want 8", len(deckCards))
+	}
 
-	g.Fitness = 0.5 // Placeholder
+	// Create synergy database for evaluation
+	synergyDB := deck.NewSynergyDatabase()
+
+	// Run full deck evaluation (no player context for genetic algorithm)
+	result := evaluation.Evaluate(deckCards, synergyDB, nil)
+
+	// Use OverallScore (0-10 scale) as fitness
+	g.Fitness = result.OverallScore
+
 	return g.Fitness, nil
 }
 

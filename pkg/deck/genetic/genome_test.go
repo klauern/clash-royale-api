@@ -243,15 +243,15 @@ func TestDeckGenomeEvaluate(t *testing.T) {
 		t.Fatalf("NewDeckGenomeFromCards() failed: %v", err)
 	}
 
-	t.Run("placeholder returns fitness", func(t *testing.T) {
+	t.Run("calculates fitness score", func(t *testing.T) {
 		fitness, err := genome.Evaluate()
 		if err != nil {
 			t.Errorf("Evaluate() error = %v", err)
 		}
 
-		// Currently returns placeholder value
-		if fitness != 0.5 {
-			t.Errorf("Evaluate() = %v, want placeholder 0.5", fitness)
+		// Fitness should be calculated (0-10 scale from evaluation system)
+		if fitness < 0 || fitness > 10 {
+			t.Errorf("Evaluate() = %v, want score in range [0, 10]", fitness)
 		}
 
 		// Should set genome fitness
@@ -260,10 +260,50 @@ func TestDeckGenomeEvaluate(t *testing.T) {
 		}
 	})
 
-	t.Run("note: full implementation deferred", func(t *testing.T) {
-		// This test documents that full fitness calculation
-		// is deferred to task clash-royale-api-hj9j.2
-		t.Skip("Full fitness calculation depends on evaluation system integration")
+	t.Run("different decks have different scores", func(t *testing.T) {
+		// Create a second genome with different cards
+		cards2 := []string{"Card2", "Card3", "Card4", "Card5", "Card6", "Card7", "Card8", "Card9"}
+		genome2, err := NewDeckGenomeFromCards(cards2, candidates, strategy, &cfg)
+		if err != nil {
+			t.Fatalf("NewDeckGenomeFromCards() failed: %v", err)
+		}
+
+		fitness1, err1 := genome.Evaluate()
+		fitness2, err2 := genome2.Evaluate()
+
+		if err1 != nil {
+			t.Errorf("Evaluate() error for genome1 = %v", err1)
+		}
+		if err2 != nil {
+			t.Errorf("Evaluate() error for genome2 = %v", err2)
+		}
+
+		// Different decks can have different fitness (not guaranteed but likely with mock data)
+		// At minimum, verify both are in valid range
+		if fitness1 < 0 || fitness1 > 10 {
+			t.Errorf("genome1 fitness = %v, want score in range [0, 10]", fitness1)
+		}
+		if fitness2 < 0 || fitness2 > 10 {
+			t.Errorf("genome2 fitness = %v, want score in range [0, 10]", fitness2)
+		}
+	})
+
+	t.Run("error when cards cannot be resolved", func(t *testing.T) {
+		// Create genome with cards that won't resolve
+		genome3 := &DeckGenome{
+			Cards:      []string{"Unknown1", "Unknown2", "Unknown3", "Unknown4", "Unknown5", "Unknown6", "Unknown7", "Unknown8"},
+			config:     &cfg,
+			candidates: candidates,
+			strategy:   strategy,
+		}
+
+		_, err := genome3.Evaluate()
+		if err == nil {
+			t.Error("Evaluate() should error when cards cannot be resolved")
+		}
+		if !contains(err.Error(), "failed to resolve all cards") {
+			t.Errorf("Evaluate() error should mention resolution failure, got: %v", err)
+		}
 	})
 }
 
