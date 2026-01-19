@@ -46,6 +46,9 @@ See [.cursor/rules/beads.mdc](.cursor/rules/beads.mdc) for detailed beads workfl
 - [.cursor/rules/testing.mdc](.cursor/rules/testing.mdc) - Testing patterns
 - [.cursor/rules/beads.mdc](.cursor/rules/beads.mdc) - Beads workflow (always loaded)
 
+### Claude Skills (local to this repo)
+- [deck-analysis](.claude/skills/deck-analysis/) - Comprehensive deck building and analysis workflow
+
 ## Writing Good Issues
 
 - **Summary:** What and why (1-2 sentences)
