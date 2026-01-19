@@ -182,13 +182,22 @@ func (g *DeckGenome) Mutate() error {
 		oldCard := g.Cards[pos]
 		delete(currentCards, oldCard)
 
-		// Find a card not currently in deck
+		// Find a card not currently in deck and not the old card
+		replaced := false
 		for _, candidate := range g.candidates {
-			if !currentCards[candidate.Name] {
+			if !currentCards[candidate.Name] && candidate.Name != oldCard {
 				g.Cards[pos] = candidate.Name
 				currentCards[candidate.Name] = true
+				replaced = true
 				break
 			}
+		}
+
+		// If we couldn't find a different card (e.g., all candidates are in deck),
+		// put the old card back
+		if !replaced {
+			g.Cards[pos] = oldCard
+			currentCards[oldCard] = true
 		}
 	}
 
