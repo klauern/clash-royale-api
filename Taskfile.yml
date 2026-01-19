@@ -411,6 +411,110 @@ tasks:
         {{.CR_API_BIN}} deck budget --tag "$CLEAN_TAG" --top-n 10 --sort-by roi
     preconditions: *binary_precondition
 
+  deck-fuzz-build:
+    desc: Generate fuzz data and build data-driven deck
+    summary: |
+      Run Monte Carlo deck fuzzing to generate data, then build a deck using
+      fuzz integration for data-driven card selection. Cards that perform well
+      in top-scoring fuzz decks receive a scoring boost.
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+        count: Number of decks to fuzz (default: 1000)
+        weight: Fuzz scoring weight 0.0-1.0 (default: 0.15)
+
+      Example:
+        task deck-fuzz-build -- #PLAYER_TAG 2000 0.20
+
+      Env vars:
+        FUZZ_STORAGE: Path to fuzz storage db (default: ~/.cr-api/fuzz_top_decks.db)
+    cmds:
+      - |
+        PLAYER_TAG="{{.CLI_ARGS}}"
+        # Extract optional count and weight from args
+        COUNT="{{.FUZZ_COUNT}}"
+        WEIGHT="{{.FUZZ_WEIGHT}}"
+        STORAGE="${FUZZ_STORAGE:-$HOME/.cr-api/fuzz_top_decks.db}"
+
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          echo "Usage: task deck-fuzz-build -- [#PLAYER_TAG] [count] [weight]" >&2
+          echo "Example: task deck-fuzz-build -- #PLAYER_TAG 2000 0.20" >&2
+          exit 1
+        fi
+
+        # Remove any surrounding quotes from PLAYER_TAG
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "================================"
+        echo "Deck Fuzz + Build Workflow"
+        echo "================================"
+        echo "Player: $CLEAN_TAG"
+        echo "Fuzz count: ${COUNT:-1000}"
+        echo "Fuzz weight: ${WEIGHT:-0.15}"
+        echo "Storage: $STORAGE"
+        echo ""
+
+        # Step 1: Run deck fuzz (resume from stored top decks for better results)
+        echo "Step 1: Generating $COUNT fuzz decks (resuming from stored top 50)..."
+        {{.CR_API_BIN}} deck fuzz \
+          --tag "$CLEAN_TAG" \
+          --count "${COUNT:-1000}" \
+          --workers 4 \
+          --resume-from 50 \
+          --save-top \
+          --storage "$STORAGE"
+
+        echo ""
+        echo "Step 2: Building deck with fuzz integration..."
+
+        # Step 2: Build deck with fuzz integration (saves to file)
+        {{.CR_API_BIN}} deck build \
+          --tag "$CLEAN_TAG" \
+          --fuzz-storage "$STORAGE" \
+          --fuzz-weight "${WEIGHT:-0.15}" \
+          --fuzz-deck-limit 100 \
+          --save
+
+        echo ""
+        echo "Step 3: Evaluating built deck..."
+
+        # Extract deck cards from the most recent deck file
+        DECK_FILE=$(ls -t {{.DATA_DIR}}/decks/*_${CLEAN_TAG}_*.json 2>/dev/null | head -1)
+        if [ -n "$DECK_FILE" ]; then
+          # Extract deck array and join with dashes (JSON uses lowercase "deck")
+          if command -v jq >/dev/null 2>&1; then
+            DECK_STRING=$(jq -r '.deck | join("-")' "$DECK_FILE" 2>/dev/null)
+          else
+            # Fallback: extract with sed/awk
+            DECK_STRING=$(grep -A 20 '"deck"' "$DECK_FILE" | grep '"' | grep -v 'deck\|"\[,\]' | sed 's/^"//' | sed 's/"$//' | tr '\n' '-' | sed 's/-$//')
+          fi
+
+          if [ -n "$DECK_STRING" ]; then
+            {{.CR_API_BIN}} deck evaluate \
+              --deck "$DECK_STRING" \
+              --tag "$CLEAN_TAG" \
+              --format detailed
+          fi
+        fi
+
+        echo ""
+        echo "✅ Fuzz-integrated deck complete!"
+        echo ""
+        echo "To view stored fuzz data:"
+        echo "  {{.CR_API_BIN}} deck fuzz list --storage $STORAGE --limit 20"
+    vars:
+      FUZZ_COUNT:
+        sh: test -z "{{.ARGS}}" && echo "1000" || echo "{{.ARGS}}" | awk '{print $2}' | grep -E '^[0-9]+$' || echo "1000"
+      FUZZ_WEIGHT:
+        sh: test -z "{{.ARGS}}" && echo "0.15" || echo "{{.ARGS}}" | awk '{print $3}' | grep -E '^[0-9]' || echo "0.15"
+    preconditions: *binary_precondition
+
   # Event Deck Tasks
   scan-events:
     desc: Scan battle logs for event decks using Go CLI

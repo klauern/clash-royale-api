@@ -7,6 +7,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
 )
 
@@ -127,12 +128,52 @@ func (fi *FuzzIntegration) getTopPercentileDecks(topDecks []fuzzstorage.DeckEntr
 	return topDecks[:cutoffIdx]
 }
 
+// isValidCardName checks if a card name is valid (not a placeholder or test card)
+// Returns false for placeholder names like "Card1", "Card2", "Card3", etc.
+func isValidCardName(cardName string) bool {
+	trimmed := strings.TrimSpace(cardName)
+	if trimmed == "" {
+		return false
+	}
+
+	// Skip test/placeholder card names
+	// Common patterns: Card1, Card2, Card3, CardN, card1, card2, etc.
+	if strings.HasPrefix(strings.ToLower(trimmed), "card") {
+		// Check if it ends with a number (pattern like "Card1", "Card123")
+		rest := strings.TrimPrefix(strings.ToLower(trimmed), "card")
+		if rest == "" || isNumeric(rest) {
+			return false
+		}
+	}
+
+	// Check if it's a known card by trying to get its elixir cost
+	// If it has a valid elixir cost (>= 0), it's a real card
+	elixir := config.GetCardElixir(trimmed, -1)
+	return elixir >= 0
+}
+
+// isNumeric checks if a string contains only digits
+func isNumeric(s string) bool {
+	for _, c := range s {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return len(s) > 0
+}
+
 // aggregateCardStats aggregates statistics for each card across all provided decks
+// Skips invalid/test card names automatically
 func (fi *FuzzIntegration) aggregateCardStats(decks []fuzzstorage.DeckEntry) {
 	for _, deck := range decks {
 		for _, cardName := range deck.Cards {
 			normalizedCard := strings.TrimSpace(cardName)
 			if normalizedCard == "" {
+				continue
+			}
+
+			// Skip invalid/test card names
+			if !isValidCardName(normalizedCard) {
 				continue
 			}
 
