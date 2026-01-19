@@ -230,6 +230,31 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to create fuzzer: %w", err)
 	}
 
+	// Runtime estimation for large batches
+	const sampleSize = 1000
+	var estimate *runtimeEstimate
+	if count > sampleSize && verbose {
+		estimate, err = estimateRuntime(fuzzer, count, sampleSize)
+		if err != nil {
+			fprintf(os.Stderr, "Warning: could not estimate runtime: %v\n", err)
+			// Continue anyway, estimation is optional
+		} else {
+			formattedTime := formatDuration(estimate.totalSeconds)
+			decksPerSec := int(estimate.decksPerSec)
+			fprintf(os.Stderr, "Estimated time: ~%s for %d decks (~%d decks/sec)\n",
+				formattedTime, count, decksPerSec)
+
+			confirmed, err := confirmAction("Continue? (y/n) ")
+			if err != nil {
+				return fmt.Errorf("confirmation failed: %w", err)
+			}
+			if !confirmed {
+				fprintln(os.Stderr, "Aborted.")
+				return nil
+			}
+		}
+	}
+
 	if verbose {
 		fprintf(os.Stderr, "\nStarting deck fuzzing...\n")
 		fprintf(os.Stderr, "Configuration:\n")
@@ -1787,6 +1812,59 @@ func generateVariations(baseDeck []string, player *clashroyale.Player, count int
 	}
 
 	return variations
+}
+
+// runtimeEstimate holds the estimated runtime information
+type runtimeEstimate struct {
+	totalSeconds float64
+	decksPerSec  float64
+}
+
+// estimateRuntime generates a sample of decks and extrapolates the runtime
+func estimateRuntime(fuzzer *deck.DeckFuzzer, targetCount, sampleSize int) (*runtimeEstimate, error) {
+	fprintf(os.Stderr, "Measuring generation rate from %d deck sample...\n", sampleSize)
+
+	sampleDecks, sampleDuration, err := fuzzer.GenerateSampleDecks(sampleSize)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate sample: %w", err)
+	}
+
+	if len(sampleDecks) == 0 {
+		return nil, fmt.Errorf("no decks generated in sample")
+	}
+
+	decksPerSec := float64(len(sampleDecks)) / sampleDuration.Seconds()
+	totalSeconds := float64(targetCount) / decksPerSec
+
+	return &runtimeEstimate{
+		totalSeconds: totalSeconds,
+		decksPerSec:  decksPerSec,
+	}, nil
+}
+
+// formatDuration formats a duration in seconds to a human-readable string
+func formatDuration(seconds float64) string {
+	if seconds < 60 {
+		return fmt.Sprintf("%.0fs", seconds)
+	}
+	minutes := int(seconds / 60)
+	secs := int(seconds) % 60
+	if secs == 0 {
+		return fmt.Sprintf("%dm", minutes)
+	}
+	return fmt.Sprintf("%dm %ds", minutes, secs)
+}
+
+// confirmAction prompts the user to confirm before proceeding
+func confirmAction(prompt string) (bool, error) {
+	fprintf(os.Stderr, "%s", prompt)
+	var response string
+	_, err := fmt.Scanln(&response)
+	if err != nil {
+		return false, err
+	}
+	response = strings.ToLower(strings.TrimSpace(response))
+	return response == "y" || response == "yes", nil
 }
 
 // printFuzzingProgress prints real-time progress during fuzzing

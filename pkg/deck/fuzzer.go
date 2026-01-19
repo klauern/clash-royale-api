@@ -891,6 +891,23 @@ func (df *DeckFuzzer) GenerateDecks(count int) ([][]string, error) {
 	return df.GenerateDecksWithContext(context.Background(), count)
 }
 
+// GenerateSampleDecks generates a small sample of decks for runtime estimation.
+// This is a lightweight version that doesn't track detailed stats.
+func (df *DeckFuzzer) GenerateSampleDecks(sampleSize int) ([][]string, time.Duration, error) {
+	startTime := time.Now()
+	decks := make([][]string, 0, sampleSize)
+
+	for i := 0; i < sampleSize; i++ {
+		deck, err := df.GenerateRandomDeck()
+		if err != nil {
+			continue // Skip failed attempts for estimation
+		}
+		decks = append(decks, deck)
+	}
+
+	return decks, time.Since(startTime), nil
+}
+
 // GenerateDecksParallelWithContext generates decks using parallel workers or stops when ctx is done.
 func (df *DeckFuzzer) GenerateDecksParallelWithContext(ctx context.Context) ([][]string, error) {
 	if df.config.Workers <= 1 {
