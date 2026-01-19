@@ -48,6 +48,14 @@ type CardWinRate struct {
 	WinRate  float64 `json:"win_rate"`
 }
 
+// CardConstraintSuggestion represents a suggested card constraint based on frequency analysis
+type CardConstraintSuggestion struct {
+	CardName    string  `json:"card_name"`
+	Appearances int     `json:"appearances"`
+	Percentage  float64 `json:"percentage"`
+	TotalDecks  int     `json:"total_decks"`
+}
+
 // EventElixirAnalysis provides deck elixir cost performance analysis
 type EventElixirAnalysis struct {
 	LowElixir  ElixirRangeStats `json:"low_elixir"`
@@ -384,4 +392,44 @@ func identifyTopPerformingDecks(decks []EventDeck, options AnalysisOptions) []To
 	}
 
 	return topDecks
+}
+
+// SuggestCardConstraints analyzes top decks and suggests cards that appear frequently
+// based on a percentage threshold. Returns suggested cards with their frequency stats.
+func SuggestCardConstraints(decks []EventDeck, threshold float64) []CardConstraintSuggestion {
+	if len(decks) == 0 {
+		return []CardConstraintSuggestion{}
+	}
+
+	// Analyze card usage across the provided decks
+	cardAnalysis := analyzeCardUsage(decks)
+
+	// Calculate percentage for each card and filter by threshold
+	var suggestions []CardConstraintSuggestion
+	totalDecks := len(decks)
+
+	for _, cardUsage := range cardAnalysis.MostUsedCards {
+		percentage := (float64(cardUsage.Count) / float64(totalDecks)) * 100.0
+
+		// Only include cards that meet or exceed the threshold
+		if percentage >= threshold {
+			suggestions = append(suggestions, CardConstraintSuggestion{
+				CardName:    cardUsage.CardName,
+				Appearances: cardUsage.Count,
+				Percentage:  percentage,
+				TotalDecks:  totalDecks,
+			})
+		}
+	}
+
+	// Sort by percentage descending (highest frequency first)
+	for i := 0; i < len(suggestions)-1; i++ {
+		for j := i + 1; j < len(suggestions); j++ {
+			if suggestions[j].Percentage > suggestions[i].Percentage {
+				suggestions[i], suggestions[j] = suggestions[j], suggestions[i]
+			}
+		}
+	}
+
+	return suggestions
 }

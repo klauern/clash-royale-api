@@ -18,6 +18,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
+	"github.com/klauer/clash-royale-api/go/pkg/events"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/klauer/clash-royale-api/go/pkg/recommend"
@@ -367,6 +368,16 @@ func addDeckCommands() *cli.Command {
 						Name:    "verbose",
 						Aliases: []string{"v"},
 						Usage:   "Show detailed progress information",
+					},
+					&cli.BoolFlag{
+						Name:  "suggest-constraints",
+						Usage: "analyze top N decks and suggest card constraints based on frequency",
+						Value: false,
+					},
+					&cli.Float64Flag{
+						Name:  "constraint-threshold",
+						Usage: "minimum percentage threshold for card suggestions (0-100)",
+						Value: 30.0,
 					},
 				},
 				Action: deckAnalyzeSuiteCommand,
@@ -1977,6 +1988,8 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	includeCards := cmd.StringSlice("include-cards")
 	excludeCards := cmd.StringSlice("exclude-cards")
 	verbose := cmd.Bool("verbose")
+	suggestConstraints := cmd.Bool("suggest-constraints")
+	constraintThreshold := cmd.Float64("constraint-threshold")
 
 	// Get global flags
 	apiToken := cmd.String("api-token")
@@ -1993,6 +2006,65 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Println("║           DECK ANALYSIS SUITE - COMPREHENSIVE WORKFLOW            ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
+
+	// ========================================================================
+	// PHASE 0 (Optional): Card Constraint Suggestions
+	// ========================================================================
+	if suggestConstraints {
+		fmt.Println("💡 PHASE 0: Analyzing top event decks for card constraint suggestions...")
+		fmt.Println("─────────────────────────────────────────────────────────────────────")
+
+		// Initialize event manager
+		eventManager := events.NewManager(dataDir)
+
+		// Load player's event deck collection
+		collection, err := eventManager.GetCollection(tag)
+		if err != nil {
+			fmt.Printf("⚠️  Warning: Could not load event decks: %v\n", err)
+			fmt.Println("Continuing without constraint suggestions...")
+			fmt.Println()
+		} else if len(collection.Decks) == 0 {
+			fmt.Println("⚠️  No event decks found for this player.")
+			fmt.Println("Play some challenges or tournaments to build event deck history.")
+			fmt.Println()
+		} else {
+			// Get top N decks by win rate
+			minBattles := 3 // Minimum battles to qualify
+			topDecks := collection.GetBestDecksByWinRate(minBattles, topN)
+
+			if len(topDecks) == 0 {
+				fmt.Printf("⚠️  No event decks found with at least %d battles.\n", minBattles)
+				fmt.Println()
+			} else {
+				// Analyze and suggest constraints
+				suggestions := events.SuggestCardConstraints(topDecks, constraintThreshold)
+
+				if len(suggestions) == 0 {
+					fmt.Printf("No cards meet the %.0f%% threshold in top %d decks.\n", constraintThreshold, len(topDecks))
+					fmt.Println()
+				} else {
+					fmt.Printf("\n=== Card Constraint Suggestions (from top %d decks) ===\n", len(topDecks))
+					for _, suggestion := range suggestions {
+						fmt.Printf("%d/%d decks (%.0f%%) contain %s\n",
+							suggestion.Appearances,
+							suggestion.TotalDecks,
+							suggestion.Percentage,
+							suggestion.CardName)
+					}
+					fmt.Println()
+
+					// Generate example command with suggested constraints
+					fmt.Println("To apply these constraints, re-run with:")
+					cmdExample := fmt.Sprintf("  cr-api deck analyze-suite --tag %s", tag)
+					for _, suggestion := range suggestions {
+						cmdExample += fmt.Sprintf(" --include-cards \"%s\"", suggestion.CardName)
+					}
+					fmt.Println(cmdExample)
+					fmt.Println()
+				}
+			}
+		}
+	}
 
 	// ========================================================================
 	// PHASE 1: Build deck variations
