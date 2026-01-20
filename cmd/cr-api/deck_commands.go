@@ -18,6 +18,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
+	"github.com/klauer/clash-royale-api/go/pkg/deck/genetic"
 	"github.com/klauer/clash-royale-api/go/pkg/events"
 	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
@@ -38,6 +39,7 @@ const (
 
 // addDeckCommands adds deck-related subcommands to the CLI
 func addDeckCommands() *cli.Command {
+	gaDefaults := genetic.DefaultGeneticConfig()
 	return &cli.Command{
 		Name:  "deck",
 		Usage: "Deck building and analysis commands",
@@ -743,6 +745,11 @@ func addDeckCommands() *cli.Command {
 						Usage:    "Player tag (without #) for card collection context",
 						Required: true,
 					},
+					&cli.StringFlag{
+						Name:  "mode",
+						Value: "random",
+						Usage: "Fuzzing mode: random or genetic",
+					},
 					&cli.IntFlag{
 						Name:  "count",
 						Value: 1000,
@@ -837,6 +844,81 @@ func addDeckCommands() *cli.Command {
 						Name:  "seed",
 						Value: 0,
 						Usage: "Random seed for reproducibility (0 = random)",
+					},
+					&cli.IntFlag{
+						Name:  "ga-population",
+						Value: gaDefaults.PopulationSize,
+						Usage: "Genetic algorithm population size",
+					},
+					&cli.IntFlag{
+						Name:  "ga-generations",
+						Value: gaDefaults.Generations,
+						Usage: "Genetic algorithm generation count",
+					},
+					&cli.Float64Flag{
+						Name:  "ga-mutation-rate",
+						Value: gaDefaults.MutationRate,
+						Usage: "Genetic algorithm mutation rate (0.0-1.0)",
+					},
+					&cli.Float64Flag{
+						Name:  "ga-crossover-rate",
+						Value: gaDefaults.CrossoverRate,
+						Usage: "Genetic algorithm crossover rate (0.0-1.0)",
+					},
+					&cli.Float64Flag{
+						Name:  "ga-mutation-intensity",
+						Value: gaDefaults.MutationIntensity,
+						Usage: "Genetic algorithm mutation intensity (0.0-1.0)",
+					},
+					&cli.IntFlag{
+						Name:  "ga-elite-count",
+						Value: gaDefaults.EliteCount,
+						Usage: "Genetic algorithm elite count per generation",
+					},
+					&cli.IntFlag{
+						Name:  "ga-tournament-size",
+						Value: gaDefaults.TournamentSize,
+						Usage: "Genetic algorithm tournament size",
+					},
+					&cli.BoolFlag{
+						Name:  "ga-parallel-eval",
+						Value: gaDefaults.ParallelEvaluations,
+						Usage: "Enable parallel evaluation for genetic algorithm",
+					},
+					&cli.IntFlag{
+						Name:  "ga-convergence-generations",
+						Value: gaDefaults.ConvergenceGenerations,
+						Usage: "Genetic algorithm early stop after N generations without improvement (0 = disabled)",
+					},
+					&cli.Float64Flag{
+						Name:  "ga-target-fitness",
+						Value: gaDefaults.TargetFitness,
+						Usage: "Genetic algorithm fitness target for early stop (0 = disabled)",
+					},
+					&cli.BoolFlag{
+						Name:  "ga-island-model",
+						Value: gaDefaults.IslandModel,
+						Usage: "Enable island model for genetic algorithm",
+					},
+					&cli.IntFlag{
+						Name:  "ga-island-count",
+						Value: gaDefaults.IslandCount,
+						Usage: "Number of islands when island model is enabled",
+					},
+					&cli.IntFlag{
+						Name:  "ga-migration-interval",
+						Value: gaDefaults.MigrationInterval,
+						Usage: "Generations between island migrations",
+					},
+					&cli.IntFlag{
+						Name:  "ga-migration-size",
+						Value: gaDefaults.MigrationSize,
+						Usage: "Number of migrants per island migration",
+					},
+					&cli.BoolFlag{
+						Name:  "ga-use-archetypes",
+						Value: gaDefaults.UseArchetypes,
+						Usage: "Enforce archetype constraints during genetic evolution",
 					},
 					&cli.StringFlag{
 						Name:  "storage",

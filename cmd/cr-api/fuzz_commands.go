@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -24,6 +25,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
+	"github.com/klauer/clash-royale-api/go/pkg/deck/genetic"
 	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/schollz/progressbar/v3"
@@ -90,6 +92,22 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	evoWeight := cmd.Float64("evo-weight")
 	mutationIntensity := cmd.Int("mutation-intensity")
 	archetypes := cmd.StringSlice("archetypes")
+	mode := strings.ToLower(cmd.String("mode"))
+	gaPopulation := cmd.Int("ga-population")
+	gaGenerations := cmd.Int("ga-generations")
+	gaMutationRate := cmd.Float64("ga-mutation-rate")
+	gaCrossoverRate := cmd.Float64("ga-crossover-rate")
+	gaMutationIntensity := cmd.Float64("ga-mutation-intensity")
+	gaEliteCount := cmd.Int("ga-elite-count")
+	gaTournamentSize := cmd.Int("ga-tournament-size")
+	gaParallelEval := cmd.Bool("ga-parallel-eval")
+	gaConvergenceGenerations := cmd.Int("ga-convergence-generations")
+	gaTargetFitness := cmd.Float64("ga-target-fitness")
+	gaIslandModel := cmd.Bool("ga-island-model")
+	gaIslandCount := cmd.Int("ga-island-count")
+	gaMigrationInterval := cmd.Int("ga-migration-interval")
+	gaMigrationSize := cmd.Int("ga-migration-size")
+	gaUseArchetypes := cmd.Bool("ga-use-archetypes")
 
 	var interrupted atomic.Bool
 	var canceler stageCanceler
@@ -112,6 +130,12 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	// Validate flags
 	if playerTag == "" && !fromAnalysis {
 		return fmt.Errorf("--tag is required (or use --from-analysis for offline mode)")
+	}
+	if mode == "" {
+		mode = "random"
+	}
+	if mode != "random" && mode != "genetic" {
+		return fmt.Errorf("invalid --mode value: %s (must be random or genetic)", mode)
 	}
 
 	// Validate archetypes
@@ -249,112 +273,11 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	// Set seed for reproducibility if specified
-	if seed := cmd.Int("seed"); seed != 0 {
+	seed := cmd.Int("seed")
+	if seed != 0 {
 		fuzzerCfg.Seed = int64(seed)
 	}
 
-	// Create fuzzer
-	fuzzer, err := deck.NewDeckFuzzer(player, fuzzerCfg)
-	if err != nil {
-		return fmt.Errorf("failed to create fuzzer: %w", err)
-	}
-
-	// Runtime estimation for large batches
-	const sampleSize = 1000
-	var estimate *runtimeEstimate
-	if count > sampleSize {
-		estimate, err = estimateRuntime(fuzzer, count, sampleSize)
-		if err != nil {
-			fprintf(os.Stderr, "Warning: could not estimate runtime: %v\n", err)
-			// Continue anyway, estimation is optional
-		} else {
-			formattedTime := formatDuration(estimate.totalSeconds)
-			decksPerSec := int(estimate.decksPerSec)
-			fprintf(os.Stderr, "Estimated time: ~%s for %d decks (~%d decks/sec)\n",
-				formattedTime, count, decksPerSec)
-
-			confirmed, err := confirmAction("Continue? (y/n) ")
-			if err != nil {
-				return fmt.Errorf("confirmation failed: %w", err)
-			}
-			if !confirmed {
-				fprintln(os.Stderr, "Aborted.")
-				return nil
-			}
-		}
-	}
-
-	if verbose {
-		fprintf(os.Stderr, "\nStarting deck fuzzing...\n")
-		fprintf(os.Stderr, "Configuration:\n")
-		fprintf(os.Stderr, "  Count: %d\n", count)
-		fprintf(os.Stderr, "  Workers: %d\n", workers)
-		if synergyPairs {
-			fprintf(os.Stderr, "  Mode: synergy-first (4 pairs)\n")
-		}
-		if evolutionCentric {
-			fprintf(os.Stderr, "  Mode: evolution-centric (min %d evo cards, level %d+)\n", minEvoCards, minEvoLevel)
-		}
-		if len(normalizedArchetypes) > 0 {
-			fprintf(os.Stderr, "  Archetype filter: %s\n", strings.Join(normalizedArchetypes, ", "))
-		}
-		if len(includeCards) > 0 {
-			fprintf(os.Stderr, "  Include cards: %s\n", strings.Join(includeCards, ", "))
-		}
-		if len(excludeCards) > 0 {
-			fprintf(os.Stderr, "  Exclude cards: %s\n", strings.Join(excludeCards, ", "))
-		}
-		if basedOn != "" {
-			fprintf(os.Stderr, "  Based on deck: %s\n", basedOn)
-		}
-		fprintf(os.Stderr, "  Elixir range: %.1f - %.1f\n", minElixir, maxElixir)
-		fprintf(os.Stderr, "  Min overall score: %.1f\n", minOverall)
-		fprintf(os.Stderr, "  Min synergy score: %.1f\n", minSynergy)
-		fprintf(os.Stderr, "\n")
-	}
-
-	// Generate decks
-	startTime := time.Now()
-
-	// Start progress reporter for generation
-	var generationDone sync.WaitGroup
-	stopProgress := make(chan struct{})
-	if verbose {
-		generationDone.Add(1)
-		go func() {
-			defer generationDone.Done()
-			ticker := time.NewTicker(500 * time.Millisecond)
-			defer ticker.Stop()
-
-			lastCount := 0
-			startTime := time.Now()
-
-			for {
-				select {
-				case <-stopProgress:
-					return
-				case <-ticker.C:
-					stats := fuzzer.GetStats()
-					currentCount := stats.Generated
-					elapsed := time.Since(startTime)
-
-					// Calculate rate
-					rate := float64(currentCount) / elapsed.Seconds()
-
-					// Only print if progress has been made
-					if currentCount > lastCount {
-						eta := time.Duration(float64(count-currentCount)/rate) * time.Second
-						fprintf(os.Stderr, "\rGenerating... %d/%d decks (%.1f decks/sec, ETA: %v) ",
-							currentCount, count, rate, eta.Round(time.Second))
-						lastCount = currentCount
-					}
-				}
-			}
-		}()
-	}
-
-	// Handle --resume-from: load top N saved decks as initial seed population
 	var seedDecks [][]string
 	if resumeFrom > 0 && !interrupted.Load() {
 		savedDecks, err := loadSavedDecksForSeeding(resumeFrom, player, verbose)
@@ -369,64 +292,275 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	generationCtx, cancelGeneration := context.WithCancel(ctx)
-	canceler.Set(cancelGeneration)
+	if mode == "genetic" && verbose {
+		if synergyPairs {
+			fprintf(os.Stderr, "Warning: --synergy-pairs is ignored in genetic mode\n")
+		}
+		if evolutionCentric {
+			fprintf(os.Stderr, "Warning: --evolution-centric is ignored in genetic mode\n")
+		}
+	}
 
 	var generatedDecks [][]string
-	if workers > 1 {
-		generatedDecks, err = fuzzer.GenerateDecksParallelWithContext(generationCtx)
+	var generationTime time.Duration
+	var stats deck.FuzzingStats
+
+	if mode == "genetic" {
+		if verbose {
+			fprintf(os.Stderr, "\nStarting deck fuzzing (genetic mode)...\n")
+		}
+
+		candidates, err := buildGeneticCandidates(player, includeCards, excludeCards)
+		if err != nil {
+			return err
+		}
+
+		gaConfig := genetic.DefaultGeneticConfig()
+		gaConfig.PopulationSize = gaPopulation
+		gaConfig.Generations = gaGenerations
+		gaConfig.MutationRate = gaMutationRate
+		gaConfig.CrossoverRate = gaCrossoverRate
+		gaConfig.MutationIntensity = gaMutationIntensity
+		gaConfig.EliteCount = gaEliteCount
+		gaConfig.TournamentSize = gaTournamentSize
+		gaConfig.ParallelEvaluations = gaParallelEval
+		gaConfig.ConvergenceGenerations = gaConvergenceGenerations
+		gaConfig.TargetFitness = gaTargetFitness
+		gaConfig.IslandModel = gaIslandModel
+		gaConfig.IslandCount = gaIslandCount
+		gaConfig.MigrationInterval = gaMigrationInterval
+		gaConfig.MigrationSize = gaMigrationSize
+		gaConfig.UseArchetypes = gaUseArchetypes
+
+		if len(seedDecks) > 0 {
+			gaConfig.SeedPopulation = filterDecksByIncludeExclude(seedDecks, includeCards, excludeCards)
+		}
+
+		optimizer, err := genetic.NewGeneticOptimizer(candidates, deck.StrategyBalanced, &gaConfig)
+		if err != nil {
+			return fmt.Errorf("failed to create genetic optimizer: %w", err)
+		}
+		if seed != 0 {
+			optimizer.RNG = rand.New(rand.NewSource(int64(seed)))
+		}
+		if verbose {
+			optimizer.Progress = func(progress genetic.GeneticProgress) {
+				fprintf(os.Stderr, "\rGA gen %d | best %.2f | avg %.2f", progress.Generation, progress.BestFitness, progress.AvgFitness)
+			}
+		}
+
+		// Use saved decks, mutations, and variations as seed population in genetic mode.
+		if fromSaved > 0 && !interrupted.Load() {
+			savedDecks, err := loadSavedDecksForSeeding(fromSaved, player, verbose)
+			if err != nil {
+				return fmt.Errorf("failed to load saved decks for seeding: %w", err)
+			}
+			if len(savedDecks) > 0 {
+				mutations := generateDeckMutations(savedDecks, player, count, fuzzerCfg.MutationIntensity, verbose)
+				mutations = filterDecksByIncludeExclude(mutations, includeCards, excludeCards)
+				gaConfig.SeedPopulation = append(gaConfig.SeedPopulation, mutations...)
+			}
+		}
+
+		if basedOn != "" && !interrupted.Load() {
+			baseDeck, err := loadDeckFromStorage(basedOn, verbose)
+			if err != nil {
+				return fmt.Errorf("failed to load deck from storage: %w", err)
+			}
+			variations := generateVariations(baseDeck, player, count, fuzzerCfg.MutationIntensity, verbose)
+			if len(variations) > 0 {
+				variations = filterDecksByIncludeExclude(variations, includeCards, excludeCards)
+				gaConfig.SeedPopulation = append(gaConfig.SeedPopulation, variations...)
+			}
+		}
+
+		startTime := time.Now()
+		result, err := optimizer.Optimize()
+		if verbose {
+			fprintln(os.Stderr)
+		}
+		if err != nil {
+			return fmt.Errorf("failed to optimize decks: %w", err)
+		}
+		generationTime = result.Duration
+		if generationTime == 0 {
+			generationTime = time.Since(startTime)
+		}
+
+		generatedDecks = make([][]string, 0, len(result.HallOfFame))
+		for _, genome := range result.HallOfFame {
+			if genome == nil {
+				continue
+			}
+			clone := make([]string, len(genome.Cards))
+			copy(clone, genome.Cards)
+			generatedDecks = append(generatedDecks, clone)
+		}
+
+		generatedDecks = filterDecksByIncludeExclude(generatedDecks, includeCards, excludeCards)
+		stats.Generated = len(generatedDecks)
+		stats.Success = len(generatedDecks)
 	} else {
-		generatedDecks, err = fuzzer.GenerateDecksWithContext(generationCtx, count)
-	}
-
-	// Prepend seed decks to generated decks
-	if len(seedDecks) > 0 {
-		generatedDecks = append(seedDecks, generatedDecks...)
-	}
-	canceler.Clear()
-	cancelGeneration()
-	if err != nil && !(interrupted.Load() && errors.Is(err, context.Canceled)) {
-		return fmt.Errorf("failed to generate decks: %w", err)
-	}
-
-	// Handle --from-saved: add mutations of saved decks
-	if fromSaved > 0 && !interrupted.Load() {
-		savedDecks, err := loadSavedDecksForSeeding(fromSaved, player, verbose)
+		// Create fuzzer
+		fuzzer, err := deck.NewDeckFuzzer(player, fuzzerCfg)
 		if err != nil {
-			return fmt.Errorf("failed to load saved decks for seeding: %w", err)
+			return fmt.Errorf("failed to create fuzzer: %w", err)
 		}
-		if len(savedDecks) > 0 {
-			mutations := generateDeckMutations(savedDecks, player, count, fuzzerCfg.MutationIntensity, verbose)
-			generatedDecks = append(generatedDecks, mutations...)
-			if verbose {
-				fprintf(os.Stderr, "Added %d mutations from %d saved decks\n", len(mutations), len(savedDecks))
+
+		// Runtime estimation for large batches
+		const sampleSize = 1000
+		var estimate *runtimeEstimate
+		if count > sampleSize {
+			estimate, err = estimateRuntime(fuzzer, count, sampleSize)
+			if err != nil {
+				fprintf(os.Stderr, "Warning: could not estimate runtime: %v\n", err)
+				// Continue anyway, estimation is optional
+			} else {
+				formattedTime := formatDuration(estimate.totalSeconds)
+				decksPerSec := int(estimate.decksPerSec)
+				fprintf(os.Stderr, "Estimated time: ~%s for %d decks (~%d decks/sec)\n",
+					formattedTime, count, decksPerSec)
+
+				confirmed, err := confirmAction("Continue? (y/n) ")
+				if err != nil {
+					return fmt.Errorf("confirmation failed: %w", err)
+				}
+				if !confirmed {
+					fprintln(os.Stderr, "Aborted.")
+					return nil
+				}
+			}
+		}
+
+		if verbose {
+			fprintf(os.Stderr, "\nStarting deck fuzzing...\n")
+			fprintf(os.Stderr, "Configuration:\n")
+			fprintf(os.Stderr, "  Mode: random\n")
+			fprintf(os.Stderr, "  Count: %d\n", count)
+			fprintf(os.Stderr, "  Workers: %d\n", workers)
+			if synergyPairs {
+				fprintf(os.Stderr, "  Mode: synergy-first (4 pairs)\n")
+			}
+			if evolutionCentric {
+				fprintf(os.Stderr, "  Mode: evolution-centric (min %d evo cards, level %d+)\n", minEvoCards, minEvoLevel)
+			}
+			if len(normalizedArchetypes) > 0 {
+				fprintf(os.Stderr, "  Archetype filter: %s\n", strings.Join(normalizedArchetypes, ", "))
+			}
+			if len(includeCards) > 0 {
+				fprintf(os.Stderr, "  Include cards: %s\n", strings.Join(includeCards, ", "))
+			}
+			if len(excludeCards) > 0 {
+				fprintf(os.Stderr, "  Exclude cards: %s\n", strings.Join(excludeCards, ", "))
+			}
+			if basedOn != "" {
+				fprintf(os.Stderr, "  Based on deck: %s\n", basedOn)
+			}
+			fprintf(os.Stderr, "  Elixir range: %.1f - %.1f\n", minElixir, maxElixir)
+			fprintf(os.Stderr, "  Min overall score: %.1f\n", minOverall)
+			fprintf(os.Stderr, "  Min synergy score: %.1f\n", minSynergy)
+			fprintf(os.Stderr, "\n")
+		}
+
+		// Generate decks
+		startTime := time.Now()
+
+		// Start progress reporter for generation
+		var generationDone sync.WaitGroup
+		stopProgress := make(chan struct{})
+		if verbose {
+			generationDone.Add(1)
+			go func() {
+				defer generationDone.Done()
+				ticker := time.NewTicker(500 * time.Millisecond)
+				defer ticker.Stop()
+
+				lastCount := 0
+				startTime := time.Now()
+
+				for {
+					select {
+					case <-stopProgress:
+						return
+					case <-ticker.C:
+						stats := fuzzer.GetStats()
+						currentCount := stats.Generated
+						elapsed := time.Since(startTime)
+
+						// Calculate rate
+						rate := float64(currentCount) / elapsed.Seconds()
+
+						// Only print if progress has been made
+						if currentCount > lastCount {
+							eta := time.Duration(float64(count-currentCount)/rate) * time.Second
+							fprintf(os.Stderr, "\rGenerating... %d/%d decks (%.1f decks/sec, ETA: %v) ",
+								currentCount, count, rate, eta.Round(time.Second))
+							lastCount = currentCount
+						}
+					}
+				}
+			}()
+		}
+
+		generationCtx, cancelGeneration := context.WithCancel(ctx)
+		canceler.Set(cancelGeneration)
+
+		if workers > 1 {
+			generatedDecks, err = fuzzer.GenerateDecksParallelWithContext(generationCtx)
+		} else {
+			generatedDecks, err = fuzzer.GenerateDecksWithContext(generationCtx, count)
+		}
+
+		// Prepend seed decks to generated decks
+		if len(seedDecks) > 0 {
+			generatedDecks = append(seedDecks, generatedDecks...)
+		}
+		canceler.Clear()
+		cancelGeneration()
+		if err != nil && !(interrupted.Load() && errors.Is(err, context.Canceled)) {
+			return fmt.Errorf("failed to generate decks: %w", err)
+		}
+
+		// Stop progress reporter
+		close(stopProgress)
+		generationDone.Wait()
+		fprintln(os.Stderr) // New line after progress
+
+		generationTime = time.Since(startTime)
+		stats = fuzzer.GetStats()
+	}
+
+	if mode != "genetic" {
+		// Handle --from-saved: add mutations of saved decks
+		if fromSaved > 0 && !interrupted.Load() {
+			savedDecks, err := loadSavedDecksForSeeding(fromSaved, player, verbose)
+			if err != nil {
+				return fmt.Errorf("failed to load saved decks for seeding: %w", err)
+			}
+			if len(savedDecks) > 0 {
+				mutations := generateDeckMutations(savedDecks, player, count, fuzzerCfg.MutationIntensity, verbose)
+				generatedDecks = append(generatedDecks, mutations...)
+				if verbose {
+					fprintf(os.Stderr, "Added %d mutations from %d saved decks\n", len(mutations), len(savedDecks))
+				}
+			}
+		}
+
+		// Handle --based-on: load a specific deck and generate variations
+		if basedOn != "" && !interrupted.Load() {
+			baseDeck, err := loadDeckFromStorage(basedOn, verbose)
+			if err != nil {
+				return fmt.Errorf("failed to load deck from storage: %w", err)
+			}
+			variations := generateVariations(baseDeck, player, count, fuzzerCfg.MutationIntensity, verbose)
+			if len(variations) > 0 {
+				generatedDecks = append(generatedDecks, variations...)
+				if verbose {
+					fprintf(os.Stderr, "Added %d variations based on deck: %s\n", len(variations), strings.Join(baseDeck, ", "))
+				}
 			}
 		}
 	}
-
-	// Handle --based-on: load a specific deck and generate variations
-	if basedOn != "" && !interrupted.Load() {
-		baseDeck, err := loadDeckFromStorage(basedOn, verbose)
-		if err != nil {
-			return fmt.Errorf("failed to load deck from storage: %w", err)
-		}
-		variations := generateVariations(baseDeck, player, count, fuzzerCfg.MutationIntensity, verbose)
-		if len(variations) > 0 {
-			generatedDecks = append(generatedDecks, variations...)
-			if verbose {
-				fprintf(os.Stderr, "Added %d variations based on deck: %s\n", len(variations), strings.Join(baseDeck, ", "))
-			}
-		}
-	}
-
-	// Stop progress reporter
-	close(stopProgress)
-	generationDone.Wait()
-	fprintln(os.Stderr) // New line after progress
-
-	generationTime := time.Since(startTime)
-
-	stats := fuzzer.GetStats()
 
 	if verbose {
 		fprintf(os.Stderr, "\nGenerated %d decks in %v (%.1f decks/sec)\n",
@@ -514,7 +648,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	topResults := getTopResults(dedupedResults, top)
 
 	// Format and output results
-	if err := formatFuzzingResults(topResults, format, playerName, playerTag, fuzzerCfg, generationTime, &stats, len(dedupedResults)); err != nil {
+	if err := formatFuzzingResults(topResults, format, playerName, playerTag, fuzzerCfg, mode, generationTime, &stats, len(dedupedResults)); err != nil {
 		return fmt.Errorf("failed to format results: %w", err)
 	}
 
@@ -850,6 +984,138 @@ func convertDeckToCandidates(deckCards []string, player *clashroyale.Player) []d
 	return candidates
 }
 
+func buildGeneticCandidates(player *clashroyale.Player, includeCards, excludeCards []string) ([]*deck.CardCandidate, error) {
+	if player == nil {
+		return nil, fmt.Errorf("player cannot be nil")
+	}
+
+	excludeMap := make(map[string]bool)
+	for _, card := range excludeCards {
+		cardName := strings.TrimSpace(card)
+		if cardName == "" {
+			continue
+		}
+		excludeMap[cardName] = true
+	}
+
+	includeMap := make(map[string]bool)
+	for _, card := range includeCards {
+		cardName := strings.TrimSpace(card)
+		if cardName == "" {
+			continue
+		}
+		if excludeMap[cardName] {
+			return nil, fmt.Errorf("card %q is both included and excluded", cardName)
+		}
+		includeMap[cardName] = true
+	}
+
+	candidates := make([]*deck.CardCandidate, 0, len(player.Cards))
+	for _, card := range player.Cards {
+		cardName := strings.TrimSpace(card.Name)
+		if excludeMap[cardName] {
+			continue
+		}
+
+		role := config.GetCardRoleWithEvolution(cardName, card.EvolutionLevel)
+		candidate := &deck.CardCandidate{
+			Name:              cardName,
+			Level:             card.Level,
+			MaxLevel:          card.MaxLevel,
+			Rarity:            card.Rarity,
+			Elixir:            config.GetCardElixir(cardName, card.ElixirCost),
+			Role:              &role,
+			EvolutionLevel:    card.EvolutionLevel,
+			MaxEvolutionLevel: card.MaxEvolutionLevel,
+		}
+		candidates = append(candidates, candidate)
+		delete(includeMap, cardName)
+	}
+
+	if len(includeMap) > 0 {
+		missing := make([]string, 0, len(includeMap))
+		for cardName := range includeMap {
+			missing = append(missing, cardName)
+		}
+		sort.Strings(missing)
+		return nil, fmt.Errorf("include cards not in player collection: %s", strings.Join(missing, ", "))
+	}
+	if len(candidates) < 8 {
+		return nil, fmt.Errorf("insufficient candidates: need at least 8 cards, got %d", len(candidates))
+	}
+
+	return candidates, nil
+}
+
+func filterDecksByIncludeExclude(decks [][]string, includeCards, excludeCards []string) [][]string {
+	if len(decks) == 0 {
+		return decks
+	}
+
+	includeMap := make(map[string]bool)
+	for _, card := range includeCards {
+		cardName := strings.TrimSpace(card)
+		if cardName == "" {
+			continue
+		}
+		includeMap[cardName] = true
+	}
+
+	excludeMap := make(map[string]bool)
+	for _, card := range excludeCards {
+		cardName := strings.TrimSpace(card)
+		if cardName == "" {
+			continue
+		}
+		excludeMap[cardName] = true
+	}
+
+	if len(includeMap) == 0 && len(excludeMap) == 0 {
+		return decks
+	}
+
+	filtered := make([][]string, 0, len(decks))
+	for _, deckCards := range decks {
+		if !deckContainsAll(deckCards, includeMap) {
+			continue
+		}
+		if deckContainsAny(deckCards, excludeMap) {
+			continue
+		}
+		filtered = append(filtered, deckCards)
+	}
+
+	return filtered
+}
+
+func deckContainsAll(deckCards []string, required map[string]bool) bool {
+	if len(required) == 0 {
+		return true
+	}
+	seen := make(map[string]bool, len(deckCards))
+	for _, card := range deckCards {
+		seen[card] = true
+	}
+	for card := range required {
+		if !seen[card] {
+			return false
+		}
+	}
+	return true
+}
+
+func deckContainsAny(deckCards []string, excluded map[string]bool) bool {
+	if len(excluded) == 0 {
+		return false
+	}
+	for _, card := range deckCards {
+		if excluded[card] {
+			return true
+		}
+	}
+	return false
+}
+
 // filterResultsByScore filters results by minimum score thresholds
 func filterResultsByScore(results []FuzzingResult, minOverall, minSynergy float64, _ bool) []FuzzingResult {
 	filtered := make([]FuzzingResult, 0, len(results))
@@ -961,19 +1227,20 @@ func formatFuzzingResults(
 	playerName string,
 	playerTag string,
 	fuzzerConfig *deck.FuzzingConfig,
+	mode string,
 	generationTime time.Duration,
 	stats *deck.FuzzingStats,
 	totalFiltered int,
 ) error {
 	switch format {
 	case "json":
-		return formatResultsJSON(results, playerName, playerTag, fuzzerConfig, generationTime, stats, totalFiltered)
+		return formatResultsJSON(results, playerName, playerTag, fuzzerConfig, mode, generationTime, stats, totalFiltered)
 	case "csv":
 		return formatResultsCSV(results)
 	case "detailed":
 		return formatResultsDetailed(results, playerName, playerTag)
 	default:
-		return formatResultsSummary(results, playerName, playerTag, fuzzerConfig, generationTime, stats, totalFiltered)
+		return formatResultsSummary(results, playerName, playerTag, fuzzerConfig, mode, generationTime, stats, totalFiltered)
 	}
 }
 
@@ -983,13 +1250,17 @@ func formatResultsSummary(
 	playerName string,
 	playerTag string,
 	fuzzerConfig *deck.FuzzingConfig,
+	mode string,
 	generationTime time.Duration,
 	stats *deck.FuzzingStats,
 	totalFiltered int,
 ) error {
 	printf("\nDeck Fuzzing Results for %s (%s)\n", playerName, playerTag)
-	printf("Generated %d random decks in %v\n", stats.Generated, generationTime.Round(time.Millisecond))
+	printf("Generated %d decks in %v\n", stats.Generated, generationTime.Round(time.Millisecond))
 	printf("Configuration:\n")
+	if mode != "" {
+		printf("  Mode: %s\n", mode)
+	}
 
 	if len(fuzzerConfig.IncludeCards) > 0 {
 		printf("  Include cards: %s\n", strings.Join(fuzzerConfig.IncludeCards, ", "))
@@ -1059,6 +1330,7 @@ func formatResultsJSON(
 	playerName string,
 	playerTag string,
 	fuzzerConfig *deck.FuzzingConfig,
+	mode string,
 	generationTime time.Duration,
 	stats *deck.FuzzingStats,
 	totalFiltered int,
@@ -1073,6 +1345,7 @@ func formatResultsJSON(
 		"returned":                len(results),
 		"generation_time_seconds": generationTime.Seconds(),
 		"config": map[string]any{
+			"mode":              mode,
 			"count":             fuzzerConfig.Count,
 			"workers":           fuzzerConfig.Workers,
 			"include_cards":     fuzzerConfig.IncludeCards,
@@ -1191,11 +1464,11 @@ func saveResultsToFile(results []FuzzingResult, outputDir, format, playerTag str
 	case "json":
 		config := &deck.FuzzingConfig{}
 		stats := &deck.FuzzingStats{}
-		return formatResultsJSON(results, cleanTag, playerTag, config, 0, stats, len(results))
+		return formatResultsJSON(results, cleanTag, playerTag, config, "unknown", 0, stats, len(results))
 	case "csv":
 		return formatResultsCSV(results)
 	default:
-		return formatResultsSummary(results, cleanTag, playerTag, &deck.FuzzingConfig{}, 0, &deck.FuzzingStats{}, len(results))
+		return formatResultsSummary(results, cleanTag, playerTag, &deck.FuzzingConfig{}, "unknown", 0, &deck.FuzzingStats{}, len(results))
 	}
 }
 

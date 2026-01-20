@@ -515,6 +515,125 @@ tasks:
         sh: test -z "{{.ARGS}}" && echo "0.15" || echo "{{.ARGS}}" | awk '{print $3}' | grep -E '^[0-9]' || echo "0.15"
     preconditions: *binary_precondition
 
+  deck-fuzz-genetic-quick:
+    desc: Run a shorter genetic fuzz pass and save top decks
+    summary: |
+      Runs genetic deck fuzzing and saves the top decks to storage.
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+        seed: Optional seed override (second arg)
+
+      Example:
+        task deck-fuzz-genetic-quick -- #PLAYER_TAG 42
+
+      Env vars:
+        FUZZ_STORAGE: Path to fuzz storage db (default: ~/.cr-api/fuzz_top_decks.db)
+    cmds:
+      - |
+        PLAYER_TAG="{{.FUZZ_PLAYER_TAG}}"
+        SEED="{{.FUZZ_SEED}}"
+        STORAGE="${FUZZ_STORAGE:-$HOME/.cr-api/fuzz_top_decks.db}"
+
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          echo "Usage: task deck-fuzz-genetic-quick -- [#PLAYER_TAG] [seed]" >&2
+          exit 1
+        fi
+
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Genetic fuzz (quick) for $CLEAN_TAG"
+        echo "Storage: $STORAGE"
+        echo ""
+
+        {{.CR_API_BIN}} deck fuzz \
+          --tag "$CLEAN_TAG" \
+          --mode genetic \
+          --ga-population 30000 \
+          --ga-generations 30000 \
+          --ga-elite-count 200 \
+          --ga-parallel-eval \
+          --ga-tournament-size 7 \
+          --seed "${SEED:-$RANDOM}" \
+          --top 100 \
+          --resume-from 100 \
+          --save-top \
+          --storage "$STORAGE"
+    vars:
+      FUZZ_PLAYER_TAG:
+        sh: test -z "{{.ARGS}}" && echo "" || echo "{{.ARGS}}" | awk '{print $1}'
+      FUZZ_SEED:
+        sh: test -z "{{.ARGS}}" && echo "" || echo "{{.ARGS}}" | awk '{print $2}'
+    preconditions: *binary_precondition
+
+  deck-fuzz-genetic-overnight:
+    desc: Run a long genetic fuzz pass and save top decks
+    summary: |
+      Runs a long genetic deck fuzzing job for building a deck corpus.
+
+      Args:
+        player: Player tag (optional, will use DEFAULT_PLAYER_TAG from .env if not provided)
+        seed: Optional seed override (second arg)
+
+      Example:
+        task deck-fuzz-genetic-overnight -- #PLAYER_TAG 1234
+
+      Env vars:
+        FUZZ_STORAGE: Path to fuzz storage db (default: ~/.cr-api/fuzz_top_decks.db)
+    cmds:
+      - |
+        PLAYER_TAG="{{.FUZZ_PLAYER_TAG}}"
+        SEED="{{.FUZZ_SEED}}"
+        STORAGE="${FUZZ_STORAGE:-$HOME/.cr-api/fuzz_top_decks.db}"
+
+        if [ -z "$PLAYER_TAG" ]; then
+          PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
+        fi
+
+        if [ -z "$PLAYER_TAG" ]; then
+          echo "Please provide a player tag or set DEFAULT_PLAYER_TAG in .env" >&2
+          echo "Usage: task deck-fuzz-genetic-overnight -- [#PLAYER_TAG] [seed]" >&2
+          exit 1
+        fi
+
+        CLEAN_TAG=$(echo "$PLAYER_TAG" | sed "s/^'//;s/'$//" | sed 's/^"//;s/"$//')
+        CLEAN_TAG="${CLEAN_TAG#\#}"
+
+        echo "Genetic fuzz (overnight) for $CLEAN_TAG"
+        echo "Storage: $STORAGE"
+        echo ""
+
+        {{.CR_API_BIN}} deck fuzz \
+          --tag "$CLEAN_TAG" \
+          --mode genetic \
+          --ga-population 2000 \
+          --ga-generations 8000 \
+          --ga-elite-count 100 \
+          --ga-parallel-eval \
+          --ga-tournament-size 7 \
+          --ga-convergence-generations 0 \
+          --ga-island-model \
+          --ga-island-count 4 \
+          --ga-migration-interval 15 \
+          --ga-migration-size 2 \
+          --seed "${SEED:-$RANDOM}" \
+          --top 100 \
+          --resume-from 100 \
+          --save-top \
+          --storage "$STORAGE"
+    vars:
+      FUZZ_PLAYER_TAG:
+        sh: test -z "{{.ARGS}}" && echo "" || echo "{{.ARGS}}" | awk '{print $1}'
+      FUZZ_SEED:
+        sh: test -z "{{.ARGS}}" && echo "" || echo "{{.ARGS}}" | awk '{print $2}'
+    preconditions: *binary_precondition
+
   # Event Deck Tasks
   scan-events:
     desc: Scan battle logs for event decks using Go CLI
