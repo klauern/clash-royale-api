@@ -669,6 +669,31 @@ func calculateLadderScore(rarityScore, levelIndepScore, upgradeProgress float64)
 	return score
 }
 
+// calculateLadderViabilityScore estimates ladder viability from level gaps.
+// Uses a steeper penalty curve to reflect competitive breakpoints.
+func calculateLadderViabilityScore(avgLevelGap float64, maxLevelGap int) float64 {
+	score := 10.0 - avgLevelGap
+
+	if maxLevelGap >= 3 {
+		score -= 0.5
+	}
+	if maxLevelGap >= 5 {
+		score -= 1.0
+	}
+	if maxLevelGap >= 7 {
+		score -= 1.5
+	}
+
+	if score < 0 {
+		score = 0
+	}
+	if score > 10 {
+		score = 10
+	}
+
+	return score
+}
+
 // upgradePriority represents an upgrade recommendation
 type upgradePriority struct {
 	cardName     string
@@ -772,13 +797,13 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerCo
 	var avgLevelGap float64
 	var maxLevelGap int
 	var upgradePriorities []upgradePriority
+	cardsWithLevels := 0
 
 	if hasPlayerContext {
 		// Calculate actual level metrics from playerContext.Collection
 		totalCurrentLevel := 0
 		totalMaxLevel := 0
 		totalGap := 0
-		cardsWithLevels := 0
 
 		for _, card := range deckCards {
 			if info, exists := playerContext.Collection[card.Name]; exists {
@@ -807,31 +832,24 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerCo
 	var viabilityRating string
 
 	if hasPlayerContext {
-		competitiveViability = 10.0
-		competitiveViability -= (avgLevelGap * 2.0)
-
-		if maxLevelGap >= 5 {
-			competitiveViability -= 1.0
-		}
-		if maxLevelGap >= 7 {
-			competitiveViability -= 1.0
-		}
-
-		if competitiveViability < 0 {
+		if cardsWithLevels == 0 {
 			competitiveViability = 0
-		}
-
-		// Assign rating
-		if competitiveViability >= 9.0 {
-			viabilityRating = "Tournament ready"
-		} else if competitiveViability >= 7.0 {
-			viabilityRating = "Ladder competitive"
-		} else if competitiveViability >= 5.0 {
-			viabilityRating = "Playable but underleveled"
-		} else if competitiveViability >= 3.0 {
-			viabilityRating = "Significant disadvantage"
-		} else {
 			viabilityRating = "Not competitive"
+		} else {
+			competitiveViability = calculateLadderViabilityScore(avgLevelGap, maxLevelGap)
+
+			// Assign rating
+			if competitiveViability >= 9.0 {
+				viabilityRating = "Tournament ready"
+			} else if competitiveViability >= 7.0 {
+				viabilityRating = "Ladder competitive"
+			} else if competitiveViability >= 5.0 {
+				viabilityRating = "Playable but underleveled"
+			} else if competitiveViability >= 3.0 {
+				viabilityRating = "Significant disadvantage"
+			} else {
+				viabilityRating = "Not competitive"
+			}
 		}
 	}
 
@@ -1118,13 +1136,17 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 
 	// Phase 4: Calculate Overall Score (weighted average)
 	// Weights: Attack 18%, Defense 18%, Synergy 22%, Versatility 18%, F2P 12%, Playability 12%
-	// Playability is only relevant when player context is available
+	// When player context is available, replace Playability with ladder viability.
 	overallScore := (attackScore.Score * 0.18) +
 		(defenseScore.Score * 0.18) +
 		(synergyScore.Score * 0.22) +
 		(versatilityScore.Score * 0.18) +
 		(f2pScore.Score * 0.12) +
 		(playabilityScore.Score * 0.12)
+
+	if playerContext != nil {
+		overallScore = overallScore - (playabilityScore.Score * 0.12) + (ladderAnalysis.Score * 0.12)
+	}
 
 	overallRating := ScoreToRating(overallScore)
 
