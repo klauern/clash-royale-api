@@ -490,6 +490,85 @@ See [DECK_ANALYSIS_SUITE.md](DECK_ANALYSIS_SUITE.md) for comprehensive guide and
 
 ### Deck Optimization Commands
 
+#### Deck Fuzzing (Monte Carlo and Genetic Algorithm)
+
+Generate and evaluate random decks to discover optimal combinations:
+
+**Monte Carlo Fuzzing** (Random Sampling):
+```bash
+# Generate 1000 random decks, show top 10
+./bin/cr-api deck fuzz --tag <TAG>
+
+# With constraints
+./bin/cr-api deck fuzz --tag <TAG> \
+  --count 5000 \
+  --include-cards "Royal Giant" \
+  --max-elixir 3.5 \
+  --top 20
+```
+
+**Genetic Algorithm** (Evolutionary Optimization):
+```bash
+# Optimize decks using genetic algorithm
+./bin/cr-api deck fuzz --mode genetic --tag <TAG>
+
+# Quick optimization
+./bin/cr-api deck fuzz --mode genetic --tag <TAG> \
+  --ga-population 50 \
+  --ga-generations 30
+
+# Thorough search
+./bin/cr-api deck fuzz --mode genetic --tag <TAG> \
+  --ga-population 200 \
+  --ga-generations 300 \
+  --ga-elite-count 20
+
+# Island model for diversity
+./bin/cr-api deck fuzz --mode genetic --tag <TAG> \
+  --ga-island-model \
+  --ga-island-count 4 \
+  --ga-migration-interval 10
+```
+
+**General Fuzz Flags:**
+- `--tag <TAG>` - Player tag (required)
+- `--mode <mode>` - Fuzzing mode: `random` (default) or `genetic`
+- `--count <n>` - Number of random decks (Monte Carlo only, default: 1000)
+- `--top <n>` - Number of top decks to display (default: 10)
+- `--sort-by <criteria>` - Sort by: overall, attack, defense, synergy, versatility, elixir
+- `--format <fmt>` - Output format: summary, json, csv, detailed
+- `--output-dir <dir>` - Directory to save results
+- `--verbose` - Show detailed progress
+
+**Monte Carlo Flags:**
+- `--workers <n>` - Parallel workers (default: 1)
+- `--include-cards <cards>` - Cards that must be in every deck
+- `--exclude-cards <cards>` - Cards to exclude from all decks
+- `--min-elixir <float>` - Minimum average elixir
+- `--max-elixir <float>` - Maximum average elixir
+- `--seed <n>` - Random seed (0 = random)
+
+**Genetic Algorithm Flags:**
+
+| Flag | Type | Default | Description |
+|------|------|---------|-------------|
+| `--ga-population` | int | 100 | Population size per generation |
+| `--ga-generations` | int | 100 | Maximum number of generations |
+| `--ga-mutation-rate` | float | 0.2 | Probability of mutation (0.0-1.0) |
+| `--ga-crossover-rate` | float | 0.7 | Probability of crossover (0.0-1.0) |
+| `--ga-mutation-intensity` | float | 0.3 | Mutation intensity: cards changed (0.0-1.0) |
+| `--ga-elite-count` | int | 10 | Best decks to preserve per generation |
+| `--ga-tournament-size` | int | 5 | Tournament selection size |
+| `--ga-parallel-eval` | bool | false | Enable parallel fitness evaluation |
+| `--ga-convergence-generations` | int | 0 | Stop if no improvement for N generations (0=off) |
+| `--ga-target-fitness` | float | 0.0 | Stop when fitness reaches this value (0=off) |
+| `--ga-island-model` | bool | false | Enable island model (parallel populations) |
+| `--ga-island-count` | int | 4 | Number of islands |
+| `--ga-migration-interval` | int | 10 | Generations between migrations |
+| `--ga-migration-size` | int | 5 | Decks to migrate per interval |
+
+See [DECK_FUZZING.md](DECK_FUZZING.md) for Monte Carlo fuzzing details and [GENETIC_FUZZING.md](GENETIC_FUZZING.md) for genetic algorithm documentation.
+
 #### Deck Mulligan Guide (Opening Hand Strategy)
 
 Generate mulligan guides that recommend opening hand strategies for your deck:
