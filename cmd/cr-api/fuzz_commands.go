@@ -358,7 +358,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 						remaining = 0
 					}
 					if rate > 0 {
-						etaStr = formatDuration(float64(remaining) / rate)
+						etaStr = formatDurationFloor(float64(remaining) / rate)
 					}
 				}
 				evalsDone := int64(gens) * int64(totalPop)
@@ -370,7 +370,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 					evalsDone,
 					progress.BestFitness,
 					progress.AvgFitness,
-					formatDuration(elapsed.Seconds()),
+					formatDurationFloor(elapsed.Seconds()),
 					etaStr,
 				)
 			}
@@ -2258,6 +2258,18 @@ func estimateRuntime(fuzzer *deck.DeckFuzzer, targetCount, sampleSize int) (*run
 func formatDuration(seconds float64) string {
 	if seconds < 60 {
 		return fmt.Sprintf("%.0fs", seconds)
+	}
+	minutes := int(seconds / 60)
+	secs := int(seconds) % 60
+	if secs == 0 {
+		return fmt.Sprintf("%dm", minutes)
+	}
+	return fmt.Sprintf("%dm %ds", minutes, secs)
+}
+
+func formatDurationFloor(seconds float64) string {
+	if seconds < 60 {
+		return fmt.Sprintf("%ds", int(seconds))
 	}
 	minutes := int(seconds / 60)
 	secs := int(seconds) % 60

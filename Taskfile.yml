@@ -586,16 +586,16 @@ tasks:
 
       Env vars:
         FUZZ_STORAGE: Path to fuzz storage db (default: ~/.cr-api/fuzz_top_decks.db)
-        FUZZ_GA_POPULATION: Override GA population size (default: 8000)
-        FUZZ_GA_GENERATIONS: Override GA generations (default: 32000)
+        FUZZ_GA_POPULATION: Override GA population size (default: 60000)
+        FUZZ_GA_GENERATIONS: Override GA generations (default: 64000)
         FUZZ_VERBOSE: Set to 1/true for verbose output (default: off)
     cmds:
       - |
         PLAYER_TAG="{{.FUZZ_PLAYER_TAG}}"
         SEED="{{.FUZZ_SEED}}"
         STORAGE="${FUZZ_STORAGE:-$HOME/.cr-api/fuzz_top_decks.db}"
-        POPULATION="${FUZZ_GA_POPULATION:-8000}"
-        GENERATIONS="${FUZZ_GA_GENERATIONS:-32000}"
+        POPULATION="${FUZZ_GA_POPULATION:-60000}"
+        GENERATIONS="${FUZZ_GA_GENERATIONS:-64000}"
         SEED_VALUE="${SEED:-$RANDOM}"
         VERBOSE=""
         if [ "${FUZZ_VERBOSE}" = "1" ] || [ "${FUZZ_VERBOSE}" = "true" ]; then
