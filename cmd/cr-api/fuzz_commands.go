@@ -344,8 +344,35 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			optimizer.RNG = rand.New(rand.NewSource(int64(seed)))
 		}
 		if verbose {
+			startTime := time.Now()
+			totalGens := gaGenerations
+			totalPop := gaPopulation
 			optimizer.Progress = func(progress genetic.GeneticProgress) {
-				fprintf(os.Stderr, "\rGA gen %d | best %.2f | avg %.2f", progress.Generation, progress.BestFitness, progress.AvgFitness)
+				gens := int(progress.Generation)
+				elapsed := time.Since(startTime)
+				etaStr := "?"
+				if gens > 0 {
+					rate := float64(gens) / elapsed.Seconds()
+					remaining := totalGens - gens
+					if remaining < 0 {
+						remaining = 0
+					}
+					if rate > 0 {
+						etaStr = formatDurationFloor(float64(remaining) / rate)
+					}
+				}
+				evalsDone := int64(gens) * int64(totalPop)
+				fprintf(
+					os.Stderr,
+					"\rGA gen %d/%d | evals ~%d | best %.2f | avg %.2f | elapsed %s | eta %s",
+					progress.Generation,
+					totalGens,
+					evalsDone,
+					progress.BestFitness,
+					progress.AvgFitness,
+					formatDurationFloor(elapsed.Seconds()),
+					etaStr,
+				)
 			}
 		}
 
@@ -1642,6 +1669,7 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 
 // deckFuzzUpdateCommand re-evaluates saved decks with current scoring and updates storage.
 func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
+	playerTag := cmd.String("tag")
 	top := cmd.Int("top")
 	archetype := cmd.String("archetype")
 	minScore := cmd.Float64("min-score")
@@ -1692,8 +1720,30 @@ func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 		return nil
 	}
 
+	var player *clashroyale.Player
+	var playerContext *evaluation.PlayerContext
+	if playerTag != "" {
+		apiToken := cmd.String("api-token")
+		if apiToken == "" {
+			apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
+		}
+		if apiToken == "" {
+			return fmt.Errorf("API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)")
+		}
+		client := clashroyale.NewClient(apiToken)
+		var err error
+		player, err = client.GetPlayer(playerTag)
+		if err != nil {
+			return fmt.Errorf("failed to load player data for %s: %w", playerTag, err)
+		}
+		playerContext = evaluation.NewPlayerContextFromPlayer(player)
+		if verbose {
+			printf("Loaded player context for %s (%s)\n", player.Name, playerTag)
+		}
+	}
+
 	start := time.Now()
-	updatedEntries := reevaluateStoredDecks(entries, workers, verbose)
+	updatedEntries := reevaluateStoredDecks(entries, player, playerTag, playerContext, workers, verbose)
 
 	updated := 0
 	for i := range updatedEntries {
@@ -1722,9 +1772,9 @@ type storedDeckResult struct {
 	entry fuzzstorage.DeckEntry
 }
 
-func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, workers int, verbose bool) []fuzzstorage.DeckEntry {
+func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, player *clashroyale.Player, playerTag string, playerContext *evaluation.PlayerContext, workers int, verbose bool) []fuzzstorage.DeckEntry {
 	if workers <= 1 {
-		return reevaluateStoredDecksSequential(entries, verbose)
+		return reevaluateStoredDecksSequential(entries, player, playerTag, playerContext, verbose)
 	}
 
 	results := make([]fuzzstorage.DeckEntry, len(entries))
@@ -1752,7 +1802,7 @@ func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, workers int, verbose
 			synergyDB := deck.NewSynergyDatabase()
 
 			for work := range workChan {
-				result := evaluateSingleDeck(work.entry.Cards, nil, "", synergyDB, nil)
+				result := evaluateSingleDeck(work.entry.Cards, player, playerTag, synergyDB, playerContext)
 				updated := work.entry
 				updated.OverallScore = result.OverallScore
 				updated.AttackScore = result.AttackScore
@@ -1790,7 +1840,7 @@ func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, workers int, verbose
 	return results
 }
 
-func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, verbose bool) []fuzzstorage.DeckEntry {
+func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, player *clashroyale.Player, playerTag string, playerContext *evaluation.PlayerContext, verbose bool) []fuzzstorage.DeckEntry {
 	results := make([]fuzzstorage.DeckEntry, len(entries))
 	synergyDB := deck.NewSynergyDatabase()
 
@@ -1808,7 +1858,7 @@ func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, verbose bo
 	}
 
 	for i, entry := range entries {
-		result := evaluateSingleDeck(entry.Cards, nil, "", synergyDB, nil)
+		result := evaluateSingleDeck(entry.Cards, player, playerTag, synergyDB, playerContext)
 		entry.OverallScore = result.OverallScore
 		entry.AttackScore = result.AttackScore
 		entry.DefenseScore = result.DefenseScore
@@ -2208,6 +2258,18 @@ func estimateRuntime(fuzzer *deck.DeckFuzzer, targetCount, sampleSize int) (*run
 func formatDuration(seconds float64) string {
 	if seconds < 60 {
 		return fmt.Sprintf("%.0fs", seconds)
+	}
+	minutes := int(seconds / 60)
+	secs := int(seconds) % 60
+	if secs == 0 {
+		return fmt.Sprintf("%dm", minutes)
+	}
+	return fmt.Sprintf("%dm %ds", minutes, secs)
+}
+
+func formatDurationFloor(seconds float64) string {
+	if seconds < 60 {
+		return fmt.Sprintf("%ds", int(seconds))
 	}
 	minutes := int(seconds / 60)
 	secs := int(seconds) % 60

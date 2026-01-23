@@ -163,6 +163,11 @@ func (g *DeckGenome) Evaluate() (float64, error) {
 		return 0, fmt.Errorf("failed to resolve all cards: got %d, want 8", len(deckCards))
 	}
 
+	if cached, ok := getCachedFitness(g.Cards); ok {
+		g.Fitness = cached
+		return g.Fitness, nil
+	}
+
 	// Create synergy database for evaluation
 	synergyDB := deck.NewSynergyDatabase()
 
@@ -171,6 +176,7 @@ func (g *DeckGenome) Evaluate() (float64, error) {
 
 	// Use OverallScore (0-10 scale) as fitness
 	g.Fitness = result.OverallScore
+	storeCachedFitness(g.Cards, g.Fitness)
 
 	return g.Fitness, nil
 }

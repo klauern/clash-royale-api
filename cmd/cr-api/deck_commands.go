@@ -699,6 +699,10 @@ func addDeckCommands() *cli.Command {
 						Name:  "update",
 						Usage: "Re-evaluate saved decks with current scoring and update storage",
 						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "tag",
+								Usage: "Player tag (without #) to apply level-aware scoring",
+							},
 							&cli.IntFlag{
 								Name:  "top",
 								Value: 0,

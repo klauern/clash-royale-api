@@ -586,11 +586,21 @@ tasks:
 
       Env vars:
         FUZZ_STORAGE: Path to fuzz storage db (default: ~/.cr-api/fuzz_top_decks.db)
+        FUZZ_GA_POPULATION: Override GA population size (default: 60000)
+        FUZZ_GA_GENERATIONS: Override GA generations (default: 64000)
+        FUZZ_VERBOSE: Set to 1/true for verbose output (default: off)
     cmds:
       - |
         PLAYER_TAG="{{.FUZZ_PLAYER_TAG}}"
         SEED="{{.FUZZ_SEED}}"
         STORAGE="${FUZZ_STORAGE:-$HOME/.cr-api/fuzz_top_decks.db}"
+        POPULATION="${FUZZ_GA_POPULATION:-60000}"
+        GENERATIONS="${FUZZ_GA_GENERATIONS:-64000}"
+        SEED_VALUE="${SEED:-$RANDOM}"
+        VERBOSE=""
+        if [ "${FUZZ_VERBOSE}" = "1" ] || [ "${FUZZ_VERBOSE}" = "true" ]; then
+          VERBOSE="--verbose"
+        fi
 
         if [ -z "$PLAYER_TAG" ]; then
           PLAYER_TAG="${DEFAULT_PLAYER_TAG}"
@@ -607,13 +617,15 @@ tasks:
 
         echo "Genetic fuzz (overnight) for $CLEAN_TAG"
         echo "Storage: $STORAGE"
+        echo "Population: $POPULATION | Generations: $GENERATIONS"
+        echo "Seed: $SEED_VALUE"
         echo ""
 
         {{.CR_API_BIN}} deck fuzz \
           --tag "$CLEAN_TAG" \
           --mode genetic \
-          --ga-population 2000 \
-          --ga-generations 8000 \
+          --ga-population "$POPULATION" \
+          --ga-generations "$GENERATIONS" \
           --ga-elite-count 100 \
           --ga-parallel-eval \
           --ga-tournament-size 7 \
@@ -622,11 +634,12 @@ tasks:
           --ga-island-count 4 \
           --ga-migration-interval 15 \
           --ga-migration-size 2 \
-          --seed "${SEED:-$RANDOM}" \
+          --seed "$SEED_VALUE" \
           --top 100 \
           --resume-from 100 \
           --save-top \
-          --storage "$STORAGE"
+          --storage "$STORAGE" \
+          $VERBOSE
     vars:
       FUZZ_PLAYER_TAG:
         sh: test -z "{{.ARGS}}" && echo "" || echo "{{.ARGS}}" | awk '{print $1}'
