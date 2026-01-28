@@ -984,261 +984,70 @@ func addDeckCommands() *cli.Command {
 }
 
 func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
+	// Parse flags
 	tag := cmd.String("tag")
 	strategy := cmd.String("strategy")
 	minElixir := cmd.Float64("min-elixir")
 	maxElixir := cmd.Float64("max-elixir")
-	saveData := cmd.Bool("save")
-	apiToken := cmd.String("api-token")
-	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
-	combatStatsWeight := cmd.Float64("combat-stats-weight")
-	disableCombatStats := cmd.Bool("disable-combat-stats")
-	includeCards := cmd.StringSlice("include-cards")
 	excludeCards := cmd.StringSlice("exclude-cards")
+	verbose := cmd.Bool("verbose")
 
 	// Upgrade recommendations flags
 	noSuggestUpgrades := cmd.Bool("no-suggest-upgrades")
 	upgradeCount := cmd.Int("upgrade-count")
 	idealDeck := cmd.Bool("ideal-deck")
 
-	// Offline mode flags
-	fromAnalysis := cmd.Bool("from-analysis")
-	analysisDir := cmd.String("analysis-dir")
-	analysisFile := cmd.String("analysis-file")
-
-	// Configure combat stats weight
-	if disableCombatStats {
-		setEnv("COMBAT_STATS_WEIGHT", "0")
-		if verbose {
-			printf("Combat stats disabled (using traditional scoring only)\n")
-		}
-	} else if combatStatsWeight >= 0 && combatStatsWeight <= 1.0 {
-		setEnv("COMBAT_STATS_WEIGHT", fmt.Sprintf("%.2f", combatStatsWeight))
-		if verbose {
-			printf("Combat stats weight set to: %.2f\n", combatStatsWeight)
-		}
+	// Step 1: Configure combat stats
+	if err := configureCombatStats(cmd); err != nil {
+		return err
 	}
 
-	// Create deck builder
-	builder := deck.NewBuilder(dataDir)
-
-	// Override unlocked evolutions if CLI flag provided
-	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
-		builder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+	// Step 2: Create and configure deck builder
+	builder, err := configureDeckBuilder(cmd, dataDir, strategy)
+	if err != nil {
+		return err
 	}
 
-	// Override evolution slot limit if provided
-	if slots := cmd.Int("evolution-slots"); slots > 0 {
-		builder.SetEvolutionSlotLimit(slots)
+	// Step 3: Configure fuzz integration if enabled
+	if err := configureFuzzIntegration(cmd, builder); err != nil {
+		return err
 	}
 
-	// Set include/exclude card filters if provided
-	if len(includeCards) > 0 {
-		builder.SetIncludeCards(includeCards)
-	}
-	if len(excludeCards) > 0 {
-		builder.SetExcludeCards(excludeCards)
+	// Step 4: Load player card analysis
+	playerData, err := loadPlayerCardAnalysis(cmd, builder, tag)
+	if err != nil {
+		return err
 	}
 
-	// Parse and set strategy if provided (skip for "all" which is handled later)
-	if strategy != "" && strings.ToLower(strings.TrimSpace(strategy)) != deckStrategyAll {
-		parsedStrategy, err := deck.ParseStrategy(strategy)
-		if err != nil {
-			return fmt.Errorf("invalid strategy: %w", err)
-		}
-		if err := builder.SetStrategy(parsedStrategy); err != nil {
-			return fmt.Errorf("failed to set strategy: %w", err)
-		}
-		if verbose {
-			printf("Using deck building strategy: %s\n", parsedStrategy)
-		}
-	}
+	// Step 5: Apply exclude filter
+	applyExcludeFilter(&playerData.CardAnalysis, excludeCards)
 
-	// Configure synergy system if enabled
-	if enableSynergy := cmd.Bool("enable-synergy"); enableSynergy {
-		builder.SetSynergyEnabled(true)
-		if synergyWeight := cmd.Float64("synergy-weight"); synergyWeight > 0 {
-			builder.SetSynergyWeight(synergyWeight)
-		}
-		if verbose {
-			printf("Synergy scoring enabled (weight: %.2f)\n", cmd.Float64("synergy-weight"))
-		}
-	}
-
-	// Configure fuzz integration if storage path provided
-	if fuzzStoragePath := cmd.String("fuzz-storage"); fuzzStoragePath != "" {
-		fuzzIntegration := deck.NewFuzzIntegration()
-
-		// Set custom weight if provided
-		if fuzzWeight := cmd.Float64("fuzz-weight"); fuzzWeight > 0 {
-			fuzzIntegration.SetWeight(fuzzWeight)
-		}
-
-		// Open storage and analyze
-		storage, err := fuzzstorage.NewStorage(fuzzStoragePath)
-		if err != nil {
-			return fmt.Errorf("failed to open fuzz storage: %w", err)
-		}
-		defer storage.Close()
-
-		deckLimit := cmd.Int("fuzz-deck-limit")
-		if deckLimit <= 0 {
-			deckLimit = 100
-		}
-
-		if err := fuzzIntegration.AnalyzeFromStorage(storage, deckLimit); err != nil {
-			return fmt.Errorf("failed to analyze fuzz results: %w", err)
-		}
-
-		if fuzzIntegration.HasStats() {
-			builder.SetFuzzIntegration(fuzzIntegration)
-			if verbose {
-				printf("Fuzz integration enabled with %d card stats (weight: %.2f)\n",
-					fuzzIntegration.StatsCount(), fuzzIntegration.GetWeight())
-			}
-		} else {
-			if verbose {
-				printf("No fuzz statistics available in storage\n")
-			}
-		}
-	}
-
-	var deckCardAnalysis deck.CardAnalysis
-	var playerName, playerTag string
-
-	if fromAnalysis {
-		// OFFLINE MODE: Load from existing analysis JSON
-		if verbose {
-			printf("Building deck from offline analysis for player %s\n", tag)
-		}
-
-		// Default analysis dir to data/analysis if not specified
-		if analysisDir == "" {
-			analysisDir = filepath.Join(dataDir, "analysis")
-		}
-
-		var loadedAnalysis *deck.CardAnalysis
-		var err error
-
-		if analysisFile != "" {
-			// Load from explicit file path
-			loadedAnalysis, err = builder.LoadAnalysis(analysisFile)
-			if err != nil {
-				return fmt.Errorf("failed to load analysis file %s: %w", analysisFile, err)
-			}
-			if verbose {
-				printf("Loaded analysis from: %s\n", analysisFile)
-			}
-		} else {
-			// Load latest analysis for player tag
-			loadedAnalysis, err = builder.LoadLatestAnalysis(tag, analysisDir)
-			if err != nil {
-				return fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
-			}
-			if verbose {
-				printf("Loaded latest analysis from: %s\n", analysisDir)
-			}
-		}
-
-		deckCardAnalysis = *loadedAnalysis
-		playerTag = tag
-		playerName = tag // Use tag as name in offline mode
-	} else {
-		// ONLINE MODE: Fetch from API
-		if apiToken == "" {
-			return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
-		}
-
-		client := clashroyale.NewClient(apiToken)
-
-		if verbose {
-			printf("Building deck for player %s\n", tag)
-		}
-
-		// Get player information
-		player, err := client.GetPlayer(tag)
-		if err != nil {
-			return fmt.Errorf("failed to get player: %w", err)
-		}
-
-		playerName = player.Name
-		playerTag = player.Tag
-
-		if verbose {
-			printf("Player: %s (%s)\n", player.Name, player.Tag)
-			printf("Analyzing %d cards...\n", len(player.Cards))
-		}
-
-		// Perform card collection analysis
-		analysisOptions := analysis.DefaultAnalysisOptions()
-		cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
-		if err != nil {
-			return fmt.Errorf("failed to analyze card collection: %w", err)
-		}
-
-		// Convert analysis.CardAnalysis to deck.CardAnalysis
-		deckCardAnalysis = deck.CardAnalysis{
-			CardLevels:   make(map[string]deck.CardLevelData),
-			AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
-		}
-
-		for cardName, cardInfo := range cardAnalysis.CardLevels {
-			deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
-				Level:             cardInfo.Level,
-				MaxLevel:          cardInfo.MaxLevel,
-				Rarity:            cardInfo.Rarity,
-				Elixir:            cardInfo.Elixir,
-				MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
-			}
-		}
-	}
-
-	// Apply exclude filter (works for both modes)
-	excludeMap := make(map[string]bool)
-	for _, card := range excludeCards {
-		trimmed := strings.TrimSpace(card)
-		if trimmed != "" {
-			excludeMap[strings.ToLower(trimmed)] = true
-		}
-	}
-
-	if len(excludeMap) > 0 {
-		filteredLevels := make(map[string]deck.CardLevelData)
-		for cardName, cardInfo := range deckCardAnalysis.CardLevels {
-			if !excludeMap[strings.ToLower(cardName)] {
-				filteredLevels[cardName] = cardInfo
-			}
-		}
-		deckCardAnalysis.CardLevels = filteredLevels
-	}
-
-	// Handle --strategy all
+	// Step 6: Handle --strategy all
 	if strings.ToLower(strings.TrimSpace(strategy)) == deckStrategyAll {
-		return buildAllStrategies(ctx, cmd, builder, deckCardAnalysis, playerName, playerTag)
+		return buildAllStrategies(ctx, cmd, builder, playerData.CardAnalysis, playerData.PlayerName, playerData.PlayerTag)
 	}
 
-	// Build deck from analysis
-	deckRec, err := builder.BuildDeckFromAnalysis(deckCardAnalysis)
+	// Step 7: Build deck from analysis
+	deckRec, err := builder.BuildDeckFromAnalysis(playerData.CardAnalysis)
 	if err != nil {
 		return fmt.Errorf("failed to build deck: %w", err)
 	}
 
-	// Validate elixir constraints
+	// Step 8: Validate elixir constraints
 	if deckRec.AvgElixir < minElixir || deckRec.AvgElixir > maxElixir {
 		printf("\n⚠ Warning: Deck average elixir (%.2f) is outside requested range (%.1f-%.1f)\n",
 			deckRec.AvgElixir, minElixir, maxElixir)
 	}
 
-	// Display deck recommendation
-	displayDeckRecommendationOffline(deckRec, playerName, playerTag)
+	// Step 9: Display deck recommendation
+	displayDeckRecommendationOffline(deckRec, playerData.PlayerName, playerData.PlayerTag)
 
-	// Display upgrade recommendations by default (unless disabled)
+	// Step 10: Display upgrade recommendations by default (unless disabled)
 	var upgrades *deck.UpgradeRecommendations
 	if !noSuggestUpgrades {
 		printf("\n")
-		var err error
-		upgrades, err = builder.GetUpgradeRecommendations(deckCardAnalysis, deckRec, upgradeCount)
+		upgrades, err = builder.GetUpgradeRecommendations(playerData.CardAnalysis, deckRec, upgradeCount)
 		if err != nil {
 			if verbose {
 				printf("Warning: Failed to generate upgrade recommendations: %v\n", err)
@@ -1248,100 +1057,14 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	// Show ideal deck with recommended upgrades applied
-	if idealDeck && upgrades != nil && len(upgrades.Recommendations) > 0 {
-		printf("\n")
-		printf("============================================================================\n")
-		printf("                        IDEAL DECK (WITH UPGRADES)\n")
-		printf("============================================================================\n\n")
-
-		// Create a copy of the card analysis with simulated upgrades
-		idealAnalysis := deck.CardAnalysis{
-			CardLevels:   make(map[string]deck.CardLevelData),
-			AnalysisTime: deckCardAnalysis.AnalysisTime,
-		}
-
-		// Copy all card levels
-		for cardName, cardData := range deckCardAnalysis.CardLevels {
-			idealAnalysis.CardLevels[cardName] = cardData
-		}
-
-		// Apply upgrades
-		printf("Simulating upgrades:\n")
-		for _, rec := range upgrades.Recommendations {
-			if cardData, exists := idealAnalysis.CardLevels[rec.CardName]; exists {
-				oldLevel := cardData.Level
-				cardData.Level = rec.TargetLevel
-				idealAnalysis.CardLevels[rec.CardName] = cardData
-				printf("  • %s: Level %d → %d\n", rec.CardName, oldLevel, rec.TargetLevel)
-			}
-		}
-		printf("\n")
-
-		// Build ideal deck with upgraded cards
-		idealDeckRec, err := builder.BuildDeckFromAnalysis(idealAnalysis)
-		if err != nil {
-			printf("Warning: Failed to build ideal deck: %v\n", err)
-		} else {
-			displayDeckRecommendationOffline(idealDeckRec, playerName, playerTag)
-
-			// Show comparison
-			printf("\n")
-			printf("Comparison:\n")
-			printf("  Current Deck:  %.2f avg elixir\n", deckRec.AvgElixir)
-			printf("  Ideal Deck:    %.2f avg elixir\n", idealDeckRec.AvgElixir)
-
-			// Show cards that changed
-			currentCards := make(map[string]bool)
-			for _, card := range deckRec.Deck {
-				currentCards[card] = true
-			}
-
-			idealCards := make(map[string]bool)
-			for _, card := range idealDeckRec.Deck {
-				idealCards[card] = true
-			}
-
-			addedCards := []string{}
-			removedCards := []string{}
-
-			for card := range idealCards {
-				if !currentCards[card] {
-					addedCards = append(addedCards, card)
-				}
-			}
-
-			for card := range currentCards {
-				if !idealCards[card] {
-					removedCards = append(removedCards, card)
-				}
-			}
-
-			if len(addedCards) > 0 || len(removedCards) > 0 {
-				printf("\n  Deck Changes:\n")
-				if len(removedCards) > 0 {
-					printf("    Removed: %s\n", strings.Join(removedCards, ", "))
-				}
-				if len(addedCards) > 0 {
-					printf("    Added:   %s\n", strings.Join(addedCards, ", "))
-				}
-			} else {
-				printf("\n  Deck composition remains the same (upgrades strengthen existing cards)\n")
-			}
-		}
+	// Step 11: Show ideal deck with recommended upgrades applied
+	if idealDeck {
+		displayIdealDeck(cmd, builder, playerData.CardAnalysis, deckRec, playerData.PlayerName, playerData.PlayerTag, upgrades)
 	}
 
-	// Save deck if requested
-	if saveData {
-		if verbose {
-			printf("\nSaving deck to: %s\n", dataDir)
-		}
-		deckPath, err := builder.SaveDeck(deckRec, "", playerTag)
-		if err != nil {
-			printf("Warning: Failed to save deck: %v\n", err)
-		} else {
-			printf("\nDeck saved to: %s\n", deckPath)
-		}
+	// Step 12: Save deck if requested
+	if err := saveDeckIfRequested(cmd, builder, deckRec, playerData.PlayerTag, dataDir); err != nil {
+		return err
 	}
 
 	return nil
@@ -3292,6 +3015,381 @@ func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
 
 // displayDeckRecommendationOffline displays a formatted deck recommendation without full player object
 // Used for offline mode where we only have player name and tag as strings
+// Helper functions extracted from deckBuildCommand to reduce complexity
+
+// configureCombatStats configures combat stats weight based on CLI flags
+func configureCombatStats(cmd *cli.Command) error {
+	combatStatsWeight := cmd.Float64("combat-stats-weight")
+	disableCombatStats := cmd.Bool("disable-combat-stats")
+	verbose := cmd.Bool("verbose")
+
+	if disableCombatStats {
+		setEnv("COMBAT_STATS_WEIGHT", "0")
+		if verbose {
+			printf("Combat stats disabled (using traditional scoring only)\n")
+		}
+	} else if combatStatsWeight >= 0 && combatStatsWeight <= 1.0 {
+		setEnv("COMBAT_STATS_WEIGHT", fmt.Sprintf("%.2f", combatStatsWeight))
+		if verbose {
+			printf("Combat stats weight set to: %.2f\n", combatStatsWeight)
+		}
+	}
+	return nil
+}
+
+// configureDeckBuilder sets up the deck builder with evolutions, filters, strategy, and synergy
+func configureDeckBuilder(cmd *cli.Command, dataDir string, strategy string) (*deck.Builder, error) {
+	includeCards := cmd.StringSlice("include-cards")
+	excludeCards := cmd.StringSlice("exclude-cards")
+	verbose := cmd.Bool("verbose")
+
+	builder := deck.NewBuilder(dataDir)
+
+	// Override unlocked evolutions if CLI flag provided
+	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
+		builder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+	}
+
+	// Override evolution slot limit if provided
+	if slots := cmd.Int("evolution-slots"); slots > 0 {
+		builder.SetEvolutionSlotLimit(slots)
+	}
+
+	// Set include/exclude card filters if provided
+	if len(includeCards) > 0 {
+		builder.SetIncludeCards(includeCards)
+	}
+	if len(excludeCards) > 0 {
+		builder.SetExcludeCards(excludeCards)
+	}
+
+	// Parse and set strategy if provided (skip for "all" which is handled later)
+	if strategy != "" && strings.ToLower(strings.TrimSpace(strategy)) != deckStrategyAll {
+		parsedStrategy, err := deck.ParseStrategy(strategy)
+		if err != nil {
+			return nil, fmt.Errorf("invalid strategy: %w", err)
+		}
+		if err := builder.SetStrategy(parsedStrategy); err != nil {
+			return nil, fmt.Errorf("failed to set strategy: %w", err)
+		}
+		if verbose {
+			printf("Using deck building strategy: %s\n", parsedStrategy)
+		}
+	}
+
+	// Configure synergy system if enabled
+	if enableSynergy := cmd.Bool("enable-synergy"); enableSynergy {
+		builder.SetSynergyEnabled(true)
+		if synergyWeight := cmd.Float64("synergy-weight"); synergyWeight > 0 {
+			builder.SetSynergyWeight(synergyWeight)
+		}
+		if verbose {
+			printf("Synergy scoring enabled (weight: %.2f)\n", cmd.Float64("synergy-weight"))
+		}
+	}
+
+	return builder, nil
+}
+
+// configureFuzzIntegration sets up fuzz storage integration if enabled
+func configureFuzzIntegration(cmd *cli.Command, builder *deck.Builder) error {
+	fuzzStoragePath := cmd.String("fuzz-storage")
+	if fuzzStoragePath == "" {
+		return nil
+	}
+
+	verbose := cmd.Bool("verbose")
+	fuzzIntegration := deck.NewFuzzIntegration()
+
+	// Set custom weight if provided
+	if fuzzWeight := cmd.Float64("fuzz-weight"); fuzzWeight > 0 {
+		fuzzIntegration.SetWeight(fuzzWeight)
+	}
+
+	// Open storage and analyze
+	storage, err := fuzzstorage.NewStorage(fuzzStoragePath)
+	if err != nil {
+		return fmt.Errorf("failed to open fuzz storage: %w", err)
+	}
+	defer storage.Close()
+
+	deckLimit := cmd.Int("fuzz-deck-limit")
+	if deckLimit <= 0 {
+		deckLimit = 100
+	}
+
+	if err := fuzzIntegration.AnalyzeFromStorage(storage, deckLimit); err != nil {
+		return fmt.Errorf("failed to analyze fuzz results: %w", err)
+	}
+
+	if fuzzIntegration.HasStats() {
+		builder.SetFuzzIntegration(fuzzIntegration)
+		if verbose {
+			printf("Fuzz integration enabled with %d card stats (weight: %.2f)\n",
+				fuzzIntegration.StatsCount(), fuzzIntegration.GetWeight())
+		}
+	} else if verbose {
+		printf("No fuzz statistics available in storage\n")
+	}
+
+	return nil
+}
+
+// playerDataLoadResult contains the result of loading player data
+type playerDataLoadResult struct {
+	CardAnalysis deck.CardAnalysis
+	PlayerName   string
+	PlayerTag    string
+}
+
+// loadPlayerCardAnalysis loads player card data from offline analysis or API
+func loadPlayerCardAnalysis(cmd *cli.Command, builder *deck.Builder, tag string) (*playerDataLoadResult, error) {
+	fromAnalysis := cmd.Bool("from-analysis")
+	analysisDir := cmd.String("analysis-dir")
+	analysisFile := cmd.String("analysis-file")
+	dataDir := cmd.String("data-dir")
+	apiToken := cmd.String("api-token")
+	verbose := cmd.Bool("verbose")
+
+	if fromAnalysis {
+		return loadPlayerDataOffline(builder, tag, analysisDir, analysisFile, dataDir, verbose)
+	}
+
+	// ONLINE MODE
+	return loadPlayerDataOnline(builder, tag, apiToken, verbose)
+}
+
+// loadPlayerDataOffline loads player data from pre-analyzed JSON files
+func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile, dataDir string, verbose bool) (*playerDataLoadResult, error) {
+	if verbose {
+		printf("Building deck from offline analysis for player %s\n", tag)
+	}
+
+	// Default analysis dir to data/analysis if not specified
+	if analysisDir == "" {
+		analysisDir = filepath.Join(dataDir, "analysis")
+	}
+
+	var loadedAnalysis *deck.CardAnalysis
+	var err error
+
+	if analysisFile != "" {
+		// Load from explicit file path
+		loadedAnalysis, err = builder.LoadAnalysis(analysisFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load analysis file %s: %w", analysisFile, err)
+		}
+		if verbose {
+			printf("Loaded analysis from: %s\n", analysisFile)
+		}
+	} else {
+		// Load latest analysis for player tag
+		loadedAnalysis, err = builder.LoadLatestAnalysis(tag, analysisDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+		}
+		if verbose {
+			printf("Loaded latest analysis from: %s\n", analysisDir)
+		}
+	}
+
+	return &playerDataLoadResult{
+		CardAnalysis: *loadedAnalysis,
+		PlayerName:   tag,
+		PlayerTag:    tag,
+	}, nil
+}
+
+// loadPlayerDataOnline fetches and analyzes player data from the API
+func loadPlayerDataOnline(builder *deck.Builder, tag, apiToken string, verbose bool) (*playerDataLoadResult, error) {
+	if apiToken == "" {
+		return nil, fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
+	}
+
+	client := clashroyale.NewClient(apiToken)
+
+	if verbose {
+		printf("Building deck for player %s\n", tag)
+	}
+
+	// Get player information
+	player, err := client.GetPlayer(tag)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get player: %w", err)
+	}
+
+	if verbose {
+		printf("Player: %s (%s)\n", player.Name, player.Tag)
+		printf("Analyzing %d cards...\n", len(player.Cards))
+	}
+
+	// Perform card collection analysis
+	analysisOptions := analysis.DefaultAnalysisOptions()
+	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze card collection: %w", err)
+	}
+
+	// Convert analysis.CardAnalysis to deck.CardAnalysis
+	deckCardAnalysis := deck.CardAnalysis{
+		CardLevels:   make(map[string]deck.CardLevelData),
+		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+	}
+
+	for cardName, cardInfo := range cardAnalysis.CardLevels {
+		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
+			Level:             cardInfo.Level,
+			MaxLevel:          cardInfo.MaxLevel,
+			Rarity:            cardInfo.Rarity,
+			Elixir:            cardInfo.Elixir,
+			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
+		}
+	}
+
+	return &playerDataLoadResult{
+		CardAnalysis: deckCardAnalysis,
+		PlayerName:   player.Name,
+		PlayerTag:    player.Tag,
+	}, nil
+}
+
+// applyExcludeFilter filters out excluded cards from the card analysis
+func applyExcludeFilter(cardAnalysis *deck.CardAnalysis, excludeCards []string) {
+	if len(excludeCards) == 0 {
+		return
+	}
+
+	excludeMap := make(map[string]bool)
+	for _, card := range excludeCards {
+		trimmed := strings.TrimSpace(card)
+		if trimmed != "" {
+			excludeMap[strings.ToLower(trimmed)] = true
+		}
+	}
+
+	filteredLevels := make(map[string]deck.CardLevelData)
+	for cardName, cardInfo := range cardAnalysis.CardLevels {
+		if !excludeMap[strings.ToLower(cardName)] {
+			filteredLevels[cardName] = cardInfo
+		}
+	}
+	cardAnalysis.CardLevels = filteredLevels
+}
+
+// displayIdealDeck shows the deck with recommended upgrades applied
+func displayIdealDeck(cmd *cli.Command, builder *deck.Builder, cardAnalysis deck.CardAnalysis, deckRec *deck.DeckRecommendation, playerName, playerTag string, upgrades *deck.UpgradeRecommendations) {
+	if upgrades == nil || len(upgrades.Recommendations) == 0 {
+		return
+	}
+
+	verbose := cmd.Bool("verbose")
+
+	printf("\n")
+	printf("============================================================================\n")
+	printf("                        IDEAL DECK (WITH UPGRADES)\n")
+	printf("============================================================================\n\n")
+
+	// Create a copy of the card analysis with simulated upgrades
+	idealAnalysis := deck.CardAnalysis{
+		CardLevels:   make(map[string]deck.CardLevelData),
+		AnalysisTime: cardAnalysis.AnalysisTime,
+	}
+
+	// Copy all card levels
+	for cardName, cardData := range cardAnalysis.CardLevels {
+		idealAnalysis.CardLevels[cardName] = cardData
+	}
+
+	// Apply upgrades
+	printf("Simulating upgrades:\n")
+	for _, rec := range upgrades.Recommendations {
+		if cardData, exists := idealAnalysis.CardLevels[rec.CardName]; exists {
+			oldLevel := cardData.Level
+			cardData.Level = rec.TargetLevel
+			idealAnalysis.CardLevels[rec.CardName] = cardData
+			printf("  • %s: Level %d → %d\n", rec.CardName, oldLevel, rec.TargetLevel)
+		}
+	}
+	printf("\n")
+
+	// Build ideal deck with upgraded cards
+	idealDeckRec, err := builder.BuildDeckFromAnalysis(idealAnalysis)
+	if err != nil {
+		if verbose {
+			printf("Warning: Failed to build ideal deck: %v\n", err)
+		}
+		return
+	}
+
+	displayDeckRecommendationOffline(idealDeckRec, playerName, playerTag)
+
+	// Show comparison
+	printf("\n")
+	printf("Comparison:\n")
+	printf("  Current Deck:  %.2f avg elixir\n", deckRec.AvgElixir)
+	printf("  Ideal Deck:    %.2f avg elixir\n", idealDeckRec.AvgElixir)
+
+	// Show cards that changed
+	currentCards := make(map[string]bool)
+	for _, card := range deckRec.Deck {
+		currentCards[card] = true
+	}
+
+	idealCards := make(map[string]bool)
+	for _, card := range idealDeckRec.Deck {
+		idealCards[card] = true
+	}
+
+	addedCards := []string{}
+	removedCards := []string{}
+
+	for card := range idealCards {
+		if !currentCards[card] {
+			addedCards = append(addedCards, card)
+		}
+	}
+
+	for card := range currentCards {
+		if !idealCards[card] {
+			removedCards = append(removedCards, card)
+		}
+	}
+
+	if len(addedCards) > 0 || len(removedCards) > 0 {
+		printf("\n  Deck Changes:\n")
+		if len(removedCards) > 0 {
+			printf("    Removed: %s\n", strings.Join(removedCards, ", "))
+		}
+		if len(addedCards) > 0 {
+			printf("    Added:   %s\n", strings.Join(addedCards, ", "))
+		}
+	} else {
+		printf("\n  Deck composition remains the same (upgrades strengthen existing cards)\n")
+	}
+}
+
+// saveDeckIfRequested saves the deck to disk if the save flag is set
+func saveDeckIfRequested(cmd *cli.Command, builder *deck.Builder, deckRec *deck.DeckRecommendation, playerTag string, dataDir string) error {
+	saveData := cmd.Bool("save")
+	verbose := cmd.Bool("verbose")
+
+	if !saveData {
+		return nil
+	}
+
+	if verbose {
+		printf("\nSaving deck to: %s\n", dataDir)
+	}
+
+	deckPath, err := builder.SaveDeck(deckRec, "", playerTag)
+	if err != nil {
+		printf("Warning: Failed to save deck: %v\n", err)
+		return nil // Don't fail the whole command for save errors
+	}
+
+	printf("\nDeck saved to: %s\n", deckPath)
+	return nil
+}
 func displayDeckRecommendationOffline(rec *deck.DeckRecommendation, playerName, playerTag string) {
 	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
 	printf("║              RECOMMENDED 1v1 LADDER DECK                           ║\n")
