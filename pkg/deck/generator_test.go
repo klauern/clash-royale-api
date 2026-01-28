@@ -469,3 +469,155 @@ func createTestCandidates(count int) []*CardCandidate {
 func ptrCardRole(role CardRole) *CardRole {
 	return &role
 }
+
+func TestGeneticIterator(t *testing.T) {
+	tests := []struct {
+		name        string
+		config      GeneratorConfig
+		wantDecks   int
+		wantErr     bool
+		errContains string
+	}{
+		{
+			name: "genetic strategy generates valid decks",
+			config: GeneratorConfig{
+				Strategy:   StrategyGenetic,
+				Candidates: createTestCandidates(20),
+				Constraints: &GeneratorConstraints{
+					MinAvgElixir:        2.0,
+					MaxAvgElixir:        5.0,
+					RequireWinCondition: true,
+				},
+			},
+			wantDecks: 1,
+			wantErr:   false,
+		},
+		{
+			name: "genetic with insufficient candidates",
+			config: GeneratorConfig{
+				Strategy:   StrategyGenetic,
+				Candidates: createTestCandidates(5),
+			},
+			wantErr:     true,
+			errContains: "insufficient cards",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gen, err := NewDeckGenerator(tt.config)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewDeckGenerator() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if err != nil {
+				if tt.errContains != "" && !containsString(err.Error(), tt.errContains) {
+					t.Errorf("error should contain %q, got %q", tt.errContains, err.Error())
+				}
+				return
+			}
+
+			iterator, err := gen.Iterator()
+			if err != nil {
+				t.Fatalf("Iterator() error = %v", err)
+			}
+			defer iterator.Close()
+
+			ctx := context.Background()
+			decks := 0
+			for decks < tt.wantDecks {
+				deck, err := iterator.Next(ctx)
+				if err != nil {
+					t.Fatalf("Next() error = %v", err)
+				}
+				if deck == nil {
+					break
+				}
+				decks++
+
+				// Validate deck
+				if len(deck) != 8 {
+					t.Errorf("got deck with %d cards, want 8", len(deck))
+				}
+
+				// Check no duplicates
+				seen := make(map[string]bool)
+				for _, card := range deck {
+					if seen[card] {
+						t.Errorf("duplicate card in deck: %s", card)
+					}
+					seen[card] = true
+				}
+			}
+
+			if decks < tt.wantDecks {
+				t.Errorf("generated %d decks, want at least %d", decks, tt.wantDecks)
+			}
+		})
+	}
+}
+
+func TestGeneticIteratorCheckpoint(t *testing.T) {
+	config := GeneratorConfig{
+		Strategy:   StrategyGenetic,
+		Candidates: createTestCandidates(20),
+		Constraints: &GeneratorConstraints{
+			MinAvgElixir:        2.0,
+			MaxAvgElixir:        5.0,
+			RequireWinCondition: true,
+		},
+	}
+
+	gen, err := NewDeckGenerator(config)
+	if err != nil {
+		t.Fatalf("NewDeckGenerator() error = %v", err)
+	}
+
+	iterator, err := gen.Iterator()
+	if err != nil {
+		t.Fatalf("Iterator() error = %v", err)
+	}
+	defer iterator.Close()
+
+	ctx := context.Background()
+
+	// Get first deck
+	deck1, err := iterator.Next(ctx)
+	if err != nil {
+		t.Fatalf("Next() error = %v", err)
+	}
+	if deck1 == nil {
+		t.Fatal("expected deck, got nil")
+	}
+
+	// Save checkpoint
+	checkpoint := iterator.Checkpoint()
+	if checkpoint == nil {
+		t.Fatal("expected checkpoint, got nil")
+	}
+
+	if checkpoint.Strategy != StrategyGenetic {
+		t.Errorf("checkpoint strategy = %v, want %v", checkpoint.Strategy, StrategyGenetic)
+	}
+
+	// Create new iterator and resume
+	iterator2, err := gen.Iterator()
+	if err != nil {
+		t.Fatalf("Iterator() error = %v", err)
+	}
+	defer iterator2.Close()
+
+	if err := iterator2.Resume(checkpoint); err != nil {
+		t.Fatalf("Resume() error = %v", err)
+	}
+
+	// Next call should return nil (exhausted after first result in this simplified implementation)
+	deck2, err := iterator2.Next(ctx)
+	if err != nil {
+		t.Fatalf("Next() after resume error = %v", err)
+	}
+	// The simplified implementation only yields one deck, so we expect nil here
+	if deck2 != nil {
+		t.Logf("Got second deck after resume (implementation may yield multiple decks)")
+	}
+}

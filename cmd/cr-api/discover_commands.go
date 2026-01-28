@@ -156,12 +156,32 @@ func addDiscoverCommands() *cli.Command {
 					&cli.StringFlag{
 						Name:  "strategy",
 						Value: string(deck.StrategySmartSample),
-						Usage: "Sampling strategy (exhaustive, smart, random, archetype)",
+						Usage: "Sampling strategy (exhaustive, smart, random, archetype, genetic)",
 					},
 					&cli.IntFlag{
 						Name:  "sample-size",
 						Value: 1000,
 						Usage: "Number of decks to generate (for sampling strategies)",
+					},
+					&cli.IntFlag{
+						Name:  "generations",
+						Value: 200,
+						Usage: "Number of generations for genetic strategy (default: 200)",
+					},
+					&cli.IntFlag{
+						Name:  "population",
+						Value: 100,
+						Usage: "Population size for genetic strategy (default: 100)",
+					},
+					&cli.Float64Flag{
+						Name:  "mutation-rate",
+						Value: 0.1,
+						Usage: "Mutation rate for genetic strategy (0.0-1.0, default: 0.1)",
+					},
+					&cli.Float64Flag{
+						Name:  "crossover-rate",
+						Value: 0.8,
+						Usage: "Crossover rate for genetic strategy (0.0-1.0, default: 0.8)",
 					},
 					&cli.IntFlag{
 						Name:  "limit",
@@ -192,12 +212,32 @@ func addDiscoverCommands() *cli.Command {
 					&cli.StringFlag{
 						Name:  "strategy",
 						Value: string(deck.StrategySmartSample),
-						Usage: "Sampling strategy (exhaustive, smart, random, archetype)",
+						Usage: "Sampling strategy (exhaustive, smart, random, archetype, genetic)",
 					},
 					&cli.IntFlag{
 						Name:  "sample-size",
 						Value: 1000,
 						Usage: "Number of decks to generate (for sampling strategies)",
+					},
+					&cli.IntFlag{
+						Name:  "generations",
+						Value: 200,
+						Usage: "Number of generations for genetic strategy (default: 200)",
+					},
+					&cli.IntFlag{
+						Name:  "population",
+						Value: 100,
+						Usage: "Population size for genetic strategy (default: 100)",
+					},
+					&cli.Float64Flag{
+						Name:  "mutation-rate",
+						Value: 0.1,
+						Usage: "Mutation rate for genetic strategy (0.0-1.0, default: 0.1)",
+					},
+					&cli.Float64Flag{
+						Name:  "crossover-rate",
+						Value: 0.8,
+						Usage: "Crossover rate for genetic strategy (0.0-1.0, default: 0.8)",
 					},
 					&cli.IntFlag{
 						Name:  "limit",

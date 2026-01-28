@@ -27,6 +27,9 @@ const (
 
 	// StrategyArchetypeFocused explores specific archetype space
 	StrategyArchetypeFocused GeneratorStrategy = "archetype-focused"
+
+	// StrategyGenetic uses genetic algorithm for evolutionary deck optimization
+	StrategyGenetic GeneratorStrategy = "genetic"
 )
 
 // GeneratorConfig configures deck generation behavior
@@ -219,6 +222,8 @@ func (g *DeckGenerator) Iterator() (DeckIterator, error) {
 		return newRandomSampleIterator(g), nil
 	case StrategyArchetypeFocused:
 		return newArchetypeIterator(g), nil
+	case StrategyGenetic:
+		return newGeneticIterator(g), nil
 	default:
 		return nil, fmt.Errorf("unsupported strategy: %s", g.config.Strategy)
 	}
