@@ -58,6 +58,9 @@ type GeneratorConfig struct {
 	// Archetype for archetype-focused strategy
 	Archetype string
 
+	// Genetic configuration for genetic strategy
+	Genetic *GeneticIteratorConfig
+
 	// Progress callback for long-running operations
 	Progress func(GeneratorProgress)
 }

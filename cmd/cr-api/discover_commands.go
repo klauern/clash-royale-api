@@ -183,6 +183,25 @@ func addDiscoverCommands() *cli.Command {
 						Value: 0.8,
 						Usage: "Crossover rate for genetic strategy (0.0-1.0, default: 0.8)",
 					},
+					&cli.BoolFlag{
+						Name:  "island-model",
+						Usage: "Enable island model with multiple populations (default: false)",
+					},
+					&cli.IntFlag{
+						Name:  "island-count",
+						Value: 4,
+						Usage: "Number of island populations when island-model is enabled (default: 4)",
+					},
+					&cli.IntFlag{
+						Name:  "migration-interval",
+						Value: 15,
+						Usage: "Generations between island migrations when island-model is enabled (default: 15)",
+					},
+					&cli.IntFlag{
+						Name:  "migration-size",
+						Value: 2,
+						Usage: "Number of individuals migrating between islands (default: 2)",
+					},
 					&cli.IntFlag{
 						Name:  "limit",
 						Usage: "Maximum number of decks to evaluate (0 for unlimited)",
@@ -238,6 +257,25 @@ func addDiscoverCommands() *cli.Command {
 						Name:  "crossover-rate",
 						Value: 0.8,
 						Usage: "Crossover rate for genetic strategy (0.0-1.0, default: 0.8)",
+					},
+					&cli.BoolFlag{
+						Name:  "island-model",
+						Usage: "Enable island model with multiple populations (default: false)",
+					},
+					&cli.IntFlag{
+						Name:  "island-count",
+						Value: 4,
+						Usage: "Number of island populations when island-model is enabled (default: 4)",
+					},
+					&cli.IntFlag{
+						Name:  "migration-interval",
+						Value: 15,
+						Usage: "Generations between island migrations when island-model is enabled (default: 15)",
+					},
+					&cli.IntFlag{
+						Name:  "migration-size",
+						Value: 2,
+						Usage: "Number of individuals migrating between islands (default: 2)",
 					},
 					&cli.IntFlag{
 						Name:  "limit",
@@ -454,11 +492,41 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) err
 		return fmt.Errorf("failed to build candidates: %w", err)
 	}
 
+	// Build genetic config from CLI flags if strategy is genetic
+	var geneticConfig *deck.GeneticIteratorConfig
+	if strategy == deck.StrategyGenetic {
+		generations := cmd.Int("generations")
+		population := cmd.Int("population")
+		mutationRate := cmd.Float64("mutation-rate")
+		crossoverRate := cmd.Float64("crossover-rate")
+		islandModel := cmd.Bool("island-model")
+		islandCount := cmd.Int("island-count")
+		migrationInterval := cmd.Int("migration-interval")
+		migrationSize := cmd.Int("migration-size")
+
+		geneticConfig = &deck.GeneticIteratorConfig{
+			PopulationSize:        population,
+			Generations:           generations,
+			MutationRate:          mutationRate,
+			CrossoverRate:         crossoverRate,
+			MutationIntensity:     0.3,
+			EliteCount:            2,
+			TournamentSize:        5,
+			ConvergenceGenerations: 30,
+			TargetFitness:         0,
+			IslandModel:           islandModel,
+			IslandCount:           islandCount,
+			MigrationInterval:     migrationInterval,
+			MigrationSize:         migrationSize,
+		}
+	}
+
 	// Create generator config
 	genConfig := deck.GeneratorConfig{
 		Strategy:   strategy,
 		Candidates: candidates,
 		SampleSize: sampleSize,
+		Genetic:    geneticConfig,
 		Constraints: &deck.GeneratorConstraints{
 			MinAvgElixir:        2.0,
 			MaxAvgElixir:        5.0,
@@ -815,6 +883,13 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 		{"tag", cmd.String("tag")},
 		{"strategy", cmd.String("strategy")},
 		{"sample-size", fmt.Sprintf("%d", cmd.Int("sample-size"))},
+		{"generations", fmt.Sprintf("%d", cmd.Int("generations"))},
+		{"population", fmt.Sprintf("%d", cmd.Int("population"))},
+		{"mutation-rate", fmt.Sprintf("%.2f", cmd.Float64("mutation-rate"))},
+		{"crossover-rate", fmt.Sprintf("%.2f", cmd.Float64("crossover-rate"))},
+		{"island-count", fmt.Sprintf("%d", cmd.Int("island-count"))},
+		{"migration-interval", fmt.Sprintf("%d", cmd.Int("migration-interval"))},
+		{"migration-size", fmt.Sprintf("%d", cmd.Int("migration-size"))},
 	}
 
 	for _, flag := range flags {
@@ -825,6 +900,10 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 
 	if cmd.Bool("verbose") {
 		args = append(args, "--verbose")
+	}
+
+	if cmd.Bool("island-model") {
+		args = append(args, "--island-model")
 	}
 
 	// Redirect output to log file

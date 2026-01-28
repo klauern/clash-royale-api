@@ -543,6 +543,10 @@ type GeneticIteratorConfig struct {
 	TournamentSize      int
 	ConvergenceGenerations int
 	TargetFitness       float64
+	IslandModel         bool
+	IslandCount         int
+	MigrationInterval   int
+	MigrationSize       int
 }
 
 // GeneticOptimizerResult holds the result from genetic optimization
@@ -560,16 +564,24 @@ type GenomeResult struct {
 }
 
 func newGeneticIterator(gen *DeckGenerator) *geneticIterator {
-	config := &GeneticIteratorConfig{
-		PopulationSize:        100,
-		Generations:           200,
-		MutationRate:          0.1,
-		CrossoverRate:         0.8,
-		MutationIntensity:     0.3,
-		EliteCount:            2,
-		TournamentSize:        5,
-		ConvergenceGenerations: 30,
-		TargetFitness:         0,
+	// Use config from GeneratorConfig if provided, otherwise use defaults
+	config := gen.config.Genetic
+	if config == nil {
+		config = &GeneticIteratorConfig{
+			PopulationSize:        100,
+			Generations:           200,
+			MutationRate:          0.1,
+			CrossoverRate:         0.8,
+			MutationIntensity:     0.3,
+			EliteCount:            2,
+			TournamentSize:        5,
+			ConvergenceGenerations: 30,
+			TargetFitness:         0,
+			IslandModel:           false,
+			IslandCount:           4,
+			MigrationInterval:     15,
+			MigrationSize:         2,
+		}
 	}
 
 	// Use strategy from config or default to balanced
