@@ -911,3 +911,65 @@ Enable optional synergy system that considers card interactions and combos.
 - **Bridge Spam**: PEKKA/Battle Ram, Bandit/Royal Ghost
 
 See [DECK_BUILDER.md](DECK_BUILDER.md) for algorithm details and Go API examples.
+
+### Deck Discovery & Leaderboard
+
+Discover optimal deck combinations through systematic exploration and persistent storage.
+
+```bash
+# Start a discovery session
+cr-api deck discover start --tag <TAG> --strategy smart-sample --sample-size 5000
+
+# Resume from checkpoint
+cr-api deck discover resume --tag <TAG>
+
+# Check discovery status
+cr-api deck discover status --tag <TAG>
+
+# View detailed statistics
+cr-api deck discover stats --tag <TAG>
+
+# Stop background discovery
+cr-api deck discover stop --tag <TAG>
+```
+
+**Discovery Strategies:**
+- `smart-sample` (default): Intelligently prioritizes high-level cards and synergies
+- `random-sample`: Unbiased random exploration
+- `archetype-focused`: Deep dive into specific archetype
+- `exhaustive`: Evaluate all combinations (warning: very slow for large collections)
+
+**Discovery Flags:**
+- `--strategy <type>` - Sampling strategy (default: smart-sample)
+- `--sample-size <n>` - Number of decks to generate (default: 1000)
+- `--limit <n>` - Maximum decks to evaluate (0 = unlimited)
+- `--verbose`, `-v` - Show detailed progress
+- `--background` - Run as daemon process
+
+```bash
+# View leaderboard
+cr-api deck leaderboard show --tag <TAG> --top 20
+
+# Filter leaderboard
+cr-api deck leaderboard filter --tag <TAG> --archetype cycle --min-elixir 2.5 --max-elixir 3.0
+
+# View statistics
+cr-api deck leaderboard stats --tag <TAG> --archetypes
+
+# Export leaderboard
+cr-api deck leaderboard export --tag <TAG> --format csv --output decks.csv
+```
+
+**Leaderboard Flags:**
+- `--top <n>` - Number of results (default: 10)
+- `--format <fmt>` - Output: summary, detailed, json, csv
+- `--archetype <type>` - Filter by archetype
+- `--min-score`, `--max-score` - Score range filter (0-10)
+- `--min-elixir`, `--max-elixir` - Elixir range filter
+- `--sort-by <field>` - Sort field: overall_score, attack_score, defense_score, etc.
+- `--order <order>` - Sort order: asc, desc (default: desc)
+- `--require-all <cards>` - Decks must contain ALL cards
+- `--require-any <cards>` - Decks must contain ANY cards
+- `--exclude <cards>` - Exclude decks with ANY cards
+
+See [DECK_DISCOVERY.md](DECK_DISCOVERY.md) for complete documentation.
