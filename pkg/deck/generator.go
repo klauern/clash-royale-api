@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -233,25 +234,43 @@ func (g *DeckGenerator) Iterator() (DeckIterator, error) {
 }
 
 // GenerateOne generates a single deck using the configured strategy
-func (g *DeckGenerator) GenerateOne(ctx context.Context) ([]string, error) {
+func (g *DeckGenerator) GenerateOne(ctx context.Context) (_ []string, err error) {
 	iterator, err := g.Iterator()
 	if err != nil {
 		return nil, err
 	}
-	defer iterator.Close()
+	defer func() {
+		if closeErr := iterator.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = closeErr
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close iterator: %v\n", closeErr)
+			}
+		}
+	}()
 
 	return iterator.Next(ctx)
 }
 
 // Generate generates multiple decks using the configured strategy
-func (g *DeckGenerator) Generate(ctx context.Context, count int) ([][]string, error) {
+func (g *DeckGenerator) Generate(ctx context.Context, count int) (decks [][]string, err error) {
 	iterator, err := g.Iterator()
 	if err != nil {
 		return nil, err
 	}
-	defer iterator.Close()
+	defer func() {
+		if closeErr := iterator.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = closeErr
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close iterator: %v\n", closeErr)
+			}
+		}
+	}()
 
-	decks := make([][]string, 0, count)
+	decks = make([][]string, 0, count)
 	for i := 0; i < count; i++ {
 		select {
 		case <-ctx.Done():

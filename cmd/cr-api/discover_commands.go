@@ -418,7 +418,7 @@ func deckDiscoverRunCommand(ctx context.Context, cmd *cli.Command) error {
 }
 
 // runDiscoveryCommand is the shared implementation for start/run commands
-func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) error {
+func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
 	playerTag := cmd.String("tag")
 	strategy := deck.GeneratorStrategy(cmd.String("strategy"))
 	sampleSize := cmd.Int("sample-size")
@@ -484,7 +484,16 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) err
 	if err != nil {
 		return fmt.Errorf("failed to create storage: %w", err)
 	}
-	defer storage.Close()
+	defer func() {
+		if closeErr := storage.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = fmt.Errorf("failed to close storage: %w", closeErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close storage: %v\n", closeErr)
+			}
+		}
+	}()
 
 	// Build candidates from player collection
 	candidates, err := buildGeneticCandidates(player, nil, nil)
@@ -648,7 +657,7 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) err
 	printf("\nView results with: cr-api deck leaderboard show --tag %s\n", playerTag)
 
 	// Clear checkpoint on successful completion
-	runner.ClearCheckpoint()
+	_ = runner.ClearCheckpoint() // Error is acceptable - checkpoint cleanup is best-effort
 
 	return nil
 }
@@ -831,7 +840,7 @@ func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 }
 
 // runDiscoveryInBackground runs the discovery session as a background daemon
-func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool) error {
+func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
 	playerTag := cmd.String("tag")
 
 	homeDir, err := os.UserHomeDir()
@@ -845,7 +854,8 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	if _, err := os.Stat(pidFile); err == nil {
 		pidData, _ := os.ReadFile(pidFile)
 		var pid int
-		fmt.Sscanf(string(pidData), "%d", &pid)
+		// Parse error is acceptable - invalid PID will just fail FindProcess
+		_, _ = fmt.Sscanf(string(pidData), "%d", &pid)
 		process, err := os.FindProcess(pid)
 		if err == nil {
 			// Try to signal the process to check if it's alive
@@ -854,7 +864,7 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 			}
 		}
 		// Process is dead, clean up PID file
-		os.Remove(pidFile)
+		_ = os.Remove(pidFile) // Error is acceptable - file may have been deleted by another process
 	}
 
 	// Ensure PID directory exists
@@ -912,7 +922,16 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %w", err)
 	}
-	defer logHandle.Close()
+	defer func() {
+		if closeErr := logHandle.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = fmt.Errorf("failed to close log file: %w", closeErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close log file: %v\n", closeErr)
+			}
+		}
+	}()
 
 	// Set up attributes for background process
 	attr := &os.ProcAttr{
@@ -927,7 +946,7 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 
 	// Write PID file
 	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", process.Pid)), 0o644); err != nil {
-		process.Kill()
+		_ = process.Kill() // Best-effort cleanup - process was just started, may not be running yet
 		return fmt.Errorf("failed to write PID file: %w", err)
 	}
 

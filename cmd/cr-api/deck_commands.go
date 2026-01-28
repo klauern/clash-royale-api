@@ -3111,7 +3111,12 @@ func configureFuzzIntegration(cmd *cli.Command, builder *deck.Builder) error {
 	if err != nil {
 		return fmt.Errorf("failed to open fuzz storage: %w", err)
 	}
-	defer storage.Close()
+	defer func() {
+		if err := storage.Close(); err != nil {
+			// Log but don't fail - error during cleanup is not critical
+			fmt.Fprintf(os.Stderr, "warning: failed to close fuzz storage: %v\n", err)
+		}
+	}()
 
 	deckLimit := cmd.Int("fuzz-deck-limit")
 	if deckLimit <= 0 {

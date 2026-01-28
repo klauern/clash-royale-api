@@ -184,8 +184,17 @@ func NewDiscoveryRunner(config DiscoveryConfig) (*DiscoveryRunner, error) {
 }
 
 // Run executes the discovery process
-func (r *DiscoveryRunner) Run(ctx context.Context) error {
-	defer r.iterator.Close()
+func (r *DiscoveryRunner) Run(ctx context.Context) (err error) {
+	defer func() {
+		if closeErr := r.iterator.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = fmt.Errorf("failed to close iterator: %w", closeErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close iterator: %v\n", closeErr)
+			}
+		}
+	}()
 
 	for {
 		select {
