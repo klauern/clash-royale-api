@@ -978,6 +978,7 @@ func addDeckCommands() *cli.Command {
 				Action: deckFuzzCommand,
 			},
 			addDiscoverCommands(),
+			addLeaderboardCommands(),
 		},
 	}
 }
