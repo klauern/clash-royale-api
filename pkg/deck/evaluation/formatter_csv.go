@@ -103,27 +103,3 @@ func formatAnalysisSectionCSV(section AnalysisSection) string {
 	return fmt.Sprintf("%s,%.2f,%s,%s,%s\n",
 		section.Title, section.Score, section.Rating, escapedSummary, escapedDetails)
 }
-
-// getSynergyStrengthLabel converts numeric synergy score to strength label
-func getSynergyStrengthLabel(score float64) string {
-	if score >= 0.8 {
-		return "Excellent"
-	} else if score >= 0.6 {
-		return "Strong"
-	} else if score >= 0.4 {
-		return "Good"
-	} else {
-		return "Moderate"
-	}
-}
-
-// escapeCSV escapes a string for CSV format (handles commas, quotes, newlines)
-func escapeCSV(s string) string {
-	// If string contains comma, quote, or newline, wrap in quotes and escape quotes
-	if strings.ContainsAny(s, ",\"\n") {
-		// Escape quotes by doubling them
-		escaped := strings.ReplaceAll(s, "\"", "\"\"")
-		return "\"" + escaped + "\""
-	}
-	return s
-}
