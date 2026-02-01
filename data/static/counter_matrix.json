@@ -1,0 +1,460 @@
+{
+  "version": 1,
+  "description": "Counter relationships for Clash Royale cards - what beats what",
+  "last_updated": "2026-02-01",
+  "research_task": "clash-royale-api-33f5",
+  "counter_types": {
+    "hard": {
+      "description": "Completely shuts down the opponent's card with minimal/no damage",
+      "strength_range": "0.85-0.95"
+    },
+    "soft": {
+      "description": "Favorable matchup but allows some damage or requires skill",
+      "strength_range": "0.50-0.80"
+    },
+    "conditional": {
+      "description": "Depends on levels, timing, or support cards",
+      "strength_range": "0.40-0.70"
+    }
+  },
+  "building_counters": {
+    "Inferno Tower": {
+      "hard_counters": ["Golem", "Giant", "Lava Hound", "P.E.K.K.A", "Mega Knight", "Royal Giant"],
+      "effectiveness": {
+        "Golem": 0.95,
+        "Giant": 0.90,
+        "Lava Hound": 0.90,
+        "P.E.K.K.A": 0.95,
+        "Mega Knight": 0.85,
+        "Royal Giant": 0.80
+      },
+      "countered_by": ["Lightning", "Electro Wizard", "Zap", "Earthquake"]
+    },
+    "Tesla": {
+      "hard_counters": ["Hog Rider", "Balloon", "Battle Ram"],
+      "effectiveness": {
+        "Hog Rider": 0.85,
+        "Balloon": 0.80,
+        "Battle Ram": 0.80
+      },
+      "countered_by": ["Rocket", "Earthquake", "Lightning"]
+    },
+    "Cannon": {
+      "hard_counters": ["Hog Rider", "Giant", "Royal Giant"],
+      "effectiveness": {
+        "Hog Rider": 0.80,
+        "Giant": 0.75,
+        "Royal Giant": 0.70
+      },
+      "countered_by": ["Fireball", "Lightning", "Rocket"]
+    },
+    "Tombstone": {
+      "hard_counters": ["Prince", "P.E.K.K.A", "Mega Knight", "Hog Rider"],
+      "effectiveness": {
+        "Prince": 0.85,
+        "P.E.K.K.A": 0.75,
+        "Mega Knight": 0.70,
+        "Hog Rider": 0.70
+      },
+      "countered_by": ["Poison", "Fireball", "Splash troops"]
+    }
+  },
+  "spell_counters": {
+    "Fireball": {
+      "hard_counters": ["Three Musketeers", "Barbarians"],
+      "soft_counters": ["Wizard", "Musketeer", "Witch", "Flying Machine"],
+      "effectiveness": {
+        "Three Musketeers": 0.95,
+        "Wizard": 0.85,
+        "Musketeer": 0.85,
+        "Witch": 0.80,
+        "Flying Machine": 0.80,
+        "Barbarians": 0.75
+      },
+      "level_dependent": ["Wizard", "Musketeer", "Flying Machine"],
+      "level_requirement": "+1 level for one-shot"
+    },
+    "Lightning": {
+      "hard_counters": ["Inferno Tower", "Inferno Dragon", "Three Musketeers", "Wizard", "Musketeer", "Electro Wizard"],
+      "effectiveness": {
+        "Inferno Tower": 0.95,
+        "Inferno Dragon": 0.90,
+        "Three Musketeers": 0.95,
+        "Wizard": 0.90,
+        "Musketeer": 0.90,
+        "Electro Wizard": 0.90
+      },
+      "level_dependent": []
+    },
+    "Rocket": {
+      "hard_counters": ["Sparky", "X-Bow", "Elixir Collector", "Mortar"],
+      "effectiveness": {
+        "Sparky": 0.90,
+        "X-Bow": 0.85,
+        "Elixir Collector": 0.80,
+        "Mortar": 0.80
+      }
+    },
+    "Zap": {
+      "hard_counters": ["Skeleton Army", "Bats", "Inferno Tower", "Inferno Dragon"],
+      "soft_counters": ["Goblin Barrel", "Minion Horde", "Sparky"],
+      "effectiveness": {
+        "Skeleton Army": 0.90,
+        "Bats": 0.90,
+        "Goblin Barrel": 0.60,
+        "Minion Horde": 0.70,
+        "Inferno Tower": 0.50,
+        "Inferno Dragon": 0.50,
+        "Sparky": 0.70
+      },
+      "level_dependent": ["Goblins", "Minions"]
+    },
+    "Log": {
+      "hard_counters": ["Princess", "Goblin Barrel", "Dart Goblin", "Skeleton Army", "Goblin Gang"],
+      "effectiveness": {
+        "Princess": 0.95,
+        "Goblin Barrel": 0.85,
+        "Dart Goblin": 0.90,
+        "Skeleton Army": 0.90,
+        "Goblin Gang": 0.85
+      }
+    },
+    "Arrows": {
+      "hard_counters": ["Minion Horde", "Skeleton Army", "Goblin Gang", "Princess"],
+      "effectiveness": {
+        "Minion Horde": 0.95,
+        "Skeleton Army": 0.90,
+        "Goblin Gang": 0.85,
+        "Princess": 0.90,
+        "Evolved Firecracker": 0.70
+      }
+    },
+    "Earthquake": {
+      "hard_counters": ["All Buildings", "Elixir Collector", "Tombstone"],
+      "effectiveness": {
+        "Buildings": 0.90,
+        "Elixir Collector": 0.85,
+        "Tombstone": 0.95
+      }
+    },
+    "Poison": {
+      "hard_counters": ["Graveyard", "Graveyard Counters"],
+      "effectiveness": {
+        "Graveyard": 0.90,
+        "Archers": 0.75,
+        "Minions": 0.80,
+        "Skeleton Army": 0.85
+      }
+    }
+  },
+  "troop_counters": {
+    "Mini P.E.K.K.A": {
+      "counters": ["Hog Rider", "Giant", "Golem", "Royal Giant", "Valkyrie"],
+      "effectiveness": {
+        "Hog Rider": 0.70,
+        "Giant": 0.75,
+        "Golem": 0.80,
+        "Royal Giant": 0.80,
+        "Valkyrie": 0.75
+      },
+      "countered_by": ["Skeleton Army", "Goblin Gang", "Bats", "Minions"]
+    },
+    "P.E.K.K.A": {
+      "counters": ["Golem", "Mega Knight", "Giant", "Hog Rider", "Royal Giant"],
+      "effectiveness": {
+        "Golem": 0.90,
+        "Mega Knight": 0.85,
+        "Giant": 0.85,
+        "Hog Rider": 0.80,
+        "Royal Giant": 0.90
+      },
+      "countered_by": ["Inferno Tower", "Inferno Dragon", "Skeleton Army", "Bats", "Minion Horde"]
+    },
+    "Inferno Dragon": {
+      "counters": ["Golem", "Giant", "Lava Hound", "P.E.K.K.A", "Mega Knight", "Royal Giant"],
+      "effectiveness": {
+        "Golem": 0.90,
+        "Giant": 0.90,
+        "Lava Hound": 0.90,
+        "P.E.K.K.A": 0.85,
+        "Mega Knight": 0.85,
+        "Royal Giant": 0.80
+      },
+      "countered_by": ["Zap", "Electro Wizard", "Ice Spirit", "Lightning"]
+    },
+    "Musketeer": {
+      "counters": ["Balloon", "Baby Dragon", "Lava Hound", "Minion Horde"],
+      "effectiveness": {
+        "Balloon": 0.80,
+        "Baby Dragon": 0.70,
+        "Lava Hound": 0.75,
+        "Minion Horde": 0.75
+      },
+      "countered_by": ["Fireball", "Lightning", "Poison", "Rocket"]
+    },
+    "Wizard": {
+      "counters": ["Minion Horde", "Skeleton Army", "Goblin Gang", "Balloon"],
+      "effectiveness": {
+        "Minion Horde": 0.90,
+        "Skeleton Army": 0.85,
+        "Goblin Gang": 0.80,
+        "Balloon": 0.75
+      },
+      "countered_by": ["Fireball", "Lightning", "Poison", "Rocket", "Miner"]
+    },
+    "Valkyrie": {
+      "counters": ["Skeleton Army", "Goblin Gang", "Guards", "Ground swarms"],
+      "effectiveness": {
+        "Skeleton Army": 0.90,
+        "Goblin Gang": 0.85,
+        "Guards": 0.80,
+        "Ground swarms": 0.90
+      },
+      "countered_by": ["Air troops", "Mini P.E.K.K.A", "PEKKA", "Inferno Dragon"]
+    },
+    "Baby Dragon": {
+      "counters": ["Minion Horde", "Bats", "Swarms", "Graveyard"],
+      "effectiveness": {
+        "Minion Horde": 0.85,
+        "Bats": 0.90,
+        "Swarms": 0.85,
+        "Graveyard": 0.75
+      },
+      "countered_by": ["Musketeer", "Wizard", "Mega Minion", "Executioner"]
+    },
+    "Executioner": {
+      "counters": ["Swarms", "Graveyard", "Minion Horde", "Skeleton Army"],
+      "effectiveness": {
+        "Swarms": 0.90,
+        "Graveyard": 0.85,
+        "Minion Horde": 0.90,
+        "Skeleton Army": 0.90
+      },
+      "countered_by": ["Lightning", "Rocket", "Fireball"]
+    },
+    "Mega Minion": {
+      "counters": ["Balloon", "Baby Dragon", "Lava Hound"],
+      "effectiveness": {
+        "Balloon": 0.75,
+        "Baby Dragon": 0.70,
+        "Lava Hound": 0.70
+      },
+      "countered_by": ["Musketeer", "Wizard", "Executioner", "Archers"]
+    },
+    "Hunter": {
+      "counters": ["Golem", "Giant", "Royal Giant", "Lava Hound"],
+      "effectiveness": {
+        "Golem": 0.80,
+        "Giant": 0.80,
+        "Royal Giant": 0.85,
+        "Lava Hound": 0.75
+      },
+      "countered_by": ["Swarms", "Minions", "Bats", "Fireball"]
+    },
+    "Electro Wizard": {
+      "counters": ["Inferno Tower", "Inferno Dragon", "Sparky", "Battle Ram"],
+      "effectiveness": {
+        "Inferno Tower": 0.85,
+        "Inferno Dragon": 0.80,
+        "Sparky": 0.95,
+        "Battle Ram": 0.75
+      },
+      "countered_by": ["Fireball", "Lightning", "Poison", "Rocket"]
+    }
+  },
+  "win_condition_counters": {
+    "Hog Rider": {
+      "hard_counters": ["Cannon", "Tesla", "Inferno Tower", "Tombstone"],
+      "soft_counters": ["Mini P.E.K.K.A", "Barbarians", "Goblin Gang", "Mega Knight", "Tornado"],
+      "effectiveness": {
+        "Cannon": 0.80,
+        "Tesla": 0.85,
+        "Inferno Tower": 0.75,
+        "Tombstone": 0.70,
+        "Mini P.E.K.K.A": 0.70,
+        "Barbarians": 0.70,
+        "Goblin Gang": 0.65,
+        "Mega Knight": 0.75,
+        "Tornado": 0.75
+      }
+    },
+    "Goblin Barrel": {
+      "hard_counters": ["Log", "Barbarian Barrel", "Arrows"],
+      "soft_counters": ["Zap", "Electro Wizard", "Goblin Gang", "Valkyrie"],
+      "effectiveness": {
+        "Log": 0.90,
+        "Barbarian Barrel": 0.85,
+        "Arrows": 0.85,
+        "Zap": 0.70,
+        "Electro Wizard": 0.80,
+        "Goblin Gang": 0.70,
+        "Valkyrie": 0.85
+      }
+    },
+    "Balloon": {
+      "hard_counters": ["Tesla", "Inferno Tower", "Musketeer"],
+      "soft_counters": ["Mega Minion", "Wizard", "Bats", "Electro Wizard"],
+      "effectiveness": {
+        "Tesla": 0.80,
+        "Inferno Tower": 0.90,
+        "Musketeer": 0.80,
+        "Mega Minion": 0.75,
+        "Wizard": 0.75,
+        "Bats": 0.70,
+        "Electro Wizard": 0.75
+      }
+    },
+    "Golem": {
+      "hard_counters": ["Inferno Tower", "Inferno Dragon"],
+      "soft_counters": ["Mini P.E.K.K.A", "P.E.K.K.A", "Hunter", "Tornado"],
+      "effectiveness": {
+        "Inferno Tower": 0.95,
+        "Inferno Dragon": 0.90,
+        "Mini P.E.K.K.A": 0.80,
+        "P.E.K.K.A": 0.90,
+        "Hunter": 0.80,
+        "Tornado": 0.70
+      }
+    },
+    "Graveyard": {
+      "hard_counters": ["Poison", "Valkyrie"],
+      "soft_counters": ["Archers", "Executioner", "Baby Dragon", "Wizard"],
+      "effectiveness": {
+        "Poison": 0.90,
+        "Valkyrie": 0.85,
+        "Archers": 0.80,
+        "Executioner": 0.85,
+        "Baby Dragon": 0.75,
+        "Wizard": 0.80
+      }
+    },
+    "X-Bow": {
+      "hard_counters": ["Rocket"],
+      "soft_counters": ["Earthquake", "Giant", "Golem", "Hog Rider", "Miner"],
+      "effectiveness": {
+        "Rocket": 0.90,
+        "Earthquake": 0.85,
+        "Giant": 0.80,
+        "Golem": 0.85,
+        "Hog Rider": 0.75,
+        "Miner": 0.70
+      }
+    },
+    "Royal Giant": {
+      "hard_counters": ["Inferno Tower", "P.E.K.K.A"],
+      "soft_counters": ["Mini P.E.K.K.A", "Hunter", "Barbarians", "Electro Wizard"],
+      "effectiveness": {
+        "Inferno Tower": 0.85,
+        "P.E.K.K.A": 0.90,
+        "Mini P.E.K.K.A": 0.80,
+        "Hunter": 0.85,
+        "Barbarians": 0.75,
+        "Electro Wizard": 0.70
+      }
+    },
+    "Lava Hound": {
+      "hard_counters": ["Inferno Tower", "Inferno Dragon"],
+      "soft_counters": ["Musketeer", "Wizard", "Executioner", "Tesla", "Mega Minion"],
+      "effectiveness": {
+        "Inferno Tower": 0.90,
+        "Inferno Dragon": 0.90,
+        "Musketeer": 0.80,
+        "Wizard": 0.80,
+        "Executioner": 0.85,
+        "Tesla": 0.75,
+        "Mega Minion": 0.70
+      }
+    }
+  },
+  "counter_to_counter": {
+    "description": "Counters to the counters (meta layer)",
+    "relationships": [
+      { "counter": "Lightning", "targets": "Inferno Tower", "effectiveness": 0.95, "reason": "Counters the tank counter" },
+      { "counter": "Electro Wizard", "targets": "Inferno Tower", "effectiveness": 0.80, "reason": "Reset beam" },
+      { "counter": "Zap", "targets": "Inferno Dragon", "effectiveness": 0.70, "reason": "Reset beam" },
+      { "counter": "Zap", "targets": "Skeleton Army", "effectiveness": 0.90, "reason": "Counters Hog counter" },
+      { "counter": "Poison", "targets": "Graveyard Counters", "effectiveness": 0.70, "reason": "Clears small troops" },
+      { "counter": "Earthquake", "targets": "Buildings", "effectiveness": 0.90, "reason": "Counters building decks" },
+      { "counter": "Freeze", "targets": "Inferno Tower", "effectiveness": 0.85, "reason": "Counters tank counter" }
+    ]
+  },
+  "archetype_matchups": {
+    "description": "Archetype advantage relationships",
+    "triangle": {
+      "beatdown": { "beats": "siege", "loses_to": "control" },
+      "siege": { "beats": "control", "loses_to": "beatdown" },
+      "control": { "beats": "beatdown", "loses_to": "siege" }
+    },
+    "speed_matchups": {
+      "fast_cycle": { "beats": "slow_beatdown", "loses_to": "aggro_spam" },
+      "medium_control": { "beats": "fast_cycle", "loses_to": "heavy_beatdown" },
+      "slow_beatdown": { "beats": "medium_control", "loses_to": "fast_cycle" }
+    },
+    "specific": {
+      "beatdown": { "weak_to": ["inferno", "cycle", "pekka"], "strong_vs": ["siege", "spell_bait"] },
+      "hog_cycle": { "weak_to": ["splash", "spell_cycle"], "strong_vs": ["beatdown"] },
+      "log_bait": { "weak_to": ["multiple_spells"], "strong_vs": ["single_spell"] },
+      "bridge_spam": { "weak_to": ["swarms", "splash"], "strong_vs": ["no_swarm_counters"] },
+      "siege": { "weak_to": ["beatdown", "heavy_tanks"], "strong_vs": ["control", "cycle"] },
+      "lavaloon": { "weak_to": ["anti_air_heavy"], "strong_vs": ["anti_air_light"] },
+      "graveyard": { "weak_to": ["splash_heavy"], "strong_vs": ["splash_light"] }
+    }
+  },
+  "vulnerability_detection": {
+    "wasted_framework": {
+      "W": { "name": "Win Condition", "test": "Has dedicated tower damage card" },
+      "A": { "name": "Air Counter", "test": "Has 2+ air-targeting cards" },
+      "S": { "name": "Splash", "test": "Has 2+ splash damage sources" },
+      "T": { "name": "Tank Killer", "test": "Has high DPS or % damage" },
+      "E": { "name": "Elixir Management", "test": "Has pump or efficient cycle" },
+      "D": { "name": "Defense", "test": "Has building or defensive troops" }
+    },
+    "common_vulnerabilities": {
+      "weak_to_air": {
+        "missing": ["Musketeer", "Wizard", "Executioner", "Mega Minion", "Tesla"],
+        "vulnerable_to": ["Lava Hound", "Balloon", "Minion Horde"]
+      },
+      "weak_to_splash": {
+        "missing": ["Valkyrie", "Baby Dragon", "Wizard", "Bomber"],
+        "vulnerable_to": ["Skeleton Army", "Goblin Gang", "Graveyard"]
+      },
+      "weak_to_tanks": {
+        "missing": ["Inferno Tower", "Inferno Dragon", "Mini P.E.K.K.A", "P.E.K.K.A", "Hunter"],
+        "vulnerable_to": ["Golem", "Giant", "Mega Knight", "Lava Hound"]
+      },
+      "weak_to_building_targeters": {
+        "missing": ["Cannon", "Tesla", "Inferno Tower", "Tombstone"],
+        "vulnerable_to": ["Hog Rider", "Royal Giant", "Giant", "Balloon"]
+      },
+      "weak_to_spell_bait": {
+        "missing": ["Zap", "Log", "Arrows", "Barbarian Barrel"],
+        "vulnerable_to": ["Goblin Barrel", "Princess", "Goblin Gang"]
+      },
+      "weak_to_graveyard": {
+        "missing": ["Poison", "Valkyrie", "Archers"],
+        "vulnerable_to": ["Graveyard + Freeze/Poison"]
+      }
+    },
+    "coverage_scoring": {
+      "formula": "(WinCon ? 20 : 0) + (AirDefense ? 20 : 0) + (Splash ? 20 : 0) + (TankKiller ? 20 : 0) + (Defense ? 20 : 0)",
+      "ratings": {
+        "100": "Perfect coverage",
+        "80-99": "Good coverage",
+        "60-79": "Moderate vulnerabilities",
+        "40-59": "Significant vulnerabilities",
+        "<40": "Critical vulnerabilities"
+      }
+    }
+  },
+  "level_dependent_interactions": [
+    { "spell": "Fireball", "target": "Wizard", "requirement": "+1 level", "outcome": "One-shot kill" },
+    { "spell": "Fireball", "target": "Musketeer", "requirement": "+1 level", "outcome": "One-shot kill" },
+    { "spell": "Fireball", "target": "Flying Machine", "requirement": "+1 level", "outcome": "One-shot kill" },
+    { "spell": "Zap", "target": "Goblins", "requirement": "Equal level", "outcome": "One-shot kill" },
+    { "spell": "Zap", "target": "Minions", "requirement": "+2 levels", "outcome": "One-shot kill" },
+    { "spell": "Arrows", "target": "Minions", "requirement": "Equal level", "outcome": "One-shot kill" },
+    { "spell": "Arrows", "target": "Princess", "requirement": "Equal level", "outcome": "One-shot kill" },
+    { "spell": "Log", "target": "Princess", "requirement": "Equal level", "outcome": "One-shot kill" },
+    { "spell": "Log", "target": "Dart Goblin", "requirement": "Equal level", "outcome": "One-shot kill" }
+  ]
+}
