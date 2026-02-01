@@ -4,7 +4,16 @@ The Clash Royale API includes an intelligent deck building system that creates o
 
 ## Overview
 
-The deck builder analyzes player data to recommend balanced decks with proper card roles and synergies. It considers card levels, rarity, elixir cost, and strategic roles.
+The deck builder analyzes player data to recommend balanced decks with proper card roles and synergies. It uses an improved **V2 scoring algorithm** that considers:
+
+- **Card Quality (60%)**: Individual card strength, levels, and evolution status
+- **Synergy Score (20%)**: How well cards work together in combinations
+- **Counter Coverage (15%)**: Defense against common threats (air, tanks, swarms)
+- **Archetype Coherence (10%)**: How well cards fit a strategic playstyle
+- **Elixir Fit (25%)**: Elixir curve appropriate for the deck's strategy
+- **Combat Stats (20%)**: DPS, HP efficiency, and targeting coverage
+
+See [IMPROVED_SCORING_DESIGN.md](./IMPROVED_SCORING_DESIGN.md) for complete algorithm details.
 
 ## Card Roles
 
@@ -30,6 +39,12 @@ Each card is assigned a strategic role:
 
 # Build from offline analysis file
 ./bin/cr-api deck build --from-analysis 'path/to/analysis.json'
+
+# Build with custom synergy weight (V2 algorithm)
+./bin/cr-api deck build --tag '#PLAYERTAG' --synergy-weight 0.25
+
+# Build with counter coverage enabled
+./bin/cr-api deck build --tag '#PLAYERTAG' --enable-counters
 ```
 
 ## Deck Building Strategy
