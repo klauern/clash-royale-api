@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "description": "Meta decks from RoyaleAPI - high quality decks expected to score 8.0+",
+  "last_updated": "2026-02-01",
+  "decks": [
+    {
+      "name": "2.6 Hog Cycle",
+      "archetype": "cycle",
+      "cards": ["Hog Rider", "Musketeer", "Valkyrie", "Cannon", "Fireball", "The Log", "Ice Spirit", "Skeletons"],
+      "expected_score": 8.5,
+      "win_condition": "Hog Rider"
+    },
+    {
+      "name": "Log Bait",
+      "archetype": "bait",
+      "cards": ["Goblin Barrel", "Princess", "Goblin Gang", "Knight", "Inferno Tower", "Ice Spirit", "The Log", "Rocket"],
+      "expected_score": 8.0,
+      "win_condition": "Goblin Barrel"
+    },
+    {
+      "name": "Golem Beatdown",
+      "archetype": "beatdown",
+      "cards": ["Golem", "Night Witch", "Baby Dragon", "Tornado", "Lightning", "Mega Minion", "Elixir Collector", "Lumberjack"],
+      "expected_score": 8.5,
+      "win_condition": "Golem"
+    },
+    {
+      "name": "LavaLoon",
+      "archetype": "beatdown",
+      "cards": ["Lava Hound", "Balloon", "Miner", "Mega Minion", "Skeleton Dragons", "Tornado", "Log", "Arrows"],
+      "expected_score": 8.5,
+      "win_condition": "Lava Hound"
+    },
+    {
+      "name": "X-Bow Cycle",
+      "archetype": "siege",
+      "cards": ["X-Bow", "Tesla", "Arcane", "Knight", "Fireball", "Log", "Ice Spirit", "Skeletons"],
+      "expected_score": 8.0,
+      "win_condition": "X-Bow"
+    },
+    {
+      "name": "Graveyard",
+      "archetype": "control",
+      "cards": ["Graveyard", "Ice Wizard", "Poison", "Cannon", "Baby Dragon", "Skeleton Army", "Tombstone", "Bats"],
+      "expected_score": 8.0,
+      "win_condition": "Graveyard"
+    },
+    {
+      "name": "Mega Knight Deck",
+      "archetype": "bridge",
+      "cards": ["Mega Knight", "Electro Wizard", "Bandit", "Battle Ram", "Inferno Dragon", "Zap", "Log", "Skeletons"],
+      "expected_score": 8.0,
+      "win_condition": "Mega Knight"
+    },
+    {
+      "name": "Elite Barbs Bridge Spam",
+      "archetype": "bridge",
+      "cards": ["Elite Barbarians", "Bandit", "Battle Ram", "P.E.K.K.A", "Electro Wizard", "Fireball", "Log", "Ice Spirit"],
+      "expected_score": 7.5,
+      "win_condition": "Elite Barbarians"
+    },
+    {
+      "name": "Goblin Drill",
+      "archetype": "siege",
+      "cards": ["Goblin Drill", "Goblin Cage", "Goblin Gang", "Bats", "Baby Dragon", "Electro Wizard", "Tornado", "Log"],
+      "expected_score": 7.5,
+      "win_condition": "Goblin Drill"
+    },
+    {
+      "name": "Royal Giant",
+      "archetype": "cycle",
+      "cards": ["Royal Giant", "Electro Wizard", "Musketeer", "Fireball", "Skeleton Army", "Log", "Hunter", "Cannon"],
+      "expected_score": 7.5,
+      "win_condition": "Royal Giant"
+    },
+    {
+      "name": "Miner Poison",
+      "archetype": "control",
+      "cards": ["Miner", "Poison", "Goblin Barrel", "Archers", "Ice Wizard", "Skeleton Army", "Bats", "Rocket"],
+      "expected_score": 7.5,
+      "win_condition": "Miner"
+    },
+    {
+      "name": "P.E.K.K.A Bridge Spam",
+      "archetype": "bridge",
+      "cards": ["P.E.K.K.A", "Battle Ram", "Bandit", "Electro Wizard", "Mega Minion", "Fireball", "Log", "Ice Spirit"],
+      "expected_score": 8.0,
+      "win_condition": "P.E.K.K.A"
+    },
+    {
+      "name": "Balloon Cycle",
+      "archetype": "beatdown",
+      "cards": ["Balloon", "Lumberjack", "Ice Spirit", "Bats", "Skeleton Army", "Tombstone", "Log", "Arrows"],
+      "expected_score": 7.0,
+      "win_condition": "Balloon"
+    },
+    {
+      "name": "Mortar Beatdown",
+      "archetype": "siege",
+      "cards": ["Mortar", "Knight", "Archers", "Fireball", "Skeleton Army", "Ice Spirit", "Goblin Gang", "Log"],
+      "expected_score": 7.5,
+      "win_condition": "Mortar"
+    },
+    {
+      "name": "Three Musketeers",
+      "archetype": "control",
+      "cards": ["Three Musketeers", "Battle Ram", "Ice Golem", "Electro Wizard", "Fireball", "Log", "Skeletons", "Bats"],
+      "expected_score": 7.5,
+      "win_condition": "Three Musketeers"
+    },
+    {
+      "name": "Giant Witch",
+      "archetype": "beatdown",
+      "cards": ["Giant", "Witch", "Musketeer", "Fireball", "Ice Wizard", "Cannon", "Skeleton Army", "Log"],
+      "expected_score": 7.5,
+      "win_condition": "Giant"
+    },
+    {
+      "name": "Hog 2.9",
+      "archetype": "cycle",
+      "cards": ["Hog Rider", "Musketeer", "Fireball", "The Log", "Ice Spirit", "Cannon", "Smithing", "Skeletons"],
+      "expected_score": 8.0,
+      "win_condition": "Hog Rider"
+    },
+    {
+      "name": "Electro Giant Beatdown",
+      "archetype": "beatdown",
+      "cards": ["Electro Giant", "Tornado", "Heal Spirit", "Mother Witch", "Dark Prince", "Mega Minion", "Electro Wizard", "Baby Dragon"],
+      "expected_score": 8.0,
+      "win_condition": "Electro Giant"
+    },
+    {
+      "name": "Graveyard Freeze",
+      "archetype": "control",
+      "cards": ["Graveyard", "Freeze", "Ice Wizard", "Cannon", "Baby Dragon", "Skeleton Army", "Tombstone", "Poison"],
+      "expected_score": 7.5,
+      "win_condition": "Graveyard"
+    },
+    {
+      "name": "Wall Breakers",
+      "archetype": "beatdown",
+      "cards": ["Wall Breakers", "Giant", "Valkyrie", "Musketeer", "Fireball", "Zap", "Skeleton Army", "Ice Spirit"],
+      "expected_score": 7.0,
+      "win_condition": "Wall Breakers"
+    }
+  ]
+}
