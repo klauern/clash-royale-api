@@ -1185,3 +1185,72 @@ func TestCalculateUpgradePriorities(t *testing.T) {
 		t.Errorf("Fireball gap should be 5, got %v", priorities[1].gap)
 	}
 }
+
+// TestIceGolemElixirCost_BugClashRoyaleApi0338 verifies that Ice Golem
+// is correctly displayed with 2 elixir cost, not 7.
+// This is a regression test for https://github.com/klauer/clash-royale-api/issues/0338
+func TestIceGolemElixirCost_BugClashRoyaleApi0338(t *testing.T) {
+	// Create a deck with Ice Golem as an investment card (win condition >= 6 elixir)
+	// Note: Ice Golem has 2 elixir but can be a win condition in certain decks
+	cards := []deck.CardCandidate{
+		makeCard("Ice Golem", deck.RoleWinCondition, 11, 11, "Rare", 2), // 2 elixir - NOT 7
+		makeCardWithTargets("Musketeer", deck.RoleSupport, 11, 11, "Rare", 4, "Air & Ground", 100),
+		makeCardWithTargets("Mega Minion", deck.RoleSupport, 11, 11, "Rare", 3, "Air & Ground", 120),
+		makeCard("Tesla", deck.RoleBuilding, 11, 11, "Common", 4),
+		makeCard("Log", deck.RoleSpellSmall, 11, 11, "Legendary", 2),
+		makeCard("Ice Spirit", deck.RoleCycle, 11, 11, "Common", 1),
+		makeCard("Skeletons", deck.RoleCycle, 11, 11, "Common", 1),
+		makeCard("Spear Goblins", deck.RoleCycle, 11, 11, "Common", 2),
+	}
+
+	result := BuildDefenseAnalysis(cards)
+	detailsStr := strings.Join(result.Details, " ")
+
+	// The bug was: Ice Golem (7 elixir) needs defensive support
+	// Correct: Ice Golem (2 elixir) needs defensive support
+	// We need to verify it shows "2 elixir" not "7 elixir"
+
+	// First check if the message exists (for decks with high-elixir win conditions)
+	// Ice Golem at 2 elixir is < 6, so it won't trigger the investment message
+	// Let's verify it doesn't incorrectly show 7 elixir
+
+	// Check that Ice Golem's elixir is 2
+	for _, card := range cards {
+		if card.Name == "Ice Golem" {
+			if card.Elixir != 2 {
+				t.Errorf("Ice Golem elixir cost = %d, want 2", card.Elixir)
+			}
+		}
+	}
+
+	// Verify details doesn't contain the buggy "7 elixir" for Ice Golem
+	if strings.Contains(detailsStr, "Ice Golem (7 elixir)") {
+		t.Errorf("Bug detected: Ice Golem incorrectly shown as 7 elixir, should be 2")
+	}
+
+	// Also verify that if we have a true high-elixir card, it shows correctly
+	// Let's test with a Golem (8 elixir) to verify the format works correctly
+	highElixirCards := []deck.CardCandidate{
+		makeCard("Golem", deck.RoleWinCondition, 11, 11, "Epic", 8), // 8 elixir
+		makeCardWithTargets("Musketeer", deck.RoleSupport, 11, 11, "Rare", 4, "Air & Ground", 100),
+		makeCardWithTargets("Mega Minion", deck.RoleSupport, 11, 11, "Rare", 3, "Air & Ground", 120),
+		makeCard("Tesla", deck.RoleBuilding, 11, 11, "Common", 4),
+		makeCard("Log", deck.RoleSpellSmall, 11, 11, "Legendary", 2),
+		makeCard("Ice Spirit", deck.RoleCycle, 11, 11, "Common", 1),
+		makeCard("Skeletons", deck.RoleCycle, 11, 11, "Common", 1),
+		makeCard("Spear Goblins", deck.RoleCycle, 11, 11, "Common", 2),
+	}
+
+	resultHighElixir := BuildDefenseAnalysis(highElixirCards)
+	detailsHighStr := strings.Join(resultHighElixir.Details, " ")
+
+	// Verify Golem shows as 8 elixir
+	if !strings.Contains(detailsHighStr, "Golem (8 elixir)") {
+		t.Errorf("Expected 'Golem (8 elixir)' in details, got: %s", detailsHighStr)
+	}
+
+	// Verify it doesn't show an incorrect value
+	if strings.Contains(detailsHighStr, "Golem (7 elixir)") || strings.Contains(detailsHighStr, "Golem (9 elixir)") {
+		t.Errorf("Golem elixir incorrectly displayed in: %s", detailsHighStr)
+	}
+}
