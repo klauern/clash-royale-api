@@ -453,10 +453,15 @@ func formatDebugInformation(result *EvaluationResult) string {
 	debug.WriteString("Evaluation Metadata:\n")
 	debug.WriteString(fmt.Sprintf("  Engine Version: 1.0.0\n"))
 	debug.WriteString(fmt.Sprintf("  Total Cards Evaluated: %d\n", len(result.Deck)))
+	// Avoid division by zero for decks without synergy analysis
+	synergyPercent := 0.0
+	if result.SynergyMatrix.MaxPossiblePairs > 0 {
+		synergyPercent = float64(result.SynergyMatrix.PairCount) / float64(result.SynergyMatrix.MaxPossiblePairs) * 100
+	}
 	debug.WriteString(fmt.Sprintf("  Synergy Pairs Detected: %d/%d (%.1f%%)\n",
 		result.SynergyMatrix.PairCount,
 		result.SynergyMatrix.MaxPossiblePairs,
-		float64(result.SynergyMatrix.PairCount)/float64(result.SynergyMatrix.MaxPossiblePairs)*100))
+		synergyPercent))
 
 	debug.WriteString("\nScore Calculation Details:\n")
 	debug.WriteString(fmt.Sprintf("  Attack Score: %.2f (Weight: 0.25)\n", result.Attack.Score))
