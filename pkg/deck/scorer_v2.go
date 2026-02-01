@@ -772,3 +772,80 @@ func CompareScorers(cards []CardCandidate, strategy Strategy, synergyDB *Synergy
 		"v2_multi_card_bonuses": v2Result.Details.MultiCardBonuses,
 	}
 }
+
+// ScoreDeckV2WithCounterAnalysis provides enhanced counter coverage analysis using the CounterMatrix.
+// This function extends the basic V2 scoring with detailed threat-based counter analysis.
+//
+// Parameters:
+//   - cards: The 8-card deck to evaluate
+//   - strategy: The intended strategy
+//   - synergyDB: The synergy database for pair analysis
+//   - counterMatrix: The counter matrix for threat-based analysis (can be nil for basic analysis)
+//
+// Returns the V2 result plus detailed defensive coverage information.
+func ScoreDeckV2WithCounterAnalysis(cards []CardCandidate, strategy Strategy, synergyDB *SynergyDatabase, counterMatrix *CounterMatrix) map[string]interface{} {
+	// Get standard V2 result
+	v2Result := ScoreDeckV2(cards, strategy, synergyDB)
+
+	result := map[string]interface{}{
+		"v2_score":            v2Result.FinalScore,
+		"v2_counter_coverage": v2Result.CounterCoverageScore,
+		"v2_details":          v2Result.Details,
+	}
+
+	// If counter matrix is provided, add detailed threat analysis
+	if counterMatrix != nil {
+		// Extract card names
+		cardNames := make([]string, len(cards))
+		for i, card := range cards {
+			cardNames[i] = card.Name
+		}
+
+		// Create defensive scorer
+		defensiveScorer := NewDefensiveScorer(counterMatrix)
+		coverageReport := defensiveScorer.CalculateDefensiveCoverage(cardNames)
+
+		// Create threat analyzer
+		threatAnalyzer := NewThreatAnalyzer(counterMatrix)
+		threatReport := threatAnalyzer.AnalyzeDeck(cardNames)
+
+		// Add detailed counter analysis to result
+		result["defensive_coverage"] = coverageReport
+		result["threat_analysis"] = threatReport
+		result["counter_matrix_available"] = true
+	} else {
+		result["counter_matrix_available"] = false
+		result["defensive_coverage"] = nil
+		result["threat_analysis"] = nil
+	}
+
+	return result
+}
+
+// CalculateCounterCoverageWithMatrix uses the CounterMatrix to calculate detailed counter coverage.
+// This provides more sophisticated analysis than the basic calculateCounterCoverageScore.
+//
+// Parameters:
+//   - cards: The deck cards as CardCandidate
+//   - counterMatrix: The counter matrix with threat relationships
+//
+// Returns a detailed defensive coverage report.
+func CalculateCounterCoverageWithMatrix(cards []CardCandidate, counterMatrix *CounterMatrix) *DefensiveCoverageReport {
+	if counterMatrix == nil {
+		return &DefensiveCoverageReport{
+			OverallScore: 0.0,
+			CoverageGaps:  []string{"No counter matrix provided"},
+		}
+	}
+
+	// Extract card names
+	cardNames := make([]string, len(cards))
+	for i, card := range cards {
+		cardNames[i] = card.Name
+	}
+
+	// Create defensive scorer and calculate coverage
+	defensiveScorer := NewDefensiveScorer(counterMatrix)
+	return defensiveScorer.CalculateDefensiveCoverage(cardNames)
+}
+
