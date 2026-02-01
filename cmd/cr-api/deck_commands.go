@@ -17,6 +17,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/budget"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
+	"github.com/klauer/clash-royale-api/go/pkg/deck/comparison"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/genetic"
 	"github.com/klauer/clash-royale-api/go/pkg/events"
@@ -977,10 +978,140 @@ func addDeckCommands() *cli.Command {
 				},
 				Action: deckFuzzCommand,
 			},
+			{
+				Name:  "compare-algorithms",
+				Usage: "Compare V1 vs V2 deck building algorithms on quality metrics",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:     "tag",
+						Aliases:  []string{"p"},
+						Usage:    "Player tag (without #)",
+						Required: true,
+					},
+					&cli.StringFlag{
+						Name:    "strategies",
+						Aliases: []string{"s"},
+						Value:   "balanced,cycle,control,aggro,splash",
+						Usage:   "Strategies to compare (comma-separated): balanced, cycle, control, aggro, splash, spell, synergy",
+					},
+					&cli.StringFlag{
+						Name:  "output",
+						Usage: "Output file path for comparison report (optional, prints to stdout if not specified)",
+					},
+					&cli.StringFlag{
+						Name:  "format",
+						Value: "markdown",
+						Usage: "Output format: markdown, json",
+					},
+					&cli.Float64Flag{
+						Name:  "significance",
+						Value: 0.05,
+						Usage: "Significance threshold for determining winner (default: 0.05 = 5%)",
+					},
+					&cli.Float64Flag{
+						Name:  "win-threshold",
+						Value: 0.10,
+						Usage: "Win threshold for significant wins/losses (default: 0.10 = 10%)",
+					},
+				},
+				Action: deckCompareAlgorithmsCommand,
+			},
 			addDiscoverCommands(),
 			addLeaderboardCommands(),
 		},
 	}
+}
+
+func deckCompareAlgorithmsCommand(ctx context.Context, cmd *cli.Command) error {
+	tag := cmd.String("tag")
+	strategiesStr := cmd.String("strategies")
+	outputFile := cmd.String("output")
+	format := cmd.String("format")
+	significance := cmd.Float64("significance")
+	winThreshold := cmd.Float64("win-threshold")
+	dataDir := cmd.String("data-dir")
+
+	// Step 1: Configure combat stats
+	if err := configureCombatStats(cmd); err != nil {
+		return err
+	}
+
+	// Step 2: Parse strategies
+	var strategies []deck.Strategy
+	strategiesStr = strings.ToLower(strings.TrimSpace(strategiesStr))
+	strategyList := strings.Split(strategiesStr, ",")
+	for _, s := range strategyList {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		parsedStrategy, err := deck.ParseStrategy(s)
+		if err != nil {
+			return fmt.Errorf("invalid strategy '%s': %w", s, err)
+		}
+		strategies = append(strategies, parsedStrategy)
+	}
+
+	if len(strategies) == 0 {
+		return fmt.Errorf("no valid strategies specified")
+	}
+
+	printf("╔════════════════════════════════════════════════════════════════════╗\n")
+	printf("║              ALGORITHM COMPARISON: V1 vs V2                         ║\n")
+	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+
+	// Step 3: Load player card analysis
+	builder := deck.NewBuilder(dataDir)
+	playerData, err := loadPlayerCardAnalysis(cmd, builder, tag)
+	if err != nil {
+		return fmt.Errorf("failed to analyze player cards: %w", err)
+	}
+
+	printf("Player: %s (%s)\n", playerData.PlayerName, tag)
+	strategyNames := make([]string, len(strategies))
+	for i, s := range strategies {
+		strategyNames[i] = s.String()
+	}
+	printf("Strategies: %s\n\n", strings.Join(strategyNames, ", "))
+
+	// Step 4: Create comparison config
+	config := comparison.DefaultComparisonConfig()
+	config.PlayerTag = tag
+	config.Strategies = strategies
+	config.SignificanceThreshold = significance
+	config.WinThreshold = winThreshold
+
+	// Step 5: Run comparison
+	result, err := comparison.CompareAlgorithms(tag, playerData.CardAnalysis, config)
+	if err != nil {
+		return fmt.Errorf("comparison failed: %w", err)
+	}
+
+	// Step 6: Format output
+	var output string
+	switch strings.ToLower(format) {
+	case "json":
+		output, err = result.ExportJSON()
+		if err != nil {
+			return fmt.Errorf("failed to export JSON: %w", err)
+		}
+	case "markdown", "md":
+		output = result.ExportMarkdown()
+	default:
+		return fmt.Errorf("unknown format: %s (supported: json, markdown)", format)
+	}
+
+	// Step 7: Output to file or stdout
+	if outputFile != "" {
+		if err := os.WriteFile(outputFile, []byte(output), 0o644); err != nil {
+			return fmt.Errorf("failed to write output file: %w", err)
+		}
+		printf("Comparison report saved to: %s\n", outputFile)
+	} else {
+		fmt.Print(output)
+	}
+
+	return nil
 }
 
 func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
