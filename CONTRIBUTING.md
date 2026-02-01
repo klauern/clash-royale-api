@@ -57,10 +57,24 @@ See CLAUDE.md for complete bd documentation.
 Before submitting:
 
 ```bash
-task format   # Format code (gofmt)
-task lint     # Run golangci-lint
-task test     # Run tests
+task format        # Format code (gofmt)
+task lint          # Run golangci-lint (all issues)
+task lint-quality  # Run golangci-lint (new violations only, same as CI)
+task test          # Run tests
 ```
+
+### CI Lint Policy
+
+**CI now hard-fails on new lint violations.** The linter is configured to only report issues introduced in your branch (compared to `origin/main`). This means:
+
+- Existing violations won't block your PR
+- New violations you introduce will cause CI to fail
+- Use `task lint-quality` locally to preview CI behavior
+
+To fix failing CI lint:
+1. Run `task lint-quality` to see new violations
+2. Fix the reported issues
+3. Commit and push the fixes
 
 ## Pull Requests
 
