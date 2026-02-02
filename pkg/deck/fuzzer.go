@@ -52,6 +52,9 @@ type FuzzingConfig struct {
 	// UniquenessWeight enables and configures uniqueness scoring (0.0 = disabled, 0.1-0.3 recommended)
 	// Higher values prefer less common/anti-meta cards
 	UniquenessWeight float64
+	// EnsureArchetypes ensures generated decks cover all archetypes
+	// When true, the fuzzer will attempt to generate decks representing each archetype
+	EnsureArchetypes bool
 }
 
 // FuzzingStats tracks metrics during deck generation

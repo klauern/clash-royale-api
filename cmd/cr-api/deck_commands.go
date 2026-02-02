@@ -985,6 +985,10 @@ func addDeckCommands() *cli.Command {
 						Value: 0.0,
 						Usage: "Weight for card uniqueness scoring (0.0-0.3, default: 0.0 = disabled). Higher values prefer less common/anti-meta cards",
 					},
+					&cli.BoolFlag{
+						Name:  "ensure-archetypes",
+						Usage: "Ensure generated decks cover all archetypes (beatdown, control, cycle, bridge, siege, bait, graveyard, miner)",
+					},
 				},
 				Action: deckFuzzCommand,
 			},

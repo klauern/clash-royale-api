@@ -95,6 +95,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	archetypes := cmd.StringSlice("archetypes")
 	refineRounds := cmd.Int("refine")
 	uniquenessWeight := cmd.Float64("uniqueness-weight")
+	ensureArchetypes := cmd.Bool("ensure-archetypes")
 	mode := strings.ToLower(cmd.String("mode"))
 	gaPopulation := cmd.Int("ga-population")
 	gaGenerations := cmd.Int("ga-generations")
@@ -262,6 +263,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		MutationIntensity: mutationIntensity,
 		ArchetypeFilter:   normalizedArchetypes,
 		UniquenessWeight:  uniquenessWeight,
+		EnsureArchetypes:  ensureArchetypes,
 	}
 
 	// Handle --include-from-saved: extract cards from saved top decks
@@ -775,6 +777,11 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	// Sort results
 	sortFuzzingResults(dedupedResults, sortBy)
 
+	// Ensure archetype coverage if requested
+	if ensureArchetypes && mode != "genetic" {
+		dedupedResults = ensureArchetypeCoverage(dedupedResults, top, verbose)
+	}
+
 	// Get top N results
 	topResults := getTopResults(dedupedResults, top)
 
@@ -1282,6 +1289,98 @@ func filterResultsByArchetype(results []FuzzingResult, archetypes []string, _ bo
 	}
 
 	return filtered
+}
+
+// ensureArchetypeCoverage ensures the top results include at least one deck from each archetype.
+// It reorders results to guarantee archetype diversity while preserving score-based ranking as much as possible.
+func ensureArchetypeCoverage(results []FuzzingResult, top int, verbose bool) []FuzzingResult {
+	if len(results) == 0 {
+		return results
+	}
+
+	// Define all archetypes we want to cover
+	allArchetypes := []string{"beatdown", "control", "cycle", "bridge", "siege", "bait", "graveyard", "miner", "hybrid", "unknown"}
+
+	// Group results by archetype
+	archetypeGroups := make(map[string][]FuzzingResult)
+	for _, arch := range allArchetypes {
+		archetypeGroups[arch] = make([]FuzzingResult, 0)
+	}
+
+	for _, result := range results {
+		arch := result.Archetype
+		if _, exists := archetypeGroups[arch]; !exists {
+			arch = "unknown"
+		}
+		archetypeGroups[arch] = append(archetypeGroups[arch], result)
+	}
+
+	// Count how many archetypes have at least one deck
+	coveredArchetypes := 0
+	for _, arch := range allArchetypes {
+		if len(archetypeGroups[arch]) > 0 {
+			coveredArchetypes++
+		}
+	}
+
+	if verbose {
+		fprintf(os.Stderr, "Archetype coverage: %d/%d archetypes represented in results\n", coveredArchetypes, len(allArchetypes))
+	}
+
+	// Build the final result list with archetype diversity
+	// Strategy: Round-robin selection from each archetype group, taking the best deck from each
+	// archetype in turn, until we've filled the top N slots or exhausted all decks
+	finalResults := make([]FuzzingResult, 0, len(results))
+	usedDecks := make(map[string]bool) // Track used decks by their key
+
+	// First pass: ensure at least one from each archetype that has decks
+	for _, arch := range allArchetypes {
+		group := archetypeGroups[arch]
+		if len(group) == 0 {
+			continue
+		}
+
+		// Find the first unused deck from this archetype
+		for _, result := range group {
+			key := deckKeyForResult(result)
+			if !usedDecks[key] {
+				finalResults = append(finalResults, result)
+				usedDecks[key] = true
+				break
+			}
+		}
+	}
+
+	// Second pass: fill remaining slots with the best remaining decks from any archetype
+	for _, result := range results {
+		key := deckKeyForResult(result)
+		if usedDecks[key] {
+			continue
+		}
+		finalResults = append(finalResults, result)
+		usedDecks[key] = true
+	}
+
+	if verbose {
+		// Count how many archetypes are represented in the top N
+		topN := min(top, len(finalResults))
+		topArchetypes := make(map[string]int)
+		for i := 0; i < topN; i++ {
+			topArchetypes[finalResults[i].Archetype]++
+		}
+		fprintf(os.Stderr, "Top %d decks include %d different archetypes: ", topN, len(topArchetypes))
+		first := true
+		for arch, count := range topArchetypes {
+			if !first {
+				fprintf(os.Stderr, ", ")
+			}
+			fprintf(os.Stderr, "%s=%d", arch, count)
+			first = false
+		}
+		fprintln(os.Stderr)
+	}
+
+	return finalResults
 }
 
 // deduplicateResults removes duplicate decks based on card composition
