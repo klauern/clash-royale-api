@@ -1079,8 +1079,21 @@ func deckCompareAlgorithmsCommand(ctx context.Context, cmd *cli.Command) error {
 
 // parseStrategies parses a comma-separated list of strategy strings
 func parseStrategies(strategiesStr string) ([]deck.Strategy, error) {
-	var strategies []deck.Strategy
 	strategiesStr = strings.ToLower(strings.TrimSpace(strategiesStr))
+
+	// Handle "all" keyword
+	if strategiesStr == deckStrategyAll {
+		return []deck.Strategy{
+			deck.StrategyBalanced,
+			deck.StrategyAggro,
+			deck.StrategyControl,
+			deck.StrategyCycle,
+			deck.StrategySplash,
+			deck.StrategySpell,
+		}, nil
+	}
+
+	var strategies []deck.Strategy
 	strategyList := strings.Split(strategiesStr, ",")
 
 	for _, s := range strategyList {
@@ -1100,6 +1113,88 @@ func parseStrategies(strategiesStr string) ([]deck.Strategy, error) {
 	}
 
 	return strategies, nil
+}
+
+// suitePlayerData holds player data loaded for suite operations
+type suitePlayerData struct {
+	CardAnalysis deck.CardAnalysis
+	PlayerName   string
+	PlayerTag    string
+}
+
+// loadSuitePlayerData loads player data for suite commands (online or offline)
+func loadSuitePlayerData(builder *deck.Builder, tag, apiToken, dataDir string, fromAnalysis, verbose bool) (*suitePlayerData, error) {
+	if fromAnalysis {
+		// OFFLINE MODE: Load from existing analysis JSON
+		if verbose {
+			printf("Building deck suite from offline analysis for player %s\n", tag)
+		}
+
+		analysisDir := filepath.Join(dataDir, "analysis")
+		loadedAnalysis, err := builder.LoadLatestAnalysis(tag, analysisDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+		}
+
+		return &suitePlayerData{
+			CardAnalysis: *loadedAnalysis,
+			PlayerName:   tag,
+			PlayerTag:    tag,
+		}, nil
+	}
+
+	// ONLINE MODE: Fetch from API
+	if apiToken == "" {
+		return nil, fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
+	}
+
+	client := clashroyale.NewClient(apiToken)
+
+	if verbose {
+		printf("Building deck suite for player %s\n", tag)
+	}
+
+	// Get player information
+	player, err := client.GetPlayer(tag)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get player: %w", err)
+	}
+
+	if verbose {
+		printf("Player: %s (%s)\n", player.Name, player.Tag)
+		printf("Analyzing %d cards...\n", len(player.Cards))
+	}
+
+	// Perform card collection analysis
+	analysisOptions := analysis.DefaultAnalysisOptions()
+	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze card collection: %w", err)
+	}
+
+	// Convert analysis.CardAnalysis to deck.CardAnalysis
+	deckCardAnalysis := deck.CardAnalysis{
+		CardLevels:   make(map[string]deck.CardLevelData),
+		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+		PlayerName:   player.Name,
+		PlayerTag:    player.Tag,
+	}
+
+	for cardName, cardInfo := range cardAnalysis.CardLevels {
+		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
+			Level:             cardInfo.Level,
+			MaxLevel:          cardInfo.MaxLevel,
+			Rarity:            cardInfo.Rarity,
+			Elixir:            cardInfo.Elixir,
+			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
+		}
+	}
+
+	return &suitePlayerData{
+		CardAnalysis: deckCardAnalysis,
+		PlayerName:   player.Name,
+		PlayerTag:    player.Tag,
+	}, nil
 }
 
 // printComparisonHeader prints the algorithm comparison header
@@ -1302,34 +1397,9 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Parse strategies
-	var strategies []deck.Strategy
-	strategiesStr = strings.ToLower(strings.TrimSpace(strategiesStr))
-	if strategiesStr == deckStrategyAll {
-		strategies = []deck.Strategy{
-			deck.StrategyBalanced,
-			deck.StrategyAggro,
-			deck.StrategyControl,
-			deck.StrategyCycle,
-			deck.StrategySplash,
-			deck.StrategySpell,
-		}
-	} else {
-		strategyList := strings.Split(strategiesStr, ",")
-		for _, s := range strategyList {
-			s = strings.TrimSpace(s)
-			if s == "" {
-				continue
-			}
-			parsedStrategy, err := deck.ParseStrategy(s)
-			if err != nil {
-				return fmt.Errorf("invalid strategy '%s': %w", s, err)
-			}
-			strategies = append(strategies, parsedStrategy)
-		}
-	}
-
-	if len(strategies) == 0 {
-		return fmt.Errorf("no valid strategies specified")
+	strategies, err := parseStrategies(strategiesStr)
+	if err != nil {
+		return err
 	}
 
 	if verbose {
@@ -1337,7 +1407,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			len(strategies), variations, len(strategies)*variations)
 	}
 
-	// Create deck builder
+	// Create deck builder and load player data
 	builder := deck.NewBuilder(dataDir)
 
 	// Set include/exclude card filters if provided
@@ -1349,94 +1419,13 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Load player data
-	var deckCardAnalysis deck.CardAnalysis
-	var playerName, playerTag string
-
-	if fromAnalysis {
-		// OFFLINE MODE: Load from existing analysis JSON
-		if verbose {
-			printf("Building deck suite from offline analysis for player %s\n", tag)
-		}
-
-		analysisDir := filepath.Join(dataDir, "analysis")
-		loadedAnalysis, err := builder.LoadLatestAnalysis(tag, analysisDir)
-		if err != nil {
-			return fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
-		}
-
-		deckCardAnalysis = *loadedAnalysis
-		playerTag = tag
-		playerName = tag
-	} else {
-		// ONLINE MODE: Fetch from API
-		if apiToken == "" {
-			return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
-		}
-
-		client := clashroyale.NewClient(apiToken)
-
-		if verbose {
-			printf("Building deck suite for player %s\n", tag)
-		}
-
-		// Get player information
-		player, err := client.GetPlayer(tag)
-		if err != nil {
-			return fmt.Errorf("failed to get player: %w", err)
-		}
-
-		playerName = player.Name
-		playerTag = player.Tag
-
-		if verbose {
-			printf("Player: %s (%s)\n", player.Name, player.Tag)
-			printf("Analyzing %d cards...\n", len(player.Cards))
-		}
-
-		// Perform card collection analysis
-		analysisOptions := analysis.DefaultAnalysisOptions()
-		cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
-		if err != nil {
-			return fmt.Errorf("failed to analyze card collection: %w", err)
-		}
-
-		// Convert analysis.CardAnalysis to deck.CardAnalysis
-		deckCardAnalysis = deck.CardAnalysis{
-			CardLevels:   make(map[string]deck.CardLevelData),
-			AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
-			PlayerName:   player.Name,
-			PlayerTag:    player.Tag,
-		}
-
-		for cardName, cardInfo := range cardAnalysis.CardLevels {
-			deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
-				Level:             cardInfo.Level,
-				MaxLevel:          cardInfo.MaxLevel,
-				Rarity:            cardInfo.Rarity,
-				Elixir:            cardInfo.Elixir,
-				MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
-			}
-		}
+	playerData, err := loadSuitePlayerData(builder, tag, apiToken, dataDir, fromAnalysis, verbose)
+	if err != nil {
+		return err
 	}
 
 	// Apply exclude filter
-	if len(excludeCards) > 0 {
-		excludeMap := make(map[string]bool)
-		for _, card := range excludeCards {
-			trimmed := strings.TrimSpace(card)
-			if trimmed != "" {
-				excludeMap[strings.ToLower(trimmed)] = true
-			}
-		}
-
-		filteredLevels := make(map[string]deck.CardLevelData)
-		for cardName, cardInfo := range deckCardAnalysis.CardLevels {
-			if !excludeMap[strings.ToLower(cardName)] {
-				filteredLevels[cardName] = cardInfo
-			}
-		}
-		deckCardAnalysis.CardLevels = filteredLevels
-	}
+	applyExcludeFilter(&playerData.CardAnalysis, excludeCards)
 
 	// Build decks for all strategy x variation combinations
 	type deckResult struct {
@@ -1453,7 +1442,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
 	printf("║                    DECK BUILD SUITE                                ║\n")
 	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
-	printf("Player: %s (%s)\n", playerName, playerTag)
+	printf("Player: %s (%s)\n", playerData.PlayerName, playerData.PlayerTag)
 	printf("Output: %s\n\n", outputDir)
 
 	// Build decks for each strategy
@@ -1486,7 +1475,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			}
 
 			// Build deck
-			deckRec, err := deckBuilder.BuildDeckFromAnalysis(deckCardAnalysis)
+			deckRec, err := deckBuilder.BuildDeckFromAnalysis(playerData.CardAnalysis)
 			if err != nil {
 				results = append(results, deckResult{
 					Strategy:   string(strategy),
@@ -1509,11 +1498,11 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			var filePath string
 			if saveData {
 				timestamp := time.Now().Format("20060102_150405")
-				filename := fmt.Sprintf("%s_deck_%s_var%d_%s.json", timestamp, strategy, v, playerTag)
+				filename := fmt.Sprintf("%s_deck_%s_var%d_%s.json", timestamp, strategy, v, playerData.PlayerTag)
 				filePath = filepath.Join(outputDir, filename)
 
 				// Save using builder
-				savedPath, err := deckBuilder.SaveDeck(deckRec, outputDir, fmt.Sprintf("%s_var%d_%s", strategy, v, playerTag))
+				savedPath, err := deckBuilder.SaveDeck(deckRec, outputDir, fmt.Sprintf("%s_var%d_%s", strategy, v, playerData.PlayerTag))
 				if err != nil {
 					if verbose {
 						printf("  ⚠ Variation %d: Failed to save deck: %v\n", v, err)
@@ -1562,7 +1551,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Save summary JSON if requested
 	if saveData && successful > 0 {
 		timestamp := time.Now().Format("20060102_150405")
-		summaryFilename := fmt.Sprintf("%s_deck_suite_summary_%s.json", timestamp, playerTag)
+		summaryFilename := fmt.Sprintf("%s_deck_suite_summary_%s.json", timestamp, playerData.PlayerTag)
 		summaryPath := filepath.Join(outputDir, summaryFilename)
 
 		// Build summary structure
@@ -1570,8 +1559,8 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			"version":   "1.0.0",
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 			"player": map[string]string{
-				"name": playerName,
-				"tag":  playerTag,
+				"name": playerData.PlayerName,
+				"tag":  playerData.PlayerTag,
 			},
 			"build_info": map[string]interface{}{
 				"total_decks":     len(results),
@@ -2445,34 +2434,9 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Parse strategies
-	var strategies []deck.Strategy
-	strategiesStr = strings.ToLower(strings.TrimSpace(strategiesStr))
-	if strategiesStr == deckStrategyAll {
-		strategies = []deck.Strategy{
-			deck.StrategyBalanced,
-			deck.StrategyAggro,
-			deck.StrategyControl,
-			deck.StrategyCycle,
-			deck.StrategySplash,
-			deck.StrategySpell,
-		}
-	} else {
-		strategyList := strings.Split(strategiesStr, ",")
-		for _, s := range strategyList {
-			s = strings.TrimSpace(s)
-			if s == "" {
-				continue
-			}
-			parsedStrategy, err := deck.ParseStrategy(s)
-			if err != nil {
-				return fmt.Errorf("invalid strategy '%s': %w", s, err)
-			}
-			strategies = append(strategies, parsedStrategy)
-		}
-	}
-
-	if len(strategies) == 0 {
-		return fmt.Errorf("no valid strategies specified")
+	strategies, err := parseStrategies(strategiesStr)
+	if err != nil {
+		return err
 	}
 
 	if verbose {
@@ -2484,63 +2448,10 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Build decks using build-suite logic
 	builder := deck.NewBuilder(dataDir)
 
-	// Load card analysis (online or offline)
-	var deckCardAnalysis deck.CardAnalysis
-	var playerName, playerTag string
-
-	if fromAnalysis {
-		analysisDir := filepath.Join(dataDir, "analysis")
-		loadedAnalysis, err := builder.LoadLatestAnalysis(tag, analysisDir)
-		if err != nil {
-			return fmt.Errorf("failed to load analysis: %w", err)
-		}
-		deckCardAnalysis = *loadedAnalysis
-		playerName = tag
-		playerTag = tag
-		if verbose {
-			printf("✓ Loaded analysis from: %s\n", analysisDir)
-		}
-	} else {
-		if apiToken == "" {
-			return fmt.Errorf("API token required (use --api-token or CLASH_ROYALE_API_TOKEN env var)")
-		}
-		client := clashroyale.NewClient(apiToken)
-		player, err := client.GetPlayer(tag)
-		if err != nil {
-			return fmt.Errorf("failed to fetch player data: %w", err)
-		}
-
-		playerName = player.Name
-		playerTag = player.Tag
-
-		// Analyze card collection
-		options := analysis.AnalysisOptions{}
-		cardAnalysis, err := analysis.AnalyzeCardCollection(player, options)
-		if err != nil {
-			return fmt.Errorf("failed to analyze cards: %w", err)
-		}
-
-		// Convert to deck.CardAnalysis format
-		deckCardAnalysis = deck.CardAnalysis{
-			CardLevels:   make(map[string]deck.CardLevelData),
-			AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
-			PlayerName:   player.Name,
-			PlayerTag:    player.Tag,
-		}
-
-		for cardName, cardInfo := range cardAnalysis.CardLevels {
-			deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
-				Level:             cardInfo.Level,
-				MaxLevel:          cardInfo.MaxLevel,
-				Rarity:            cardInfo.Rarity,
-				Elixir:            cardInfo.Elixir,
-				MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
-			}
-		}
-
-		if verbose {
-			printf("✓ Fetched player data for: %s (%s)\n", playerName, playerTag)
-		}
+	// Load player data
+	playerData, err := loadSuitePlayerData(builder, tag, apiToken, dataDir, fromAnalysis, verbose)
+	if err != nil {
+		return err
 	}
 
 	// Build all deck variations
@@ -2579,7 +2490,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			}
 
 			// Build deck
-			deckRec, err := deckBuilder.BuildDeckFromAnalysis(deckCardAnalysis)
+			deckRec, err := deckBuilder.BuildDeckFromAnalysis(playerData.CardAnalysis)
 			if err != nil {
 				printf("  ✗ Failed to build %s variation %d: %v\n", strategy, v, err)
 				failCount++
@@ -2587,7 +2498,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			}
 
 			// Save deck to file
-			deckFileName := fmt.Sprintf("%s_deck_%s_var%d_%s.json", timestamp, strategy, v, strings.TrimPrefix(playerTag, "#"))
+			deckFileName := fmt.Sprintf("%s_deck_%s_var%d_%s.json", timestamp, strategy, v, strings.TrimPrefix(playerData.PlayerTag, "#"))
 			deckFilePath := filepath.Join(decksDir, deckFileName)
 
 			deckData := map[string]interface{}{
@@ -2627,15 +2538,15 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	buildDuration := time.Since(buildStart)
 
 	// Save suite summary
-	suiteFileName := fmt.Sprintf("%s_deck_suite_summary_%s.json", timestamp, strings.TrimPrefix(playerTag, "#"))
+	suiteFileName := fmt.Sprintf("%s_deck_suite_summary_%s.json", timestamp, strings.TrimPrefix(playerData.PlayerTag, "#"))
 	suiteSummaryPath := filepath.Join(decksDir, suiteFileName)
 
 	suiteData := map[string]interface{}{
 		"version":   "1.0.0",
 		"timestamp": timestamp,
 		"player": map[string]string{
-			"name": playerName,
-			"tag":  playerTag,
+			"name": playerData.PlayerName,
+			"tag":  playerData.PlayerTag,
 		},
 		"build_info": map[string]interface{}{
 			"total_decks":     len(strategies) * variations,
@@ -2812,15 +2723,15 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	sortEvaluationResults(results, "overall")
 
 	// Save evaluation results
-	evalFileName := fmt.Sprintf("%s_deck_evaluations_%s.json", timestamp, strings.TrimPrefix(playerTag, "#"))
+	evalFileName := fmt.Sprintf("%s_deck_evaluations_%s.json", timestamp, strings.TrimPrefix(playerData.PlayerTag, "#"))
 	evalFilePath := filepath.Join(evaluationsDir, evalFileName)
 
 	evalData := map[string]interface{}{
 		"version":   "1.0.0",
 		"timestamp": timestamp,
 		"player": map[string]string{
-			"name": playerName,
-			"tag":  playerTag,
+			"name": playerData.PlayerName,
+			"tag":  playerData.PlayerTag,
 		},
 		"evaluation_info": map[string]interface{}{
 			"total_decks":     len(results),
@@ -2880,7 +2791,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to create reports directory: %w", err)
 	}
 
-	reportFileName := fmt.Sprintf("%s_deck_analysis_report_%s.md", timestamp, strings.TrimPrefix(playerTag, "#"))
+	reportFileName := fmt.Sprintf("%s_deck_analysis_report_%s.md", timestamp, strings.TrimPrefix(playerData.PlayerTag, "#"))
 	reportFilePath := filepath.Join(reportsDir, reportFileName)
 
 	// Generate comprehensive markdown report
@@ -2901,7 +2812,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Println("║                      ANALYSIS SUITE COMPLETE                       ║")
 	fmt.Println("╚═══════════════════════════════════════════════════════════════════╝")
 	fmt.Println()
-	printf("Player: %s (%s)\n", playerName, playerTag)
+	printf("Player: %s (%s)\n", playerData.PlayerName, playerData.PlayerTag)
 	printf("Decks built: %d\n", successCount)
 	printf("Decks evaluated: %d\n", len(results))
 	printf("Top performers compared: %d\n", compareCount)
