@@ -360,16 +360,25 @@ func (us *UniquenessScorer) ScoreDeckWithDetails(cardNames []string) UniquenessR
 		return result
 	}
 
+	scores, totalUniqueness := us.calculateCardScores(cardNames, &result)
+	us.updateMinMaxCards(cardNames, &result)
+
+	result.AverageUniqueness = totalUniqueness / float64(len(cardNames))
+	result.FinalScore = us.calculateFinalScore(scores, totalUniqueness)
+	result.WeightedScore = result.FinalScore * us.config.Weight
+
+	return result
+}
+
+// calculateCardScores processes each card and returns scores and total uniqueness
+func (us *UniquenessScorer) calculateCardScores(cardNames []string, result *UniquenessResult) ([]float64, float64) {
 	scores := make([]float64, 0, len(cardNames))
 	var totalUniqueness float64
 
 	for _, card := range cardNames {
-		popularity := us.popularity.GetPopularity(card)
 		uniqueness := us.popularity.GetUniquenessScore(card)
-
 		result.CardUniqueness[card] = uniqueness
 
-		// Check if card meets threshold
 		if uniqueness >= us.config.MinUniquenessThreshold {
 			scores = append(scores, uniqueness)
 			totalUniqueness += uniqueness
@@ -378,8 +387,17 @@ func (us *UniquenessScorer) ScoreDeckWithDetails(cardNames []string) UniquenessR
 			scores = append(scores, 0)
 			result.BelowThresholdCards = append(result.BelowThresholdCards, card)
 		}
+	}
 
-		// Track most and least unique
+	return scores, totalUniqueness
+}
+
+// updateMinMaxCards tracks the most and least unique cards
+func (us *UniquenessScorer) updateMinMaxCards(cardNames []string, result *UniquenessResult) {
+	for _, card := range cardNames {
+		uniqueness := result.CardUniqueness[card]
+		popularity := us.popularity.GetPopularity(card)
+
 		if result.MostUniqueCard == "" || uniqueness > result.CardUniqueness[result.MostUniqueCard] {
 			result.MostUniqueCard = card
 		}
@@ -387,18 +405,19 @@ func (us *UniquenessScorer) ScoreDeckWithDetails(cardNames []string) UniquenessR
 			result.LeastUniqueCard = card
 		}
 	}
+}
 
-	result.AverageUniqueness = totalUniqueness / float64(len(cardNames))
-
-	if us.config.UseGeometricMean && len(scores) > 0 {
-		result.FinalScore = calculateGeometricMean(scores)
-	} else if len(scores) > 0 {
-		result.FinalScore = totalUniqueness / float64(len(scores))
+// calculateFinalScore computes the final score based on configuration
+func (us *UniquenessScorer) calculateFinalScore(scores []float64, totalUniqueness float64) float64 {
+	if len(scores) == 0 {
+		return 0.0
 	}
 
-	result.WeightedScore = result.FinalScore * us.config.Weight
+	if us.config.UseGeometricMean {
+		return calculateGeometricMean(scores)
+	}
 
-	return result
+	return totalUniqueness / float64(len(scores))
 }
 
 // UniquenessResult contains detailed uniqueness scoring information

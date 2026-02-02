@@ -274,36 +274,45 @@ func (cs *CoherenceScorer) AnalyzeCoherence(cards []CardCandidate, strategy Stra
 // analyzeComposition counts cards by role and category
 func (cs *CoherenceScorer) analyzeComposition(cards []CardCandidate, result *CoherenceResult) {
 	for _, card := range cards {
-		// Count by role
-		if card.Role != nil {
-			role := string(*card.Role)
-			result.RoleDistribution[role]++
+		cs.countCardByRole(card, result)
+		cs.countCardByCategory(card, result)
+	}
+}
 
-			switch *card.Role {
-			case RoleWinCondition:
-				result.WinConditionCount++
-			case RoleBuilding:
-				result.BuildingCount++
-			case RoleSpellBig, RoleSpellSmall:
-				result.SpellCount++
-			case RoleSupport:
-				result.SupportCount++
-			}
-		}
+// countCardByRole counts a single card by its role
+func (cs *CoherenceScorer) countCardByRole(card CardCandidate, result *CoherenceResult) {
+	if card.Role == nil {
+		return
+	}
 
-		// Count by category
-		if cs.isCardInCategory(card.Name, "cycle") {
-			result.CycleCardCount++
-		}
-		if cs.isCardInCategory(card.Name, "bait") {
-			result.BaitCardCount++
-		}
-		if cs.isCardInCategory(card.Name, "fast_threat") {
-			result.FastThreatCount++
-		}
-		if cs.isCardInCategory(card.Name, "air_defense") {
-			result.AirDefenseCount++
-		}
+	role := string(*card.Role)
+	result.RoleDistribution[role]++
+
+	switch *card.Role {
+	case RoleWinCondition:
+		result.WinConditionCount++
+	case RoleBuilding:
+		result.BuildingCount++
+	case RoleSpellBig, RoleSpellSmall:
+		result.SpellCount++
+	case RoleSupport:
+		result.SupportCount++
+	}
+}
+
+// countCardByCategory counts a single card by its category
+func (cs *CoherenceScorer) countCardByCategory(card CardCandidate, result *CoherenceResult) {
+	if cs.isCardInCategory(card.Name, "cycle") {
+		result.CycleCardCount++
+	}
+	if cs.isCardInCategory(card.Name, "bait") {
+		result.BaitCardCount++
+	}
+	if cs.isCardInCategory(card.Name, "fast_threat") {
+		result.FastThreatCount++
+	}
+	if cs.isCardInCategory(card.Name, "air_defense") {
+		result.AirDefenseCount++
 	}
 }
 

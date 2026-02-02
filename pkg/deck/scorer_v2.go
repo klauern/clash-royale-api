@@ -358,31 +358,57 @@ func calculateSynergyScore(cards []CardCandidate, synergyDB *SynergyDatabase, de
 func calculateMultiCardBonuses(cards []CardCandidate, details *ScorerV2Details) float64 {
 	bonus := 0.0
 
-	// Count cards by role
-	roleCounts := make(map[CardRole]int)
-	winConditionCount := 0
-	buildingCount := 0
-	spellCount := 0
-	supportCount := 0
+	roleCounts := countCardsByRole(cards)
+
+	bonus += calculateArchetypeCoreBonus(roleCounts, details)
+	bonus += calculateWinConditionPackageBonus(roleCounts, details)
+	bonus += calculateDefensiveCoreBonus(roleCounts, details)
+
+	return bonus
+}
+
+// roleCounts holds the count of cards by role
+type roleCounts struct {
+	winCondition int
+	building     int
+	spell        int
+	support      int
+	all          map[CardRole]int
+}
+
+// countCardsByRole counts cards by their roles
+func countCardsByRole(cards []CardCandidate) roleCounts {
+	counts := roleCounts{
+		all: make(map[CardRole]int),
+	}
 
 	for _, card := range cards {
-		if card.Role != nil {
-			roleCounts[*card.Role]++
-			switch *card.Role {
-			case RoleWinCondition:
-				winConditionCount++
-			case RoleBuilding:
-				buildingCount++
-			case RoleSpellBig, RoleSpellSmall:
-				spellCount++
-			case RoleSupport:
-				supportCount++
-			}
+		if card.Role == nil {
+			continue
+		}
+
+		counts.all[*card.Role]++
+
+		switch *card.Role {
+		case RoleWinCondition:
+			counts.winCondition++
+		case RoleBuilding:
+			counts.building++
+		case RoleSpellBig, RoleSpellSmall:
+			counts.spell++
+		case RoleSupport:
+			counts.support++
 		}
 	}
 
-	// Archetype core bonus: 3+ cards from same strategic group
-	for role, count := range roleCounts {
+	return counts
+}
+
+// calculateArchetypeCoreBonus calculates bonus for having 3+ cards from same strategic group
+func calculateArchetypeCoreBonus(counts roleCounts, details *ScorerV2Details) float64 {
+	bonus := 0.0
+
+	for role, count := range counts.all {
 		if count >= 3 {
 			bonus += MultiCardArchetypeCore
 			details.MultiCardBonuses = append(details.MultiCardBonuses,
@@ -390,21 +416,27 @@ func calculateMultiCardBonuses(cards []CardCandidate, details *ScorerV2Details) 
 		}
 	}
 
-	// Win condition package: win condition + support + spell
-	if winConditionCount >= 1 && supportCount >= 2 && spellCount >= 1 {
-		bonus += MultiCardWinConditionPackage
+	return bonus
+}
+
+// calculateWinConditionPackageBonus calculates bonus for win condition + support + spell combination
+func calculateWinConditionPackageBonus(counts roleCounts, details *ScorerV2Details) float64 {
+	if counts.winCondition >= 1 && counts.support >= 2 && counts.spell >= 1 {
 		details.MultiCardBonuses = append(details.MultiCardBonuses,
 			"Complete win condition package")
+		return MultiCardWinConditionPackage
 	}
+	return 0.0
+}
 
-	// Defensive core: building + support + spell
-	if buildingCount >= 1 && supportCount >= 1 && spellCount >= 1 {
-		bonus += MultiCardDefensiveCore
+// calculateDefensiveCoreBonus calculates bonus for building + support + spell combination
+func calculateDefensiveCoreBonus(counts roleCounts, details *ScorerV2Details) float64 {
+	if counts.building >= 1 && counts.support >= 1 && counts.spell >= 1 {
 		details.MultiCardBonuses = append(details.MultiCardBonuses,
 			"Defensive core established")
+		return MultiCardDefensiveCore
 	}
-
-	return bonus
+	return 0.0
 }
 
 // calculateCounterCoverageScore evaluates defensive capabilities against threats.
@@ -675,43 +707,58 @@ func calculateCurveQuality(elixirCounts map[int]int, totalCards int) float64 {
 
 	cheap := elixirCounts[1] + elixirCounts[2]
 	medium := elixirCounts[3] + elixirCounts[4]
+	heavy := countHeavyCards(elixirCounts)
+
+	cheapScore := scoreCheapCards(cheap)
+	mediumScore := scoreMediumCards(medium)
+	heavyScore := scoreHeavyCards(heavy)
+
+	// Weighted average
+	return (cheapScore * 0.3) + (mediumScore * 0.5) + (heavyScore * 0.2)
+}
+
+// countHeavyCards counts cards with elixir cost >= 5
+func countHeavyCards(elixirCounts map[int]int) int {
 	heavy := 0
 	for cost, count := range elixirCounts {
 		if cost >= 5 {
 			heavy += count
 		}
 	}
+	return heavy
+}
 
-	// Score each bucket
-	cheapScore := 0.0
-	if cheap >= 2 && cheap <= 3 {
-		cheapScore = 1.0
-	} else if cheap < 2 {
-		cheapScore = float64(cheap) / 2.0
-	} else {
-		cheapScore = 1.0 - (float64(cheap-3) * 0.2)
+// scoreCheapCards scores the cheap card bucket (1-2 elixir, ideal: 2-3 cards)
+func scoreCheapCards(count int) float64 {
+	if count >= 2 && count <= 3 {
+		return 1.0
 	}
-
-	mediumScore := 0.0
-	if medium >= 3 && medium <= 4 {
-		mediumScore = 1.0
-	} else if medium < 3 {
-		mediumScore = float64(medium) / 3.0
-	} else {
-		mediumScore = 1.0 - (float64(medium-4) * 0.2)
+	if count < 2 {
+		return float64(count) / 2.0
 	}
+	return 1.0 - (float64(count-3) * 0.2)
+}
 
-	heavyScore := 0.0
-	if heavy >= 1 && heavy <= 2 {
-		heavyScore = 1.0
-	} else if heavy == 0 {
-		heavyScore = 0.7 // No heavy hitter is okay but not ideal
-	} else {
-		heavyScore = 1.0 - (float64(heavy-2) * 0.3)
+// scoreMediumCards scores the medium card bucket (3-4 elixir, ideal: 3-4 cards)
+func scoreMediumCards(count int) float64 {
+	if count >= 3 && count <= 4 {
+		return 1.0
 	}
+	if count < 3 {
+		return float64(count) / 3.0
+	}
+	return 1.0 - (float64(count-4) * 0.2)
+}
 
-	// Weighted average
-	return (cheapScore * 0.3) + (mediumScore * 0.5) + (heavyScore * 0.2)
+// scoreHeavyCards scores the heavy card bucket (5+ elixir, ideal: 1-2 cards)
+func scoreHeavyCards(count int) float64 {
+	if count >= 1 && count <= 2 {
+		return 1.0
+	}
+	if count == 0 {
+		return 0.7 // No heavy hitter is okay but not ideal
+	}
+	return 1.0 - (float64(count-2) * 0.3)
 }
 
 // calculateCombatStatsScore evaluates actual card effectiveness.

@@ -1051,28 +1051,12 @@ func deckCompareAlgorithmsCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Step 2: Parse strategies
-	var strategies []deck.Strategy
-	strategiesStr = strings.ToLower(strings.TrimSpace(strategiesStr))
-	strategyList := strings.Split(strategiesStr, ",")
-	for _, s := range strategyList {
-		s = strings.TrimSpace(s)
-		if s == "" {
-			continue
-		}
-		parsedStrategy, err := deck.ParseStrategy(s)
-		if err != nil {
-			return fmt.Errorf("invalid strategy '%s': %w", s, err)
-		}
-		strategies = append(strategies, parsedStrategy)
+	strategies, err := parseStrategies(strategiesStr)
+	if err != nil {
+		return err
 	}
 
-	if len(strategies) == 0 {
-		return fmt.Errorf("no valid strategies specified")
-	}
-
-	printf("╔════════════════════════════════════════════════════════════════════╗\n")
-	printf("║              ALGORITHM COMPARISON: V1 vs V2                         ║\n")
-	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printComparisonHeader()
 
 	// Step 3: Load player card analysis
 	builder := deck.NewBuilder(dataDir)
@@ -1081,41 +1065,88 @@ func deckCompareAlgorithmsCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to analyze player cards: %w", err)
 	}
 
+	printComparisonPlayerInfo(tag, playerData, strategies)
+
+	// Step 4-5: Run comparison
+	result, err := runAlgorithmComparison(tag, playerData.CardAnalysis, strategies, significance, winThreshold)
+	if err != nil {
+		return err
+	}
+
+	// Step 6-7: Format and output
+	return formatAndOutputComparison(result, format, outputFile)
+}
+
+// parseStrategies parses a comma-separated list of strategy strings
+func parseStrategies(strategiesStr string) ([]deck.Strategy, error) {
+	var strategies []deck.Strategy
+	strategiesStr = strings.ToLower(strings.TrimSpace(strategiesStr))
+	strategyList := strings.Split(strategiesStr, ",")
+
+	for _, s := range strategyList {
+		s = strings.TrimSpace(s)
+		if s == "" {
+			continue
+		}
+		parsedStrategy, err := deck.ParseStrategy(s)
+		if err != nil {
+			return nil, fmt.Errorf("invalid strategy '%s': %w", s, err)
+		}
+		strategies = append(strategies, parsedStrategy)
+	}
+
+	if len(strategies) == 0 {
+		return nil, fmt.Errorf("no valid strategies specified")
+	}
+
+	return strategies, nil
+}
+
+// printComparisonHeader prints the algorithm comparison header
+func printComparisonHeader() {
+	printf("╔════════════════════════════════════════════════════════════════════╗\n")
+	printf("║              ALGORITHM COMPARISON: V1 vs V2                         ║\n")
+	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+}
+
+// printComparisonPlayerInfo prints player and strategy information
+func printComparisonPlayerInfo(tag string, playerData *playerDataLoadResult, strategies []deck.Strategy) {
 	printf("Player: %s (%s)\n", playerData.PlayerName, tag)
 	strategyNames := make([]string, len(strategies))
 	for i, s := range strategies {
 		strategyNames[i] = s.String()
 	}
 	printf("Strategies: %s\n\n", strings.Join(strategyNames, ", "))
+}
 
-	// Step 4: Create comparison config
+// runAlgorithmComparison runs the algorithm comparison with the given configuration
+func runAlgorithmComparison(
+	tag string,
+	cardAnalysis deck.CardAnalysis,
+	strategies []deck.Strategy,
+	significance, winThreshold float64,
+) (*comparison.AlgorithmComparisonResult, error) {
 	config := comparison.DefaultComparisonConfig()
 	config.PlayerTag = tag
 	config.Strategies = strategies
 	config.SignificanceThreshold = significance
 	config.WinThreshold = winThreshold
 
-	// Step 5: Run comparison
-	result, err := comparison.CompareAlgorithms(tag, playerData.CardAnalysis, config)
+	result, err := comparison.CompareAlgorithms(tag, cardAnalysis, config)
 	if err != nil {
-		return fmt.Errorf("comparison failed: %w", err)
+		return nil, fmt.Errorf("comparison failed: %w", err)
 	}
 
-	// Step 6: Format output
-	var output string
-	switch strings.ToLower(format) {
-	case "json":
-		output, err = result.ExportJSON()
-		if err != nil {
-			return fmt.Errorf("failed to export JSON: %w", err)
-		}
-	case "markdown", "md":
-		output = result.ExportMarkdown()
-	default:
-		return fmt.Errorf("unknown format: %s (supported: json, markdown)", format)
+	return result, nil
+}
+
+// formatAndOutputComparison formats the comparison result and outputs it
+func formatAndOutputComparison(result *comparison.AlgorithmComparisonResult, format, outputFile string) error {
+	output, err := formatComparisonOutput(result, format)
+	if err != nil {
+		return err
 	}
 
-	// Step 7: Output to file or stdout
 	if outputFile != "" {
 		if err := os.WriteFile(outputFile, []byte(output), 0o644); err != nil {
 			return fmt.Errorf("failed to write output file: %w", err)
@@ -1128,6 +1159,22 @@ func deckCompareAlgorithmsCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+// formatComparisonOutput formats the comparison result based on the specified format
+func formatComparisonOutput(result *comparison.AlgorithmComparisonResult, format string) (string, error) {
+	switch strings.ToLower(format) {
+	case "json":
+		output, err := result.ExportJSON()
+		if err != nil {
+			return "", fmt.Errorf("failed to export JSON: %w", err)
+		}
+		return output, nil
+	case "markdown", "md":
+		return result.ExportMarkdown(), nil
+	default:
+		return "", fmt.Errorf("unknown format: %s (supported: json, markdown)", format)
+	}
+}
+
 func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	// Parse flags
 	tag := cmd.String("tag")
@@ -1136,7 +1183,6 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	maxElixir := cmd.Float64("max-elixir")
 	dataDir := cmd.String("data-dir")
 	excludeCards := cmd.StringSlice("exclude-cards")
-	verbose := cmd.Bool("verbose")
 
 	// Upgrade recommendations flags
 	noSuggestUpgrades := cmd.Bool("no-suggest-upgrades")
@@ -1180,27 +1226,13 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Step 8: Validate elixir constraints
-	if deckRec.AvgElixir < minElixir || deckRec.AvgElixir > maxElixir {
-		printf("\n⚠ Warning: Deck average elixir (%.2f) is outside requested range (%.1f-%.1f)\n",
-			deckRec.AvgElixir, minElixir, maxElixir)
-	}
+	validateElixirConstraints(deckRec, minElixir, maxElixir)
 
 	// Step 9: Display deck recommendation
 	displayDeckRecommendationOffline(deckRec, playerData.PlayerName, playerData.PlayerTag)
 
 	// Step 10: Display upgrade recommendations by default (unless disabled)
-	var upgrades *deck.UpgradeRecommendations
-	if !noSuggestUpgrades {
-		printf("\n")
-		upgrades, err = builder.GetUpgradeRecommendations(playerData.CardAnalysis, deckRec, upgradeCount)
-		if err != nil {
-			if verbose {
-				printf("Warning: Failed to generate upgrade recommendations: %v\n", err)
-			}
-		} else {
-			displayUpgradeRecommendations(upgrades)
-		}
-	}
+	upgrades := displayUpgradeRecommendationsIfEnabled(cmd, builder, playerData.CardAnalysis, deckRec, noSuggestUpgrades, upgradeCount)
 
 	// Step 11: Show ideal deck with recommended upgrades applied
 	if idealDeck {
@@ -1213,6 +1245,40 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return nil
+}
+
+// validateElixirConstraints checks if deck elixir is within requested range
+func validateElixirConstraints(deckRec *deck.DeckRecommendation, minElixir, maxElixir float64) {
+	if deckRec.AvgElixir < minElixir || deckRec.AvgElixir > maxElixir {
+		printf("\n⚠ Warning: Deck average elixir (%.2f) is outside requested range (%.1f-%.1f)\n",
+			deckRec.AvgElixir, minElixir, maxElixir)
+	}
+}
+
+// displayUpgradeRecommendationsIfEnabled displays upgrade recommendations if not disabled
+func displayUpgradeRecommendationsIfEnabled(
+	cmd *cli.Command,
+	builder *deck.Builder,
+	cardAnalysis deck.CardAnalysis,
+	deckRec *deck.DeckRecommendation,
+	noSuggestUpgrades bool,
+	upgradeCount int,
+) *deck.UpgradeRecommendations {
+	if noSuggestUpgrades {
+		return nil
+	}
+
+	printf("\n")
+	upgrades, err := builder.GetUpgradeRecommendations(cardAnalysis, deckRec, upgradeCount)
+	if err != nil {
+		if cmd.Bool("verbose") {
+			printf("Warning: Failed to generate upgrade recommendations: %v\n", err)
+		}
+		return nil
+	}
+
+	displayUpgradeRecommendations(upgrades)
+	return upgrades
 }
 
 func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
@@ -3473,50 +3539,79 @@ func configureDeckBuilder(cmd *cli.Command, dataDir string, strategy string) (*d
 
 	builder := deck.NewBuilder(dataDir)
 
-	// Override unlocked evolutions if CLI flag provided
+	if err := configureEvolutions(cmd, builder); err != nil {
+		return nil, err
+	}
+
+	configureCardFilters(builder, includeCards, excludeCards)
+
+	if err := configureStrategy(cmd, builder, strategy, verbose); err != nil {
+		return nil, err
+	}
+
+	configureSynergy(cmd, builder, verbose)
+
+	return builder, nil
+}
+
+// configureEvolutions sets up evolution overrides from CLI flags
+func configureEvolutions(cmd *cli.Command, builder *deck.Builder) error {
 	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
 		builder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
 	}
 
-	// Override evolution slot limit if provided
 	if slots := cmd.Int("evolution-slots"); slots > 0 {
 		builder.SetEvolutionSlotLimit(slots)
 	}
 
-	// Set include/exclude card filters if provided
+	return nil
+}
+
+// configureCardFilters sets up include/exclude card filters
+func configureCardFilters(builder *deck.Builder, includeCards, excludeCards []string) {
 	if len(includeCards) > 0 {
 		builder.SetIncludeCards(includeCards)
 	}
 	if len(excludeCards) > 0 {
 		builder.SetExcludeCards(excludeCards)
 	}
+}
 
-	// Parse and set strategy if provided (skip for "all" which is handled later)
-	if strategy != "" && strings.ToLower(strings.TrimSpace(strategy)) != deckStrategyAll {
-		parsedStrategy, err := deck.ParseStrategy(strategy)
-		if err != nil {
-			return nil, fmt.Errorf("invalid strategy: %w", err)
-		}
-		if err := builder.SetStrategy(parsedStrategy); err != nil {
-			return nil, fmt.Errorf("failed to set strategy: %w", err)
-		}
-		if verbose {
-			printf("Using deck building strategy: %s\n", parsedStrategy)
-		}
+// configureStrategy sets up the deck building strategy if provided
+func configureStrategy(cmd *cli.Command, builder *deck.Builder, strategy string, verbose bool) error {
+	if strategy == "" || strings.ToLower(strings.TrimSpace(strategy)) == deckStrategyAll {
+		return nil
 	}
 
-	// Configure synergy system if enabled
-	if enableSynergy := cmd.Bool("enable-synergy"); enableSynergy {
-		builder.SetSynergyEnabled(true)
-		if synergyWeight := cmd.Float64("synergy-weight"); synergyWeight > 0 {
-			builder.SetSynergyWeight(synergyWeight)
-		}
-		if verbose {
-			printf("Synergy scoring enabled (weight: %.2f)\n", cmd.Float64("synergy-weight"))
-		}
+	parsedStrategy, err := deck.ParseStrategy(strategy)
+	if err != nil {
+		return fmt.Errorf("invalid strategy: %w", err)
+	}
+	if err := builder.SetStrategy(parsedStrategy); err != nil {
+		return fmt.Errorf("failed to set strategy: %w", err)
+	}
+	if verbose {
+		printf("Using deck building strategy: %s\n", parsedStrategy)
 	}
 
-	return builder, nil
+	return nil
+}
+
+// configureSynergy sets up the synergy system if enabled
+func configureSynergy(cmd *cli.Command, builder *deck.Builder, verbose bool) {
+	if !cmd.Bool("enable-synergy") {
+		return
+	}
+
+	builder.SetSynergyEnabled(true)
+
+	if synergyWeight := cmd.Float64("synergy-weight"); synergyWeight > 0 {
+		builder.SetSynergyWeight(synergyWeight)
+	}
+
+	if verbose {
+		printf("Synergy scoring enabled (weight: %.2f)\n", cmd.Float64("synergy-weight"))
+	}
 }
 
 // configureFuzzIntegration sets up fuzz storage integration if enabled
