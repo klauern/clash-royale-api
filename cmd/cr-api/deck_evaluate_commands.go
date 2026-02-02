@@ -57,64 +57,19 @@ func addDeckEvaluateBatchCommand() *cli.Command {
 		Name:  "evaluate-batch",
 		Usage: "Evaluate multiple decks from a suite or directory",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "from-suite",
-				Usage: "Path to deck suite summary JSON file (from build-suite command)",
-			},
-			&cli.StringFlag{
-				Name:  "deck-dir",
-				Usage: "Directory containing deck JSON files",
-			},
-			&cli.StringFlag{
-				Name:    "tag",
-				Aliases: []string{"p"},
-				Usage:   "Player tag (without #) for context-aware evaluation",
-			},
-			&cli.StringFlag{
-				Name:  "format",
-				Value: "summary",
-				Usage: "Output format: summary, json, csv, detailed",
-			},
-			&cli.StringFlag{
-				Name:  "output-dir",
-				Usage: "Output directory for evaluation files (default: prints to stdout)",
-			},
-			&cli.StringFlag{
-				Name:  "sort-by",
-				Value: "overall",
-				Usage: "Sort results by: overall, attack, defense, synergy, versatility, f2p, playability, elixir",
-			},
-			&cli.BoolFlag{
-				Name:  "top-only",
-				Usage: "Show only top N decks",
-			},
-			&cli.IntFlag{
-				Name:  "top-n",
-				Value: 10,
-				Usage: "Number of top decks to show (with --top-only)",
-			},
-			&cli.BoolFlag{
-				Name:  "filter-archetype",
-				Usage: "Filter by specific archetype (use with --archetype)",
-			},
-			&cli.StringFlag{
-				Name:  "archetype",
-				Usage: "Archetype to filter by (e.g., beatdown, control, cycle)",
-			},
-			&cli.BoolFlag{
-				Name:    "verbose",
-				Aliases: []string{"v"},
-				Usage:   "Show detailed progress information",
-			},
-			&cli.BoolFlag{
-				Name:  "timing",
-				Usage: "Show timing information for each deck evaluation",
-			},
-			&cli.BoolFlag{
-				Name:  "save-aggregated",
-				Value: true,
-				Usage: "Save aggregated results to output-dir (default: true)",
-			},
+			&cli.StringFlag{Name: "from-suite", Usage: "Path to deck suite summary JSON file (from build-suite command)"},
+			&cli.StringFlag{Name: "deck-dir", Usage: "Directory containing deck JSON files"},
+			&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #) for context-aware evaluation"},
+			&cli.StringFlag{Name: "format", Value: "summary", Usage: "Output format: summary, json, csv, detailed"},
+			&cli.StringFlag{Name: "output-dir", Usage: "Output directory for evaluation files (default: prints to stdout)"},
+			&cli.StringFlag{Name: "sort-by", Value: "overall", Usage: "Sort results by: overall, attack, defense, synergy, versatility, f2p, playability, elixir"},
+			&cli.BoolFlag{Name: "top-only", Usage: "Show only top N decks"},
+			&cli.IntFlag{Name: "top-n", Value: 10, Usage: "Number of top decks to show (with --top-only)"},
+			&cli.BoolFlag{Name: "filter-archetype", Usage: "Filter by specific archetype (use with --archetype)"},
+			&cli.StringFlag{Name: "archetype", Usage: "Archetype to filter by (e.g., beatdown, control, cycle)"},
+			&cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "Show detailed progress information"},
+			&cli.BoolFlag{Name: "timing", Usage: "Show timing information for each deck evaluation"},
+			&cli.BoolFlag{Name: "save-aggregated", Value: true, Usage: "Save aggregated results to output-dir (default: true)"},
 		},
 		Action: deckEvaluateBatchCommand,
 	}

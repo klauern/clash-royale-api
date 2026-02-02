@@ -151,63 +151,49 @@ type suitePlayerData struct {
 }
 
 // loadSuitePlayerData loads player data for suite commands (online or offline)
-func loadSuitePlayerData(builder *deck.Builder, tag, apiToken, dataDir string, fromAnalysis, verbose bool) (*suitePlayerData, error) {
-	if fromAnalysis {
-		// OFFLINE MODE: Load from existing analysis JSON
-		if verbose {
-			printf("Building deck suite from offline analysis for player %s\n", tag)
-		}
-
-		analysisDir := filepath.Join(dataDir, "analysis")
-		loadedAnalysis, err := builder.LoadLatestAnalysis(tag, analysisDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
-		}
-
-		return &suitePlayerData{
-			CardAnalysis: *loadedAnalysis,
-			PlayerName:   tag,
-			PlayerTag:    tag,
-		}, nil
+func loadSuitePlayerDataFromAnalysis(builder *deck.Builder, tag, dataDir string, verbose bool) (*suitePlayerData, error) {
+	if verbose {
+		printf("Building deck suite from offline analysis for player %s\n", tag)
 	}
+	analysisDir := filepath.Join(dataDir, "analysis")
+	loadedAnalysis, err := builder.LoadLatestAnalysis(tag, analysisDir)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+	}
+	return &suitePlayerData{
+		CardAnalysis: *loadedAnalysis,
+		PlayerName:   tag,
+		PlayerTag:    tag,
+	}, nil
+}
 
-	// ONLINE MODE: Fetch from API
+func loadSuitePlayerDataFromAPI(builder *deck.Builder, tag, apiToken string, verbose bool) (*suitePlayerData, error) {
 	if apiToken == "" {
 		return nil, fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
 	}
-
 	client := clashroyale.NewClient(apiToken)
-
 	if verbose {
 		printf("Building deck suite for player %s\n", tag)
 	}
-
-	// Get player information
 	player, err := client.GetPlayer(tag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get player: %w", err)
 	}
-
 	if verbose {
 		printf("Player: %s (%s)\n", player.Name, player.Tag)
 		printf("Analyzing %d cards...\n", len(player.Cards))
 	}
-
-	// Perform card collection analysis
 	analysisOptions := analysis.DefaultAnalysisOptions()
 	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze card collection: %w", err)
 	}
-
-	// Convert analysis.CardAnalysis to deck.CardAnalysis
 	deckCardAnalysis := deck.CardAnalysis{
 		CardLevels:   make(map[string]deck.CardLevelData),
 		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
 		PlayerName:   player.Name,
 		PlayerTag:    player.Tag,
 	}
-
 	for cardName, cardInfo := range cardAnalysis.CardLevels {
 		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
 			Level:             cardInfo.Level,
@@ -217,12 +203,18 @@ func loadSuitePlayerData(builder *deck.Builder, tag, apiToken, dataDir string, f
 			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
 		}
 	}
-
 	return &suitePlayerData{
 		CardAnalysis: deckCardAnalysis,
 		PlayerName:   player.Name,
 		PlayerTag:    player.Tag,
 	}, nil
+}
+
+func loadSuitePlayerData(builder *deck.Builder, tag, apiToken, dataDir string, fromAnalysis, verbose bool) (*suitePlayerData, error) {
+	if fromAnalysis {
+		return loadSuitePlayerDataFromAnalysis(builder, tag, dataDir, verbose)
+	}
+	return loadSuitePlayerDataFromAPI(builder, tag, apiToken, verbose)
 }
 
 // printComparisonHeader prints the algorithm comparison header

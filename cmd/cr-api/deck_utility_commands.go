@@ -79,71 +79,20 @@ func addDeckBudgetCommand() *cli.Command {
 		Name:  "budget",
 		Usage: "Find budget-optimized decks with minimal upgrade investment",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
-			&cli.IntFlag{
-				Name:  "max-cards",
-				Value: 0,
-				Usage: "Maximum cards needed for upgrades (0 = no limit)",
-			},
-			&cli.IntFlag{
-				Name:  "max-gold",
-				Value: 0,
-				Usage: "Maximum gold needed for upgrades (0 = no limit)",
-			},
-			&cli.Float64Flag{
-				Name:  "target-level",
-				Value: 12.0,
-				Usage: "Target average card level for viability",
-			},
-			&cli.StringFlag{
-				Name:  "sort-by",
-				Value: "roi",
-				Usage: "Sort results by: roi, cost_efficiency, total_cards, total_gold, current_score, projected_score",
-			},
-			&cli.IntFlag{
-				Name:  "top-n",
-				Value: 10,
-				Usage: "Number of top decks to display",
-			},
-			&cli.BoolFlag{
-				Name:  "include-variations",
-				Usage: "Generate and analyze deck variations",
-			},
-			&cli.IntFlag{
-				Name:  "max-variations",
-				Value: 5,
-				Usage: "Maximum number of deck variations to generate",
-			},
-			&cli.BoolFlag{
-				Name:  "quick-wins",
-				Usage: "Show only quick-win decks (1-2 upgrades away)",
-			},
-			&cli.BoolFlag{
-				Name:  "ready-only",
-				Usage: "Show only decks that are already competitive",
-			},
-			&cli.StringFlag{
-				Name:  "unlocked-evolutions",
-				Usage: "Comma-separated list of cards with unlocked evolutions",
-			},
-			&cli.IntFlag{
-				Name:  "evolution-slots",
-				Value: 2,
-				Usage: "Number of evolution slots available",
-			},
-			&cli.BoolFlag{
-				Name:  "json",
-				Usage: "Output results in JSON format",
-			},
-			&cli.BoolFlag{
-				Name:  "save",
-				Usage: "Save results to file",
-			},
+			&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #)", Required: true},
+			&cli.IntFlag{Name: "max-cards", Value: 0, Usage: "Maximum cards needed for upgrades (0 = no limit)"},
+			&cli.IntFlag{Name: "max-gold", Value: 0, Usage: "Maximum gold needed for upgrades (0 = no limit)"},
+			&cli.Float64Flag{Name: "target-level", Value: 12.0, Usage: "Target average card level for viability"},
+			&cli.StringFlag{Name: "sort-by", Value: "roi", Usage: "Sort results by: roi, cost_efficiency, total_cards, total_gold, current_score, projected_score"},
+			&cli.IntFlag{Name: "top-n", Value: 10, Usage: "Number of top decks to display"},
+			&cli.BoolFlag{Name: "include-variations", Usage: "Generate and analyze deck variations"},
+			&cli.IntFlag{Name: "max-variations", Value: 5, Usage: "Maximum number of deck variations to generate"},
+			&cli.BoolFlag{Name: "quick-wins", Usage: "Show only quick-win decks (1-2 upgrades away)"},
+			&cli.BoolFlag{Name: "ready-only", Usage: "Show only decks that are already competitive"},
+			&cli.StringFlag{Name: "unlocked-evolutions", Usage: "Comma-separated list of cards with unlocked evolutions"},
+			&cli.IntFlag{Name: "evolution-slots", Value: 2, Usage: "Number of evolution slots available"},
+			&cli.BoolFlag{Name: "json", Usage: "Output results in JSON format"},
+			&cli.BoolFlag{Name: "save", Usage: "Save results to file"},
 		},
 		Action: deckBudgetCommand,
 	}
