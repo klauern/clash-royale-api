@@ -3803,6 +3803,7 @@ func saveDeckIfRequested(cmd *cli.Command, builder *deck.Builder, deckRec *deck.
 	printf("\nDeck saved to: %s\n", deckPath)
 	return nil
 }
+
 func displayDeckRecommendationOffline(rec *deck.DeckRecommendation, playerName, playerTag string) {
 	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
 	printf("║              RECOMMENDED 1v1 LADDER DECK                           ║\n")
@@ -5499,6 +5500,43 @@ func formatPossibleCountHuman(player *clashroyale.Player, stats *deck.DeckSpaceS
 		stats.ValidCombinations.String(),
 		deck.FormatLargeNumber(stats.ValidCombinations)))
 
+	// Combinations by elixir range
+	if len(stats.ByElixirRange) > 0 {
+		buf.WriteString("═══ ESTIMATED BY ELIXIR RANGE ═══\n\n")
+		w2 := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
+		fprintf(w2, "Range\tCombinations\n")
+		fprintf(w2, "─────\t────────────\n")
+
+		for _, elixirRange := range deck.StandardElixirRanges {
+			if count, exists := stats.ByElixirRange[elixirRange.Label]; exists {
+				fprintf(w2, "%s\t%s\n",
+					elixirRange.Label,
+					deck.FormatLargeNumber(count))
+			}
+		}
+		flushWriter(w2)
+		buf.WriteString("\n")
+	}
+
+	// Combinations by archetype
+	if len(stats.ByArchetype) > 0 {
+		buf.WriteString("═══ ESTIMATED BY ARCHETYPE ═══\n\n")
+		w3 := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
+		fprintf(w3, "Archetype\tCombinations\n")
+		fprintf(w3, "─────────\t────────────\n")
+
+		archetypes := []string{"Beatdown", "Control", "Cycle", "Siege", "Bridge Spam", "Bait"}
+		for _, archetype := range archetypes {
+			if count, exists := stats.ByArchetype[archetype]; exists {
+				fprintf(w3, "%s\t%s\n",
+					archetype,
+					deck.FormatLargeNumber(count))
+			}
+		}
+		flushWriter(w3)
+		buf.WriteString("\n")
+	}
+
 	if verbose {
 		// Cards by role
 		buf.WriteString("═══ CARDS BY ROLE ═══\n\n")
@@ -5531,43 +5569,6 @@ func formatPossibleCountHuman(player *clashroyale.Player, stats *deck.DeckSpaceS
 		}
 		flushWriter(w)
 		buf.WriteString("\n")
-
-		// Combinations by elixir range
-		if len(stats.ByElixirRange) > 0 {
-			buf.WriteString("═══ ESTIMATED BY ELIXIR RANGE ═══\n\n")
-			w2 := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
-			fprintf(w2, "Range\tCombinations\n")
-			fprintf(w2, "─────\t────────────\n")
-
-			for _, elixirRange := range deck.StandardElixirRanges {
-				if count, exists := stats.ByElixirRange[elixirRange.Label]; exists {
-					fprintf(w2, "%s\t%s\n",
-						elixirRange.Label,
-						deck.FormatLargeNumber(count))
-				}
-			}
-			flushWriter(w2)
-			buf.WriteString("\n")
-		}
-
-		// Combinations by archetype
-		if len(stats.ByArchetype) > 0 {
-			buf.WriteString("═══ ESTIMATED BY ARCHETYPE ═══\n\n")
-			w3 := tabwriter.NewWriter(&buf, 0, 0, 2, ' ', 0)
-			fprintf(w3, "Archetype\tCombinations\n")
-			fprintf(w3, "─────────\t────────────\n")
-
-			archetypes := []string{"Beatdown", "Control", "Cycle", "Siege", "Bridge Spam", "Bait"}
-			for _, archetype := range archetypes {
-				if count, exists := stats.ByArchetype[archetype]; exists {
-					fprintf(w3, "%s\t%s\n",
-						archetype,
-						deck.FormatLargeNumber(count))
-				}
-			}
-			flushWriter(w3)
-			buf.WriteString("\n")
-		}
 	}
 
 	buf.WriteString("Note: Estimates for elixir ranges and archetypes are approximations.\n")
