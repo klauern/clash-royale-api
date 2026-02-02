@@ -335,6 +335,8 @@ func convertPlayerToAnalysis(player *clashroyale.Player) *deck.CardAnalysis {
 	analysis := &deck.CardAnalysis{
 		CardLevels:   make(map[string]deck.CardLevelData),
 		AnalysisTime: time.Now().Format("2006-01-02 15:04:05"),
+		PlayerName:   player.Name,
+		PlayerTag:    player.Tag,
 	}
 
 	for _, card := range player.Cards {

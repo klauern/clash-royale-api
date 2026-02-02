@@ -92,6 +92,8 @@ func NewBuilder(dataDir string) *Builder {
 type CardAnalysis struct {
 	CardLevels   map[string]CardLevelData `json:"card_levels"`
 	AnalysisTime string                   `json:"analysis_time,omitempty"`
+	PlayerName   string                   `json:"player_name,omitempty"`
+	PlayerTag    string                   `json:"player_tag,omitempty"`
 }
 
 // CardLevelData represents card level and metadata from analysis

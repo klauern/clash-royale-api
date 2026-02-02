@@ -1324,6 +1324,8 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		deckCardAnalysis = deck.CardAnalysis{
 			CardLevels:   make(map[string]deck.CardLevelData),
 			AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+			PlayerName:   player.Name,
+			PlayerTag:    player.Tag,
 		}
 
 		for cardName, cardInfo := range cardAnalysis.CardLevels {
@@ -2442,6 +2444,8 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		deckCardAnalysis = deck.CardAnalysis{
 			CardLevels:   make(map[string]deck.CardLevelData),
 			AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+			PlayerName:   player.Name,
+			PlayerTag:    player.Tag,
 		}
 
 		for cardName, cardInfo := range cardAnalysis.CardLevels {
@@ -3110,6 +3114,8 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 		deckCardAnalysis = deck.CardAnalysis{
 			CardLevels:   make(map[string]deck.CardLevelData),
 			AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+			PlayerName:   player.Name,
+			PlayerTag:    player.Tag,
 		}
 
 		for cardName, cardInfo := range cardAnalysis.CardLevels {
@@ -3606,9 +3612,15 @@ func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile
 		}
 	}
 
+	// Use player name from analysis if available, fallback to tag
+	playerName := loadedAnalysis.PlayerName
+	if playerName == "" {
+		playerName = tag
+	}
+
 	return &playerDataLoadResult{
 		CardAnalysis: *loadedAnalysis,
-		PlayerName:   tag,
+		PlayerName:   playerName,
 		PlayerTag:    tag,
 	}, nil
 }
@@ -3647,6 +3659,8 @@ func loadPlayerDataOnline(builder *deck.Builder, tag, apiToken string, verbose b
 	deckCardAnalysis := deck.CardAnalysis{
 		CardLevels:   make(map[string]deck.CardLevelData),
 		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+		PlayerName:   player.Name,
+		PlayerTag:    player.Tag,
 	}
 
 	for cardName, cardInfo := range cardAnalysis.CardLevels {
@@ -4102,6 +4116,8 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	deckCardAnalysis := deck.CardAnalysis{
 		CardLevels:   make(map[string]deck.CardLevelData),
 		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+		PlayerName:   player.Name,
+		PlayerTag:    player.Tag,
 	}
 
 	for cardName, cardInfo := range cardAnalysis.CardLevels {
@@ -4538,6 +4554,8 @@ func performDeckUpgradeImpactAnalysis(deckCardNames []string, playerTag string, 
 	deckCardAnalysis := deck.CardAnalysis{
 		CardLevels:   make(map[string]deck.CardLevelData),
 		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+		PlayerName:   player.Name,
+		PlayerTag:    player.Tag,
 	}
 
 	for cardName, cardInfo := range cardAnalysis.CardLevels {
