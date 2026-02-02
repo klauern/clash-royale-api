@@ -49,6 +49,9 @@ type FuzzingConfig struct {
 	MutationIntensity int
 	// ArchetypeFilter specifies archetypes to force generation from (empty = no filter)
 	ArchetypeFilter []string
+	// UniquenessWeight enables and configures uniqueness scoring (0.0 = disabled, 0.1-0.3 recommended)
+	// Higher values prefer less common/anti-meta cards
+	UniquenessWeight float64
 }
 
 // FuzzingStats tracks metrics during deck generation
@@ -74,6 +77,7 @@ type FuzzedDeck struct {
 	DefenseScore     float64
 	SynergyScore     float64
 	VersatilityScore float64
+	UniquenessScore  float64 // Anti-meta uniqueness score (0.0-1.0)
 	Archetype        string
 	GenerationTime   time.Duration
 }
@@ -102,15 +106,16 @@ func DefaultRoleComposition() *RoleComposition {
 
 // DeckFuzzer handles the generation of random valid deck combinations
 type DeckFuzzer struct {
-	cardsByRole map[config.CardRole][]CardCandidate
-	allCards    []CardCandidate
-	config      *FuzzingConfig
-	composition *RoleComposition
-	rng         *rand.Rand
-	stats       *FuzzingStats
-	excludeMap  map[string]bool
-	includeMap  map[string]bool
-	synergyDB   *SynergyDatabase
+	cardsByRole      map[config.CardRole][]CardCandidate
+	allCards         []CardCandidate
+	config           *FuzzingConfig
+	composition      *RoleComposition
+	rng              *rand.Rand
+	stats            *FuzzingStats
+	excludeMap       map[string]bool
+	includeMap       map[string]bool
+	synergyDB        *SynergyDatabase
+	uniquenessScorer *UniquenessScorer
 }
 
 // NewDeckFuzzer creates a new deck fuzzer from a player's card collection
@@ -164,6 +169,12 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 	}
 	if cfg.MutationIntensity > 5 {
 		cfg.MutationIntensity = 5
+	}
+	if cfg.UniquenessWeight < 0 {
+		cfg.UniquenessWeight = 0
+	}
+	if cfg.UniquenessWeight > 0.5 {
+		cfg.UniquenessWeight = 0.5 // Cap at 0.5 to prevent over-prioritizing uniqueness
 	}
 
 	// Initialize random number generator
@@ -225,19 +236,32 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 		}
 	}
 
+	// Initialize uniqueness scorer if weight is set
+	var uniquenessScorer *UniquenessScorer
+	if cfg.UniquenessWeight > 0 {
+		uniquenessConfig := UniquenessConfig{
+			Enabled:                true,
+			Weight:                 cfg.UniquenessWeight,
+			MinUniquenessThreshold: 0.3, // Cards with popularity < 0.7 get bonuses
+			UseGeometricMean:       false,
+		}
+		uniquenessScorer = NewUniquenessScorer(uniquenessConfig)
+	}
+
 	fuzzer := &DeckFuzzer{
-		cardsByRole: cardsByRole,
-		allCards:    allCards,
-		config:      cfg,
-		composition: DefaultRoleComposition(),
-		rng:         rng,
+		cardsByRole:      cardsByRole,
+		allCards:         allCards,
+		config:           cfg,
+		composition:      DefaultRoleComposition(),
+		rng:              rng,
 		stats: &FuzzingStats{
 			StartTime:       time.Now(),
 			GenerationTimes: make([]time.Duration, 0, cfg.Count),
 		},
-		excludeMap: excludeMap,
-		includeMap: includeMap,
-		synergyDB:  NewSynergyDatabase(),
+		excludeMap:       excludeMap,
+		includeMap:       includeMap,
+		synergyDB:        NewSynergyDatabase(),
+		uniquenessScorer: uniquenessScorer,
 	}
 
 	return fuzzer, nil

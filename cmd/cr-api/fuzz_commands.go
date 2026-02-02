@@ -94,6 +94,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	mutationIntensity := cmd.Int("mutation-intensity")
 	archetypes := cmd.StringSlice("archetypes")
 	refineRounds := cmd.Int("refine")
+	uniquenessWeight := cmd.Float64("uniqueness-weight")
 	mode := strings.ToLower(cmd.String("mode"))
 	gaPopulation := cmd.Int("ga-population")
 	gaGenerations := cmd.Int("ga-generations")
@@ -260,6 +261,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		EvoWeight:         evoWeight,
 		MutationIntensity: mutationIntensity,
 		ArchetypeFilter:   normalizedArchetypes,
+		UniquenessWeight:  uniquenessWeight,
 	}
 
 	// Handle --include-from-saved: extract cards from saved top decks

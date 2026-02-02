@@ -48,6 +48,11 @@ const (
 	// ScorerV2CombatWeight is the weight for combat statistics
 	// Factors in actual DPS, HP, range effectiveness
 	ScorerV2CombatWeight = 0.20
+
+	// ScorerV2UniquenessWeight is the weight for card uniqueness (anti-meta)
+	// Rewards decks with less commonly used cards
+	// Disabled by default (0.0), can be enabled via config
+	ScorerV2UniquenessWeight = 0.0
 )
 
 // CounterCoverageThresholds defines minimum requirements for defensive coverage.
@@ -149,9 +154,13 @@ type ScorerV2Result struct {
 	WeightedArchetype       float64
 	WeightedElixirFit       float64
 	WeightedCombatStats     float64
+	WeightedUniqueness      float64
 
 	// Detailed breakdown for analysis
 	Details ScorerV2Details
+
+	// Uniqueness scoring details (optional, only populated when enabled)
+	UniquenessDetails *UniquenessResult
 }
 
 // ScorerV2Details provides granular information about the scoring.
@@ -191,6 +200,19 @@ type ScorerV2Details struct {
 //
 // Returns a detailed result with component breakdowns.
 func ScoreDeckV2(cards []CardCandidate, strategy Strategy, synergyDB *SynergyDatabase) ScorerV2Result {
+	return ScoreDeckV2WithUniqueness(cards, strategy, synergyDB, nil)
+}
+
+// ScoreDeckV2WithUniqueness calculates the V2 score with optional uniqueness scoring.
+//
+// Parameters:
+//   - cards: The 8-card deck to evaluate
+//   - strategy: The intended strategy (affects elixir fit and archetype scoring)
+//   - synergyDB: The synergy database for pair analysis
+//   - uniquenessScorer: Optional uniqueness scorer (nil to disable)
+//
+// Returns a detailed result with component breakdowns including uniqueness.
+func ScoreDeckV2WithUniqueness(cards []CardCandidate, strategy Strategy, synergyDB *SynergyDatabase, uniquenessScorer *UniquenessScorer) ScorerV2Result {
 	if len(cards) == 0 {
 		return ScorerV2Result{}
 	}
@@ -213,13 +235,25 @@ func ScoreDeckV2(cards []CardCandidate, strategy Strategy, synergyDB *SynergyDat
 	result.WeightedElixirFit = result.ElixirFitScore * ScorerV2ElixirWeight
 	result.WeightedCombatStats = result.CombatStatsScore * ScorerV2CombatWeight
 
+	// Calculate uniqueness score if scorer provided and enabled
+	if uniquenessScorer != nil && uniquenessScorer.config.Enabled {
+		cardNames := make([]string, len(cards))
+		for i, card := range cards {
+			cardNames[i] = card.Name
+		}
+		uniquenessResult := uniquenessScorer.ScoreDeckWithDetails(cardNames)
+		result.WeightedUniqueness = uniquenessResult.WeightedScore
+		result.UniquenessDetails = &uniquenessResult
+	}
+
 	// Calculate final score
 	result.FinalScore = result.WeightedCardQuality +
 		result.WeightedSynergy +
 		result.WeightedCounterCoverage +
 		result.WeightedArchetype +
 		result.WeightedElixirFit +
-		result.WeightedCombatStats
+		result.WeightedCombatStats +
+		result.WeightedUniqueness
 
 	// Normalize to 0.0-1.0 range
 	if result.FinalScore > 1.0 {

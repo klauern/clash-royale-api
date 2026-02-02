@@ -980,6 +980,11 @@ func addDeckCommands() *cli.Command {
 						Value: 1,
 						Usage: "Number of refinement rounds. Each round uses top decks from previous round as seeds, with progressively tighter constraints",
 					},
+					&cli.Float64Flag{
+						Name:  "uniqueness-weight",
+						Value: 0.0,
+						Usage: "Weight for card uniqueness scoring (0.0-0.3, default: 0.0 = disabled). Higher values prefer less common/anti-meta cards",
+					},
 				},
 				Action: deckFuzzCommand,
 			},
