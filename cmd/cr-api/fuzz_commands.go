@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -92,6 +93,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	evoWeight := cmd.Float64("evo-weight")
 	mutationIntensity := cmd.Int("mutation-intensity")
 	archetypes := cmd.StringSlice("archetypes")
+	refineRounds := cmd.Int("refine")
 	mode := strings.ToLower(cmd.String("mode"))
 	gaPopulation := cmd.Int("ga-population")
 	gaGenerations := cmd.Int("ga-generations")
@@ -308,6 +310,9 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	if mode == "genetic" {
 		if verbose {
 			fprintf(os.Stderr, "\nStarting deck fuzzing (genetic mode)...\n")
+			if refineRounds > 1 {
+				fprintf(os.Stderr, "Running %d refinement rounds\n", refineRounds)
+			}
 		}
 
 		candidates, err := buildGeneticCandidates(player, includeCards, excludeCards)
@@ -315,68 +320,10 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			return err
 		}
 
-		gaConfig := genetic.DefaultGeneticConfig()
-		gaConfig.PopulationSize = gaPopulation
-		gaConfig.Generations = gaGenerations
-		gaConfig.MutationRate = gaMutationRate
-		gaConfig.CrossoverRate = gaCrossoverRate
-		gaConfig.MutationIntensity = gaMutationIntensity
-		gaConfig.EliteCount = gaEliteCount
-		gaConfig.TournamentSize = gaTournamentSize
-		gaConfig.ParallelEvaluations = gaParallelEval
-		gaConfig.ConvergenceGenerations = gaConvergenceGenerations
-		gaConfig.TargetFitness = gaTargetFitness
-		gaConfig.IslandModel = gaIslandModel
-		gaConfig.IslandCount = gaIslandCount
-		gaConfig.MigrationInterval = gaMigrationInterval
-		gaConfig.MigrationSize = gaMigrationSize
-		gaConfig.UseArchetypes = gaUseArchetypes
+		// Store initial seed decks for first round
+		initialSeedDecks := filterDecksByIncludeExclude(seedDecks, includeCards, excludeCards)
 
-		if len(seedDecks) > 0 {
-			gaConfig.SeedPopulation = filterDecksByIncludeExclude(seedDecks, includeCards, excludeCards)
-		}
-
-		optimizer, err := genetic.NewGeneticOptimizer(candidates, deck.StrategyBalanced, &gaConfig)
-		if err != nil {
-			return fmt.Errorf("failed to create genetic optimizer: %w", err)
-		}
-		if seed != 0 {
-			optimizer.RNG = rand.New(rand.NewSource(int64(seed)))
-		}
-		if verbose {
-			startTime := time.Now()
-			totalGens := gaGenerations
-			totalPop := gaPopulation
-			optimizer.Progress = func(progress genetic.GeneticProgress) {
-				gens := int(progress.Generation)
-				elapsed := time.Since(startTime)
-				etaStr := "?"
-				if gens > 0 {
-					rate := float64(gens) / elapsed.Seconds()
-					remaining := totalGens - gens
-					if remaining < 0 {
-						remaining = 0
-					}
-					if rate > 0 {
-						etaStr = formatDurationFloor(float64(remaining) / rate)
-					}
-				}
-				evalsDone := int64(gens) * int64(totalPop)
-				fprintf(
-					os.Stderr,
-					"\rGA gen %d/%d | evals ~%d | best %.2f | avg %.2f | elapsed %s | eta %s",
-					progress.Generation,
-					totalGens,
-					evalsDone,
-					progress.BestFitness,
-					progress.AvgFitness,
-					formatDurationFloor(elapsed.Seconds()),
-					etaStr,
-				)
-			}
-		}
-
-		// Use saved decks, mutations, and variations as seed population in genetic mode.
+		// Use saved decks, mutations, and variations as seed population for first round.
 		if fromSaved > 0 && !interrupted.Load() {
 			savedDecks, err := loadSavedDecksForSeeding(fromSaved, player, verbose)
 			if err != nil {
@@ -385,7 +332,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			if len(savedDecks) > 0 {
 				mutations := generateDeckMutations(savedDecks, player, count, fuzzerCfg.MutationIntensity, verbose)
 				mutations = filterDecksByIncludeExclude(mutations, includeCards, excludeCards)
-				gaConfig.SeedPopulation = append(gaConfig.SeedPopulation, mutations...)
+				initialSeedDecks = append(initialSeedDecks, mutations...)
 			}
 		}
 
@@ -397,31 +344,186 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			variations := generateVariations(baseDeck, player, count, fuzzerCfg.MutationIntensity, verbose)
 			if len(variations) > 0 {
 				variations = filterDecksByIncludeExclude(variations, includeCards, excludeCards)
-				gaConfig.SeedPopulation = append(gaConfig.SeedPopulation, variations...)
+				initialSeedDecks = append(initialSeedDecks, variations...)
 			}
 		}
 
-		startTime := time.Now()
-		result, err := optimizer.Optimize()
-		if verbose {
-			fprintln(os.Stderr)
-		}
-		if err != nil {
-			return fmt.Errorf("failed to optimize decks: %w", err)
-		}
-		generationTime = result.Duration
-		if generationTime == 0 {
-			generationTime = time.Since(startTime)
+		// Iterative refinement loop
+		currentSeedDecks := initialSeedDecks
+		var allRoundResults [][]*genetic.DeckGenome
+		var totalTime time.Duration
+
+		for round := 1; round <= refineRounds; round++ {
+			if interrupted.Load() {
+				break
+			}
+
+			if verbose && refineRounds > 1 {
+				fprintf(os.Stderr, "\n--- Refinement Round %d/%d ---\n", round, refineRounds)
+			}
+
+			gaConfig := genetic.DefaultGeneticConfig()
+			gaConfig.PopulationSize = gaPopulation
+			gaConfig.Generations = gaGenerations
+			gaConfig.CrossoverRate = gaCrossoverRate
+			gaConfig.TournamentSize = gaTournamentSize
+			gaConfig.ParallelEvaluations = gaParallelEval
+			gaConfig.ConvergenceGenerations = gaConvergenceGenerations
+			gaConfig.TargetFitness = gaTargetFitness
+			gaConfig.IslandModel = gaIslandModel
+			gaConfig.IslandCount = gaIslandCount
+			gaConfig.MigrationInterval = gaMigrationInterval
+			gaConfig.MigrationSize = gaMigrationSize
+			gaConfig.UseArchetypes = gaUseArchetypes
+
+			// Progressive refinement: adjust parameters each round
+			if round == 1 {
+				// First round: use user-specified parameters
+				gaConfig.MutationRate = gaMutationRate
+				gaConfig.MutationIntensity = gaMutationIntensity
+				gaConfig.EliteCount = gaEliteCount
+			} else {
+				// Subsequent rounds: reduce exploration, increase exploitation
+				// Gradually reduce mutation rate (min 0.02)
+				mutationRate := gaMutationRate * math.Pow(0.7, float64(round-1))
+				if mutationRate < 0.02 {
+					mutationRate = 0.02
+				}
+				gaConfig.MutationRate = mutationRate
+				// Gradually reduce mutation intensity (min 0.1)
+				mutationIntensity := gaMutationIntensity * math.Pow(0.7, float64(round-1))
+				if mutationIntensity < 0.1 {
+					mutationIntensity = 0.1
+				}
+				gaConfig.MutationIntensity = mutationIntensity
+				// Gradually increase elite count (max 20% of population)
+				eliteCount := gaEliteCount + round - 1
+				maxElite := gaPopulation / 5
+				if eliteCount > maxElite {
+					eliteCount = maxElite
+				}
+				gaConfig.EliteCount = eliteCount
+			}
+
+			// Use seed decks from previous round
+			if len(currentSeedDecks) > 0 {
+				gaConfig.SeedPopulation = currentSeedDecks
+			}
+
+			optimizer, err := genetic.NewGeneticOptimizer(candidates, deck.StrategyBalanced, &gaConfig)
+			if err != nil {
+				return fmt.Errorf("failed to create genetic optimizer: %w", err)
+			}
+			if seed != 0 {
+				optimizer.RNG = rand.New(rand.NewSource(int64(seed) + int64(round)))
+			}
+			if verbose {
+				startTime := time.Now()
+				totalGens := gaGenerations
+				totalPop := gaPopulation
+				optimizer.Progress = func(progress genetic.GeneticProgress) {
+					gens := int(progress.Generation)
+					elapsed := time.Since(startTime)
+					etaStr := "?"
+					if gens > 0 {
+						rate := float64(gens) / elapsed.Seconds()
+						remaining := totalGens - gens
+						if remaining < 0 {
+							remaining = 0
+						}
+						if rate > 0 {
+							etaStr = formatDurationFloor(float64(remaining) / rate)
+						}
+					}
+					evalsDone := int64(gens) * int64(totalPop)
+					if refineRounds > 1 {
+						fprintf(
+							os.Stderr,
+							"\rRound %d: GA gen %d/%d | evals ~%d | best %.2f | avg %.2f | elapsed %s | eta %s",
+							round,
+							progress.Generation,
+							totalGens,
+							evalsDone,
+							progress.BestFitness,
+							progress.AvgFitness,
+							formatDurationFloor(elapsed.Seconds()),
+							etaStr,
+						)
+					} else {
+						fprintf(
+							os.Stderr,
+							"\rGA gen %d/%d | evals ~%d | best %.2f | avg %.2f | elapsed %s | eta %s",
+							progress.Generation,
+							totalGens,
+							evalsDone,
+							progress.BestFitness,
+							progress.AvgFitness,
+							formatDurationFloor(elapsed.Seconds()),
+							etaStr,
+						)
+					}
+				}
+			}
+
+			startTime := time.Now()
+			result, err := optimizer.Optimize()
+			if verbose {
+				fprintln(os.Stderr)
+			}
+			if err != nil {
+				return fmt.Errorf("failed to optimize decks in round %d: %w", round, err)
+			}
+			roundTime := result.Duration
+			if roundTime == 0 {
+				roundTime = time.Since(startTime)
+			}
+			totalTime += roundTime
+
+			// Store results from this round
+			allRoundResults = append(allRoundResults, result.HallOfFame)
+
+			// Prepare seed decks for next round: use top decks from this round
+			if round < refineRounds {
+				topCount := min(gaPopulation/4, len(result.HallOfFame))
+				if topCount == 0 && len(result.HallOfFame) > 0 {
+					topCount = len(result.HallOfFame)
+				}
+				currentSeedDecks = make([][]string, 0, topCount)
+				for i := 0; i < topCount && i < len(result.HallOfFame); i++ {
+					if result.HallOfFame[i] == nil {
+						continue
+					}
+					clone := make([]string, len(result.HallOfFame[i].Cards))
+					copy(clone, result.HallOfFame[i].Cards)
+					currentSeedDecks = append(currentSeedDecks, clone)
+				}
+				if verbose && len(currentSeedDecks) > 0 {
+					fprintf(os.Stderr, "Round %d complete. Using top %d decks as seeds for next round\n", round, len(currentSeedDecks))
+				}
+			}
 		}
 
-		generatedDecks = make([][]string, 0, len(result.HallOfFame))
-		for _, genome := range result.HallOfFame {
-			if genome == nil {
-				continue
+		generationTime = totalTime
+
+		// Combine results from all rounds, preferring later rounds
+		generatedDecks = make([][]string, 0)
+		seenDecks := make(map[string]bool)
+
+		// Add decks from later rounds first (they're more refined)
+		for i := len(allRoundResults) - 1; i >= 0; i-- {
+			for _, genome := range allRoundResults[i] {
+				if genome == nil {
+					continue
+				}
+				deckKey := strings.Join(genome.Cards, ",")
+				if seenDecks[deckKey] {
+					continue
+				}
+				seenDecks[deckKey] = true
+				clone := make([]string, len(genome.Cards))
+				copy(clone, genome.Cards)
+				generatedDecks = append(generatedDecks, clone)
 			}
-			clone := make([]string, len(genome.Cards))
-			copy(clone, genome.Cards)
-			generatedDecks = append(generatedDecks, clone)
 		}
 
 		generatedDecks = filterDecksByIncludeExclude(generatedDecks, includeCards, excludeCards)

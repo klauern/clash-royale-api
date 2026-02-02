@@ -975,6 +975,11 @@ func addDeckCommands() *cli.Command {
 						Name:  "archetypes",
 						Usage: "Force generation from specific archetypes (comma-separated: beatdown,control,cycle,bridge,siege,bait,graveyard,miner,hybrid)",
 					},
+					&cli.IntFlag{
+						Name:  "refine",
+						Value: 1,
+						Usage: "Number of refinement rounds. Each round uses top decks from previous round as seeds, with progressively tighter constraints",
+					},
 				},
 				Action: deckFuzzCommand,
 			},
