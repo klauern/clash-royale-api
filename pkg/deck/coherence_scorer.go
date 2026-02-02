@@ -17,32 +17,32 @@ var defaultArchetypeRequirementsJSON []byte
 
 // ArchetypeRequirementsConfig represents the JSON configuration for archetype validation
 type ArchetypeRequirementsConfig struct {
-	Version          int                       `json:"version"`
-	Description      string                    `json:"description"`
-	LastUpdated      string                    `json:"last_updated"`
-	Archetypes       map[string]ArchetypeDef   `json:"archetypes"`
-	AntiSynergyRules AntiSynergyRules          `json:"anti_synergy_rules"`
-	CardCategories   CardCategoryDefinitions   `json:"card_categories"`
+	Version          int                     `json:"version"`
+	Description      string                  `json:"description"`
+	LastUpdated      string                  `json:"last_updated"`
+	Archetypes       map[string]ArchetypeDef `json:"archetypes"`
+	AntiSynergyRules AntiSynergyRules        `json:"anti_synergy_rules"`
+	CardCategories   CardCategoryDefinitions `json:"card_categories"`
 }
 
 // ArchetypeDef defines the requirements for a coherent archetype
 type ArchetypeDef struct {
-	Name                  string              `json:"name"`
-	ElixirRange           ElixirRange         `json:"elixir_range"`
-	RequiredWinConditions []string            `json:"required_win_conditions"`
-	RequiredSupportCount  MinMax              `json:"required_support_count"`
-	SupportCategories     []string            `json:"support_categories"`
-	MinCycleCards         int                 `json:"min_cycle_cards,omitempty"`
-	MaxCycleCards         int                 `json:"max_cycle_cards,omitempty"`
-	MinBaitCards          int                 `json:"min_bait_cards,omitempty"`
-	MinBigSpells          int                 `json:"min_big_spells,omitempty"`
-	MaxBigSpells          int                 `json:"max_big_spells,omitempty"`
-	MinBuildings          int                 `json:"min_buildings,omitempty"`
-	MaxBuildings          int                 `json:"max_buildings,omitempty"`
-	MinDefensiveCards     int                 `json:"min_defensive_cards,omitempty"`
-	MaxWinConditions      int                 `json:"max_win_conditions,omitempty"`
-	MinFastThreats        int                 `json:"min_fast_threats,omitempty"`
-	PreferredCardRoles    map[string]MinMax   `json:"preferred_card_roles"`
+	Name                  string            `json:"name"`
+	ElixirRange           ElixirRange       `json:"elixir_range"`
+	RequiredWinConditions []string          `json:"required_win_conditions"`
+	RequiredSupportCount  MinMax            `json:"required_support_count"`
+	SupportCategories     []string          `json:"support_categories"`
+	MinCycleCards         int               `json:"min_cycle_cards,omitempty"`
+	MaxCycleCards         int               `json:"max_cycle_cards,omitempty"`
+	MinBaitCards          int               `json:"min_bait_cards,omitempty"`
+	MinBigSpells          int               `json:"min_big_spells,omitempty"`
+	MaxBigSpells          int               `json:"max_big_spells,omitempty"`
+	MinBuildings          int               `json:"min_buildings,omitempty"`
+	MaxBuildings          int               `json:"max_buildings,omitempty"`
+	MinDefensiveCards     int               `json:"min_defensive_cards,omitempty"`
+	MaxWinConditions      int               `json:"max_win_conditions,omitempty"`
+	MinFastThreats        int               `json:"min_fast_threats,omitempty"`
+	PreferredCardRoles    map[string]MinMax `json:"preferred_card_roles"`
 }
 
 // MinMax defines minimum and maximum counts
@@ -59,82 +59,82 @@ type AntiSynergyRules struct {
 
 // ConflictingWinConditionRule defines incompatible win condition combinations
 type ConflictingWinConditionRule struct {
-	Name        string   `json:"name"`
-	CardsA      []string `json:"cards_a"`
-	CardsB      []string `json:"cards_b,omitempty"`
-	MaxAllowed  int      `json:"max_allowed,omitempty"`
-	Penalty     float64  `json:"penalty"`
-	Reason      string   `json:"reason"`
+	Name       string   `json:"name"`
+	CardsA     []string `json:"cards_a"`
+	CardsB     []string `json:"cards_b,omitempty"`
+	MaxAllowed int      `json:"max_allowed,omitempty"`
+	Penalty    float64  `json:"penalty"`
+	Reason     string   `json:"reason"`
 }
 
 // CompositionViolation defines penalties for deck composition issues
 type CompositionViolation struct {
-	Name              string   `json:"name"`
-	Threshold         int      `json:"threshold"`
-	MinWinConditions  int      `json:"min_win_conditions,omitempty"`
-	MinAirDefense     int      `json:"min_air_defense,omitempty"`
-	Penalty           float64  `json:"penalty"`
-	Reason            string   `json:"reason"`
+	Name             string  `json:"name"`
+	Threshold        int     `json:"threshold"`
+	MinWinConditions int     `json:"min_win_conditions,omitempty"`
+	MinAirDefense    int     `json:"min_air_defense,omitempty"`
+	Penalty          float64 `json:"penalty"`
+	Reason           string  `json:"reason"`
 }
 
 // CardCategoryDefinitions groups cards by strategic categories
 type CardCategoryDefinitions struct {
-	CycleCards    []string `json:"cycle_cards"`
-	BaitCards     []string `json:"bait_cards"`
-	SplashDamage  []string `json:"splash_damage"`
-	HighDPS       []string `json:"high_dps"`
-	MiniTanks     []string `json:"mini_tanks"`
-	ResetCards    []string `json:"reset_cards"`
-	BigSpells     []string `json:"big_spells"`
-	SmallSpells   []string `json:"small_spells"`
-	AirDefense    []string `json:"air_defense"`
-	FastThreats   []string `json:"fast_threats"`
+	CycleCards   []string `json:"cycle_cards"`
+	BaitCards    []string `json:"bait_cards"`
+	SplashDamage []string `json:"splash_damage"`
+	HighDPS      []string `json:"high_dps"`
+	MiniTanks    []string `json:"mini_tanks"`
+	ResetCards   []string `json:"reset_cards"`
+	BigSpells    []string `json:"big_spells"`
+	SmallSpells  []string `json:"small_spells"`
+	AirDefense   []string `json:"air_defense"`
+	FastThreats  []string `json:"fast_threats"`
 }
 
 // CoherenceResult contains the detailed archetype coherence analysis
 type CoherenceResult struct {
 	// Detected archetype information
-	PrimaryArchetype     string  `json:"primary_archetype"`
-	ArchetypeConfidence  float64 `json:"archetype_confidence"` // 0.0-1.0
-	CoherenceScore       float64 `json:"coherence_score"`       // 0.0-1.0 overall coherence
+	PrimaryArchetype    string  `json:"primary_archetype"`
+	ArchetypeConfidence float64 `json:"archetype_confidence"` // 0.0-1.0
+	CoherenceScore      float64 `json:"coherence_score"`      // 0.0-1.0 overall coherence
 
 	// Elixir analysis
-	AverageElixir        float64  `json:"average_elixir"`
-	ElixirMatch          bool     `json:"elixir_match"`
-	ElixirVariance       float64  `json:"elixir_variance"`
+	AverageElixir  float64 `json:"average_elixir"`
+	ElixirMatch    bool    `json:"elixir_match"`
+	ElixirVariance float64 `json:"elixir_variance"`
 
 	// Component violations
-	Violations          []CoherenceViolation `json:"violations"`
-	Bonuses             []CoherenceBonus    `json:"bonuses"`
+	Violations []CoherenceViolation `json:"violations"`
+	Bonuses    []CoherenceBonus     `json:"bonuses"`
 
 	// Archetype-specific metrics
-	WinConditionCount   int                     `json:"win_condition_count"`
-	SupportCount        int                     `json:"support_count"`
-	BuildingCount       int                     `json:"building_count"`
-	SpellCount          int                     `json:"spell_count"`
-	CycleCardCount      int                     `json:"cycle_card_count"`
-	BaitCardCount       int                     `json:"bait_card_count"`
-	FastThreatCount     int                     `json:"fast_threat_count"`
-	AirDefenseCount     int                     `json:"air_defense_count"`
+	WinConditionCount int `json:"win_condition_count"`
+	SupportCount      int `json:"support_count"`
+	BuildingCount     int `json:"building_count"`
+	SpellCount        int `json:"spell_count"`
+	CycleCardCount    int `json:"cycle_card_count"`
+	BaitCardCount     int `json:"bait_card_count"`
+	FastThreatCount   int `json:"fast_threat_count"`
+	AirDefenseCount   int `json:"air_defense_count"`
 
 	// Role distribution
-	RoleDistribution    map[string]int          `json:"role_distribution"`
+	RoleDistribution map[string]int `json:"role_distribution"`
 }
 
 // CoherenceViolation represents a coherence issue with penalty
 type CoherenceViolation struct {
-	Type       string  `json:"type"` // "anti_synergy", "composition", "elixir", "missing_cards"
-	Severity   float64 `json:"severity"` // 0.0-1.0
-	Penalty    float64 `json:"penalty"` // Applied score penalty
-	Message    string  `json:"message"`
-	Cards      []string `json:"cards,omitempty"`
+	Type     string   `json:"type"`     // "anti_synergy", "composition", "elixir", "missing_cards"
+	Severity float64  `json:"severity"` // 0.0-1.0
+	Penalty  float64  `json:"penalty"`  // Applied score penalty
+	Message  string   `json:"message"`
+	Cards    []string `json:"cards,omitempty"`
 }
 
 // CoherenceBonus represents a coherence bonus
 type CoherenceBonus struct {
-	Type     string  `json:"type"`
-	Bonus    float64 `json:"bonus"`
-	Message  string  `json:"message"`
+	Type    string  `json:"type"`
+	Bonus   float64 `json:"bonus"`
+	Message string  `json:"message"`
 }
 
 // CoherenceScorer analyzes deck archetype coherence
@@ -184,13 +184,13 @@ func NewCoherenceScorer(config *ArchetypeRequirementsConfig) *CoherenceScorer {
 // buildCategoryLookups creates fast lookup maps for card categories
 func (cs *CoherenceScorer) buildCategoryLookups() {
 	categories := map[string][]string{
-		"cycle":      cs.config.CardCategories.CycleCards,
-		"bait":       cs.config.CardCategories.BaitCards,
-		"splash":     cs.config.CardCategories.SplashDamage,
-		"high_dps":   cs.config.CardCategories.HighDPS,
-		"mini_tank":  cs.config.CardCategories.MiniTanks,
-		"reset":      cs.config.CardCategories.ResetCards,
-		"big_spell":  cs.config.CardCategories.BigSpells,
+		"cycle":       cs.config.CardCategories.CycleCards,
+		"bait":        cs.config.CardCategories.BaitCards,
+		"splash":      cs.config.CardCategories.SplashDamage,
+		"high_dps":    cs.config.CardCategories.HighDPS,
+		"mini_tank":   cs.config.CardCategories.MiniTanks,
+		"reset":       cs.config.CardCategories.ResetCards,
+		"big_spell":   cs.config.CardCategories.BigSpells,
 		"small_spell": cs.config.CardCategories.SmallSpells,
 		"air_defense": cs.config.CardCategories.AirDefense,
 		"fast_threat": cs.config.CardCategories.FastThreats,
@@ -221,10 +221,10 @@ func (cs *CoherenceScorer) AnalyzeCoherence(cards []CardCandidate, strategy Stra
 	}
 
 	result := &CoherenceResult{
-		CoherenceScore:    0.8, // Start with good score, apply penalties
-		Violations:        []CoherenceViolation{},
-		Bonuses:           []CoherenceBonus{},
-		RoleDistribution:  make(map[string]int),
+		CoherenceScore:   0.8, // Start with good score, apply penalties
+		Violations:       []CoherenceViolation{},
+		Bonuses:          []CoherenceBonus{},
+		RoleDistribution: make(map[string]int),
 	}
 
 	// Analyze card composition
@@ -316,82 +316,122 @@ func (cs *CoherenceScorer) countCardByCategory(card CardCandidate, result *Coher
 	}
 }
 
-// detectArchetype determines the most likely archetype for a deck
-func (cs *CoherenceScorer) detectArchetype(cards []CardCandidate, result *CoherenceResult) (string, float64) {
-	cardNames := make(map[string]bool)
-	for _, card := range cards {
-		cardNames[card.Name] = true
+// scoreArchetypeWinConditions checks if required win conditions are present
+func (cs *CoherenceScorer) scoreArchetypeWinConditions(
+	cardNames map[string]bool,
+	requiredWinConditions []string,
+) float64 {
+	for _, wc := range requiredWinConditions {
+		if cardNames[wc] {
+			return 2.0 // Full points if any required win condition found
+		}
+	}
+	return 0.0
+}
+
+// scoreArchetypeElixirFit evaluates if avg elixir matches archetype range
+func (cs *CoherenceScorer) scoreArchetypeElixirFit(
+	avgElixir float64,
+	elixirRange ElixirRange,
+) float64 {
+	if avgElixir >= elixirRange.Min && avgElixir <= elixirRange.Max {
+		return 1.5 // Perfect match
 	}
 
-	// Score each archetype by how well the deck matches
+	// Partial credit for being close
+	diff := 0.0
+	if avgElixir < elixirRange.Min {
+		diff = elixirRange.Min - avgElixir
+	} else {
+		diff = avgElixir - elixirRange.Max
+	}
+	if diff < 0.5 {
+		return 0.5 // Partial credit
+	}
+	return 0.0
+}
+
+// scoreArchetypeSupportCount validates support card count
+func (cs *CoherenceScorer) scoreArchetypeSupportCount(
+	supportCount int,
+	requiredRange MinMax,
+) float64 {
+	if supportCount >= requiredRange.Min && supportCount <= requiredRange.Max {
+		return 1.0
+	}
+	return 0.0
+}
+
+// scoreArchetypeCycleCards checks cycle card limit compliance
+func (cs *CoherenceScorer) scoreArchetypeCycleCards(
+	cycleCardCount int,
+	maxCycleCards int,
+) float64 {
+	if maxCycleCards > 0 && cycleCardCount <= maxCycleCards {
+		return 0.5
+	}
+	return 0.0
+}
+
+// computeArchetypeConfidence normalizes raw scores into confidence (0-1)
+func computeArchetypeConfidence(score, maxScore float64) float64 {
+	if maxScore > 0 {
+		return score / maxScore
+	}
+	return 0.0
+}
+
+// buildCardNameLookup creates fast lookup map from card list
+func (cs *CoherenceScorer) buildCardNameLookup(cards []CardCandidate) map[string]bool {
+	lookup := make(map[string]bool)
+	for _, card := range cards {
+		lookup[card.Name] = true
+	}
+	return lookup
+}
+
+// scoreArchetype computes normalized confidence score for single archetype
+func (cs *CoherenceScorer) scoreArchetype(
+	cardNames map[string]bool,
+	archetype ArchetypeDef,
+	result *CoherenceResult,
+) float64 {
+	wcScore := cs.scoreArchetypeWinConditions(cardNames, archetype.RequiredWinConditions)
+	elixirScore := cs.scoreArchetypeElixirFit(result.AverageElixir, archetype.ElixirRange)
+	supportScore := cs.scoreArchetypeSupportCount(result.SupportCount, archetype.RequiredSupportCount)
+	cycleScore := cs.scoreArchetypeCycleCards(result.CycleCardCount, archetype.MaxCycleCards)
+
+	totalScore := wcScore + elixirScore + supportScore + cycleScore
+	maxScore := 2.0 + 1.5 + 1.0 + 0.5 // 5.0
+
+	return computeArchetypeConfidence(totalScore, maxScore)
+}
+
+// selectArchetypeWithFallback chooses best archetype or defaults to Cycle
+func (cs *CoherenceScorer) selectArchetypeWithFallback(archetypeName string, confidence float64) (string, float64) {
+	if archetypeName == "" || confidence < 0.3 {
+		return string(StrategyCycle), 0.3
+	}
+	return archetypeName, confidence
+}
+
+// detectArchetype determines the most likely archetype for a deck
+func (cs *CoherenceScorer) detectArchetype(cards []CardCandidate, result *CoherenceResult) (string, float64) {
+	cardNames := cs.buildCardNameLookup(cards)
+
 	bestArchetype := ""
 	bestScore := 0.0
 
 	for archetypeName, archetype := range cs.config.Archetypes {
-		score := 0.0
-		maxScore := 0.0
+		score := cs.scoreArchetype(cardNames, archetype, result)
 
-		// Check for required win conditions
-		wcMatch := false
-		for _, wc := range archetype.RequiredWinConditions {
-			if cardNames[wc] {
-				wcMatch = true
-				break
-			}
-		}
-		if wcMatch {
-			score += 2.0
-		}
-		maxScore += 2.0
-
-		// Check elixir range
-		avgElixir := result.AverageElixir
-		if avgElixir >= archetype.ElixirRange.Min && avgElixir <= archetype.ElixirRange.Max {
-			score += 1.5
-		} else {
-			// Partial credit for being close
-			diff := 0.0
-			if avgElixir < archetype.ElixirRange.Min {
-				diff = archetype.ElixirRange.Min - avgElixir
-			} else {
-				diff = avgElixir - archetype.ElixirRange.Max
-			}
-			if diff < 0.5 {
-				score += 0.5
-			}
-		}
-		maxScore += 1.5
-
-		// Check support count
-		if result.SupportCount >= archetype.RequiredSupportCount.Min &&
-			result.SupportCount <= archetype.RequiredSupportCount.Max {
-			score += 1.0
-		}
-		maxScore += 1.0
-
-		// Check cycle cards (if relevant)
-		if archetype.MaxCycleCards > 0 && result.CycleCardCount <= archetype.MaxCycleCards {
-			score += 0.5
-		}
-		maxScore += 0.5
-
-		// Normalize score
-		if maxScore > 0 {
-			confidence := score / maxScore
-			if confidence > bestScore {
-				bestScore = confidence
-				bestArchetype = archetypeName
-			}
+		if score > bestScore {
+			bestScore = score
+			bestArchetype = archetypeName
 		}
 	}
 
-	// Default to cycle if no archetype matched well
-	if bestArchetype == "" || bestScore < 0.3 {
-		bestArchetype = string(StrategyCycle)
-		bestScore = 0.3
-	}
-
-	return bestArchetype, bestScore
+	return cs.selectArchetypeWithFallback(bestArchetype, bestScore)
 }
 
 // applyAntiSynergyPenalties checks for conflicting card combinations
