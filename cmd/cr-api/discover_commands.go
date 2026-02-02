@@ -417,35 +417,22 @@ func deckDiscoverRunCommand(ctx context.Context, cmd *cli.Command) error {
 	return runDiscoveryCommand(ctx, cmd, resume)
 }
 
-// runDiscoveryCommand is the shared implementation for start/run commands
-func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
-	playerTag := cmd.String("tag")
-	strategy := deck.GeneratorStrategy(cmd.String("strategy"))
-	sampleSize := cmd.Int("sample-size")
-	limit := cmd.Int("limit")
-	verbose := cmd.Bool("verbose")
-	background := cmd.Bool("background")
+// discoveryResources holds all the initialized resources needed for discovery
+type discoveryResources struct {
+	player      *clashroyale.Player
+	cardStats   *clashroyale.CardStatsRegistry
+	playerCtx   *evaluation.PlayerContext
+	synergyDB   *deck.SynergyDatabase
+	storage     *leaderboard.Storage
+	dataDir     string
+}
 
-	// Check for existing checkpoint when starting fresh (not resuming)
-	if !resume {
-		homeDir, _ := os.UserHomeDir()
-		sanitizedTag := strings.TrimPrefix(playerTag, "#")
-		checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
-		if _, err := os.Stat(checkpointPath); err == nil {
-			fprintf(os.Stderr, "Warning: Existing checkpoint found. Use --resume or 'cr-api deck discover resume' to continue.\n")
-			fprintf(os.Stderr, "Starting fresh will clear the existing checkpoint.\n")
-		}
-	}
-
-	// Handle background mode
-	if background {
-		return runDiscoveryInBackground(ctx, cmd, resume)
-	}
-
+// initializeDiscoveryResources sets up all required resources for discovery
+func initializeDiscoveryResources(ctx context.Context, playerTag string, verbose bool) (*discoveryResources, error) {
 	// Get API token
 	apiToken := os.Getenv("CLASH_ROYALE_API_TOKEN")
 	if apiToken == "" {
-		return fmt.Errorf("CLASH_ROYALE_API_TOKEN environment variable required")
+		return nil, fmt.Errorf("CLASH_ROYALE_API_TOKEN environment variable required")
 	}
 
 	// Fetch player data
@@ -456,7 +443,7 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (er
 	cleanTag := strings.TrimPrefix(playerTag, "#")
 	player, err := client.GetPlayer(cleanTag)
 	if err != nil {
-		return fmt.Errorf("failed to fetch player: %w", err)
+		return nil, fmt.Errorf("failed to fetch player: %w", err)
 	}
 
 	// Get data directory
@@ -470,7 +457,7 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (er
 	statsPath := filepath.Join(dataDir, "cards_stats.json")
 	statsRegistry, err := clashroyale.LoadStats(statsPath)
 	if err != nil {
-		return fmt.Errorf("failed to load card stats: %w", err)
+		return nil, fmt.Errorf("failed to load card stats: %w", err)
 	}
 
 	// Create player context
@@ -482,111 +469,50 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (er
 	// Create leaderboard storage
 	storage, err := leaderboard.NewStorage(playerTag)
 	if err != nil {
-		return fmt.Errorf("failed to create storage: %w", err)
-	}
-	defer func() {
-		if closeErr := storage.Close(); closeErr != nil {
-			// Log close error but prioritize any existing error
-			if err == nil {
-				err = fmt.Errorf("failed to close storage: %w", closeErr)
-			} else {
-				fmt.Fprintf(os.Stderr, "warning: failed to close storage: %v\n", closeErr)
-			}
-		}
-	}()
-
-	// Build candidates from player collection
-	candidates, err := buildGeneticCandidates(player, nil, nil)
-	if err != nil {
-		return fmt.Errorf("failed to build candidates: %w", err)
+		return nil, fmt.Errorf("failed to create storage: %w", err)
 	}
 
-	// Build genetic config from CLI flags if strategy is genetic
-	var geneticConfig *deck.GeneticIteratorConfig
-	if strategy == deck.StrategyGenetic {
-		generations := cmd.Int("generations")
-		population := cmd.Int("population")
-		mutationRate := cmd.Float64("mutation-rate")
-		crossoverRate := cmd.Float64("crossover-rate")
-		islandModel := cmd.Bool("island-model")
-		islandCount := cmd.Int("island-count")
-		migrationInterval := cmd.Int("migration-interval")
-		migrationSize := cmd.Int("migration-size")
+	return &discoveryResources{
+		player:    player,
+		cardStats: statsRegistry,
+		playerCtx: playerCtx,
+		synergyDB: synergyDB,
+		storage:   storage,
+		dataDir:   dataDir,
+	}, nil
+}
 
-		geneticConfig = &deck.GeneticIteratorConfig{
-			PopulationSize:        population,
-			Generations:           generations,
-			MutationRate:          mutationRate,
-			CrossoverRate:         crossoverRate,
-			MutationIntensity:     0.3,
-			EliteCount:            2,
-			TournamentSize:        5,
-			ConvergenceGenerations: 30,
-			TargetFitness:         0,
-			IslandModel:           islandModel,
-			IslandCount:           islandCount,
-			MigrationInterval:     migrationInterval,
-			MigrationSize:         migrationSize,
-		}
+// buildGeneticConfigFromFlags extracts genetic algorithm parameters from CLI flags
+func buildGeneticConfigFromFlags(cmd *cli.Command, strategy deck.GeneratorStrategy) *deck.GeneticIteratorConfig {
+	if strategy != deck.StrategyGenetic {
+		return nil
 	}
 
-	// Create generator config
-	genConfig := deck.GeneratorConfig{
-		Strategy:   strategy,
-		Candidates: candidates,
-		SampleSize: sampleSize,
-		Genetic:    geneticConfig,
-		Constraints: &deck.GeneratorConstraints{
-			MinAvgElixir:        2.0,
-			MaxAvgElixir:        5.0,
-			RequireWinCondition: true,
-		},
+	return &deck.GeneticIteratorConfig{
+		PopulationSize:         cmd.Int("population"),
+		Generations:            cmd.Int("generations"),
+		MutationRate:           cmd.Float64("mutation-rate"),
+		CrossoverRate:          cmd.Float64("crossover-rate"),
+		MutationIntensity:      0.3,
+		EliteCount:             2,
+		TournamentSize:         5,
+		ConvergenceGenerations: 30,
+		TargetFitness:          0,
+		IslandModel:            cmd.Bool("island-model"),
+		IslandCount:            cmd.Int("island-count"),
+		MigrationInterval:      cmd.Int("migration-interval"),
+		MigrationSize:          cmd.Int("migration-size"),
 	}
+}
 
-	// Create evaluator
-	evaluator := &simpleEvaluator{
-		synergyDB:    synergyDB,
-		cardRegistry: statsRegistry,
-		playerCtx:    playerCtx,
-		playerTag:    playerTag,
-	}
-
-	// Create discovery runner
-	runner, err := deck.NewDiscoveryRunner(deck.DiscoveryConfig{
-		GeneratorConfig: genConfig,
-		Storage:         storage,
-		Evaluator:       evaluator,
-		PlayerTag:       playerTag,
-		OnProgress: func(stats deck.DiscoveryStats) {
-			if verbose {
-				fprintf(os.Stderr, "\r[%s] Evaluated: %d | Stored: %d | Best: %.2f | Avg: %.2f | Rate: %.1f/s",
-					stats.Strategy, stats.Evaluated, stats.Stored, stats.BestScore,
-					stats.AvgScore, stats.Rate)
-			}
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create runner: %w", err)
-	}
-
-	// Resume if requested and checkpoint exists
-	if resume && runner.HasCheckpoint() {
-		if verbose {
-			fprintf(os.Stderr, "Resuming from checkpoint...\n")
-		}
-		if err := runner.Resume(); err != nil {
-			fprintf(os.Stderr, "Warning: failed to resume from checkpoint: %v\n", err)
-			fprintf(os.Stderr, "Starting fresh...\n")
-		}
-	}
-
+// setupExecutionContext creates a cancellable context with signal handling and optional limit enforcement
+func setupExecutionContext(ctx context.Context, runner *deck.DiscoveryRunner, limit int, verbose bool) (context.Context, func(), error) {
 	// Set up signal handling for graceful shutdown
 	var interrupted atomic.Bool
 	var canceler stageCanceler
 
 	interrupts := make(chan os.Signal, 2)
 	signal.Notify(interrupts, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(interrupts)
 
 	go func() {
 		<-interrupts
@@ -602,17 +528,14 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (er
 	// Create context with cancellation
 	runCtx, cancelRun := context.WithCancel(ctx)
 	canceler.Set(cancelRun)
-	defer cancelRun()
 
-	// Run discovery
-	if verbose {
-		fprintf(os.Stderr, "Starting discovery with strategy: %s\n", strategy)
+	cleanup := func() {
+		signal.Stop(interrupts)
+		cancelRun()
 	}
 
 	// Apply limit if specified
 	if limit > 0 {
-		runCtx, cancelRun = context.WithCancel(runCtx)
-		defer cancelRun()
 		go func() {
 			stats := runner.GetStats()
 			for stats.Evaluated < limit {
@@ -623,10 +546,11 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (er
 		}()
 	}
 
-	err = runner.Run(runCtx)
-	canceler.Clear()
+	return runCtx, cleanup, nil
+}
 
-	// Handle result
+// handleDiscoveryResult processes the discovery outcome and displays appropriate messages
+func handleDiscoveryResult(err error, runner *deck.DiscoveryRunner, playerTag string, verbose bool) error {
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			// Graceful shutdown - checkpoint already saved
@@ -660,6 +584,133 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (er
 	_ = runner.ClearCheckpoint() // Error is acceptable - checkpoint cleanup is best-effort
 
 	return nil
+}
+
+// attemptResume tries to resume from checkpoint if conditions are met
+func attemptResume(runner *deck.DiscoveryRunner, resume, verbose bool) {
+	if resume && runner.HasCheckpoint() {
+		if verbose {
+			fprintf(os.Stderr, "Resuming from checkpoint...\n")
+		}
+		if err := runner.Resume(); err != nil {
+			fprintf(os.Stderr, "Warning: failed to resume from checkpoint: %v\n", err)
+			fprintf(os.Stderr, "Starting fresh...\n")
+		}
+	}
+}
+
+// warnExistingCheckpoint checks for and warns about existing checkpoints when starting fresh
+func warnExistingCheckpoint(playerTag string) {
+	homeDir, _ := os.UserHomeDir()
+	sanitizedTag := strings.TrimPrefix(playerTag, "#")
+	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
+	if _, err := os.Stat(checkpointPath); err == nil {
+		fprintf(os.Stderr, "Warning: Existing checkpoint found. Use --resume or 'cr-api deck discover resume' to continue.\n")
+		fprintf(os.Stderr, "Starting fresh will clear the existing checkpoint.\n")
+	}
+}
+
+// runDiscoveryCommand is the shared implementation for start/run commands
+func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
+	playerTag := cmd.String("tag")
+	strategy := deck.GeneratorStrategy(cmd.String("strategy"))
+	sampleSize := cmd.Int("sample-size")
+	limit := cmd.Int("limit")
+	verbose := cmd.Bool("verbose")
+	background := cmd.Bool("background")
+
+	// Check for existing checkpoint when starting fresh (not resuming)
+	if !resume {
+		warnExistingCheckpoint(playerTag)
+	}
+
+	// Handle background mode
+	if background {
+		return runDiscoveryInBackground(ctx, cmd, resume)
+	}
+
+	// Initialize all required resources
+	resources, err := initializeDiscoveryResources(ctx, playerTag, verbose)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := resources.storage.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = fmt.Errorf("failed to close storage: %w", closeErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close storage: %v\n", closeErr)
+			}
+		}
+	}()
+
+	// Build candidates from player collection
+	candidates, err := buildGeneticCandidates(resources.player, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to build candidates: %w", err)
+	}
+
+	// Build genetic config from CLI flags if strategy is genetic
+	geneticConfig := buildGeneticConfigFromFlags(cmd, strategy)
+
+	// Create generator config
+	genConfig := deck.GeneratorConfig{
+		Strategy:   strategy,
+		Candidates: candidates,
+		SampleSize: sampleSize,
+		Genetic:    geneticConfig,
+		Constraints: &deck.GeneratorConstraints{
+			MinAvgElixir:        2.0,
+			MaxAvgElixir:        5.0,
+			RequireWinCondition: true,
+		},
+	}
+
+	// Create evaluator
+	evaluator := &simpleEvaluator{
+		synergyDB:    resources.synergyDB,
+		cardRegistry: resources.cardStats,
+		playerCtx:    resources.playerCtx,
+		playerTag:    playerTag,
+	}
+
+	// Create discovery runner
+	runner, err := deck.NewDiscoveryRunner(deck.DiscoveryConfig{
+		GeneratorConfig: genConfig,
+		Storage:         resources.storage,
+		Evaluator:       evaluator,
+		PlayerTag:       playerTag,
+		OnProgress: func(stats deck.DiscoveryStats) {
+			if verbose {
+				fprintf(os.Stderr, "\r[%s] Evaluated: %d | Stored: %d | Best: %.2f | Avg: %.2f | Rate: %.1f/s",
+					stats.Strategy, stats.Evaluated, stats.Stored, stats.BestScore,
+					stats.AvgScore, stats.Rate)
+			}
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create runner: %w", err)
+	}
+
+	// Resume if requested and checkpoint exists
+	attemptResume(runner, resume, verbose)
+
+	// Set up execution context with signal handling and limit enforcement
+	if verbose {
+		fprintf(os.Stderr, "Starting discovery with strategy: %s\n", strategy)
+	}
+	runCtx, cleanup, err := setupExecutionContext(ctx, runner, limit, verbose)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	// Run discovery
+	err = runner.Run(runCtx)
+
+	// Handle result
+	return handleDiscoveryResult(err, runner, playerTag, verbose)
 }
 
 // deckDiscoverStopCommand stops a running discovery session
