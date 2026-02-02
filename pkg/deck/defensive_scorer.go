@@ -201,52 +201,52 @@ func (ds *DefensiveScorer) identifyStrongCounters(deckCards []string) []Counter 
 	return allCounters
 }
 
-// generateRecommendations suggests cards to add based on coverage gaps
-func (ds *DefensiveScorer) generateRecommendations(deckCards []string, gaps []string) []string {
-	var recommendations []string
+// buildDeckCardMap creates a lookup map for fast deck membership checking
+func buildDeckCardMap(deckCards []string) map[string]bool {
 	deckMap := make(map[string]bool)
 	for _, card := range deckCards {
 		deckMap[card] = true
 	}
+	return deckMap
+}
+
+// getRecommendedCardsForGap returns suggested cards for a specific coverage gap
+func getRecommendedCardsForGap(gap string) []string {
+	switch gap {
+	case "Insufficient air defense":
+		return []string{"Musketeer", "Electro Wizard", "Inferno Tower", "Baby Dragon"}
+	case "No tank killer":
+		return []string{"Inferno Tower", "P.E.K.K.A", "Mini P.E.K.K.A", "Inferno Dragon"}
+	case "No splash damage":
+		return []string{"Valkyrie", "Baby Dragon", "Wizard", "Executioner"}
+	case "No swarm spell":
+		return []string{"The Log", "Zap", "Arrows"}
+	case "No defensive building":
+		return []string{"Cannon", "Tesla", "Inferno Tower", "Bomb Tower"}
+	default:
+		return nil
+	}
+}
+
+// findFirstAvailableCard returns the first card from candidates not already in the deck
+func findFirstAvailableCard(candidates []string, deckMap map[string]bool) string {
+	for _, card := range candidates {
+		if !deckMap[card] {
+			return card
+		}
+	}
+	return ""
+}
+
+// generateRecommendations suggests cards to add based on coverage gaps
+func (ds *DefensiveScorer) generateRecommendations(deckCards []string, gaps []string) []string {
+	var recommendations []string
+	deckMap := buildDeckCardMap(deckCards)
 
 	for _, gap := range gaps {
-		switch gap {
-		case "Insufficient air defense":
-			// Suggest common air defenders not in deck
-			for _, card := range []string{"Musketeer", "Electro Wizard", "Inferno Tower", "Baby Dragon"} {
-				if !deckMap[card] {
-					recommendations = append(recommendations, card)
-					break
-				}
-			}
-		case "No tank killer":
-			for _, card := range []string{"Inferno Tower", "P.E.K.K.A", "Mini P.E.K.K.A", "Inferno Dragon"} {
-				if !deckMap[card] {
-					recommendations = append(recommendations, card)
-					break
-				}
-			}
-		case "No splash damage":
-			for _, card := range []string{"Valkyrie", "Baby Dragon", "Wizard", "Executioner"} {
-				if !deckMap[card] {
-					recommendations = append(recommendations, card)
-					break
-				}
-			}
-		case "No swarm spell":
-			for _, card := range []string{"The Log", "Zap", "Arrows"} {
-				if !deckMap[card] {
-					recommendations = append(recommendations, card)
-					break
-				}
-			}
-		case "No defensive building":
-			for _, card := range []string{"Cannon", "Tesla", "Inferno Tower", "Bomb Tower"} {
-				if !deckMap[card] {
-					recommendations = append(recommendations, card)
-					break
-				}
-			}
+		candidates := getRecommendedCardsForGap(gap)
+		if card := findFirstAvailableCard(candidates, deckMap); card != "" {
+			recommendations = append(recommendations, card)
 		}
 	}
 
