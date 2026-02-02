@@ -387,7 +387,7 @@ func (cs *CoherenceScorer) detectArchetype(cards []CardCandidate, result *Cohere
 
 	// Default to cycle if no archetype matched well
 	if bestArchetype == "" || bestScore < 0.3 {
-		bestArchetype = "cycle"
+		bestArchetype = string(StrategyCycle)
 		bestScore = 0.3
 	}
 

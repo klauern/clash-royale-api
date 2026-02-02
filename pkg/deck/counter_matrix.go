@@ -20,6 +20,8 @@ const (
 	CounterAirDefense       CounterCategory = "air_defense"       // Targets air
 	CounterSwarmClear       CounterCategory = "swarm_clear"       // Clears swarms
 	CounterBuildings        CounterCategory = "buildings"         // Defensive buildings
+
+	defaultDataDir = "data"
 )
 
 // Counter represents a card that counters a specific threat
@@ -79,7 +81,7 @@ func NewCounterMatrix() *CounterMatrix {
 // If the file cannot be found or read, returns a matrix with default data
 func LoadCounterMatrix(dataDir, filename string) *CounterMatrix {
 	if dataDir == "" {
-		dataDir = "data"
+		dataDir = defaultDataDir
 	}
 	if filename == "" {
 		filename = "counter_relationships.json"

@@ -2156,7 +2156,7 @@ func formatEvalBatchResults(
 	totalTime time.Duration,
 ) (string, error) {
 	switch strings.ToLower(format) {
-	case "summary", "human":
+	case "summary", compareFormatHuman:
 		return formatEvaluationBatchSummary(results, totalDecks, totalTime, sortBy, playerName, playerTag), nil
 	case "json":
 		return formatEvalBatchResultsAsJSON(results, playerName, playerTag, totalDecks, sortBy, totalTime)

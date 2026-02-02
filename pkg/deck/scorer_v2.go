@@ -564,6 +564,7 @@ func calculateArchetypeScore(cards []CardCandidate, strategy Strategy, details *
 		}
 
 		// Check for specific cards
+		//nolint:goconst // Card names are domain-specific values
 		switch card.Name {
 		case "Golem":
 			hasGolem = true

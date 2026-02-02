@@ -13,6 +13,17 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 )
 
+// Constants for algorithm comparison results
+const (
+	WinnerV1  = "v1"
+	WinnerV2  = "v2"
+	WinnerTie = "tie"
+
+	ConfidenceHigh   = "high"
+	ConfidenceMedium = "medium"
+	ConfidenceLow    = "low"
+)
+
 // ComparisonDimensions represents the axes for algorithm comparison
 type ComparisonDimensions struct {
 	DeckQuality      bool // Which produces better decks?
@@ -206,8 +217,8 @@ func CompareAlgorithms(playerTag string, cardAnalysis deck.CardAnalysis, config 
 		result.StrategyResults[strategy.String()] = *strategyResult
 		totalV1Score += strategyResult.V1AverageDeckScore
 		totalV2Score += strategyResult.V2AverageDeckScore
-		significantWins += countSignificant(strategyResult, "v2", config.WinThreshold)
-		significantLosses += countSignificant(strategyResult, "v1", config.WinThreshold)
+		significantWins += countSignificant(strategyResult, WinnerV2, config.WinThreshold)
+		significantLosses += countSignificant(strategyResult, WinnerV1, config.WinThreshold)
 		totalDecks += len(strategyResult.DeckComparisons)
 	}
 
@@ -227,12 +238,12 @@ func CompareAlgorithms(playerTag string, cardAnalysis deck.CardAnalysis, config 
 	result.Summary.SignificantLosses = significantLosses
 
 	// Determine winner
-	if result.Summary.V2AverageScore > result.Summary.V1AverageScore * (1 + config.SignificanceThreshold) {
-		result.Summary.Winner = "v2"
-	} else if result.Summary.V1AverageScore > result.Summary.V2AverageScore * (1 + config.SignificanceThreshold) {
-		result.Summary.Winner = "v1"
+	if result.Summary.V2AverageScore > result.Summary.V1AverageScore*(1+config.SignificanceThreshold) {
+		result.Summary.Winner = WinnerV2
+	} else if result.Summary.V1AverageScore > result.Summary.V2AverageScore*(1+config.SignificanceThreshold) {
+		result.Summary.Winner = WinnerV1
 	} else {
-		result.Summary.Winner = "tie"
+		result.Summary.Winner = WinnerTie
 	}
 
 	// Calculate metric breakdown
@@ -306,11 +317,11 @@ func compareStrategy(strategy deck.Strategy, cardAnalysis deck.CardAnalysis, syn
 	}
 
 	if v2Result.FinalScore > v1Score*(1+config.WinThreshold) {
-		deckComp.Winner = "v2"
+		deckComp.Winner = WinnerV2
 	} else if v1Score > v2Result.FinalScore*(1+config.WinThreshold) {
-		deckComp.Winner = "v1"
+		deckComp.Winner = WinnerV1
 	} else {
-		deckComp.Winner = "tie"
+		deckComp.Winner = WinnerTie
 	}
 
 	result.DeckComparisons = []DeckComparison{deckComp}
@@ -320,11 +331,11 @@ func compareStrategy(strategy deck.Strategy, cardAnalysis deck.CardAnalysis, syn
 
 	// Determine strategy winner
 	if result.V2AverageDeckScore > result.V1AverageDeckScore*(1+config.SignificanceThreshold) {
-		result.Winner = "v2"
+		result.Winner = WinnerV2
 	} else if result.V1AverageDeckScore > result.V2AverageDeckScore*(1+config.SignificanceThreshold) {
-		result.Winner = "v1"
+		result.Winner = WinnerV1
 	} else {
-		result.Winner = "tie"
+		result.Winner = WinnerTie
 	}
 
 	return result, nil
@@ -459,34 +470,34 @@ func generateRecommendations(result *AlgorithmComparisonResult, config Compariso
 	}
 
 	// Determine recommendation
-	if result.Summary.Winner == "v2" {
-		recs.AlgorithmCutover = "v2"
+	if result.Summary.Winner == WinnerV2 {
+		recs.AlgorithmCutover = WinnerV2
 		if result.Summary.Improvement > 20 {
-			recs.Confidence = "high"
+			recs.Confidence = ConfidenceHigh
 			recs.Reasoning = append(recs.Reasoning, fmt.Sprintf("V2 shows %.1f%% improvement over V1", result.Summary.Improvement))
 		} else {
-			recs.Confidence = "medium"
+			recs.Confidence = ConfidenceMedium
 			recs.Reasoning = append(recs.Reasoning, fmt.Sprintf("V2 shows modest %.1f%% improvement", result.Summary.Improvement))
 		}
-	} else if result.Summary.Winner == "v1" {
-		recs.AlgorithmCutover = "v1"
-		recs.Confidence = "high"
+	} else if result.Summary.Winner == WinnerV1 {
+		recs.AlgorithmCutover = WinnerV1
+		recs.Confidence = ConfidenceHigh
 		recs.Reasoning = append(recs.Reasoning, "V1 still outperforms V2")
 		recs.KnownIssues = append(recs.KnownIssues, "V2 algorithm needs refinement")
 	} else {
-		recs.AlgorithmCutover = "v1"
-		recs.Confidence = "low"
+		recs.AlgorithmCutover = WinnerV1
+		recs.Confidence = ConfidenceLow
 		recs.Reasoning = append(recs.Reasoning, "No significant difference between V1 and V2")
 	}
 
 	// Add metric-specific reasoning
-	if result.MetricBreakdown.SynergyScore.Winner == "v2" {
+	if result.MetricBreakdown.SynergyScore.Winner == WinnerV2 {
 		recs.Reasoning = append(recs.Reasoning, "V2 significantly improves synergy detection")
 	}
-	if result.MetricBreakdown.ArchetypeCoherence.Winner == "v2" {
+	if result.MetricBreakdown.ArchetypeCoherence.Winner == WinnerV2 {
 		recs.Reasoning = append(recs.Reasoning, "V2 produces more coherent archetypes")
 	}
-	if result.MetricBreakdown.CounterCoverage.Winner == "v1" {
+	if result.MetricBreakdown.CounterCoverage.Winner == WinnerV1 {
 		recs.KnownIssues = append(recs.KnownIssues, "V2 counter coverage needs improvement")
 	}
 
@@ -495,7 +506,7 @@ func generateRecommendations(result *AlgorithmComparisonResult, config Compariso
 	recs.NextSteps = append(recs.NextSteps, "Test with meta deck fixtures")
 	recs.NextSteps = append(recs.NextSteps, "Gather user feedback on recommended decks")
 
-	if recs.AlgorithmCutover == "v2" && recs.Confidence == "high" {
+	if recs.AlgorithmCutover == WinnerV2 && recs.Confidence == ConfidenceHigh {
 		recs.NextSteps = append(recs.NextSteps, "Proceed with V2 algorithm cutover")
 	} else {
 		recs.NextSteps = append(recs.NextSteps, "Continue refining V2 algorithm")
@@ -650,11 +661,11 @@ func calculateElixirFitScore(avgElixir float64, strategy deck.Strategy) float64 
 
 func winnerForValue(v2, v1, threshold float64) string {
 	if v2 > v1*(1+threshold) {
-		return "v2"
+		return WinnerV2
 	} else if v1 > v2*(1+threshold) {
-		return "v1"
+		return WinnerV1
 	}
-	return "tie"
+	return WinnerTie
 }
 
 func maxf(a, b float64) float64 {

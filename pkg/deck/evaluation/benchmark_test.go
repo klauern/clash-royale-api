@@ -673,16 +673,16 @@ func determineCardRarityBenchmark(name string) string {
 	}
 
 	if champions[name] {
-		return "Champion"
+		return "Champion" //nolint:goconst // Rarity names are domain-specific values
 	}
 	if legendaries[name] {
-		return "Legendary"
+		return "Legendary" //nolint:goconst // Rarity names are domain-specific values
 	}
 	if epics[name] {
-		return "Epic"
+		return "Epic" //nolint:goconst // Rarity names are domain-specific values
 	}
 
-	return "Rare"
+	return "Rare" //nolint:goconst // Rarity names are domain-specific values
 }
 
 // determineCardElixirBenchmark determines the card elixir cost for benchmark tests
