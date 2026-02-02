@@ -261,34 +261,18 @@ func compareStrategy(strategy deck.Strategy, cardAnalysis deck.CardAnalysis, syn
 		StrategyName: strategy.String(),
 	}
 
-	// Build deck using V1 algorithm (synergy disabled = V1 behavior)
-	builderV1 := deck.NewBuilder("")
-	if err := builderV1.SetStrategy(strategy); err != nil {
-		return nil, fmt.Errorf("V1 set strategy failed: %w", err)
-	}
-	recV1, err := builderV1.BuildDeckFromAnalysis(cardAnalysis)
+	// Build both algorithm versions
+	recV1, recV2, err := buildDeckWithAlgorithm(strategy, cardAnalysis)
 	if err != nil {
-		return nil, fmt.Errorf("V1 build failed: %w", err)
+		return nil, err
 	}
 
-	// Build deck using V2 algorithm (with synergy enabled)
-	builderV2 := deck.NewBuilder("")
-	if err := builderV2.SetStrategy(strategy); err != nil {
-		return nil, fmt.Errorf("V2 set strategy failed: %w", err)
-	}
-	builderV2.SetSynergyEnabled(true)
-	recV2, err := builderV2.BuildDeckFromAnalysis(cardAnalysis)
-	if err != nil {
-		return nil, fmt.Errorf("V2 build failed: %w", err)
-	}
-
-	// Get V1 average card score
+	// Calculate scores
 	v1Score := calculateAverageCardScore(recV1.DeckDetail)
-	result.V1AverageDeckScore = v1Score
-
-	// Get V2 score using ScoreDeckV2
 	v2Cards := convertToCardCandidates(recV2.DeckDetail)
 	v2Result := deck.ScoreDeckV2(v2Cards, strategy, synergyDB)
+
+	result.V1AverageDeckScore = v1Score
 	result.V2AverageDeckScore = v2Result.FinalScore
 
 	// Evaluate both decks with quality test suite
@@ -297,48 +281,81 @@ func compareStrategy(strategy deck.Strategy, cardAnalysis deck.CardAnalysis, syn
 	v2Eval := evaluation.Evaluate(v2Cards, synergyDB, nil)
 
 	// Create deck comparison
-	deckComp := DeckComparison{
-		DeckName: fmt.Sprintf("%s Deck", strategy),
-		V1Deck:   recV1.Deck,
-		V1Score:  v1Score,
-		V2Deck:   recV2.Deck,
-		V2Score:  v2Result.FinalScore,
-		V2Evaluation: EvaluationMetrics{
-			OverallScore:        v2Eval.OverallScore,
-			AttackScore:         v2Eval.Attack.Score,
-			DefenseScore:        v2Eval.Defense.Score,
-			SynergyScore:        v2Eval.Synergy.Score,
-			VersatilityScore:    v2Eval.Versatility.Score,
-			Archetype:           v2Eval.DetectedArchetype,
-			ArchetypeConfidence: v2Eval.ArchetypeConfidence,
-			SynergyPairs:        v2Eval.SynergyMatrix.PairCount,
-		},
-		ScoreDifference: v2Result.FinalScore - v1Score,
-	}
-
-	if v2Result.FinalScore > v1Score*(1+config.WinThreshold) {
-		deckComp.Winner = WinnerV2
-	} else if v1Score > v2Result.FinalScore*(1+config.WinThreshold) {
-		deckComp.Winner = WinnerV1
-	} else {
-		deckComp.Winner = WinnerTie
-	}
-
+	deckComp := createDeckComparison(strategy, recV1, recV2, v1Score, v2Result, v2Eval, config)
 	result.DeckComparisons = []DeckComparison{deckComp}
 
 	// Calculate metrics
 	result.Metrics = calculateStrategyMetrics(v1Eval, v2Eval, v2Result, config)
 
 	// Determine strategy winner
-	if result.V2AverageDeckScore > result.V1AverageDeckScore*(1+config.SignificanceThreshold) {
-		result.Winner = WinnerV2
-	} else if result.V1AverageDeckScore > result.V2AverageDeckScore*(1+config.SignificanceThreshold) {
-		result.Winner = WinnerV1
-	} else {
-		result.Winner = WinnerTie
-	}
+	result.Winner = determineWinner(result.V2AverageDeckScore, result.V1AverageDeckScore, config.SignificanceThreshold)
 
 	return result, nil
+}
+
+// buildDeckWithAlgorithm builds decks using both V1 and V2 algorithms
+func buildDeckWithAlgorithm(strategy deck.Strategy, cardAnalysis deck.CardAnalysis) (*deck.DeckRecommendation, *deck.DeckRecommendation, error) {
+	// Build deck using V1 algorithm (synergy disabled = V1 behavior)
+	builderV1 := deck.NewBuilder("")
+	if err := builderV1.SetStrategy(strategy); err != nil {
+		return nil, nil, fmt.Errorf("V1 set strategy failed: %w", err)
+	}
+	recV1, err := builderV1.BuildDeckFromAnalysis(cardAnalysis)
+	if err != nil {
+		return nil, nil, fmt.Errorf("V1 build failed: %w", err)
+	}
+
+	// Build deck using V2 algorithm (with synergy enabled)
+	builderV2 := deck.NewBuilder("")
+	if err := builderV2.SetStrategy(strategy); err != nil {
+		return nil, nil, fmt.Errorf("V2 set strategy failed: %w", err)
+	}
+	builderV2.SetSynergyEnabled(true)
+	recV2, err := builderV2.BuildDeckFromAnalysis(cardAnalysis)
+	if err != nil {
+		return nil, nil, fmt.Errorf("V2 build failed: %w", err)
+	}
+
+	return recV1, recV2, nil
+}
+
+// createDeckComparison creates a DeckComparison object from build results
+func createDeckComparison(strategy deck.Strategy, recV1, recV2 *deck.DeckRecommendation, v1Score float64, v2Result deck.ScorerV2Result, v2Eval evaluation.EvaluationResult, config ComparisonConfig) DeckComparison {
+	deckComp := DeckComparison{
+		DeckName:        fmt.Sprintf("%s Deck", strategy),
+		V1Deck:          recV1.Deck,
+		V1Score:         v1Score,
+		V2Deck:          recV2.Deck,
+		V2Score:         v2Result.FinalScore,
+		V2Evaluation:    formatDeckEvaluation(v2Eval),
+		ScoreDifference: v2Result.FinalScore - v1Score,
+		Winner:          determineWinner(v2Result.FinalScore, v1Score, config.WinThreshold),
+	}
+	return deckComp
+}
+
+// formatDeckEvaluation formats evaluation results into EvaluationMetrics
+func formatDeckEvaluation(eval evaluation.EvaluationResult) EvaluationMetrics {
+	return EvaluationMetrics{
+		OverallScore:        eval.OverallScore,
+		AttackScore:         eval.Attack.Score,
+		DefenseScore:        eval.Defense.Score,
+		SynergyScore:        eval.Synergy.Score,
+		VersatilityScore:    eval.Versatility.Score,
+		Archetype:           eval.DetectedArchetype,
+		ArchetypeConfidence: eval.ArchetypeConfidence,
+		SynergyPairs:        eval.SynergyMatrix.PairCount,
+	}
+}
+
+// determineWinner compares two scores using a threshold to determine the winner
+func determineWinner(v2Score, v1Score, threshold float64) string {
+	if v2Score > v1Score*(1+threshold) {
+		return WinnerV2
+	} else if v1Score > v2Score*(1+threshold) {
+		return WinnerV1
+	}
+	return WinnerTie
 }
 
 // calculateStrategyMetrics computes detailed metrics for strategy comparison
