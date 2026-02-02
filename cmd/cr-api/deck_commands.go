@@ -3846,20 +3846,8 @@ func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 	return nil
 }
 
-// deckEvaluateCommand evaluates a deck with comprehensive analysis and scoring
-func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
-	deckString := cmd.String("deck")
-	playerTag := cmd.String("tag")
-	fromAnalysis := cmd.String("from-analysis")
-	_ = cmd.Int("arena") // TODO: Use for arena-specific analysis in future tasks
-	format := cmd.String("format")
-	outputFile := cmd.String("output")
-	showUpgradeImpact := cmd.Bool("show-upgrade-impact")
-	topUpgrades := cmd.Int("top-upgrades")
-	apiToken := cmd.String("api-token")
-	verbose := cmd.Bool("verbose")
-	dataDir := cmd.String("data-dir")
-
+// validateEvaluateFlags validates the flag combinations for deck evaluation
+func validateEvaluateFlags(deckString, fromAnalysis, playerTag, apiToken string, showUpgradeImpact bool) error {
 	// Validation: Must provide either --deck or --from-analysis
 	if deckString == "" && fromAnalysis == "" {
 		return fmt.Errorf("must provide either --deck or --from-analysis")
@@ -3878,131 +3866,142 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("--show-upgrade-impact requires API token (set CLASH_ROYALE_API_TOKEN or use --api-token)")
 	}
 
-	// Parse deck cards
+	return nil
+}
+
+// loadDeckCardsFromInput loads deck cards from either deck string or analysis file
+func loadDeckCardsFromInput(deckString, fromAnalysis string) ([]string, error) {
 	var deckCardNames []string
 	if deckString != "" {
 		// Parse deck string (cards separated by dashes)
 		deckCardNames = parseDeckString(deckString)
 		if len(deckCardNames) != 8 {
-			return fmt.Errorf("deck must contain exactly 8 cards, got %d", len(deckCardNames))
+			return nil, fmt.Errorf("deck must contain exactly 8 cards, got %d", len(deckCardNames))
 		}
 	} else {
 		// Load deck from analysis file
 		loadedCards, err := loadDeckFromAnalysis(fromAnalysis)
 		if err != nil {
-			return fmt.Errorf("failed to load deck from analysis: %w", err)
+			return nil, fmt.Errorf("failed to load deck from analysis: %w", err)
 		}
 		deckCardNames = loadedCards
 	}
+	return deckCardNames, nil
+}
+
+// fetchPlayerContextIfNeeded fetches player context from API if tag and token are provided
+func fetchPlayerContextIfNeeded(playerTag, apiToken string, verbose bool) *evaluation.PlayerContext {
+	if playerTag == "" || apiToken == "" {
+		return nil
+	}
 
 	if verbose {
-		printf("Evaluating deck: %v\n", deckCardNames)
-		printf("Output format: %s\n", format)
+		printf("Fetching player data for context-aware evaluation...\n")
 	}
 
-	// Convert card names to CardCandidates with default card data
-	deckCards := convertToCardCandidates(deckCardNames)
+	client := clashroyale.NewClient(apiToken)
+	player, err := client.GetPlayer(playerTag)
+	if err != nil {
+		// Log warning but continue with evaluation without context
+		fprintf(os.Stderr, "Warning: Failed to fetch player data: %v\n", err)
+		fprintf(os.Stderr, "Continuing with evaluation without player context.\n")
+		return nil
+	}
 
-	// Create synergy database
-	synergyDB := deck.NewSynergyDatabase()
+	if verbose {
+		printf("Player context loaded: %s (%s), Arena: %s\n",
+			player.Name, player.Tag, player.Arena.Name)
+	}
 
-	// Fetch player context if --tag is provided
-	var playerContext *evaluation.PlayerContext
-	if playerTag != "" && apiToken != "" {
+	return evaluation.NewPlayerContextFromPlayer(player)
+}
+
+// persistEvaluationResult saves evaluation result to storage if player tag is provided
+func persistEvaluationResult(result *evaluation.EvaluationResult, playerTag string, verbose bool) error {
+	if playerTag == "" {
+		return nil
+	}
+
+	storage, err := leaderboard.NewStorage(playerTag)
+	if err != nil {
 		if verbose {
-			printf("Fetching player data for context-aware evaluation...\n")
+			fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", err)
 		}
+		return err
+	}
+	defer func() {
+		if err := storage.Close(); err != nil {
+			fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
+		}
+	}()
 
-		client := clashroyale.NewClient(apiToken)
-		player, err := client.GetPlayer(playerTag)
-		if err != nil {
-			// Log warning but continue with evaluation without context
-			fprintf(os.Stderr, "Warning: Failed to fetch player data: %v\n", err)
-			fprintf(os.Stderr, "Continuing with evaluation without player context.\n")
+	entry := &leaderboard.DeckEntry{
+		Cards:             result.Deck,
+		OverallScore:      result.OverallScore,
+		AttackScore:       result.Attack.Score,
+		DefenseScore:      result.Defense.Score,
+		SynergyScore:      result.Synergy.Score,
+		VersatilityScore:  result.Versatility.Score,
+		F2PScore:          result.F2PFriendly.Score,
+		PlayabilityScore:  result.Playability.Score,
+		Archetype:         string(result.DetectedArchetype),
+		ArchetypeConf:     result.ArchetypeConfidence,
+		Strategy:          "", // Single evaluations don't have a strategy
+		AvgElixir:         result.AvgElixir,
+		EvaluatedAt:       time.Now(),
+		PlayerTag:         playerTag,
+		EvaluationVersion: "1.0.0",
+	}
+
+	deckID, isNew, err := storage.InsertDeck(entry)
+	if err != nil {
+		if verbose {
+			fprintf(os.Stderr, "Warning: failed to save deck to storage: %v\n", err)
+		}
+		return err
+	}
+
+	if _, err := storage.RecalculateStats(); err != nil && verbose {
+		fprintf(os.Stderr, "Warning: failed to recalculate stats: %v\n", err)
+	}
+
+	if verbose {
+		if isNew {
+			printf("Saved deck to storage (ID: %d) at: %s\n", deckID, storage.GetDBPath())
 		} else {
-			playerContext = evaluation.NewPlayerContextFromPlayer(player)
-			if verbose {
-				printf("Player context loaded: %s (%s), Arena: %s\n",
-					player.Name, player.Tag, player.Arena.Name)
-			}
+			printf("Updated existing deck in storage (ID: %d)\n", deckID)
 		}
 	}
 
-	// Evaluate the deck
-	result := evaluation.Evaluate(deckCards, synergyDB, playerContext)
+	return nil
+}
 
-	// Save to persistent storage if player tag is available
-	if playerTag != "" {
-		storage, err := leaderboard.NewStorage(playerTag)
-		if err != nil {
-			if verbose {
-				fprintf(os.Stderr, "Warning: failed to initialize storage: %v\n", err)
-			}
-		} else {
-			defer func() {
-				if err := storage.Close(); err != nil {
-					fprintf(os.Stderr, "Warning: failed to close storage: %v\n", err)
-				}
-			}()
-
-			entry := &leaderboard.DeckEntry{
-				Cards:             result.Deck,
-				OverallScore:      result.OverallScore,
-				AttackScore:       result.Attack.Score,
-				DefenseScore:      result.Defense.Score,
-				SynergyScore:      result.Synergy.Score,
-				VersatilityScore:  result.Versatility.Score,
-				F2PScore:          result.F2PFriendly.Score,
-				PlayabilityScore:  result.Playability.Score,
-				Archetype:         string(result.DetectedArchetype),
-				ArchetypeConf:     result.ArchetypeConfidence,
-				Strategy:          "", // Single evaluations don't have a strategy
-				AvgElixir:         result.AvgElixir,
-				EvaluatedAt:       time.Now(),
-				PlayerTag:         playerTag,
-				EvaluationVersion: "1.0.0",
-			}
-
-			deckID, isNew, err := storage.InsertDeck(entry)
-			if err != nil {
-				if verbose {
-					fprintf(os.Stderr, "Warning: failed to save deck to storage: %v\n", err)
-				}
-			} else {
-				if _, err := storage.RecalculateStats(); err != nil && verbose {
-					fprintf(os.Stderr, "Warning: failed to recalculate stats: %v\n", err)
-				}
-				if verbose {
-					if isNew {
-						printf("Saved deck to storage (ID: %d) at: %s\n", deckID, storage.GetDBPath())
-					} else {
-						printf("Updated existing deck in storage (ID: %d)\n", deckID)
-					}
-				}
-			}
-		}
-	}
-
-	// Format output based on requested format
+// formatEvaluationResult formats evaluation result according to the specified format
+func formatEvaluationResult(result *evaluation.EvaluationResult, format string) (string, error) {
 	var formattedOutput string
 	var err error
+
 	switch strings.ToLower(format) {
 	case "human":
-		formattedOutput = evaluation.FormatHuman(&result)
+		formattedOutput = evaluation.FormatHuman(result)
 	case "json":
-		formattedOutput, err = evaluation.FormatJSON(&result)
+		formattedOutput, err = evaluation.FormatJSON(result)
 		if err != nil {
-			return fmt.Errorf("failed to format JSON: %w", err)
+			return "", fmt.Errorf("failed to format JSON: %w", err)
 		}
 	case "csv":
-		formattedOutput = evaluation.FormatCSV(&result)
+		formattedOutput = evaluation.FormatCSV(result)
 	case "detailed":
-		formattedOutput = evaluation.FormatDetailed(&result)
+		formattedOutput = evaluation.FormatDetailed(result)
 	default:
-		return fmt.Errorf("unknown format: %s (supported: human, json, csv, detailed)", format)
+		return "", fmt.Errorf("unknown format: %s (supported: human, json, csv, detailed)", format)
 	}
 
-	// Output to file or stdout
+	return formattedOutput, nil
+}
+
+// writeEvaluationOutput writes formatted output to file or stdout
+func writeEvaluationOutput(formattedOutput, outputFile string, verbose bool) error {
 	if outputFile != "" {
 		if err := os.WriteFile(outputFile, []byte(formattedOutput), 0o644); err != nil {
 			return fmt.Errorf("failed to write output file: %w", err)
@@ -4013,21 +4012,83 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	} else {
 		fmt.Print(formattedOutput)
 	}
+	return nil
+}
 
-	// Perform upgrade impact analysis if requested
-	if showUpgradeImpact {
-		// Only for human output format (not applicable to JSON/CSV)
-		if format == "human" || format == "detailed" {
-			if err := performDeckUpgradeImpactAnalysis(deckCardNames, playerTag, topUpgrades, apiToken, dataDir, verbose); err != nil {
-				// Log error but don't fail the entire command
-				fprintf(os.Stderr, "\nWarning: Failed to perform upgrade impact analysis: %v\n", err)
-			}
-		} else if verbose {
-			fprintf(os.Stderr, "\nNote: Upgrade impact analysis only available for human and detailed output formats\n")
-		}
+// performUpgradeAnalysisIfRequested performs optional upgrade impact analysis
+func performUpgradeAnalysisIfRequested(showUpgradeImpact bool, format string, deckCardNames []string, playerTag string, topUpgrades int, apiToken, dataDir string, verbose bool) error {
+	if !showUpgradeImpact {
+		return nil
 	}
 
+	// Only for human output format (not applicable to JSON/CSV)
+	if format == "human" || format == "detailed" {
+		if err := performDeckUpgradeImpactAnalysis(deckCardNames, playerTag, topUpgrades, apiToken, dataDir, verbose); err != nil {
+			// Log error but don't fail the entire command
+			fprintf(os.Stderr, "\nWarning: Failed to perform upgrade impact analysis: %v\n", err)
+		}
+	} else if verbose {
+		fprintf(os.Stderr, "\nNote: Upgrade impact analysis only available for human and detailed output formats\n")
+	}
 	return nil
+}
+
+// deckEvaluateCommand evaluates a deck with comprehensive analysis and scoring
+func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
+	deckString := cmd.String("deck")
+	playerTag := cmd.String("tag")
+	fromAnalysis := cmd.String("from-analysis")
+	_ = cmd.Int("arena") // TODO: Use for arena-specific analysis in future tasks
+	format := cmd.String("format")
+	outputFile := cmd.String("output")
+	showUpgradeImpact := cmd.Bool("show-upgrade-impact")
+	topUpgrades := cmd.Int("top-upgrades")
+	apiToken := cmd.String("api-token")
+	verbose := cmd.Bool("verbose")
+	dataDir := cmd.String("data-dir")
+
+	// Validate flags
+	if err := validateEvaluateFlags(deckString, fromAnalysis, playerTag, apiToken, showUpgradeImpact); err != nil {
+		return err
+	}
+
+	// Load deck cards
+	deckCardNames, err := loadDeckCardsFromInput(deckString, fromAnalysis)
+	if err != nil {
+		return err
+	}
+
+	if verbose {
+		printf("Evaluating deck: %v\n", deckCardNames)
+		printf("Output format: %s\n", format)
+	}
+
+	// Convert card names to CardCandidates and create synergy database
+	deckCards := convertToCardCandidates(deckCardNames)
+	synergyDB := deck.NewSynergyDatabase()
+
+	// Fetch player context if available
+	playerContext := fetchPlayerContextIfNeeded(playerTag, apiToken, verbose)
+
+	// Evaluate the deck
+	result := evaluation.Evaluate(deckCards, synergyDB, playerContext)
+
+	// Save to persistent storage
+	_ = persistEvaluationResult(&result, playerTag, verbose)
+
+	// Format output
+	formattedOutput, err := formatEvaluationResult(&result, format)
+	if err != nil {
+		return err
+	}
+
+	// Write output
+	if err := writeEvaluationOutput(formattedOutput, outputFile, verbose); err != nil {
+		return err
+	}
+
+	// Perform upgrade analysis if requested
+	return performUpgradeAnalysisIfRequested(showUpgradeImpact, format, deckCardNames, playerTag, topUpgrades, apiToken, dataDir, verbose)
 }
 
 // performDeckUpgradeImpactAnalysis performs upgrade impact analysis for a specific deck
@@ -4643,25 +4704,46 @@ func sortEvaluationResults[T any](results []T, sortBy string) {
 	sort.Slice(results, func(i, j int) bool { return less(results[i], results[j]) })
 }
 
+// Comparator function types for evaluation results
+type evaluationComparator func(a, b evaluation.EvaluationResult) bool
+
+// Built-in comparators for common sort criteria
+var (
+	compareByAttack       evaluationComparator = func(a, b evaluation.EvaluationResult) bool { return a.Attack.Score > b.Attack.Score }
+	compareByDefense      evaluationComparator = func(a, b evaluation.EvaluationResult) bool { return a.Defense.Score > b.Defense.Score }
+	compareBySynergy      evaluationComparator = func(a, b evaluation.EvaluationResult) bool { return a.Synergy.Score > b.Synergy.Score }
+	compareByVersatility  evaluationComparator = func(a, b evaluation.EvaluationResult) bool { return a.Versatility.Score > b.Versatility.Score }
+	compareByF2PFriendly  evaluationComparator = func(a, b evaluation.EvaluationResult) bool { return a.F2PFriendly.Score > b.F2PFriendly.Score }
+	compareByPlayability  evaluationComparator = func(a, b evaluation.EvaluationResult) bool { return a.Playability.Score > b.Playability.Score }
+	compareByElixir       evaluationComparator = func(a, b evaluation.EvaluationResult) bool { return a.AvgElixir < b.AvgElixir }
+	compareByOverallScore evaluationComparator = func(a, b evaluation.EvaluationResult) bool { return a.OverallScore > b.OverallScore }
+)
+
 // getSortLessFunc returns a comparison function for the given sort criteria.
 func getSortLessFunc[T any](getResult func(T) evaluation.EvaluationResult, sortBy string) func(T, T) bool {
+	var comparator evaluationComparator
+
 	switch sortBy {
 	case "attack":
-		return func(a, b T) bool { return getResult(a).Attack.Score > getResult(b).Attack.Score }
+		comparator = compareByAttack
 	case "defense":
-		return func(a, b T) bool { return getResult(a).Defense.Score > getResult(b).Defense.Score }
+		comparator = compareByDefense
 	case "synergy":
-		return func(a, b T) bool { return getResult(a).Synergy.Score > getResult(b).Synergy.Score }
+		comparator = compareBySynergy
 	case "versatility":
-		return func(a, b T) bool { return getResult(a).Versatility.Score > getResult(b).Versatility.Score }
+		comparator = compareByVersatility
 	case "f2p", "f2p-friendly":
-		return func(a, b T) bool { return getResult(a).F2PFriendly.Score > getResult(b).F2PFriendly.Score }
+		comparator = compareByF2PFriendly
 	case "playability":
-		return func(a, b T) bool { return getResult(a).Playability.Score > getResult(b).Playability.Score }
+		comparator = compareByPlayability
 	case "elixir":
-		return func(a, b T) bool { return getResult(a).AvgElixir < getResult(b).AvgElixir }
+		comparator = compareByElixir
 	default: // "overall"
-		return func(a, b T) bool { return getResult(a).OverallScore > getResult(b).OverallScore }
+		comparator = compareByOverallScore
+	}
+
+	return func(a, b T) bool {
+		return comparator(getResult(a), getResult(b))
 	}
 }
 
