@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -416,59 +417,50 @@ func parseCardCount(s string) (int, error) {
 
 // sortResults sorts batch results by the specified criteria
 func sortResults(results []BatchEvaluationResult, sortBy string) {
-	switch strings.ToLower(sortBy) {
-	case batchSortOverall:
-		// Already sorted by overall by default
-	case batchSortAttack:
-		// Sort by attack score (descending)
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if results[j].Result.Attack.Score > results[i].Result.Attack.Score {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
-	case batchSortDefense:
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if results[j].Result.Defense.Score > results[i].Result.Defense.Score {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
-	case batchSortSynergy:
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if results[j].Result.Synergy.Score > results[i].Result.Synergy.Score {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
-	case batchSortVersatility:
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if results[j].Result.Versatility.Score > results[i].Result.Versatility.Score {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
-	case batchSortElixir:
-		// Sort by elixir (ascending)
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if results[j].Result.AvgElixir < results[i].Result.AvgElixir {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
+	if len(results) < 2 {
+		return
 	}
 
-	// Apply overall score as secondary sort for all categories
-	for i := 0; i < len(results)-1; i++ {
-		for j := i + 1; j < len(results); j++ {
-			if results[j].Result.OverallScore > results[i].Result.OverallScore {
-				results[i], results[j] = results[j], results[i]
-			}
+	// Get primary sort comparison function
+	primaryLess := getBatchSortLessFunc(strings.ToLower(sortBy))
+
+	// Sort with primary criteria, using overall score as tiebreaker
+	sort.Slice(results, func(i, j int) bool {
+		primary := primaryLess(results[i], results[j])
+		if !primary && !primaryLess(results[j], results[i]) {
+			// Equal primary criteria - use overall score as secondary
+			return results[i].Result.OverallScore > results[j].Result.OverallScore
+		}
+		return primary
+	})
+}
+
+// getBatchSortLessFunc returns a comparison function for batch result sorting.
+func getBatchSortLessFunc(sortBy string) func(BatchEvaluationResult, BatchEvaluationResult) bool {
+	switch sortBy {
+	case batchSortAttack:
+		return func(a, b BatchEvaluationResult) bool {
+			return a.Result.Attack.Score > b.Result.Attack.Score
+		}
+	case batchSortDefense:
+		return func(a, b BatchEvaluationResult) bool {
+			return a.Result.Defense.Score > b.Result.Defense.Score
+		}
+	case batchSortSynergy:
+		return func(a, b BatchEvaluationResult) bool {
+			return a.Result.Synergy.Score > b.Result.Synergy.Score
+		}
+	case batchSortVersatility:
+		return func(a, b BatchEvaluationResult) bool {
+			return a.Result.Versatility.Score > b.Result.Versatility.Score
+		}
+	case batchSortElixir:
+		return func(a, b BatchEvaluationResult) bool {
+			return a.Result.AvgElixir < b.Result.AvgElixir
+		}
+	default: // batchSortOverall
+		return func(a, b BatchEvaluationResult) bool {
+			return a.Result.OverallScore > b.Result.OverallScore
 		}
 	}
 }

@@ -108,9 +108,57 @@ func DefaultGeneticConfig() GeneticConfig {
 }
 
 const (
-	envTrue = "1"
+	envTrue        = "1"
 	envTrueLiteral = "true"
 )
+
+// envParser contains functions for parsing environment variables.
+type envParser struct {
+	config *GeneticConfig
+}
+
+// parsePositiveInt parses a positive integer from an environment variable.
+func (p *envParser) parsePositiveInt(key string, setter func(int)) {
+	if v := os.Getenv(key); v != "" {
+		if i, err := strconv.Atoi(v); err == nil && i > 0 {
+			setter(i)
+		}
+	}
+}
+
+// parseNonNegativeInt parses a non-negative integer from an environment variable.
+func (p *envParser) parseNonNegativeInt(key string, setter func(int)) {
+	if v := os.Getenv(key); v != "" {
+		if i, err := strconv.Atoi(v); err == nil && i >= 0 {
+			setter(i)
+		}
+	}
+}
+
+// parseFloat01 parses a float in range [0, 1] from an environment variable.
+func (p *envParser) parseFloat01(key string, setter func(float64)) {
+	if v := os.Getenv(key); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f <= 1 {
+			setter(f)
+		}
+	}
+}
+
+// parseNonNegativeFloat parses a non-negative float from an environment variable.
+func (p *envParser) parseNonNegativeFloat(key string, setter func(float64)) {
+	if v := os.Getenv(key); v != "" {
+		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
+			setter(f)
+		}
+	}
+}
+
+// parseBool parses a boolean from an environment variable.
+func (p *envParser) parseBool(key string, setter func(bool)) {
+	if v := os.Getenv(key); v != "" {
+		setter(v == envTrue || v == envTrueLiteral)
+	}
+}
 
 // LoadFromEnv creates a GeneticConfig by reading from environment variables.
 // Any unset variables use the default values.
@@ -123,76 +171,23 @@ const (
 //	GA_MIGRATION_INTERVAL, GA_MIGRATION_SIZE, GA_USE_ARCHETYPES
 func LoadFromEnv() GeneticConfig {
 	config := DefaultGeneticConfig()
+	p := &envParser{config: &config}
 
-	if v := os.Getenv("GA_POPULATION_SIZE"); v != "" {
-		if i, err := strconv.Atoi(v); err == nil && i > 0 {
-			config.PopulationSize = i
-		}
-	}
-	if v := os.Getenv("GA_GENERATIONS"); v != "" {
-		if i, err := strconv.Atoi(v); err == nil && i > 0 {
-			config.Generations = i
-		}
-	}
-	if v := os.Getenv("GA_MUTATION_RATE"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f <= 1 {
-			config.MutationRate = f
-		}
-	}
-	if v := os.Getenv("GA_CROSSOVER_RATE"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f <= 1 {
-			config.CrossoverRate = f
-		}
-	}
-	if v := os.Getenv("GA_MUTATION_INTENSITY"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 && f <= 1 {
-			config.MutationIntensity = f
-		}
-	}
-	if v := os.Getenv("GA_ELITE_COUNT"); v != "" {
-		if i, err := strconv.Atoi(v); err == nil && i >= 0 {
-			config.EliteCount = i
-		}
-	}
-	if v := os.Getenv("GA_TOURNAMENT_SIZE"); v != "" {
-		if i, err := strconv.Atoi(v); err == nil && i > 0 {
-			config.TournamentSize = i
-		}
-	}
-	if v := os.Getenv("GA_PARALLEL_EVALUATIONS"); v != "" {
-		config.ParallelEvaluations = v == envTrue || v == envTrueLiteral
-	}
-	if v := os.Getenv("GA_CONVERGENCE_GENERATIONS"); v != "" {
-		if i, err := strconv.Atoi(v); err == nil && i >= 0 {
-			config.ConvergenceGenerations = i
-		}
-	}
-	if v := os.Getenv("GA_TARGET_FITNESS"); v != "" {
-		if f, err := strconv.ParseFloat(v, 64); err == nil && f >= 0 {
-			config.TargetFitness = f
-		}
-	}
-	if v := os.Getenv("GA_ISLAND_MODEL"); v != "" {
-		config.IslandModel = v == envTrue || v == envTrueLiteral
-	}
-	if v := os.Getenv("GA_ISLAND_COUNT"); v != "" {
-		if i, err := strconv.Atoi(v); err == nil && i > 0 {
-			config.IslandCount = i
-		}
-	}
-	if v := os.Getenv("GA_MIGRATION_INTERVAL"); v != "" {
-		if i, err := strconv.Atoi(v); err == nil && i > 0 {
-			config.MigrationInterval = i
-		}
-	}
-	if v := os.Getenv("GA_MIGRATION_SIZE"); v != "" {
-		if i, err := strconv.Atoi(v); err == nil && i > 0 {
-			config.MigrationSize = i
-		}
-	}
-	if v := os.Getenv("GA_USE_ARCHETYPES"); v != "" {
-		config.UseArchetypes = v == envTrue || v == envTrueLiteral
-	}
+	p.parsePositiveInt("GA_POPULATION_SIZE", func(v int) { config.PopulationSize = v })
+	p.parsePositiveInt("GA_GENERATIONS", func(v int) { config.Generations = v })
+	p.parseFloat01("GA_MUTATION_RATE", func(v float64) { config.MutationRate = v })
+	p.parseFloat01("GA_CROSSOVER_RATE", func(v float64) { config.CrossoverRate = v })
+	p.parseFloat01("GA_MUTATION_INTENSITY", func(v float64) { config.MutationIntensity = v })
+	p.parseNonNegativeInt("GA_ELITE_COUNT", func(v int) { config.EliteCount = v })
+	p.parsePositiveInt("GA_TOURNAMENT_SIZE", func(v int) { config.TournamentSize = v })
+	p.parseBool("GA_PARALLEL_EVALUATIONS", func(v bool) { config.ParallelEvaluations = v })
+	p.parseNonNegativeInt("GA_CONVERGENCE_GENERATIONS", func(v int) { config.ConvergenceGenerations = v })
+	p.parseNonNegativeFloat("GA_TARGET_FITNESS", func(v float64) { config.TargetFitness = v })
+	p.parseBool("GA_ISLAND_MODEL", func(v bool) { config.IslandModel = v })
+	p.parsePositiveInt("GA_ISLAND_COUNT", func(v int) { config.IslandCount = v })
+	p.parsePositiveInt("GA_MIGRATION_INTERVAL", func(v int) { config.MigrationInterval = v })
+	p.parsePositiveInt("GA_MIGRATION_SIZE", func(v int) { config.MigrationSize = v })
+	p.parseBool("GA_USE_ARCHETYPES", func(v bool) { config.UseArchetypes = v })
 
 	return config
 }

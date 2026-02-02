@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -5122,6 +5123,10 @@ func exportOptimizationCSV(
 
 // sortEvaluationResults sorts batch evaluation results by the specified criteria
 func sortEvaluationResults[T any](results []T, sortBy string) {
+	if len(results) < 2 {
+		return
+	}
+
 	type resultInterface interface {
 		GetResult() evaluation.EvaluationResult
 	}
@@ -5146,72 +5151,30 @@ func sortEvaluationResults[T any](results []T, sortBy string) {
 		}
 	}
 
-	// Sort based on criteria
-	switch strings.ToLower(sortBy) {
+	// Get the comparison function for the sort criteria
+	less := getSortLessFunc(getResult, strings.ToLower(sortBy))
+	sort.Slice(results, func(i, j int) bool { return less(results[i], results[j]) })
+}
+
+// getSortLessFunc returns a comparison function for the given sort criteria.
+func getSortLessFunc[T any](getResult func(T) evaluation.EvaluationResult, sortBy string) func(T, T) bool {
+	switch sortBy {
 	case "attack":
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if getResult(results[i]).Attack.Score < getResult(results[j]).Attack.Score {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
+		return func(a, b T) bool { return getResult(a).Attack.Score > getResult(b).Attack.Score }
 	case "defense":
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if getResult(results[i]).Defense.Score < getResult(results[j]).Defense.Score {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
+		return func(a, b T) bool { return getResult(a).Defense.Score > getResult(b).Defense.Score }
 	case "synergy":
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if getResult(results[i]).Synergy.Score < getResult(results[j]).Synergy.Score {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
+		return func(a, b T) bool { return getResult(a).Synergy.Score > getResult(b).Synergy.Score }
 	case "versatility":
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if getResult(results[i]).Versatility.Score < getResult(results[j]).Versatility.Score {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
+		return func(a, b T) bool { return getResult(a).Versatility.Score > getResult(b).Versatility.Score }
 	case "f2p", "f2p-friendly":
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if getResult(results[i]).F2PFriendly.Score < getResult(results[j]).F2PFriendly.Score {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
+		return func(a, b T) bool { return getResult(a).F2PFriendly.Score > getResult(b).F2PFriendly.Score }
 	case "playability":
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if getResult(results[i]).Playability.Score < getResult(results[j]).Playability.Score {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
+		return func(a, b T) bool { return getResult(a).Playability.Score > getResult(b).Playability.Score }
 	case "elixir":
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if getResult(results[i]).AvgElixir > getResult(results[j]).AvgElixir {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
+		return func(a, b T) bool { return getResult(a).AvgElixir < getResult(b).AvgElixir }
 	default: // "overall"
-		for i := 0; i < len(results)-1; i++ {
-			for j := i + 1; j < len(results); j++ {
-				if getResult(results[i]).OverallScore < getResult(results[j]).OverallScore {
-					results[i], results[j] = results[j], results[i]
-				}
-			}
-		}
+		return func(a, b T) bool { return getResult(a).OverallScore > getResult(b).OverallScore }
 	}
 }
 
