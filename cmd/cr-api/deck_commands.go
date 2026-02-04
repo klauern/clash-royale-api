@@ -4300,15 +4300,9 @@ func calculateUpgradeCardsNeeded(rarity string, fromLevel, toLevel int) int {
 
 // sortUpgradeImpactsByScore sorts upgrade impacts by score (highest first)
 func sortUpgradeImpactsByScore(impacts []DeckCardUpgrade) {
-	// Simple bubble sort (for small lists)
-	n := len(impacts)
-	for i := 0; i < n-1; i++ {
-		for j := 0; j < n-i-1; j++ {
-			if impacts[j].ImpactScore < impacts[j+1].ImpactScore {
-				impacts[j], impacts[j+1] = impacts[j+1], impacts[j]
-			}
-		}
-	}
+	sort.Slice(impacts, func(i, j int) bool {
+		return impacts[i].ImpactScore > impacts[j].ImpactScore
+	})
 }
 
 // displayDeckUpgradeImpactAnalysis displays the upgrade impact analysis for deck cards
@@ -4721,58 +4715,120 @@ var (
 
 // getSortLessFunc returns a comparison function for the given sort criteria.
 func getSortLessFunc[T any](getResult func(T) evaluation.EvaluationResult, sortBy string) func(T, T) bool {
-	var comparator evaluationComparator
-
-	switch sortBy {
-	case "attack":
-		comparator = compareByAttack
-	case "defense":
-		comparator = compareByDefense
-	case "synergy":
-		comparator = compareBySynergy
-	case "versatility":
-		comparator = compareByVersatility
-	case "f2p", "f2p-friendly":
-		comparator = compareByF2PFriendly
-	case "playability":
-		comparator = compareByPlayability
-	case "elixir":
-		comparator = compareByElixir
-	default: // "overall"
-		comparator = compareByOverallScore
-	}
-
+	comparator := getComparatorForCriteria(sortBy)
 	return func(a, b T) bool {
 		return comparator(getResult(a), getResult(b))
 	}
 }
 
+// getComparatorForCriteria returns the appropriate comparator function for the sort criteria
+func getComparatorForCriteria(sortBy string) evaluationComparator {
+	switch sortBy {
+	case "attack":
+		return compareByAttack
+	case "defense":
+		return compareByDefense
+	case "synergy":
+		return compareBySynergy
+	case "versatility":
+		return compareByVersatility
+	case "f2p", "f2p-friendly":
+		return compareByF2PFriendly
+	case "playability":
+		return compareByPlayability
+	case "elixir":
+		return compareByElixir
+	default: // "overall"
+		return compareByOverallScore
+	}
+}
+
+// ============================================================================
+// Reflection Helper Functions - Type Field Extraction
+// ============================================================================
+
+// extractName extracts the Name field from a generic struct type using reflection
+func extractName[T any](r T) string {
+	v := reflect.ValueOf(r)
+	if v.Kind() == reflect.Struct {
+		if field := v.FieldByName("Name"); field.IsValid() && field.Kind() == reflect.String {
+			return field.String()
+		}
+	}
+	return ""
+}
+
+// extractStrategy extracts the Strategy field from a generic struct type using reflection
+func extractStrategy[T any](r T) string {
+	v := reflect.ValueOf(r)
+	if v.Kind() == reflect.Struct {
+		if field := v.FieldByName("Strategy"); field.IsValid() && field.Kind() == reflect.String {
+			return field.String()
+		}
+	}
+	return ""
+}
+
+// extractDeck extracts the Deck field from a generic struct type using reflection
+func extractDeck[T any](r T) []string {
+	v := reflect.ValueOf(r)
+	if v.Kind() == reflect.Struct {
+		if field := v.FieldByName("Deck"); field.IsValid() && field.Kind() == reflect.Slice {
+			if deck, ok := field.Interface().([]string); ok {
+				return deck
+			}
+		}
+	}
+	return nil
+}
+
+// extractResult extracts the Result field from a generic struct type using reflection
+func extractResult[T any](r T) evaluation.EvaluationResult {
+	v := reflect.ValueOf(r)
+	if v.Kind() == reflect.Struct {
+		if field := v.FieldByName("Result"); field.IsValid() {
+			if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
+				return result
+			}
+		}
+	}
+	return evaluation.EvaluationResult{}
+}
+
+// ============================================================================
+// Formatting Helper Functions - Text Utilities
+// ============================================================================
+
+// truncateWithEllipsis truncates a string to maxLen and adds "..." if truncated
+func truncateWithEllipsis(s string, maxLen int) string {
+	if len(s) > maxLen {
+		return s[:maxLen-3] + "..."
+	}
+	return s
+}
+
+// formatScoreWithRating formats a score and rating in a consistent format
+func formatScoreWithRating(score float64, rating string) string {
+	return fmt.Sprintf("%.2f (%s)", score, rating)
+}
+
+// ============================================================================
+// Batch Formatting Functions
+// ============================================================================
+
 // formatEvaluationBatchSummary formats batch evaluation results as a human-readable summary
 func formatEvaluationBatchSummary[T any](results []T, totalDecks int, totalTime time.Duration, sortBy, playerName, playerTag string) string {
-	// Type extraction helpers using reflection
-	getName := func(r T) string {
-		v := reflect.ValueOf(r)
-		if v.Kind() == reflect.Struct {
-			if field := v.FieldByName("Name"); field.IsValid() && field.Kind() == reflect.String {
-				return field.String()
-			}
-		}
-		return ""
-	}
-	getResult := func(r T) evaluation.EvaluationResult {
-		v := reflect.ValueOf(r)
-		if v.Kind() == reflect.Struct {
-			if field := v.FieldByName("Result"); field.IsValid() {
-				if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
-					return result
-				}
-			}
-		}
-		return evaluation.EvaluationResult{}
-	}
-
 	var buf strings.Builder
 
+	writeSummaryHeader(&buf, playerName, playerTag)
+	writeSummaryStats(&buf, totalDecks, len(results), totalTime, sortBy)
+	writeSummaryTable(&buf, results)
+
+	return buf.String()
+}
+
+// writeSummaryHeader writes the header section for batch summary
+func writeSummaryHeader(buf *strings.Builder, playerName, playerTag string) {
 	buf.WriteString("╔═══════════════════════════════════════════════════════════════════════════════╗\n")
 	buf.WriteString("║                        BATCH DECK EVALUATION RESULTS                          ║\n")
 	buf.WriteString("╚═══════════════════════════════════════════════════════════════════════════════╝\n\n")
@@ -4780,26 +4836,29 @@ func formatEvaluationBatchSummary[T any](results []T, totalDecks int, totalTime 
 	if playerName != "" || playerTag != "" {
 		buf.WriteString(fmt.Sprintf("Player: %s (%s)\n", playerName, playerTag))
 	}
-	buf.WriteString(fmt.Sprintf("Total Decks: %d | Evaluated: %d | Sorted by: %s\n", totalDecks, len(results), sortBy))
-	buf.WriteString(fmt.Sprintf("Total Time: %v | Avg: %v\n\n", totalTime, totalTime/time.Duration(max(len(results), 1))))
+}
 
+// writeSummaryStats writes the statistics section for batch summary
+func writeSummaryStats(buf *strings.Builder, totalDecks, evaluatedCount int, totalTime time.Duration, sortBy string) {
+	buf.WriteString(fmt.Sprintf("Total Decks: %d | Evaluated: %d | Sorted by: %s\n", totalDecks, evaluatedCount, sortBy))
+	buf.WriteString(fmt.Sprintf("Total Time: %v | Avg: %v\n\n", totalTime, totalTime/time.Duration(max(evaluatedCount, 1))))
+}
+
+// writeSummaryTable writes the results table for batch summary
+func writeSummaryTable[T any](buf *strings.Builder, results []T) {
 	buf.WriteString("┌─────┬──────────────────────────────┬─────────┬────────┬────────┬────────┬──────────────┐\n")
 	buf.WriteString("│ Rank│ Deck Name                    │ Overall │ Attack │ Defense│ Synergy│ Archetype    │\n")
 	buf.WriteString("├─────┼──────────────────────────────┼─────────┼────────┼────────┼────────┼──────────────┤\n")
 
 	for i, r := range results {
-		name := getName(r)
+		name := extractName(r)
 		if name == "" {
 			continue
 		}
-		if len(name) > 28 {
-			name = name[:25] + "..."
-		}
-		result := getResult(r)
-		archetype := string(result.DetectedArchetype)
-		if len(archetype) > 12 {
-			archetype = archetype[:9] + "..."
-		}
+		name = truncateWithEllipsis(name, 28)
+		result := extractResult(r)
+		archetype := truncateWithEllipsis(string(result.DetectedArchetype), 12)
+
 		buf.WriteString(fmt.Sprintf("│ %3d │ %-28s │  %5.2f  │  %5.2f │  %5.2f │  %5.2f │ %-12s │\n",
 			i+1, name,
 			result.OverallScore,
@@ -4810,68 +4869,34 @@ func formatEvaluationBatchSummary[T any](results []T, totalDecks int, totalTime 
 	}
 
 	buf.WriteString("└─────┴──────────────────────────────┴─────────┴────────┴────────┴────────┴──────────────┘\n")
-
-	return buf.String()
 }
 
 // formatEvaluationBatchCSV formats batch evaluation results as CSV
 func formatEvaluationBatchCSV[T any](results []T) string {
-	// Type extraction helpers using reflection
-	getName := func(r T) string {
-		v := reflect.ValueOf(r)
-		if v.Kind() == reflect.Struct {
-			if field := v.FieldByName("Name"); field.IsValid() && field.Kind() == reflect.String {
-				return field.String()
-			}
-		}
-		return ""
-	}
-	getStrategy := func(r T) string {
-		v := reflect.ValueOf(r)
-		if v.Kind() == reflect.Struct {
-			if field := v.FieldByName("Strategy"); field.IsValid() && field.Kind() == reflect.String {
-				return field.String()
-			}
-		}
-		return ""
-	}
-	getDeck := func(r T) []string {
-		v := reflect.ValueOf(r)
-		if v.Kind() == reflect.Struct {
-			if field := v.FieldByName("Deck"); field.IsValid() && field.Kind() == reflect.Slice {
-				if deck, ok := field.Interface().([]string); ok {
-					return deck
-				}
-			}
-		}
-		return nil
-	}
-	getResult := func(r T) evaluation.EvaluationResult {
-		v := reflect.ValueOf(r)
-		if v.Kind() == reflect.Struct {
-			if field := v.FieldByName("Result"); field.IsValid() {
-				if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
-					return result
-				}
-			}
-		}
-		return evaluation.EvaluationResult{}
-	}
-
 	var buf strings.Builder
 
-	// Header
-	buf.WriteString("Rank,Name,Strategy,Overall,Attack,Defense,Synergy,Versatility,F2P,Playability,Archetype,Avg_Elixir,Deck\n")
+	writeCSVHeader(&buf)
+	writeCSVRows(&buf, results)
 
-	// Data rows
+	return buf.String()
+}
+
+// writeCSVHeader writes the CSV header row
+func writeCSVHeader(buf *strings.Builder) {
+	buf.WriteString("Rank,Name,Strategy,Overall,Attack,Defense,Synergy,Versatility,F2P,Playability,Archetype,Avg_Elixir,Deck\n")
+}
+
+// writeCSVRows writes CSV data rows for evaluation results
+func writeCSVRows[T any](buf *strings.Builder, results []T) {
 	for i, r := range results {
-		name := getName(r)
+		name := extractName(r)
 		if name == "" {
 			continue
 		}
-		strategy := getStrategy(r)
-		deck := getDeck(r)
-		result := getResult(r)
+		strategy := extractStrategy(r)
+		deck := extractDeck(r)
+		result := extractResult(r)
+
 		buf.WriteString(fmt.Sprintf("%d,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%.2f,\"%s\"\n",
 			i+1,
 			name,
@@ -4887,56 +4912,20 @@ func formatEvaluationBatchCSV[T any](results []T) string {
 			result.AvgElixir,
 			strings.Join(deck, " - ")))
 	}
-
-	return buf.String()
 }
 
 // formatEvaluationBatchDetailed formats batch evaluation results with detailed analysis
 func formatEvaluationBatchDetailed[T any](results []T, playerName, playerTag string) string {
-	// Type extraction helpers using reflection
-	getName := func(r T) string {
-		v := reflect.ValueOf(r)
-		if v.Kind() == reflect.Struct {
-			if field := v.FieldByName("Name"); field.IsValid() && field.Kind() == reflect.String {
-				return field.String()
-			}
-		}
-		return ""
-	}
-	getStrategy := func(r T) string {
-		v := reflect.ValueOf(r)
-		if v.Kind() == reflect.Struct {
-			if field := v.FieldByName("Strategy"); field.IsValid() && field.Kind() == reflect.String {
-				return field.String()
-			}
-		}
-		return ""
-	}
-	getDeck := func(r T) []string {
-		v := reflect.ValueOf(r)
-		if v.Kind() == reflect.Struct {
-			if field := v.FieldByName("Deck"); field.IsValid() && field.Kind() == reflect.Slice {
-				if deck, ok := field.Interface().([]string); ok {
-					return deck
-				}
-			}
-		}
-		return nil
-	}
-	getResult := func(r T) evaluation.EvaluationResult {
-		v := reflect.ValueOf(r)
-		if v.Kind() == reflect.Struct {
-			if field := v.FieldByName("Result"); field.IsValid() {
-				if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
-					return result
-				}
-			}
-		}
-		return evaluation.EvaluationResult{}
-	}
-
 	var buf strings.Builder
 
+	writeDetailedHeader(&buf, playerName, playerTag)
+	writeDetailedResults(&buf, results)
+
+	return buf.String()
+}
+
+// writeDetailedHeader writes the header section for detailed batch results
+func writeDetailedHeader(buf *strings.Builder, playerName, playerTag string) {
 	buf.WriteString("╔═══════════════════════════════════════════════════════════════════════════════╗\n")
 	buf.WriteString("║                    DETAILED BATCH EVALUATION RESULTS                          ║\n")
 	buf.WriteString("╚═══════════════════════════════════════════════════════════════════════════════╝\n\n")
@@ -4944,51 +4933,66 @@ func formatEvaluationBatchDetailed[T any](results []T, playerName, playerTag str
 	if playerName != "" || playerTag != "" {
 		buf.WriteString(fmt.Sprintf("Player: %s (%s)\n\n", playerName, playerTag))
 	}
+}
 
+// writeDetailedResults writes detailed evaluation for each deck
+func writeDetailedResults[T any](buf *strings.Builder, results []T) {
 	for i, r := range results {
-		name := getName(r)
+		name := extractName(r)
 		if name == "" {
 			continue
 		}
-		strategy := getStrategy(r)
-		deck := getDeck(r)
-		result := getResult(r)
+		strategy := extractStrategy(r)
+		deck := extractDeck(r)
+		result := extractResult(r)
 
-		buf.WriteString(fmt.Sprintf("═══════════════════ DECK #%d: %s ═══════════════════\n\n", i+1, name))
-
-		if strategy != "" && strategy != "unknown" {
-			buf.WriteString(fmt.Sprintf("Strategy: %s\n", strategy))
-		}
-
-		buf.WriteString(fmt.Sprintf("Deck: %s\n", strings.Join(deck, " - ")))
-		buf.WriteString(fmt.Sprintf("Avg Elixir: %.2f\n", result.AvgElixir))
-		buf.WriteString(fmt.Sprintf("Archetype: %s (%.1f%% confidence)\n\n", result.DetectedArchetype, result.ArchetypeConfidence*100))
-
-		// Category scores
-		buf.WriteString("SCORES:\n")
-		buf.WriteString(fmt.Sprintf("  Overall:     %.2f (%s)\n", result.OverallScore, result.OverallRating))
-		buf.WriteString(fmt.Sprintf("  Attack:      %.2f (%s)\n", result.Attack.Score, result.Attack.Rating))
-		buf.WriteString(fmt.Sprintf("  Defense:     %.2f (%s)\n", result.Defense.Score, result.Defense.Rating))
-		buf.WriteString(fmt.Sprintf("  Synergy:     %.2f (%s)\n", result.Synergy.Score, result.Synergy.Rating))
-		buf.WriteString(fmt.Sprintf("  Versatility: %.2f (%s)\n", result.Versatility.Score, result.Versatility.Rating))
-		buf.WriteString(fmt.Sprintf("  F2P:         %.2f (%s)\n", result.F2PFriendly.Score, result.F2PFriendly.Rating))
-		buf.WriteString(fmt.Sprintf("  Playability: %.2f (%s)\n\n", result.Playability.Score, result.Playability.Rating))
-
-		// Key assessments
-		if result.Attack.Assessment != "" {
-			buf.WriteString(fmt.Sprintf("Attack: %s\n", result.Attack.Assessment))
-		}
-		if result.Defense.Assessment != "" {
-			buf.WriteString(fmt.Sprintf("Defense: %s\n", result.Defense.Assessment))
-		}
-		if result.Synergy.Assessment != "" {
-			buf.WriteString(fmt.Sprintf("Synergy: %s\n", result.Synergy.Assessment))
-		}
+		writeDeckHeader(buf, i+1, name)
+		writeDeckInfo(buf, strategy, deck, result)
+		writeDeckScores(buf, result)
+		writeDeckAssessments(buf, result)
 
 		buf.WriteString("\n" + strings.Repeat("─", 80) + "\n\n")
 	}
+}
 
-	return buf.String()
+// writeDeckHeader writes the deck number and name header
+func writeDeckHeader(buf *strings.Builder, deckNum int, name string) {
+	buf.WriteString(fmt.Sprintf("═══════════════════ DECK #%d: %s ═══════════════════\n\n", deckNum, name))
+}
+
+// writeDeckInfo writes basic deck information (strategy, cards, elixir, archetype)
+func writeDeckInfo(buf *strings.Builder, strategy string, deck []string, result evaluation.EvaluationResult) {
+	if strategy != "" && strategy != "unknown" {
+		buf.WriteString(fmt.Sprintf("Strategy: %s\n", strategy))
+	}
+	buf.WriteString(fmt.Sprintf("Deck: %s\n", strings.Join(deck, " - ")))
+	buf.WriteString(fmt.Sprintf("Avg Elixir: %.2f\n", result.AvgElixir))
+	buf.WriteString(fmt.Sprintf("Archetype: %s (%.1f%% confidence)\n\n", result.DetectedArchetype, result.ArchetypeConfidence*100))
+}
+
+// writeDeckScores writes all category scores for a deck
+func writeDeckScores(buf *strings.Builder, result evaluation.EvaluationResult) {
+	buf.WriteString("SCORES:\n")
+	buf.WriteString(fmt.Sprintf("  Overall:     %.2f (%s)\n", result.OverallScore, result.OverallRating))
+	buf.WriteString(fmt.Sprintf("  Attack:      %.2f (%s)\n", result.Attack.Score, result.Attack.Rating))
+	buf.WriteString(fmt.Sprintf("  Defense:     %.2f (%s)\n", result.Defense.Score, result.Defense.Rating))
+	buf.WriteString(fmt.Sprintf("  Synergy:     %.2f (%s)\n", result.Synergy.Score, result.Synergy.Rating))
+	buf.WriteString(fmt.Sprintf("  Versatility: %.2f (%s)\n", result.Versatility.Score, result.Versatility.Rating))
+	buf.WriteString(fmt.Sprintf("  F2P:         %.2f (%s)\n", result.F2PFriendly.Score, result.F2PFriendly.Rating))
+	buf.WriteString(fmt.Sprintf("  Playability: %.2f (%s)\n\n", result.Playability.Score, result.Playability.Rating))
+}
+
+// writeDeckAssessments writes key assessments for attack, defense, and synergy
+func writeDeckAssessments(buf *strings.Builder, result evaluation.EvaluationResult) {
+	if result.Attack.Assessment != "" {
+		buf.WriteString(fmt.Sprintf("Attack: %s\n", result.Attack.Assessment))
+	}
+	if result.Defense.Assessment != "" {
+		buf.WriteString(fmt.Sprintf("Defense: %s\n", result.Defense.Assessment))
+	}
+	if result.Synergy.Assessment != "" {
+		buf.WriteString(fmt.Sprintf("Synergy: %s\n", result.Synergy.Assessment))
+	}
 }
 
 func deckPossibleCountCommand(ctx context.Context, cmd *cli.Command) error {
