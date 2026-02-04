@@ -6,6 +6,79 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
+// attackMetrics holds extracted metrics from deck cards for attack scoring
+type attackMetrics struct {
+	winConditionCount   int
+	winConditionQuality float64
+	spellDamage         float64
+	totalDamage         float64
+	evolutionBonus      float64
+}
+
+// extractAttackMetrics collects attack-related metrics from deck cards
+func extractAttackMetrics(deckCards []deck.CardCandidate) attackMetrics {
+	metrics := attackMetrics{}
+
+	for _, card := range deckCards {
+		// Check if card is a win condition
+		if card.Role != nil && *card.Role == deck.RoleWinCondition {
+			metrics.winConditionCount++
+			// Quality based on level and stats
+			metrics.winConditionQuality += card.LevelRatio()
+		}
+
+		// Big spells contribute to attack potential
+		if card.Role != nil && *card.Role == deck.RoleSpellBig {
+			metrics.spellDamage += card.LevelRatio()
+		}
+
+		// Calculate overall damage potential using combat stats
+		if card.Stats != nil {
+			damageContribution := float64(card.Stats.DamagePerSecond) * card.LevelRatio()
+			metrics.totalDamage += damageContribution
+		}
+
+		// Calculate evolution bonus
+		if card.EvolutionLevel > 0 {
+			// Evolution bonus: 15% per evolution level
+			evoBonus := 0.15 * float64(card.EvolutionLevel)
+			metrics.evolutionBonus += evoBonus
+		}
+	}
+
+	return metrics
+}
+
+// scoreWinConditions calculates the win condition score component (0-10 scale)
+func scoreWinConditions(count int, quality float64) float64 {
+	if count >= 2 {
+		return 10.0 // Multiple win conditions = excellent
+	} else if count == 1 {
+		return 7.0 + (quality * 3.0) // Single win condition with quality bonus
+	}
+	return 3.0 // No dedicated win condition
+}
+
+// scoreSpellDamage calculates the spell damage score component (0-10 scale)
+func scoreSpellDamage(spellDamage float64) float64 {
+	if spellDamage >= 2.0 {
+		return 10.0 // Strong spell damage
+	} else if spellDamage >= 1.0 {
+		return 6.0 + (spellDamage * 2.0)
+	}
+	return 2.0 + (spellDamage * 4.0)
+}
+
+// scoreDamagePotential calculates the overall damage score component (0-10 scale)
+func scoreDamagePotential(avgDamage float64) float64 {
+	if avgDamage >= 200 {
+		return 10.0
+	} else if avgDamage >= 100 {
+		return 5.0 + ((avgDamage - 100) / 100 * 5.0)
+	}
+	return (avgDamage / 100) * 5.0
+}
+
 // ScoreAttack calculates the attack score for a deck (0-10 scale)
 // Considers win conditions, damage potential, spell damage, and evolution bonuses
 func ScoreAttack(deckCards []deck.CardCandidate) CategoryScore {
@@ -13,87 +86,115 @@ func ScoreAttack(deckCards []deck.CardCandidate) CategoryScore {
 		return CreateCategoryScore(0, "No cards in deck")
 	}
 
-	// Count win conditions and their quality
-	winConditionCount := 0
-	winConditionQuality := 0.0
-	spellDamage := 0.0
-	totalDamage := 0.0
-	evolutionBonus := 0.0
-
-	for _, card := range deckCards {
-		// Check if card is a win condition
-		if card.Role != nil && *card.Role == deck.RoleWinCondition {
-			winConditionCount++
-			// Quality based on level and stats
-			winConditionQuality += card.LevelRatio()
-		}
-
-		// Big spells contribute to attack potential
-		if card.Role != nil && *card.Role == deck.RoleSpellBig {
-			spellDamage += card.LevelRatio()
-		}
-
-		// Calculate overall damage potential using combat stats
-		if card.Stats != nil {
-			damageContribution := float64(card.Stats.DamagePerSecond) * card.LevelRatio()
-			totalDamage += damageContribution
-		}
-
-		// Calculate evolution bonus
-		if card.EvolutionLevel > 0 {
-			// Evolution bonus: 15% per evolution level
-			evoBonus := 0.15 * float64(card.EvolutionLevel)
-			evolutionBonus += evoBonus
-		}
-	}
+	// Extract metrics from deck cards
+	metrics := extractAttackMetrics(deckCards)
 
 	// Score components (0-10 scale)
-	var score float64
-
 	// Win condition presence (40% of score)
-	winConditionScore := 0.0
-	if winConditionCount >= 2 {
-		winConditionScore = 10.0 // Multiple win conditions = excellent
-	} else if winConditionCount == 1 {
-		winConditionScore = 7.0 + (winConditionQuality * 3.0) // Single win condition with quality bonus
-	} else {
-		winConditionScore = 3.0 // No dedicated win condition
-	}
+	winConditionScore := scoreWinConditions(metrics.winConditionCount, metrics.winConditionQuality)
 
 	// Spell damage potential (30% of score)
-	spellScore := 0.0
-	if spellDamage >= 2.0 {
-		spellScore = 10.0 // Strong spell damage
-	} else if spellDamage >= 1.0 {
-		spellScore = 6.0 + (spellDamage * 2.0)
-	} else {
-		spellScore = 2.0 + (spellDamage * 4.0)
-	}
+	spellScore := scoreSpellDamage(metrics.spellDamage)
 
 	// Overall damage potential (30% of score)
-	avgDamage := totalDamage / float64(len(deckCards))
-	damageScore := 0.0
-	if avgDamage >= 200 {
-		damageScore = 10.0
-	} else if avgDamage >= 100 {
-		damageScore = 5.0 + ((avgDamage - 100) / 100 * 5.0)
-	} else {
-		damageScore = (avgDamage / 100) * 5.0
-	}
+	avgDamage := metrics.totalDamage / float64(len(deckCards))
+	damageScore := scoreDamagePotential(avgDamage)
 
 	// Combine components with weights
-	score = (winConditionScore * 0.4) + (spellScore * 0.3) + (damageScore * 0.3)
+	score := (winConditionScore * 0.4) + (spellScore * 0.3) + (damageScore * 0.3)
 
 	// Add evolution bonus (up to +1.5 points)
-	score += evolutionBonus
+	score += metrics.evolutionBonus
 	if score > 10.0 {
 		score = 10.0
 	}
 
 	// Generate assessment text
-	assessment := generateAttackAssessment(winConditionCount, spellDamage, score, evolutionBonus)
+	assessment := generateAttackAssessment(metrics.winConditionCount, metrics.spellDamage, score, metrics.evolutionBonus)
 
 	return CreateCategoryScore(score, assessment)
+}
+
+// defenseMetrics holds extracted metrics from deck cards for defense scoring
+type defenseMetrics struct {
+	antiAirCount   int
+	buildingCount  int
+	supportCount   int
+	defenseQuality float64
+	evolutionBonus float64
+}
+
+// extractDefenseMetrics collects defense-related metrics from deck cards
+func extractDefenseMetrics(deckCards []deck.CardCandidate) defenseMetrics {
+	metrics := defenseMetrics{}
+
+	for _, card := range deckCards {
+		// Count buildings (defensive structures)
+		if card.Role != nil && *card.Role == deck.RoleBuilding {
+			metrics.buildingCount++
+			metrics.defenseQuality += card.LevelRatio()
+		}
+
+		// Count support troops (defensive utility)
+		if card.Role != nil && *card.Role == deck.RoleSupport {
+			metrics.supportCount++
+			metrics.defenseQuality += card.LevelRatio() * 0.5
+		}
+
+		// Check anti-air capability using combat stats
+		if card.Stats != nil && (card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground") {
+			metrics.antiAirCount++
+		}
+
+		// Calculate evolution bonus for defensive cards
+		if card.EvolutionLevel > 0 {
+			// Buildings and support get larger evolution bonus
+			if card.Role != nil && (*card.Role == deck.RoleBuilding || *card.Role == deck.RoleSupport) {
+				metrics.evolutionBonus += 0.20 * float64(card.EvolutionLevel)
+			} else if card.Stats != nil && (card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground") {
+				// Anti-air cards get evolution bonus
+				metrics.evolutionBonus += 0.15 * float64(card.EvolutionLevel)
+			}
+		}
+	}
+
+	return metrics
+}
+
+// scoreAntiAir calculates the anti-air coverage score component (0-10 scale)
+func scoreAntiAir(count int) float64 {
+	if count >= 4 {
+		return 10.0 // Excellent air defense
+	} else if count >= 3 {
+		return 8.0
+	} else if count >= 2 {
+		return 5.0
+	} else if count == 1 {
+		return 3.0
+	}
+	return 0.0 // No anti-air = critical weakness
+}
+
+// scoreBuildings calculates the building presence score component (0-10 scale)
+func scoreBuildings(count int, quality float64) float64 {
+	if count >= 2 {
+		return 10.0
+	} else if count == 1 {
+		return 6.0 + (quality * 2.0)
+	}
+	return 3.0 // No building is risky
+}
+
+// scoreSupport calculates the support troop score component (0-10 scale)
+func scoreSupport(count int) float64 {
+	if count >= 4 {
+		return 10.0
+	} else if count >= 3 {
+		return 7.0
+	} else if count >= 2 {
+		return 5.0
+	}
+	return 2.0
 }
 
 // ScoreDefense calculates the defense score for a deck (0-10 scale)
@@ -103,92 +204,30 @@ func ScoreDefense(deckCards []deck.CardCandidate) CategoryScore {
 		return CreateCategoryScore(0, "No cards in deck")
 	}
 
-	antiAirCount := 0
-	buildingCount := 0
-	supportCount := 0
-	defenseQuality := 0.0
-	evolutionBonus := 0.0
-
-	for _, card := range deckCards {
-		// Count buildings (defensive structures)
-		if card.Role != nil && *card.Role == deck.RoleBuilding {
-			buildingCount++
-			defenseQuality += card.LevelRatio()
-		}
-
-		// Count support troops (defensive utility)
-		if card.Role != nil && *card.Role == deck.RoleSupport {
-			supportCount++
-			defenseQuality += card.LevelRatio() * 0.5
-		}
-
-		// Check anti-air capability using combat stats
-		if card.Stats != nil && (card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground") {
-			antiAirCount++
-		}
-
-		// Calculate evolution bonus for defensive cards
-		if card.EvolutionLevel > 0 {
-			// Buildings and support get larger evolution bonus
-			if card.Role != nil && (*card.Role == deck.RoleBuilding || *card.Role == deck.RoleSupport) {
-				evolutionBonus += 0.20 * float64(card.EvolutionLevel)
-			} else if card.Stats != nil && (card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground") {
-				// Anti-air cards get evolution bonus
-				evolutionBonus += 0.15 * float64(card.EvolutionLevel)
-			}
-		}
-	}
+	// Extract metrics from deck cards
+	metrics := extractDefenseMetrics(deckCards)
 
 	// Score components (0-10 scale)
-	var score float64
-
 	// Anti-air coverage (40% of score)
-	antiAirScore := 0.0
-	if antiAirCount >= 4 {
-		antiAirScore = 10.0 // Excellent air defense
-	} else if antiAirCount >= 3 {
-		antiAirScore = 8.0
-	} else if antiAirCount >= 2 {
-		antiAirScore = 5.0
-	} else if antiAirCount == 1 {
-		antiAirScore = 3.0
-	} else {
-		antiAirScore = 0.0 // No anti-air = critical weakness
-	}
+	antiAirScore := scoreAntiAir(metrics.antiAirCount)
 
 	// Defensive building presence (30% of score)
-	buildingScore := 0.0
-	if buildingCount >= 2 {
-		buildingScore = 10.0
-	} else if buildingCount == 1 {
-		buildingScore = 6.0 + (defenseQuality * 2.0)
-	} else {
-		buildingScore = 3.0 // No building is risky
-	}
+	buildingScore := scoreBuildings(metrics.buildingCount, metrics.defenseQuality)
 
 	// Support troop presence (30% of score)
-	supportScore := 0.0
-	if supportCount >= 4 {
-		supportScore = 10.0
-	} else if supportCount >= 3 {
-		supportScore = 7.0
-	} else if supportCount >= 2 {
-		supportScore = 5.0
-	} else {
-		supportScore = 2.0
-	}
+	supportScore := scoreSupport(metrics.supportCount)
 
 	// Combine components with weights
-	score = (antiAirScore * 0.4) + (buildingScore * 0.3) + (supportScore * 0.3)
+	score := (antiAirScore * 0.4) + (buildingScore * 0.3) + (supportScore * 0.3)
 
 	// Add evolution bonus (up to +2.0 points for defense)
-	score += evolutionBonus
+	score += metrics.evolutionBonus
 	if score > 10.0 {
 		score = 10.0
 	}
 
 	// Generate assessment text
-	assessment := generateDefenseAssessment(antiAirCount, buildingCount, score, evolutionBonus)
+	assessment := generateDefenseAssessment(metrics.antiAirCount, metrics.buildingCount, score, metrics.evolutionBonus)
 
 	return CreateCategoryScore(score, assessment)
 }
@@ -244,6 +283,74 @@ func ScoreSynergy(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabas
 	return CreateCategoryScore(score, assessment)
 }
 
+// versatilityMetrics holds extracted metrics from deck cards for versatility scoring
+type versatilityMetrics struct {
+	roleCount      map[deck.CardRole]int
+	elixirVariety  map[int]bool
+	targetsAir     int
+	targetsGround  int
+}
+
+// collectRoleStats collects role, elixir, and targeting statistics from deck cards
+func collectRoleStats(deckCards []deck.CardCandidate) versatilityMetrics {
+	metrics := versatilityMetrics{
+		roleCount:     make(map[deck.CardRole]int),
+		elixirVariety: make(map[int]bool),
+	}
+
+	for _, card := range deckCards {
+		// Count roles
+		if card.Role != nil {
+			metrics.roleCount[*card.Role]++
+		}
+
+		// Track elixir variety
+		metrics.elixirVariety[card.Elixir] = true
+
+		// Track targeting capabilities
+		if card.Stats != nil {
+			if card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground" {
+				metrics.targetsAir++
+			}
+			if card.Stats.Targets == "Ground" || card.Stats.Targets == "Air & Ground" || card.Stats.Targets == "Buildings" {
+				metrics.targetsGround++
+			}
+		}
+	}
+
+	return metrics
+}
+
+// scoreRoleDiversity calculates the role diversity score component (0-10 scale)
+func scoreRoleDiversity(uniqueRoles int) float64 {
+	if uniqueRoles >= 5 {
+		return 10.0 // Excellent role diversity
+	} else if uniqueRoles >= 4 {
+		return 7.0
+	} else if uniqueRoles >= 3 {
+		return 5.0
+	}
+	return float64(uniqueRoles) * 2.0
+}
+
+// scoreElixirVariety calculates the elixir variety score component (0-10 scale)
+func scoreElixirVariety(elixirDiversity int) float64 {
+	if elixirDiversity >= 6 {
+		return 10.0
+	}
+	return float64(elixirDiversity) * 1.5
+}
+
+// scoreTargetCoverage calculates the targeting coverage score component (0-10 scale)
+func scoreTargetCoverage(targetsAir, targetsGround int) float64 {
+	if targetsAir >= 3 && targetsGround >= 6 {
+		return 10.0 // Excellent coverage
+	} else if targetsAir >= 2 && targetsGround >= 5 {
+		return 7.0
+	}
+	return (float64(targetsAir) + float64(targetsGround)) * 0.5
+}
+
 // ScoreVersatility calculates the versatility score for a deck (0-10 scale)
 // Considers threat coverage and adaptability to different opponents
 func ScoreVersatility(deckCards []deck.CardCandidate) CategoryScore {
@@ -251,72 +358,24 @@ func ScoreVersatility(deckCards []deck.CardCandidate) CategoryScore {
 		return CreateCategoryScore(0, "No cards in deck")
 	}
 
-	// Count different card types and roles
-	roleCount := make(map[deck.CardRole]int)
-	elixirVariety := make(map[int]bool)
-	targetsAir := 0
-	targetsGround := 0
-
-	for _, card := range deckCards {
-		// Count roles
-		if card.Role != nil {
-			roleCount[*card.Role]++
-		}
-
-		// Track elixir variety
-		elixirVariety[card.Elixir] = true
-
-		// Track targeting capabilities
-		if card.Stats != nil {
-			if card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground" {
-				targetsAir++
-			}
-			if card.Stats.Targets == "Ground" || card.Stats.Targets == "Air & Ground" || card.Stats.Targets == "Buildings" {
-				targetsGround++
-			}
-		}
-	}
+	// Collect versatility metrics
+	metrics := collectRoleStats(deckCards)
 
 	// Score components (0-10 scale)
-	var score float64
-
 	// Role diversity (40% of score)
-	uniqueRoles := len(roleCount)
-	roleScore := 0.0
-	if uniqueRoles >= 5 {
-		roleScore = 10.0 // Excellent role diversity
-	} else if uniqueRoles >= 4 {
-		roleScore = 7.0
-	} else if uniqueRoles >= 3 {
-		roleScore = 5.0
-	} else {
-		roleScore = float64(uniqueRoles) * 2.0
-	}
+	roleScore := scoreRoleDiversity(len(metrics.roleCount))
 
 	// Elixir variety (30% of score)
-	elixirScore := 0.0
-	elixirDiversity := len(elixirVariety)
-	if elixirDiversity >= 6 {
-		elixirScore = 10.0
-	} else {
-		elixirScore = float64(elixirDiversity) * 1.5
-	}
+	elixirScore := scoreElixirVariety(len(metrics.elixirVariety))
 
 	// Target coverage (30% of score)
-	targetScore := 0.0
-	if targetsAir >= 3 && targetsGround >= 6 {
-		targetScore = 10.0 // Excellent coverage
-	} else if targetsAir >= 2 && targetsGround >= 5 {
-		targetScore = 7.0
-	} else {
-		targetScore = (float64(targetsAir) + float64(targetsGround)) * 0.5
-	}
+	targetScore := scoreTargetCoverage(metrics.targetsAir, metrics.targetsGround)
 
 	// Combine components with weights
-	score = (roleScore * 0.4) + (elixirScore * 0.3) + (targetScore * 0.3)
+	score := (roleScore * 0.4) + (elixirScore * 0.3) + (targetScore * 0.3)
 
 	// Generate assessment text
-	assessment := generateVersatilityAssessment(uniqueRoles, elixirDiversity, score)
+	assessment := generateVersatilityAssessment(len(metrics.roleCount), len(metrics.elixirVariety), score)
 
 	return CreateCategoryScore(score, assessment)
 }

@@ -170,80 +170,94 @@ func (b *Builder) addIncludedCards(deck []*CardCandidate, candidates []*CardCand
 }
 
 // selectCardsByRole selects cards for each role with composition override support
-// Returns notes for missing win conditions
-func (b *Builder) selectCardsByRole(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool, []string) {
-	notes := make([]string, 0)
-	override := b.strategyConfig.CompositionOverrides
-
-	// Core roles: win condition, building, two spells
-	// Use override counts if specified, otherwise use defaults
-	winConditionCount := 1
-	if override != nil && override.WinConditions != nil {
-		winConditionCount = *override.WinConditions
+// getOverrideCount returns the override count for a role, or the default if not overridden
+func (b *Builder) getOverrideCount(role CardRole, defaultCount int) int {
+	if b.strategyConfig.CompositionOverrides == nil {
+		return defaultCount
 	}
-	for i := 0; i < winConditionCount; i++ {
-		if winCondition := b.pickBest(RoleWinCondition, candidates, used, deck); winCondition != nil {
-			deck = append(deck, winCondition)
-			used[winCondition.Name] = true
-		} else if i == 0 {
+
+	override := b.strategyConfig.CompositionOverrides
+	switch role {
+	case RoleWinCondition:
+		if override.WinConditions != nil {
+			return *override.WinConditions
+		}
+	case RoleBuilding:
+		if override.Buildings != nil {
+			return *override.Buildings
+		}
+	case RoleSpellBig:
+		if override.BigSpells != nil {
+			return *override.BigSpells
+		}
+	case RoleSpellSmall:
+		if override.SmallSpells != nil {
+			return *override.SmallSpells
+		}
+	case RoleSupport:
+		if override.Support != nil {
+			return *override.Support
+		}
+	case RoleCycle:
+		if override.Cycle != nil {
+			return *override.Cycle
+		}
+	}
+	return defaultCount
+}
+
+// selectCardsForRole selects cards of a specific role using pickBest and updates deck/used
+func (b *Builder) selectCardsForRole(role CardRole, count int, deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool, trackMissing bool) ([]*CardCandidate, map[string]bool, []string) {
+	notes := make([]string, 0)
+
+	for i := 0; i < count; i++ {
+		if card := b.pickBest(role, candidates, used, deck); card != nil {
+			deck = append(deck, card)
+			used[card.Name] = true
+		} else if i == 0 && trackMissing {
 			notes = append(notes, "No win condition found; selected highest power cards instead.")
 		}
 	}
 
-	buildingCount := 1
-	if override != nil && override.Buildings != nil {
-		buildingCount = *override.Buildings
-	}
-	for i := 0; i < buildingCount; i++ {
-		if building := b.pickBest(RoleBuilding, candidates, used, deck); building != nil {
-			deck = append(deck, building)
-			used[building.Name] = true
-		}
-	}
+	return deck, used, notes
+}
 
-	bigSpellCount := 1
-	if override != nil && override.BigSpells != nil {
-		bigSpellCount = *override.BigSpells
+// selectMultipleCardsForRole selects multiple cards of a role using pickMany and updates deck/used
+func (b *Builder) selectMultipleCardsForRole(role CardRole, count int, deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool) {
+	cards := b.pickMany(role, candidates, used, count, deck)
+	deck = append(deck, cards...)
+	for _, card := range cards {
+		used[card.Name] = true
 	}
-	for i := 0; i < bigSpellCount; i++ {
-		if bigSpell := b.pickBest(RoleSpellBig, candidates, used, deck); bigSpell != nil {
-			deck = append(deck, bigSpell)
-			used[bigSpell.Name] = true
-		}
-	}
+	return deck, used
+}
 
-	smallSpellCount := 1
-	if override != nil && override.SmallSpells != nil {
-		smallSpellCount = *override.SmallSpells
-	}
-	for i := 0; i < smallSpellCount; i++ {
-		if smallSpell := b.pickBest(RoleSpellSmall, candidates, used, deck); smallSpell != nil {
-			deck = append(deck, smallSpell)
-			used[smallSpell.Name] = true
-		}
-	}
+// Returns notes for missing win conditions
+func (b *Builder) selectCardsByRole(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool, []string) {
+	notes := make([]string, 0)
+
+	// Core roles: win condition, building, two spells
+	// Use override counts if specified, otherwise use defaults
+	winConditionCount := b.getOverrideCount(RoleWinCondition, 1)
+	deck, used, winConditionNotes := b.selectCardsForRole(RoleWinCondition, winConditionCount, deck, candidates, used, true)
+	notes = append(notes, winConditionNotes...)
+
+	buildingCount := b.getOverrideCount(RoleBuilding, 1)
+	deck, used, _ = b.selectCardsForRole(RoleBuilding, buildingCount, deck, candidates, used, false)
+
+	bigSpellCount := b.getOverrideCount(RoleSpellBig, 1)
+	deck, used, _ = b.selectCardsForRole(RoleSpellBig, bigSpellCount, deck, candidates, used, false)
+
+	smallSpellCount := b.getOverrideCount(RoleSpellSmall, 1)
+	deck, used, _ = b.selectCardsForRole(RoleSpellSmall, smallSpellCount, deck, candidates, used, false)
 
 	// Support backbone (2 cards, or override count if specified)
-	supportCount := 2
-	if override != nil && override.Support != nil {
-		supportCount = *override.Support
-	}
-	supportCards := b.pickMany(RoleSupport, candidates, used, supportCount, deck)
-	deck = append(deck, supportCards...)
-	for _, card := range supportCards {
-		used[card.Name] = true
-	}
+	supportCount := b.getOverrideCount(RoleSupport, 2)
+	deck, used = b.selectMultipleCardsForRole(RoleSupport, supportCount, deck, candidates, used)
 
 	// Cheap cycle fillers (2 cards, or override count if specified)
-	cycleCount := 2
-	if override != nil && override.Cycle != nil {
-		cycleCount = *override.Cycle
-	}
-	cycleCards := b.pickMany(RoleCycle, candidates, used, cycleCount, deck)
-	deck = append(deck, cycleCards...)
-	for _, card := range cycleCards {
-		used[card.Name] = true
-	}
+	cycleCount := b.getOverrideCount(RoleCycle, 2)
+	deck, used = b.selectMultipleCardsForRole(RoleCycle, cycleCount, deck, candidates, used)
 
 	return deck, used, notes
 }
