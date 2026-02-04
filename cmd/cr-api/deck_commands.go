@@ -3437,8 +3437,33 @@ func buildAllStrategies(ctx context.Context, cmd *cli.Command, builder *deck.Bui
 	verbose := cmd.Bool("verbose")
 	excludeCards := cmd.StringSlice("exclude-cards")
 
-	// All available strategies
-	strategies := []deck.Strategy{
+	strategies := getAllDeckStrategies()
+	displayAllStrategiesHeader(playerName, playerTag)
+
+	filteredAnalysis := applyCardExclusions(cardAnalysis, excludeCards)
+
+	for i, strategy := range strategies {
+		strategyBuilder := createStrategyBuilder(cmd)
+		if err := strategyBuilder.SetStrategy(strategy); err != nil {
+			printf("⚠ Failed to set strategy %s: %v\n\n", strategy, err)
+			continue
+		}
+
+		deckRec, err := strategyBuilder.BuildDeckFromAnalysis(filteredAnalysis)
+		if err != nil {
+			printf("⚠ Failed to build deck for strategy %s: %v\n\n", strategy, err)
+			continue
+		}
+
+		displayStrategyDeck(i+1, strategy, deckRec, verbose)
+	}
+
+	return nil
+}
+
+// getAllDeckStrategies returns all available deck building strategies
+func getAllDeckStrategies() []deck.Strategy {
+	return []deck.Strategy{
 		deck.StrategyBalanced,
 		deck.StrategyAggro,
 		deck.StrategyControl,
@@ -3446,70 +3471,66 @@ func buildAllStrategies(ctx context.Context, cmd *cli.Command, builder *deck.Bui
 		deck.StrategySplash,
 		deck.StrategySpell,
 	}
+}
 
+// displayAllStrategiesHeader prints the header for all-strategies display
+func displayAllStrategiesHeader(playerName, playerTag string) {
 	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
 	printf("║              ALL DECK BUILDING STRATEGIES                          ║\n")
 	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
-
 	printf("Player: %s (%s)\n\n", playerName, playerTag)
+}
 
-	// Build a deck for each strategy
-	for i, strategy := range strategies {
-		// Create a new builder for this strategy
-		strategyBuilder := deck.NewBuilder(cmd.String("data-dir"))
+// createStrategyBuilder creates a new builder with configuration from command
+func createStrategyBuilder(cmd *cli.Command) *deck.Builder {
+	builder := deck.NewBuilder(cmd.String("data-dir"))
 
-		// Copy builder configuration
-		if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
-			strategyBuilder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
+		builder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+	}
+	if slots := cmd.Int("evolution-slots"); slots > 0 {
+		builder.SetEvolutionSlotLimit(slots)
+	}
+	if enableSynergy := cmd.Bool("enable-synergy"); enableSynergy {
+		builder.SetSynergyEnabled(true)
+		if synergyWeight := cmd.Float64("synergy-weight"); synergyWeight > 0 {
+			builder.SetSynergyWeight(synergyWeight)
 		}
-		if slots := cmd.Int("evolution-slots"); slots > 0 {
-			strategyBuilder.SetEvolutionSlotLimit(slots)
-		}
-		if enableSynergy := cmd.Bool("enable-synergy"); enableSynergy {
-			strategyBuilder.SetSynergyEnabled(true)
-			if synergyWeight := cmd.Float64("synergy-weight"); synergyWeight > 0 {
-				strategyBuilder.SetSynergyWeight(synergyWeight)
-			}
-		}
-
-		// Set the strategy
-		if err := strategyBuilder.SetStrategy(strategy); err != nil {
-			printf("⚠ Failed to set strategy %s: %v\n\n", strategy, err)
-			continue
-		}
-
-		// Apply exclude filter
-		filteredAnalysis := cardAnalysis
-		if len(excludeCards) > 0 {
-			excludeMap := make(map[string]bool)
-			for _, card := range excludeCards {
-				trimmed := strings.TrimSpace(card)
-				if trimmed != "" {
-					excludeMap[strings.ToLower(trimmed)] = true
-				}
-			}
-
-			filteredLevels := make(map[string]deck.CardLevelData)
-			for cardName, cardInfo := range cardAnalysis.CardLevels {
-				if !excludeMap[strings.ToLower(cardName)] {
-					filteredLevels[cardName] = cardInfo
-				}
-			}
-			filteredAnalysis.CardLevels = filteredLevels
-		}
-
-		// Build deck
-		deckRec, err := strategyBuilder.BuildDeckFromAnalysis(filteredAnalysis)
-		if err != nil {
-			printf("⚠ Failed to build deck for strategy %s: %v\n\n", strategy, err)
-			continue
-		}
-
-		// Display the deck with strategy label
-		displayStrategyDeck(i+1, strategy, deckRec, verbose)
 	}
 
-	return nil
+	return builder
+}
+
+// buildCardExclusionMap creates a map of cards to exclude (case-insensitive)
+func buildCardExclusionMap(excludeCards []string) map[string]bool {
+	excludeMap := make(map[string]bool)
+	for _, card := range excludeCards {
+		trimmed := strings.TrimSpace(card)
+		if trimmed != "" {
+			excludeMap[strings.ToLower(trimmed)] = true
+		}
+	}
+	return excludeMap
+}
+
+// applyCardExclusions filters out excluded cards from card analysis
+func applyCardExclusions(cardAnalysis deck.CardAnalysis, excludeCards []string) deck.CardAnalysis {
+	if len(excludeCards) == 0 {
+		return cardAnalysis
+	}
+
+	excludeMap := buildCardExclusionMap(excludeCards)
+	filteredLevels := make(map[string]deck.CardLevelData)
+
+	for cardName, cardInfo := range cardAnalysis.CardLevels {
+		if !excludeMap[strings.ToLower(cardName)] {
+			filteredLevels[cardName] = cardInfo
+		}
+	}
+
+	filteredAnalysis := cardAnalysis
+	filteredAnalysis.CardLevels = filteredLevels
+	return filteredAnalysis
 }
 
 // displayStrategyDeck displays a single deck with its strategy label

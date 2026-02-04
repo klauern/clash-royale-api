@@ -204,11 +204,37 @@ func (s *Storage) InsertDeck(entry *DeckEntry) (int, bool, error) {
 
 // Query retrieves deck entries based on the provided options
 func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
-	// Build SQL query dynamically based on filters
+	query, args := buildDeckQuery(opts)
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query decks: %w", err)
+	}
+	defer closeWithLog(rows, "deck rows")
+
+	entries, err := scanDeckEntries(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	return entries, nil
+}
+
+// buildDeckQuery constructs the SQL query and arguments from query options
+func buildDeckQuery(opts QueryOptions) (string, []interface{}) {
 	query := "SELECT id, deck_hash, cards, overall_score, attack_score, defense_score, synergy_score, versatility_score, f2p_score, playability_score, archetype, archetype_conf, strategy, avg_elixir, evaluated_at, player_tag, evaluation_version FROM decks WHERE 1=1"
 	args := []interface{}{}
 
-	// Apply filters
+	query, args = applyScoreFilters(query, args, opts)
+	query, args = applyMetadataFilters(query, args, opts)
+	query, args = applyCardFilters(query, args, opts)
+	query = applySortingAndPagination(query, &args, opts)
+
+	return query, args
+}
+
+// applyScoreFilters adds score-based filters to the query
+func applyScoreFilters(query string, args []interface{}, opts QueryOptions) (string, []interface{}) {
 	if opts.MinScore > 0 {
 		query += " AND overall_score >= ?"
 		args = append(args, opts.MinScore)
@@ -217,6 +243,11 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 		query += " AND overall_score <= ?"
 		args = append(args, opts.MaxScore)
 	}
+	return query, args
+}
+
+// applyMetadataFilters adds archetype, strategy, and elixir filters
+func applyMetadataFilters(query string, args []interface{}, opts QueryOptions) (string, []interface{}) {
 	if opts.Archetype != "" {
 		query += " AND archetype = ?"
 		args = append(args, opts.Archetype)
@@ -233,34 +264,56 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 		query += " AND avg_elixir <= ?"
 		args = append(args, opts.MaxAvgElixir)
 	}
+	return query, args
+}
 
-	// Card filters (require all, any, or exclude)
-	if len(opts.RequireAllCards) > 0 {
-		for _, card := range opts.RequireAllCards {
-			query += " AND cards LIKE ?"
-			args = append(args, "%"+card+"%")
-		}
+// applyCardFilters adds card-based filters (require all, any, exclude)
+func applyCardFilters(query string, args []interface{}, opts QueryOptions) (string, []interface{}) {
+	query, args = applyRequireAllCards(query, args, opts.RequireAllCards)
+	query, args = applyRequireAnyCards(query, args, opts.RequireAnyCards)
+	query, args = applyExcludeCards(query, args, opts.ExcludeCards)
+	return query, args
+}
+
+// applyRequireAllCards adds filters for cards that must all be present
+func applyRequireAllCards(query string, args []interface{}, cards []string) (string, []interface{}) {
+	for _, card := range cards {
+		query += " AND cards LIKE ?"
+		args = append(args, "%"+card+"%")
 	}
-	if len(opts.RequireAnyCards) > 0 {
-		subQuery := " AND ("
-		for i, card := range opts.RequireAnyCards {
-			if i > 0 {
-				subQuery += " OR "
-			}
-			subQuery += "cards LIKE ?"
-			args = append(args, "%"+card+"%")
-		}
-		subQuery += ")"
-		query += subQuery
-	}
-	if len(opts.ExcludeCards) > 0 {
-		for _, card := range opts.ExcludeCards {
-			query += " AND cards NOT LIKE ?"
-			args = append(args, "%"+card+"%")
-		}
+	return query, args
+}
+
+// applyRequireAnyCards adds filters for cards where at least one must be present
+func applyRequireAnyCards(query string, args []interface{}, cards []string) (string, []interface{}) {
+	if len(cards) == 0 {
+		return query, args
 	}
 
-	// Apply sorting
+	subQuery := " AND ("
+	for i, card := range cards {
+		if i > 0 {
+			subQuery += " OR "
+		}
+		subQuery += "cards LIKE ?"
+		args = append(args, "%"+card+"%")
+	}
+	subQuery += ")"
+	query += subQuery
+	return query, args
+}
+
+// applyExcludeCards adds filters for cards that must not be present
+func applyExcludeCards(query string, args []interface{}, cards []string) (string, []interface{}) {
+	for _, card := range cards {
+		query += " AND cards NOT LIKE ?"
+		args = append(args, "%"+card+"%")
+	}
+	return query, args
+}
+
+// applySortingAndPagination adds ORDER BY, LIMIT, and OFFSET clauses
+func applySortingAndPagination(query string, args *[]interface{}, opts QueryOptions) string {
 	sortBy := opts.SortBy
 	if sortBy == "" {
 		sortBy = "overall_score"
@@ -271,51 +324,26 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	}
 	query += fmt.Sprintf(" ORDER BY %s %s", sortBy, sortOrder)
 
-	// Apply limit and offset
 	if opts.Limit > 0 {
 		query += " LIMIT ?"
-		args = append(args, opts.Limit)
+		*args = append(*args, opts.Limit)
 	}
 	if opts.Offset > 0 {
 		query += " OFFSET ?"
-		args = append(args, opts.Offset)
+		*args = append(*args, opts.Offset)
 	}
 
-	// Execute query
-	rows, err := s.db.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query decks: %w", err)
-	}
-	defer closeWithLog(rows, "deck rows")
+	return query
+}
 
-	// Parse results
+// scanDeckEntries scans database rows into DeckEntry structs
+func scanDeckEntries(rows *sql.Rows) ([]DeckEntry, error) {
 	entries := []DeckEntry{}
 	for rows.Next() {
-		var entry DeckEntry
-		var cardsJSON string
-		var strategyNull sql.NullString
-
-		err := rows.Scan(
-			&entry.ID, &entry.DeckHash, &cardsJSON, &entry.OverallScore,
-			&entry.AttackScore, &entry.DefenseScore, &entry.SynergyScore,
-			&entry.VersatilityScore, &entry.F2PScore, &entry.PlayabilityScore,
-			&entry.Archetype, &entry.ArchetypeConf, &strategyNull,
-			&entry.AvgElixir, &entry.EvaluatedAt, &entry.PlayerTag,
-			&entry.EvaluationVersion,
-		)
+		entry, err := scanSingleDeckEntry(rows)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+			return nil, err
 		}
-
-		// Unmarshal cards JSON
-		if err := json.Unmarshal([]byte(cardsJSON), &entry.Cards); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal cards: %w", err)
-		}
-
-		if strategyNull.Valid {
-			entry.Strategy = strategyNull.String
-		}
-
 		entries = append(entries, entry)
 	}
 
@@ -324,6 +352,35 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	}
 
 	return entries, nil
+}
+
+// scanSingleDeckEntry scans a single row into a DeckEntry
+func scanSingleDeckEntry(rows *sql.Rows) (DeckEntry, error) {
+	var entry DeckEntry
+	var cardsJSON string
+	var strategyNull sql.NullString
+
+	err := rows.Scan(
+		&entry.ID, &entry.DeckHash, &cardsJSON, &entry.OverallScore,
+		&entry.AttackScore, &entry.DefenseScore, &entry.SynergyScore,
+		&entry.VersatilityScore, &entry.F2PScore, &entry.PlayabilityScore,
+		&entry.Archetype, &entry.ArchetypeConf, &strategyNull,
+		&entry.AvgElixir, &entry.EvaluatedAt, &entry.PlayerTag,
+		&entry.EvaluationVersion,
+	)
+	if err != nil {
+		return DeckEntry{}, fmt.Errorf("failed to scan row: %w", err)
+	}
+
+	if err := json.Unmarshal([]byte(cardsJSON), &entry.Cards); err != nil {
+		return DeckEntry{}, fmt.Errorf("failed to unmarshal cards: %w", err)
+	}
+
+	if strategyNull.Valid {
+		entry.Strategy = strategyNull.String
+	}
+
+	return entry, nil
 }
 
 // GetTopN retrieves the top N decks by overall score

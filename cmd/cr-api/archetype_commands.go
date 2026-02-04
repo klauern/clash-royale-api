@@ -524,7 +524,16 @@ func detectArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 
 // displayDetectedArchetypes shows formatted archetype detection results
 func displayDetectedArchetypes(result *analysis.DynamicArchetypeAnalysis, showStrategies, showUpgrades, verbose bool) {
-	// Header
+	displayArchetypeHeader(result)
+	displayArchetypesByTier(result, showStrategies)
+	if showUpgrades {
+		displayTopUpgrades(result)
+	}
+	displayArchetypeFooter()
+}
+
+// displayArchetypeHeader prints the header section
+func displayArchetypeHeader(result *analysis.DynamicArchetypeAnalysis) {
 	printf("\n")
 	printf("════════════════════════════════════════════════════════════════════════════════\n")
 	printf("               DYNAMIC ARCHETYPE DETECTION\n")
@@ -532,84 +541,117 @@ func displayDetectedArchetypes(result *analysis.DynamicArchetypeAnalysis, showSt
 	printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
 	printf("Analysis Time: %s\n", result.AnalysisTime.Format("2006-01-02 15:04:05"))
 	printf("════════════════════════════════════════════════════════════════════════════════\n\n")
+}
 
-	// Display archetypes by tier
-	tiers := []struct {
-		name       string
-		archetypes []string
-		symbol     string
-	}{
+// archetypeTier represents a tier category for archetype display
+type archetypeTier struct {
+	name       string
+	archetypes []string
+	symbol     string
+}
+
+// getArchetypeTiers returns the tier structure for display
+func getArchetypeTiers(result *analysis.DynamicArchetypeAnalysis) []archetypeTier {
+	return []archetypeTier{
 		{"OPTIMAL ARCHETYPES (90-100)", result.OptimalArchetypes, "🏆"},
 		{"COMPETITIVE ARCHETYPES (75-89)", result.CompetitiveArchetypes, "⚔️"},
 		{"PLAYABLE ARCHETYPES (60-74)", result.PlayableArchetypes, "✓"},
 		{"BLOCKED ARCHETYPES (<60)", result.BlockedArchetypes, "✗"},
 	}
+}
+
+// findArchetypeByName locates an archetype in the detection results
+func findArchetypeByName(archetypes []analysis.DetectedArchetype, name string) *analysis.DetectedArchetype {
+	for i := range archetypes {
+		if archetypes[i].Name == name {
+			return &archetypes[i]
+		}
+	}
+	return nil
+}
+
+// displayArchetypesByTier shows archetypes organized by tier
+func displayArchetypesByTier(result *analysis.DynamicArchetypeAnalysis, showStrategies bool) {
+	tiers := getArchetypeTiers(result)
 
 	for _, tier := range tiers {
 		if len(tier.archetypes) == 0 {
 			continue
 		}
 
-		printf("%s %s\n", tier.symbol, tier.name)
-		printf("────────────────────────────────────────────────────────────────────────────────\n")
+		displayTierSection(tier, result.DetectedArchetypes, showStrategies)
+	}
+}
 
-		// Create tabwriter for aligned columns
-		w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
-		fprintf(w, "Archetype\tScore\tWin Con Lvl\tSupport Avg\tSynergy\n")
+// displayTierSection renders a single tier section with its archetypes
+func displayTierSection(tier archetypeTier, allArchetypes []analysis.DetectedArchetype, showStrategies bool) {
+	printf("%s %s\n", tier.symbol, tier.name)
+	printf("────────────────────────────────────────────────────────────────────────────────\n")
 
-		// Find and display each archetype in this tier
-		for _, archName := range tier.archetypes {
-			for _, arch := range result.DetectedArchetypes {
-				if arch.Name == archName {
-					fprintf(w, "%s\t%.1f\t%d/%d\t%.1f\t%.1f\n",
-						arch.Name,
-						arch.ViabilityScore,
-						arch.WinConditionLevel,
-						arch.WinConditionMax,
-						arch.SupportCardsAvg,
-						arch.SynergyScore,
-					)
+	w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
+	fprintf(w, "Archetype\tScore\tWin Con Lvl\tSupport Avg\tSynergy\n")
 
-					if showStrategies && len(arch.RecommendedStrategies) > 0 {
-						fprintf(w, "  └─ Strategies:\t%s\t\t\t\n", formatStrategies(arch.RecommendedStrategies))
-					}
-
-					break
-				}
-			}
+	for _, archName := range tier.archetypes {
+		arch := findArchetypeByName(allArchetypes, archName)
+		if arch != nil {
+			displayArchetypeRow(w, arch, showStrategies)
 		}
-		flushWriter(w)
-		printf("\n")
 	}
 
-	// Display top cross-archetype upgrades
-	if showUpgrades && len(result.TopUpgradeImpacts) > 0 {
-		printf("═══════════════════════════════════════════════════════════════════════════════\n")
-		printf("TOP UPGRADE RECOMMENDATIONS (Cross-Archetype Impact)\n")
-		printf("═══════════════════════════════════════════════════════════════════════════════\n\n")
+	flushWriter(w)
+	printf("\n")
+}
 
-		w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
-		fprintf(w, "Card\tLevel\tGold\tArchetypes Affected\tTotal Impact\tUnlocks\n")
-		fprintf(w, "────\t─────\t────\t───────────────────\t────────────\t───────\n")
+// displayArchetypeRow prints a single archetype row with optional strategies
+func displayArchetypeRow(w *tabwriter.Writer, arch *analysis.DetectedArchetype, showStrategies bool) {
+	fprintf(w, "%s\t%.1f\t%d/%d\t%.1f\t%.1f\n",
+		arch.Name,
+		arch.ViabilityScore,
+		arch.WinConditionLevel,
+		arch.WinConditionMax,
+		arch.SupportCardsAvg,
+		arch.SynergyScore,
+	)
 
-		for i, upgrade := range result.TopUpgradeImpacts {
-			if i >= 10 {
-				break // Limit to top 10
-			}
-			fprintf(w, "%s\t%d\t%s\t%d\t+%.1f\t%d\n",
-				upgrade.CardName,
-				upgrade.CurrentLevel,
-				formatNumber(upgrade.GoldCost),
-				len(upgrade.AffectedArchetypes),
-				upgrade.TotalViabilityGain,
-				upgrade.ArchetypesUnlocked,
-			)
-		}
-		flushWriter(w)
-		printf("\n")
+	if showStrategies && len(arch.RecommendedStrategies) > 0 {
+		fprintf(w, "  └─ Strategies:\t%s\t\t\t\n", formatStrategies(arch.RecommendedStrategies))
+	}
+}
+
+// displayTopUpgrades shows upgrade recommendations section
+func displayTopUpgrades(result *analysis.DynamicArchetypeAnalysis) {
+	if len(result.TopUpgradeImpacts) == 0 {
+		return
 	}
 
-	// Footer
+	printf("═══════════════════════════════════════════════════════════════════════════════\n")
+	printf("TOP UPGRADE RECOMMENDATIONS (Cross-Archetype Impact)\n")
+	printf("═══════════════════════════════════════════════════════════════════════════════\n\n")
+
+	w := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
+	fprintf(w, "Card\tLevel\tGold\tArchetypes Affected\tTotal Impact\tUnlocks\n")
+	fprintf(w, "────\t─────\t────\t───────────────────\t────────────\t───────\n")
+
+	maxUpgrades := 10
+	for i, upgrade := range result.TopUpgradeImpacts {
+		if i >= maxUpgrades {
+			break
+		}
+		fprintf(w, "%s\t%d\t%s\t%d\t+%.1f\t%d\n",
+			upgrade.CardName,
+			upgrade.CurrentLevel,
+			formatNumber(upgrade.GoldCost),
+			len(upgrade.AffectedArchetypes),
+			upgrade.TotalViabilityGain,
+			upgrade.ArchetypesUnlocked,
+		)
+	}
+	flushWriter(w)
+	printf("\n")
+}
+
+// displayArchetypeFooter prints the interpretation guide
+func displayArchetypeFooter() {
 	printf("Interpretation Guide:\n")
 	printf("  • Viability Score: 0-100 based on card levels, synergies, and completeness\n")
 	printf("  • Optimal (90+): Tournament-ready, high-level cards\n")

@@ -120,56 +120,123 @@ func (g *Generator) analyzeDeck(deckCards []string) DeckAnalysis {
 
 // determineArchetype identifies the deck's playstyle
 func (g *Generator) determineArchetype(winConditions, defensive, cycle, spells []string, avgElixir float64) Archetype {
-	winConCount := len(winConditions)
-	defCount := len(defensive)
-	cycleCount := len(cycle)
-	spellCount := len(spells)
+	deckProfile := buildDeckProfile(winConditions, defensive, cycle, spells)
 
-	// High elixir with big win conditions = beatdown
-	if avgElixir > 4.0 && winConCount >= 1 {
-		for _, winCon := range winConditions {
-			if strings.Contains(strings.ToLower(winCon), "golem") ||
-				strings.Contains(strings.ToLower(winCon), "giant") ||
-				strings.Contains(strings.ToLower(winCon), "lava hound") {
-				return ArchetypeBeatdown
-			}
-		}
+	if isBeatdownDeck(avgElixir, winConditions, deckProfile) {
+		return ArchetypeBeatdown
 	}
-
-	// Low elixir with fast cycle = cycle deck
-	if avgElixir < 3.5 && cycleCount >= 3 {
+	if isCycleDeck(avgElixir, deckProfile.cycleCount) {
 		return ArchetypeCycle
 	}
-
-	// Many spells = control/bait
-	if spellCount >= 3 {
+	if isBaitDeck(deckProfile.spellCount) {
 		return ArchetypeBait
 	}
-
-	// Many buildings = siege or defensive
-	if defCount >= 3 {
-		// Check for siege buildings
-		for _, def := range defensive {
-			if strings.Contains(strings.ToLower(def), "xbow") ||
-				strings.Contains(strings.ToLower(def), "mortar") {
-				return ArchetypeSiege
-			}
-		}
-		return ArchetypeControl
+	if archetype := checkDefensiveDeckType(defensive, deckProfile.defCount); archetype != "" {
+		return archetype
+	}
+	if isBridgeSpamDeck(avgElixir, winConditions, deckProfile) {
+		return ArchetypeBridgeSpam
 	}
 
-	// Check for bridge spam characteristics
-	if avgElixir >= 3.0 && avgElixir <= 4.0 && winConCount >= 1 {
-		for _, winCon := range winConditions {
-			if strings.Contains(strings.ToLower(winCon), "battle ram") ||
-				strings.Contains(strings.ToLower(winCon), "hog rider") {
-				return ArchetypeBridgeSpam
-			}
-		}
-	}
-
-	// Default to midrange
 	return ArchetypeMidrange
+}
+
+// deckProfile holds deck composition metrics for archetype detection
+type deckProfile struct {
+	winConCount int
+	defCount    int
+	cycleCount  int
+	spellCount  int
+}
+
+// buildDeckProfile creates a profile from deck composition
+func buildDeckProfile(winConditions, defensive, cycle, spells []string) deckProfile {
+	return deckProfile{
+		winConCount: len(winConditions),
+		defCount:    len(defensive),
+		cycleCount:  len(cycle),
+		spellCount:  len(spells),
+	}
+}
+
+// isBeatdownDeck checks if deck matches beatdown archetype
+func isBeatdownDeck(avgElixir float64, winConditions []string, profile deckProfile) bool {
+	if avgElixir <= 4.0 || profile.winConCount < 1 {
+		return false
+	}
+	return hasHeavyWinCondition(winConditions)
+}
+
+// hasHeavyWinCondition checks for beatdown-style win conditions
+func hasHeavyWinCondition(winConditions []string) bool {
+	heavyWinCons := []string{"golem", "giant", "lava hound"}
+	for _, winCon := range winConditions {
+		lowerWinCon := strings.ToLower(winCon)
+		for _, heavy := range heavyWinCons {
+			if strings.Contains(lowerWinCon, heavy) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isCycleDeck checks if deck matches cycle archetype
+func isCycleDeck(avgElixir float64, cycleCount int) bool {
+	return avgElixir < 3.5 && cycleCount >= 3
+}
+
+// isBaitDeck checks if deck matches bait archetype
+func isBaitDeck(spellCount int) bool {
+	return spellCount >= 3
+}
+
+// checkDefensiveDeckType determines if deck is siege or control based on buildings
+func checkDefensiveDeckType(defensive []string, defCount int) Archetype {
+	if defCount < 3 {
+		return ""
+	}
+
+	if hasSiegeBuilding(defensive) {
+		return ArchetypeSiege
+	}
+	return ArchetypeControl
+}
+
+// hasSiegeBuilding checks for siege-specific buildings
+func hasSiegeBuilding(defensive []string) bool {
+	siegeBuildings := []string{"xbow", "mortar"}
+	for _, def := range defensive {
+		lowerDef := strings.ToLower(def)
+		for _, siege := range siegeBuildings {
+			if strings.Contains(lowerDef, siege) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// isBridgeSpamDeck checks if deck matches bridge spam archetype
+func isBridgeSpamDeck(avgElixir float64, winConditions []string, profile deckProfile) bool {
+	if avgElixir < 3.0 || avgElixir > 4.0 || profile.winConCount < 1 {
+		return false
+	}
+	return hasBridgeSpamWinCondition(winConditions)
+}
+
+// hasBridgeSpamWinCondition checks for bridge spam win conditions
+func hasBridgeSpamWinCondition(winConditions []string) bool {
+	bridgeSpamCards := []string{"battle ram", "hog rider"}
+	for _, winCon := range winConditions {
+		lowerWinCon := strings.ToLower(winCon)
+		for _, spam := range bridgeSpamCards {
+			if strings.Contains(lowerWinCon, spam) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // generatePrinciples creates general opening principles based on archetype
