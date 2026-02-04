@@ -9,21 +9,127 @@ import (
 )
 
 // ============================================================================
-// Phase 1: Foundation Helpers
+// Phase 1: Foundation Helpers - Tier Scoring
+// ============================================================================
+
+// scoreTierThresholds applies tiered scoring based on value thresholds
+// Returns the score for the first threshold met (thresholds checked in order)
+func scoreTierThresholds(value float64, thresholds []float64, scores []float64) float64 {
+	for i, threshold := range thresholds {
+		if value >= threshold {
+			return scores[i]
+		}
+	}
+	return scores[len(scores)-1]
+}
+
+// ============================================================================
+// Phase 1: Foundation Helpers - Validation
+// ============================================================================
+
+// hasRole safely checks if card has the specified role
+func hasRole(card deck.CardCandidate, role deck.CardRole) bool {
+	return card.Role != nil && *card.Role == role
+}
+
+// canTargetAir safely checks if card can target air units
+func canTargetAir(card deck.CardCandidate) bool {
+	return card.Stats != nil &&
+		(card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground")
+}
+
+// getDPS safely retrieves DPS with default fallback
+func getDPS(card deck.CardCandidate) float64 {
+	if card.Stats != nil {
+		return float64(card.Stats.DamagePerSecond)
+	}
+	return 0.0
+}
+
+// ============================================================================
+// Phase 1: Foundation Helpers - Card Filtering
+// ============================================================================
+
+// filterByRole returns cards matching the specified role
+func filterByRole(cards []deck.CardCandidate, role deck.CardRole) []deck.CardCandidate {
+	filtered := []deck.CardCandidate{}
+	for _, card := range cards {
+		if hasRole(card, role) {
+			filtered = append(filtered, card)
+		}
+	}
+	return filtered
+}
+
+// filterByElixir returns cards with cost <= maxCost
+func filterByElixir(cards []deck.CardCandidate, maxCost int) []deck.CardCandidate {
+	filtered := []deck.CardCandidate{}
+	for _, card := range cards {
+		if card.Elixir <= maxCost {
+			filtered = append(filtered, card)
+		}
+	}
+	return filtered
+}
+
+// filterByDPS returns cards with DPS > threshold
+func filterByDPS(cards []deck.CardCandidate, threshold float64) []deck.CardCandidate {
+	filtered := []deck.CardCandidate{}
+	for _, card := range cards {
+		if getDPS(card) > threshold {
+			filtered = append(filtered, card)
+		}
+	}
+	return filtered
+}
+
+// filterByAirTargeting returns cards that can target air units
+func filterByAirTargeting(cards []deck.CardCandidate) []deck.CardCandidate {
+	filtered := []deck.CardCandidate{}
+	for _, card := range cards {
+		if canTargetAir(card) {
+			filtered = append(filtered, card)
+		}
+	}
+	return filtered
+}
+
+// ============================================================================
+// Phase 1: Foundation Helpers - Summary Generation
+// ============================================================================
+
+// generateSummaryFromScore returns summary text based on score thresholds
+func generateSummaryFromScore(score float64, summaries map[float64]string) string {
+	// Sort thresholds descending
+	type threshold struct {
+		text  string
+		score float64
+	}
+	thresholds := []threshold{}
+	for minScore, text := range summaries {
+		thresholds = append(thresholds, threshold{text, minScore})
+	}
+	sort.Slice(thresholds, func(i, j int) bool {
+		return thresholds[i].score > thresholds[j].score
+	})
+
+	// Find first matching threshold
+	for _, t := range thresholds {
+		if score >= t.score {
+			return t.text
+		}
+	}
+	return thresholds[len(thresholds)-1].text
+}
+
+// ============================================================================
+// Phase 1: Foundation Helpers - Legacy Functions
 // ============================================================================
 
 // countAirTargeters returns cards that can target air units
+// Deprecated: Use filterByAirTargeting instead
 func countAirTargeters(cards []deck.CardCandidate) []deck.CardCandidate {
-	airTargeters := []deck.CardCandidate{}
-	for _, card := range cards {
-		if card.Stats != nil {
-			targets := card.Stats.Targets
-			if targets == "Air" || targets == "Air & Ground" {
-				airTargeters = append(airTargeters, card)
-			}
-		}
-	}
-	return airTargeters
+	return filterByAirTargeting(cards)
 }
 
 // calculateElixirCurve returns distribution of cards across elixir costs
@@ -97,25 +203,16 @@ func BuildDefenseAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 	// Get numeric score from existing function
 	categoryScore := ScoreDefense(deckCards)
 
-	// Count and identify defensive elements
-	airTargeters := countAirTargeters(deckCards)
-	buildings := []deck.CardCandidate{}
-	tankKillers := []deck.CardCandidate{}
+	// Count and identify defensive elements using helper functions
+	airTargeters := filterByAirTargeting(deckCards)
+	buildings := filterByRole(deckCards, deck.RoleBuilding)
+	tankKillers := filterByDPS(deckCards, 150.0)
+
+	// Investment cards (high elixir win conditions)
 	investments := []deck.CardCandidate{}
-
-	for _, card := range deckCards {
-		// Defensive buildings
-		if card.Role != nil && *card.Role == deck.RoleBuilding {
-			buildings = append(buildings, card)
-		}
-
-		// Tank killers (high DPS > 150)
-		if card.Stats != nil && card.Stats.DamagePerSecond > 150 {
-			tankKillers = append(tankKillers, card)
-		}
-
-		// Investment cards (high elixir win conditions)
-		if card.Role != nil && *card.Role == deck.RoleWinCondition && card.Elixir >= 6 {
+	winConditions := filterByRole(deckCards, deck.RoleWinCondition)
+	for _, card := range winConditions {
+		if card.Elixir >= 6 {
 			investments = append(investments, card)
 		}
 	}
@@ -149,15 +246,18 @@ func BuildDefenseAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 			investments[0].Name, investments[0].Elixir))
 	}
 
-	// Generate summary
+	// Generate summary using helper function
+	airCount := float64(len(airTargeters))
+	buildingCount := float64(len(buildings))
+
 	summary := "Solid defensive capabilities"
-	if len(airTargeters) == 0 {
+	if airCount == 0 {
 		summary = "No anti-air coverage - vulnerable to aerial threats"
-	} else if len(airTargeters) < 2 {
+	} else if airCount < 2 {
 		summary = "Weak anti-air coverage"
-	} else if len(buildings) == 0 {
+	} else if buildingCount == 0 {
 		summary = "Good anti-air but lacks defensive buildings"
-	} else if len(airTargeters) >= 3 && len(buildings) >= 1 {
+	} else if airCount >= 3 && buildingCount >= 1 {
 		summary = "Excellent defensive coverage with strong anti-air and buildings"
 	}
 
@@ -217,18 +317,9 @@ func BuildAttackAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 	// Get numeric score from existing function
 	categoryScore := ScoreAttack(deckCards)
 
-	// Identify offensive elements
-	winConditions := []deck.CardCandidate{}
-	bigSpells := []deck.CardCandidate{}
-
-	for _, card := range deckCards {
-		if card.Role != nil && *card.Role == deck.RoleWinCondition {
-			winConditions = append(winConditions, card)
-		}
-		if card.Role != nil && *card.Role == deck.RoleSpellBig {
-			bigSpells = append(bigSpells, card)
-		}
-	}
+	// Identify offensive elements using helper functions
+	winConditions := filterByRole(deckCards, deck.RoleWinCondition)
+	bigSpells := filterByRole(deckCards, deck.RoleSpellBig)
 
 	// Build details array
 	details := []string{}
@@ -377,7 +468,7 @@ func calculateBaitScore(baitGroups map[string][]string, hasGoblinBarrel, hasGobl
 		winConditionFit = 6.0
 	}
 
-	// Bait card count score (50%)
+	// Bait card count score (50%) - using tier scoring
 	baitCountScore := 0.0
 	if totalBaitCards >= 4 {
 		baitCountScore = 10.0
@@ -389,7 +480,7 @@ func calculateBaitScore(baitGroups map[string][]string, hasGoblinBarrel, hasGobl
 		baitCountScore = 2.5
 	}
 
-	// Shared counter potential (30%)
+	// Shared counter potential (30%) - using tier scoring
 	sharedCounterScore := 0.0
 	if sharedCounterGroups >= 3 {
 		sharedCounterScore = 10.0
@@ -531,15 +622,9 @@ func BuildCycleAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 	shortestCycle, _ := findShortestCycle(deckCards)
 	elixirCurve := calculateElixirCurve(deckCards)
 
-	// Count low-cost cards (≤ 2 elixir)
-	lowCostCount := 0
-	lowCostCards := []deck.CardCandidate{}
-	for _, card := range deckCards {
-		if card.Elixir <= 2 {
-			lowCostCount++
-			lowCostCards = append(lowCostCards, card)
-		}
-	}
+	// Count low-cost cards (≤ 2 elixir) using helper
+	lowCostCards := filterByElixir(deckCards, 2)
+	lowCostCount := len(lowCostCards)
 
 	// Calculate score
 	score := calculateCycleScore(avgElixir, lowCostCount, shortestCycle)
@@ -573,15 +658,10 @@ func BuildCycleAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 	details = append(details, fmt.Sprintf("Shortest 4-card cycle: %d elixir (%s)",
 		shortestCycle, cycleAssessment))
 
-	// Rotation estimate (find win condition)
-	winCondition := ""
-	for _, card := range deckCards {
-		if card.Role != nil && *card.Role == deck.RoleWinCondition {
-			winCondition = card.Name
-			break
-		}
-	}
-	if winCondition != "" {
+	// Rotation estimate (find win condition) using helper
+	winConditions := filterByRole(deckCards, deck.RoleWinCondition)
+	if len(winConditions) > 0 {
+		winCondition := winConditions[0].Name
 		rotationTime := int(avgElixir * 3.5) // Rough estimate
 		details = append(details, fmt.Sprintf("Rotation estimate: Can return to %s in ~%d seconds",
 			winCondition, rotationTime))
@@ -667,6 +747,63 @@ func calculateLadderScore(rarityScore, levelIndepScore, upgradeProgress float64)
 	score := (rarityScore * 0.4) + (levelIndepScore * 0.3) + (upgradeProgress * 0.2) + (rarityScore * 0.1)
 
 	return score
+}
+
+// calculatePlayerLevelMetrics calculates level-based metrics from player context
+func calculatePlayerLevelMetrics(deckCards []deck.CardCandidate, playerContext *PlayerContext) (avgCurrentLevel, avgLevelGap float64, maxLevelGap, cardsWithLevels int) {
+	totalCurrentLevel := 0
+	totalGap := 0
+
+	for _, card := range deckCards {
+		if info, exists := playerContext.Collection[card.Name]; exists {
+			totalCurrentLevel += info.Level
+			gap := info.MaxLevel - info.Level
+			totalGap += gap
+			cardsWithLevels++
+
+			if gap > maxLevelGap {
+				maxLevelGap = gap
+			}
+		}
+	}
+
+	if cardsWithLevels > 0 {
+		avgCurrentLevel = float64(totalCurrentLevel) / float64(cardsWithLevels)
+		avgLevelGap = float64(totalGap) / float64(cardsWithLevels)
+	}
+
+	return
+}
+
+// generateViabilityRating assigns competitive viability rating from score
+func generateViabilityRating(competitiveViability float64) string {
+	if competitiveViability >= 9.0 {
+		return "Tournament ready"
+	} else if competitiveViability >= 7.0 {
+		return "Ladder competitive"
+	} else if competitiveViability >= 5.0 {
+		return "Playable but underleveled"
+	} else if competitiveViability >= 3.0 {
+		return "Significant disadvantage"
+	}
+	return "Not competitive"
+}
+
+// collectRarityBreakdown counts cards by rarity
+func collectRarityBreakdown(deckCards []deck.CardCandidate) map[string]int {
+	rarityCount := map[string]int{
+		"Common":    0,
+		"Rare":      0,
+		"Epic":      0,
+		"Legendary": 0,
+		"Champion":  0,
+	}
+
+	for _, card := range deckCards {
+		rarityCount[card.Rarity]++
+	}
+
+	return rarityCount
 }
 
 // calculateLadderViabilityScore estimates ladder viability from level gaps.
@@ -771,20 +908,14 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerCo
 	// Get F2P score for rarity assessment
 	f2pScore := ScoreF2P(deckCards)
 
-	// Count rarity breakdown
-	rarityCount := map[string]int{
-		"Common":    0,
-		"Rare":      0,
-		"Epic":      0,
-		"Legendary": 0,
-		"Champion":  0,
-	}
+	// Count rarity breakdown using helper
+	rarityCount := collectRarityBreakdown(deckCards)
 
+	// Calculate level independence
 	levelIndepCards := []deck.CardCandidate{}
 	totalLevelRatio := 0.0
 
 	for _, card := range deckCards {
-		rarityCount[card.Rarity]++
 		if isLevelIndependent(card) {
 			levelIndepCards = append(levelIndepCards, card)
 		}
@@ -793,37 +924,13 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerCo
 
 	// Check if we have player context for level-based analysis
 	hasPlayerContext := playerContext != nil
-	var avgCurrentLevel float64
-	var avgLevelGap float64
-	var maxLevelGap int
+	var avgCurrentLevel, avgLevelGap float64
+	var maxLevelGap, cardsWithLevels int
 	var upgradePriorities []upgradePriority
-	cardsWithLevels := 0
 
 	if hasPlayerContext {
-		// Calculate actual level metrics from playerContext.Collection
-		totalCurrentLevel := 0
-		totalMaxLevel := 0
-		totalGap := 0
-
-		for _, card := range deckCards {
-			if info, exists := playerContext.Collection[card.Name]; exists {
-				totalCurrentLevel += info.Level
-				totalMaxLevel += info.MaxLevel
-				gap := info.MaxLevel - info.Level
-				totalGap += gap
-				cardsWithLevels++
-
-				if gap > maxLevelGap {
-					maxLevelGap = gap
-				}
-			}
-		}
-
-		if cardsWithLevels > 0 {
-			avgCurrentLevel = float64(totalCurrentLevel) / float64(cardsWithLevels)
-			avgLevelGap = float64(totalGap) / float64(cardsWithLevels)
-		}
-
+		// Calculate actual level metrics using helper
+		avgCurrentLevel, avgLevelGap, maxLevelGap, cardsWithLevels = calculatePlayerLevelMetrics(deckCards, playerContext)
 		upgradePriorities = calculateUpgradePriorities(deckCards, playerContext)
 	}
 
@@ -837,19 +944,7 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerCo
 			viabilityRating = "Not competitive"
 		} else {
 			competitiveViability = calculateLadderViabilityScore(avgLevelGap, maxLevelGap)
-
-			// Assign rating
-			if competitiveViability >= 9.0 {
-				viabilityRating = "Tournament ready"
-			} else if competitiveViability >= 7.0 {
-				viabilityRating = "Ladder competitive"
-			} else if competitiveViability >= 5.0 {
-				viabilityRating = "Playable but underleveled"
-			} else if competitiveViability >= 3.0 {
-				viabilityRating = "Significant disadvantage"
-			} else {
-				viabilityRating = "Not competitive"
-			}
+			viabilityRating = generateViabilityRating(competitiveViability)
 		}
 	}
 
@@ -973,6 +1068,78 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerCo
 // Phase 4.5: Evolution Analysis
 // ============================================================================
 
+// filterEvolvableCards returns cards that have evolution potential
+func filterEvolvableCards(deckCards []deck.CardCandidate) (evolvable, evolved []deck.CardCandidate) {
+	for _, card := range deckCards {
+		if card.MaxEvolutionLevel > 0 {
+			evolvable = append(evolvable, card)
+			if card.EvolutionLevel > 0 {
+				evolved = append(evolved, card)
+			}
+		}
+	}
+	return
+}
+
+// calculateEvolutionPotential calculates evolution score (0-10)
+func calculateEvolutionPotential(evolvableCards, evolvedCards []deck.CardCandidate) float64 {
+	if len(evolvableCards) == 0 {
+		return 0.0
+	}
+
+	// Base score: percentage of evolvable cards that are evolved
+	evolutionRatio := float64(len(evolvedCards)) / float64(len(evolvableCards))
+	score := evolutionRatio * 10.0
+
+	// Add bonus for multiple evolved cards
+	if len(evolvedCards) >= 2 {
+		score += 1.0
+	}
+	if len(evolvedCards) >= 3 {
+		score += 0.5
+	}
+
+	// Cap at 10
+	if score > 10.0 {
+		score = 10.0
+	}
+
+	return score
+}
+
+// addEvolutionProgressDetails adds player-specific evolution details
+func addEvolutionProgressDetails(details []string, evolvableCards, evolvedCards []deck.CardCandidate, playerContext *PlayerContext) []string {
+	if playerContext == nil {
+		return details
+	}
+
+	unlockedEvolutions := playerContext.GetUnlockedEvolutionCards()
+	details = append(details, fmt.Sprintf("Your unlocked evolutions: %d cards", len(unlockedEvolutions)))
+
+	// Check which deck cards can evolve
+	readyToEvolve := []string{}
+	for _, card := range evolvableCards {
+		if card.EvolutionLevel == 0 && playerContext.CanEvolve(card.Name) {
+			readyToEvolve = append(readyToEvolve, card.Name)
+		}
+	}
+	if len(readyToEvolve) > 0 {
+		details = append(details, fmt.Sprintf("Ready to evolve: %s", strings.Join(readyToEvolve, ", ")))
+	}
+
+	// Show evolution progress for key cards
+	if len(evolvedCards) > 0 {
+		details = append(details, "Evolution progress:")
+		for _, card := range evolvedCards {
+			currentLevel, maxLevel, currentCount, requiredCount := playerContext.GetEvolutionProgress(card.Name)
+			details = append(details, fmt.Sprintf("  %s: Level %d/%d, %d/%d cards",
+				card.Name, currentLevel, maxLevel, currentCount, requiredCount))
+		}
+	}
+
+	return details
+}
+
 // BuildEvolutionAnalysis creates detailed evolution analysis
 // If playerContext is provided, shows player's evolution status
 // If playerContext is nil, shows generic evolution potential for the deck
@@ -982,21 +1149,8 @@ func BuildEvolutionAnalysis(deckCards []deck.CardCandidate, playerContext *Playe
 	var rating Rating
 	var summary string
 
-	// Identify evolvable cards in deck
-	evolvableInDeck := []deck.CardCandidate{}
-	evolvedInDeck := []deck.CardCandidate{}
-	evolutionPotential := 0.0
-
-	for _, card := range deckCards {
-		if card.MaxEvolutionLevel > 0 {
-			evolvableInDeck = append(evolvableInDeck, card)
-			// Calculate evolution potential score
-			if card.EvolutionLevel > 0 {
-				evolvedInDeck = append(evolvedInDeck, card)
-				evolutionPotential += float64(card.EvolutionLevel) / float64(card.MaxEvolutionLevel)
-			}
-		}
-	}
+	// Identify evolvable cards using helper
+	evolvableInDeck, evolvedInDeck := filterEvolvableCards(deckCards)
 
 	// Calculate evolution score (0-10)
 	if len(evolvableInDeck) == 0 {
@@ -1004,22 +1158,8 @@ func BuildEvolutionAnalysis(deckCards []deck.CardCandidate, playerContext *Playe
 		summary = "No evolvable cards in deck"
 		details = append(details, "This deck contains no cards with evolution potential")
 	} else {
-		// Base score: percentage of evolvable cards that are evolved
-		evolutionRatio := float64(len(evolvedInDeck)) / float64(len(evolvableInDeck))
-		score = evolutionRatio * 10.0
-
-		// Add bonus for multiple evolved cards
-		if len(evolvedInDeck) >= 2 {
-			score += 1.0
-		}
-		if len(evolvedInDeck) >= 3 {
-			score += 0.5
-		}
-
-		// Cap at 10
-		if score > 10.0 {
-			score = 10.0
-		}
+		// Calculate score using helper
+		score = calculateEvolutionPotential(evolvableInDeck, evolvedInDeck)
 
 		// Generate summary
 		if len(evolvedInDeck) == 0 {
@@ -1043,32 +1183,8 @@ func BuildEvolutionAnalysis(deckCards []deck.CardCandidate, playerContext *Playe
 			details = append(details, fmt.Sprintf("Evolvable cards (%d): %s", len(evolvableInDeck), strings.Join(cardNames, ", ")))
 		}
 
-		// Player-specific evolution status
-		if playerContext != nil {
-			unlockedEvolutions := playerContext.GetUnlockedEvolutionCards()
-			details = append(details, fmt.Sprintf("Your unlocked evolutions: %d cards", len(unlockedEvolutions)))
-
-			// Check which deck cards can evolve
-			readyToEvolve := []string{}
-			for _, card := range evolvableInDeck {
-				if card.EvolutionLevel == 0 && playerContext.CanEvolve(card.Name) {
-					readyToEvolve = append(readyToEvolve, card.Name)
-				}
-			}
-			if len(readyToEvolve) > 0 {
-				details = append(details, fmt.Sprintf("Ready to evolve: %s", strings.Join(readyToEvolve, ", ")))
-			}
-
-			// Show evolution progress for key cards
-			if len(evolvedInDeck) > 0 {
-				details = append(details, "Evolution progress:")
-				for _, card := range evolvedInDeck {
-					currentLevel, maxLevel, currentCount, requiredCount := playerContext.GetEvolutionProgress(card.Name)
-					details = append(details, fmt.Sprintf("  %s: Level %d/%d, %d/%d cards",
-						card.Name, currentLevel, maxLevel, currentCount, requiredCount))
-				}
-			}
-		}
+		// Add player-specific evolution details using helper
+		details = addEvolutionProgressDetails(details, evolvableInDeck, evolvedInDeck, playerContext)
 
 		// Evolution slot strategy
 		if len(evolvedInDeck) > 2 {
