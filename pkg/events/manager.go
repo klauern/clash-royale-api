@@ -284,52 +284,40 @@ func (m *Manager) GetCollection(playerTag string) (*EventDeckCollection, error) 
 	return &collection, nil
 }
 
-// DeleteEventDeck deletes an event deck by ID
-func (m *Manager) DeleteEventDeck(playerTag, eventID string) error {
-	// Get collection to find the deck
-	collection, err := m.GetCollection(playerTag)
-	if err != nil {
-		return err
+// Helper functions for Manager methods
+func getSubdirectoryForEventType(eventType EventType, playerDir string) string {
+	var subdirName string
+	switch eventType {
+	case EventTypeTournament:
+		subdirName = "tournaments"
+	case EventTypeSpecialEvent:
+		subdirName = "special_events"
+	default:
+		subdirName = "challenges"
 	}
+	return filepath.Join(playerDir, subdirName)
+}
 
-	// Find the deck to determine its type and file path
-	var targetDeck *EventDeck
+func findDeckInCollection(collection *EventDeckCollection, eventID string) *EventDeck {
 	for i := range collection.Decks {
 		if collection.Decks[i].EventID == eventID {
-			targetDeck = &collection.Decks[i]
-			break
+			return &collection.Decks[i]
 		}
 	}
+	return nil
+}
 
-	if targetDeck == nil {
-		return fmt.Errorf("event deck not found: %s", eventID)
-	}
-
-	// Determine subdirectory based on event type
-	playerDir := m.getPlayerEventDir(playerTag)
-	var subdir string
-	switch targetDeck.EventType {
-	case EventTypeTournament:
-		subdir = filepath.Join(playerDir, "tournaments")
-	case EventTypeSpecialEvent:
-		subdir = filepath.Join(playerDir, "special_events")
-	default:
-		subdir = filepath.Join(playerDir, "challenges")
-	}
-
-	// Find and delete the file
+func findDeckFileInDirectory(subdir string, eventID string) (string, error) {
 	files, err := filepath.Glob(filepath.Join(subdir, "*.json"))
 	if err != nil {
-		return fmt.Errorf("failed to list files: %w", err)
+		return "", fmt.Errorf("failed to list files: %w", err)
 	}
 
 	for _, filePath := range files {
-		// Skip collection file
 		if filepath.Base(filePath) == "collection.json" {
 			continue
 		}
 
-		// Read file to check event ID
 		data, err := os.ReadFile(filePath)
 		if err != nil {
 			continue
@@ -341,37 +329,69 @@ func (m *Manager) DeleteEventDeck(playerTag, eventID string) error {
 		}
 
 		if deck.EventID == eventID {
-			// Delete the file
-			if err := os.Remove(filePath); err != nil {
-				return fmt.Errorf("failed to delete file: %w", err)
-			}
-
-			// Update collection by removing this deck
-			newDecks := make([]EventDeck, 0, len(collection.Decks)-1)
-			for i := range collection.Decks {
-				if collection.Decks[i].EventID != eventID {
-					newDecks = append(newDecks, collection.Decks[i])
-				}
-			}
-			collection.Decks = newDecks
-			collection.LastUpdated = time.Now()
-
-			// Save updated collection
-			collectionFile := filepath.Join(playerDir, "collection.json")
-			collectionData, err := json.MarshalIndent(collection, "", "  ")
-			if err != nil {
-				return fmt.Errorf("failed to marshal collection: %w", err)
-			}
-
-			if err := os.WriteFile(collectionFile, collectionData, 0o644); err != nil {
-				return fmt.Errorf("failed to write collection file: %w", err)
-			}
-
-			return nil
+			return filePath, nil
 		}
 	}
 
-	return fmt.Errorf("event deck file not found: %s", eventID)
+	return "", fmt.Errorf("event deck file not found: %s", eventID)
+}
+
+func removeEventDeckFromCollection(collection *EventDeckCollection, eventID string) {
+	newDecks := make([]EventDeck, 0, len(collection.Decks)-1)
+	for i := range collection.Decks {
+		if collection.Decks[i].EventID != eventID {
+			newDecks = append(newDecks, collection.Decks[i])
+		}
+	}
+	collection.Decks = newDecks
+	collection.LastUpdated = time.Now()
+}
+
+func persistUpdatedCollection(playerDir string, collection *EventDeckCollection) error {
+	collectionFile := filepath.Join(playerDir, "collection.json")
+	collectionData, err := json.MarshalIndent(collection, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal collection: %w", err)
+	}
+
+	if err := os.WriteFile(collectionFile, collectionData, 0o644); err != nil {
+		return fmt.Errorf("failed to write collection file: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteEventDeck deletes an event deck by ID
+func (m *Manager) DeleteEventDeck(playerTag, eventID string) error {
+	collection, err := m.GetCollection(playerTag)
+	if err != nil {
+		return err
+	}
+
+	targetDeck := findDeckInCollection(collection, eventID)
+	if targetDeck == nil {
+		return fmt.Errorf("event deck not found: %s", eventID)
+	}
+
+	playerDir := m.getPlayerEventDir(playerTag)
+	subdir := getSubdirectoryForEventType(targetDeck.EventType, playerDir)
+
+	filePath, err := findDeckFileInDirectory(subdir, eventID)
+	if err != nil {
+		return err
+	}
+
+	if err := os.Remove(filePath); err != nil {
+		return fmt.Errorf("failed to delete file: %w", err)
+	}
+
+	removeEventDeckFromCollection(collection, eventID)
+
+	if err := persistUpdatedCollection(playerDir, collection); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // GetEventDeck retrieves a specific event deck by ID for a player

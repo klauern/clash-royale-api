@@ -189,6 +189,41 @@ func addEventCommands() *cli.Command {
 	}
 }
 
+// Battle filtering helpers
+func filterBattlesByDays(battles []clashroyale.Battle, days int) []clashroyale.Battle {
+	if days <= 0 {
+		return battles
+	}
+
+	cutoff := time.Now().AddDate(0, 0, -days)
+	filtered := make([]clashroyale.Battle, 0, len(battles))
+	for _, battle := range battles {
+		if !battle.UTCDate.Before(cutoff) {
+			filtered = append(filtered, battle)
+		}
+	}
+	return filtered
+}
+
+func filterEventDecksByEventTypes(decks []events.EventDeck, eventTypes []string) []events.EventDeck {
+	if len(eventTypes) == 0 {
+		return decks
+	}
+
+	allowedTypes := make(map[events.EventType]bool)
+	for _, et := range eventTypes {
+		allowedTypes[events.EventType(et)] = true
+	}
+
+	filtered := make([]events.EventDeck, 0, len(decks))
+	for _, deck := range decks {
+		if allowedTypes[deck.EventType] {
+			filtered = append(filtered, deck)
+		}
+	}
+	return filtered
+}
+
 func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	days := cmd.Int("days")
@@ -220,16 +255,7 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 	battles := []clashroyale.Battle(*battleLog)
 
 	// Filter battles by days
-	if days > 0 {
-		cutoff := time.Now().AddDate(0, 0, -days)
-		filtered := make([]clashroyale.Battle, 0, len(battles))
-		for _, battle := range battles {
-			if !battle.UTCDate.Before(cutoff) {
-				filtered = append(filtered, battle)
-			}
-		}
-		battles = filtered
-	}
+	battles = filterBattlesByDays(battles, days)
 
 	if verbose {
 		printf("Found %d recent battles to scan\n", len(battles))
@@ -243,20 +269,7 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Filter by event types if specified
-	filteredDecks := importedDecks
-	if len(eventTypes) > 0 {
-		allowedTypes := make(map[events.EventType]bool)
-		for _, et := range eventTypes {
-			allowedTypes[events.EventType(et)] = true
-		}
-		filtered := make([]events.EventDeck, 0, len(importedDecks))
-		for _, deck := range importedDecks {
-			if allowedTypes[deck.EventType] {
-				filtered = append(filtered, deck)
-			}
-		}
-		filteredDecks = filtered
-	}
+	filteredDecks := filterEventDecksByEventTypes(importedDecks, eventTypes)
 
 	if verbose {
 		printf("Successfully imported %d event decks (after filtering: %d)\n", len(importedDecks), len(filteredDecks))
@@ -337,6 +350,50 @@ func eventListCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+// Event filtering helpers
+func filterEventDecksByID(decks []events.EventDeck, eventID string) []events.EventDeck {
+	filtered := make([]events.EventDeck, 0)
+	for _, deck := range decks {
+		if deck.EventID == eventID {
+			filtered = append(filtered, deck)
+		}
+	}
+	return filtered
+}
+
+func filterEventDecksByType(decks []events.EventDeck, eventType string) []events.EventDeck {
+	filtered := make([]events.EventDeck, 0)
+	for _, deck := range decks {
+		if string(deck.EventType) == eventType {
+			filtered = append(filtered, deck)
+		}
+	}
+	return filtered
+}
+
+func filterEventDecksByMinBattles(decks []events.EventDeck, minBattles int) []events.EventDeck {
+	filtered := make([]events.EventDeck, 0)
+	for _, deck := range decks {
+		if deck.Performance.TotalBattles() >= minBattles {
+			filtered = append(filtered, deck)
+		}
+	}
+	return filtered
+}
+
+func applyEventDeckFilters(decks []events.EventDeck, eventID, eventType string, minBattles int) []events.EventDeck {
+	filtered := decks
+
+	if eventID != "" {
+		filtered = filterEventDecksByID(filtered, eventID)
+	} else if eventType != "" {
+		filtered = filterEventDecksByType(filtered, eventType)
+	}
+
+	filtered = filterEventDecksByMinBattles(filtered, minBattles)
+	return filtered
+}
+
 func eventAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	eventID := cmd.String("event-id")
@@ -379,35 +436,7 @@ func eventAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Filter decks based on criteria
-	filteredDecks := collection.Decks
-	if eventID != "" {
-		// Filter by specific event ID
-		filtered := make([]events.EventDeck, 0)
-		for _, deck := range collection.Decks {
-			if deck.EventID == eventID {
-				filtered = append(filtered, deck)
-			}
-		}
-		filteredDecks = filtered
-	} else if eventType != "" {
-		// Filter by event type
-		filtered := make([]events.EventDeck, 0)
-		for _, deck := range collection.Decks {
-			if string(deck.EventType) == eventType {
-				filtered = append(filtered, deck)
-			}
-		}
-		filteredDecks = filtered
-	}
-
-	// Filter by minimum battles
-	minBattlesFilter := make([]events.EventDeck, 0)
-	for _, deck := range filteredDecks {
-		if deck.Performance.TotalBattles() >= minBattles {
-			minBattlesFilter = append(minBattlesFilter, deck)
-		}
-	}
-	filteredDecks = minBattlesFilter
+	filteredDecks := applyEventDeckFilters(collection.Decks, eventID, eventType, minBattles)
 
 	if len(filteredDecks) == 0 {
 		printf("No event decks match the specified criteria\n")

@@ -162,26 +162,63 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-func displayUpgradeImpactAnalysis(impactAnalysis *analysis.UpgradeImpactAnalysis, showAll, showUnlockTree bool) {
+// Formatting helpers for upgrade impact display
+func formatGoldDisplay(gold int) string {
+	if gold < 1000 {
+		return fmt.Sprintf("%d", gold)
+	}
+	return fmt.Sprintf("%dk", gold/1000)
+}
+
+func getUnlockStatusSymbol(viability string) string {
+	switch viability {
+	case "viable":
+		return "[OK]"
+	case "marginal":
+		return "[~]"
+	case "blocked":
+		return "[X]"
+	default:
+		return "?"
+	}
+}
+
+func getKeyCardMarker(isKeyCard bool) string {
+	if isKeyCard {
+		return " [KEY]"
+	}
+	return ""
+}
+
+func formatScoreChange(delta float64) string {
+	if delta > 0 {
+		return fmt.Sprintf("+%.2f", delta)
+	}
+	return fmt.Sprintf("%.2f", delta)
+}
+
+// Section display functions
+func displayUpgradeImpactHeader(analysis *analysis.UpgradeImpactAnalysis) {
 	printf("\n")
 	printf("============================================================================\n")
 	printf("                    UPGRADE IMPACT ANALYSIS                                 \n")
 	printf("============================================================================\n\n")
+	printf("Player: %s (%s)\n", analysis.PlayerName, analysis.PlayerTag)
+	printf("Analysis Time: %s\n\n", analysis.AnalysisTime.Format("2006-01-02 15:04:05"))
+}
 
-	printf("Player: %s (%s)\n", impactAnalysis.PlayerName, impactAnalysis.PlayerTag)
-	printf("Analysis Time: %s\n\n", impactAnalysis.AnalysisTime.Format("2006-01-02 15:04:05"))
-
-	// Summary
+func displayUpgradeImpactSummary(summary analysis.ImpactSummary) {
 	printf("Summary\n")
 	printf("-------\n")
-	printf("Cards Analyzed:     %d\n", impactAnalysis.Summary.TotalCardsAnalyzed)
-	printf("Key Cards Found:    %d\n", impactAnalysis.Summary.KeyCardsIdentified)
-	printf("Average Impact:     %.2f\n", impactAnalysis.Summary.AvgImpactScore)
-	printf("Max Impact Score:   %.2f\n", impactAnalysis.Summary.MaxImpactScore)
-	printf("Viable Deck Count:  %d\n", impactAnalysis.Summary.TotalViableDecks)
-	printf("Potential Unlocks:  %d\n\n", impactAnalysis.Summary.PotentialUnlocks)
+	printf("Cards Analyzed:     %d\n", summary.TotalCardsAnalyzed)
+	printf("Key Cards Found:    %d\n", summary.KeyCardsIdentified)
+	printf("Average Impact:     %.2f\n", summary.AvgImpactScore)
+	printf("Max Impact Score:   %.2f\n", summary.MaxImpactScore)
+	printf("Viable Deck Count:  %d\n", summary.TotalViableDecks)
+	printf("Potential Unlocks:  %d\n\n", summary.PotentialUnlocks)
+}
 
-	// Top Impact Cards
+func displayTopImpactCards(impacts []analysis.CardUpgradeImpact, showAll bool) {
 	printf("Most Impactful Upgrades\n")
 	printf("-----------------------\n")
 
@@ -189,153 +226,146 @@ func displayUpgradeImpactAnalysis(impactAnalysis *analysis.UpgradeImpactAnalysis
 	fprintf(w, "#\tCard\tLevel\tRarity\tImpact\tGold\tValue/1k\tUnlocks\n")
 	fprintf(w, "-\t----\t-----\t------\t------\t----\t--------\t-------\n")
 
-	impacts := impactAnalysis.TopImpacts
-	if showAll && len(impactAnalysis.CardImpacts) > len(impacts) {
-		impacts = impactAnalysis.CardImpacts
-	}
-
 	for i, impact := range impacts {
-		keyMarker := ""
-		if impact.IsKeyCard {
-			keyMarker = " [KEY]"
-		}
-
-		goldDisplay := fmt.Sprintf("%dk", impact.GoldCost/1000)
-		if impact.GoldCost < 1000 {
-			goldDisplay = fmt.Sprintf("%d", impact.GoldCost)
-		}
-
 		fprintf(w, "%d\t%s%s\t%d->%d\t%s\t%.1f\t%s\t%.2f\t%d\n",
 			i+1,
 			impact.CardName,
-			keyMarker,
+			getKeyCardMarker(impact.IsKeyCard),
 			impact.CurrentLevel,
 			impact.UpgradedLevel,
 			impact.Rarity,
 			impact.ImpactScore,
-			goldDisplay,
+			formatGoldDisplay(impact.GoldCost),
 			impact.ValuePerGold,
 			impact.UnlockPotential,
 		)
 
-		// Show top 10 only in compact mode
 		if !showAll && i >= 9 {
 			break
 		}
 	}
 	flushWriter(w)
+}
 
-	// Key Cards Section
-	if len(impactAnalysis.KeyCards) > 0 {
-		printf("\nKey Cards (Unlock Multiple Archetypes)\n")
-		printf("--------------------------------------\n")
+func displayKeyCards(keyCards []analysis.KeyCardInfo) {
+	printf("\nKey Cards (Unlock Multiple Archetypes)\n")
+	printf("--------------------------------------\n")
 
-		for i, keyCard := range impactAnalysis.KeyCards {
-			if i >= 5 {
-				printf("   ... and %d more\n", len(impactAnalysis.KeyCards)-5)
-				break
-			}
-			printf("  %s (Level %d, %s)\n", keyCard.CardName, keyCard.CurrentLevel, keyCard.Rarity)
-			if len(keyCard.UnlockedArchetypes) > 0 {
-				printf("    Unlocks: %v\n", keyCard.UnlockedArchetypes)
-			}
-			printf("    Potential Deck Unlocks: %d\n", keyCard.DeckUnlockCount)
+	for i, keyCard := range keyCards {
+		if i >= 5 {
+			printf("   ... and %d more\n", len(keyCards)-5)
+			break
 		}
-	}
-
-	// Unlock Tree Section
-	if showUnlockTree && len(impactAnalysis.UnlockTree) > 0 {
-		printf("\nArchetype Unlock Tree\n")
-		printf("---------------------\n")
-
-		w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-		fprintf(w, "Archetype\tStatus\tPriority Upgrade\tEst. Gold\n")
-		fprintf(w, "---------\t------\t----------------\t---------\n")
-
-		for _, unlock := range impactAnalysis.UnlockTree {
-			statusSymbol := "?"
-			switch unlock.CurrentViability {
-			case "viable":
-				statusSymbol = "[OK]"
-			case "marginal":
-				statusSymbol = "[~]"
-			case "blocked":
-				statusSymbol = "[X]"
-			}
-
-			goldStr := "-"
-			if unlock.EstimatedGold > 0 {
-				goldStr = fmt.Sprintf("%dk", unlock.EstimatedGold/1000)
-			}
-
-			fprintf(w, "%s\t%s\t%s\t%s\n",
-				unlock.Archetype,
-				statusSymbol,
-				unlock.PriorityUpgrade,
-				goldStr,
-			)
+		printf("  %s (Level %d, %s)\n", keyCard.CardName, keyCard.CurrentLevel, keyCard.Rarity)
+		if len(keyCard.UnlockedArchetypes) > 0 {
+			printf("    Unlocks: %v\n", keyCard.UnlockedArchetypes)
 		}
-		flushWriter(w)
+		printf("    Potential Deck Unlocks: %d\n", keyCard.DeckUnlockCount)
 	}
+}
 
-	// Detailed deck impact for top cards
-	if showAll && len(impactAnalysis.TopImpacts) > 0 {
-		printf("\nDetailed Deck Impact (Top 3 Upgrades)\n")
-		printf("-------------------------------------\n")
+func displayArchetypeUnlockTree(unlocks []analysis.ArchetypeUnlockInfo) {
+	printf("\nArchetype Unlock Tree\n")
+	printf("---------------------\n")
 
-		for i, impact := range impactAnalysis.TopImpacts {
-			if i >= 3 {
-				break
-			}
+	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+	fprintf(w, "Archetype\tStatus\tPriority Upgrade\tEst. Gold\n")
+	fprintf(w, "---------\t------\t----------------\t---------\n")
 
-			printf("\n%d. %s (%s, Level %d -> %d)\n",
-				i+1, impact.CardName, impact.Rarity, impact.CurrentLevel, impact.UpgradedLevel)
-			printf("   Impact Score: %.2f | Gold Cost: %d | Value: %.2f per 1k gold\n",
-				impact.ImpactScore, impact.GoldCost, impact.ValuePerGold)
+	for _, unlock := range unlocks {
+		goldStr := "-"
+		if unlock.EstimatedGold > 0 {
+			goldStr = formatGoldDisplay(unlock.EstimatedGold)
+		}
 
-			if len(impact.AffectedDecks) > 0 {
-				printf("   Affected Decks:\n")
-				for _, deck := range impact.AffectedDecks {
-					scoreChange := ""
-					if deck.ScoreDelta > 0 {
-						scoreChange = fmt.Sprintf("+%.2f", deck.ScoreDelta)
-					} else {
-						scoreChange = fmt.Sprintf("%.2f", deck.ScoreDelta)
-					}
+		fprintf(w, "%s\t%s\t%s\t%s\n",
+			unlock.Archetype,
+			getUnlockStatusSymbol(unlock.CurrentViability),
+			unlock.PriorityUpgrade,
+			goldStr,
+		)
+	}
+	flushWriter(w)
+}
 
-					viableMarker := ""
-					if deck.BecomesViable {
-						viableMarker = " [UNLOCKS!]"
-					}
+func displayDetailedDeckImpact(topImpacts []analysis.CardUpgradeImpact) {
+	printf("\nDetailed Deck Impact (Top 3 Upgrades)\n")
+	printf("-------------------------------------\n")
 
-					printf("     - %s: %.2f -> %.2f (%s)%s\n",
-						deck.DeckName, deck.CurrentScore, deck.ProjectedScore, scoreChange, viableMarker)
+	for i, impact := range topImpacts {
+		if i >= 3 {
+			break
+		}
+
+		printf("\n%d. %s (%s, Level %d -> %d)\n",
+			i+1, impact.CardName, impact.Rarity, impact.CurrentLevel, impact.UpgradedLevel)
+		printf("   Impact Score: %.2f | Gold Cost: %d | Value: %.2f per 1k gold\n",
+			impact.ImpactScore, impact.GoldCost, impact.ValuePerGold)
+
+		if len(impact.AffectedDecks) > 0 {
+			printf("   Affected Decks:\n")
+			for _, deck := range impact.AffectedDecks {
+				viableMarker := ""
+				if deck.BecomesViable {
+					viableMarker = " [UNLOCKS!]"
 				}
-			}
 
-			if len(impact.UnlocksArchetypes) > 0 {
-				printf("   Unlocks Archetypes: %v\n", impact.UnlocksArchetypes)
+				printf("     - %s: %.2f -> %.2f (%s)%s\n",
+					deck.DeckName, deck.CurrentScore, deck.ProjectedScore,
+					formatScoreChange(deck.ScoreDelta), viableMarker)
 			}
 		}
-	}
 
-	// Recommendations
+		if len(impact.UnlocksArchetypes) > 0 {
+			printf("   Unlocks Archetypes: %v\n", impact.UnlocksArchetypes)
+		}
+	}
+}
+
+func displayUpgradeImpactRecommendations(topImpacts []analysis.CardUpgradeImpact) {
 	printf("\nRecommendations\n")
 	printf("---------------\n")
-	if len(impactAnalysis.TopImpacts) > 0 {
-		top := impactAnalysis.TopImpacts[0]
-		printf("Best upgrade: %s (Level %d -> %d)\n", top.CardName, top.CurrentLevel, top.UpgradedLevel)
-		printf("  Impact: %.1f points | Gold: %d | Unlocks %d deck(s)\n",
-			top.ImpactScore, top.GoldCost, top.UnlockPotential)
+	if len(topImpacts) == 0 {
+		return
+	}
 
-		if len(impactAnalysis.TopImpacts) > 1 {
-			second := impactAnalysis.TopImpacts[1]
-			if second.ValuePerGold > top.ValuePerGold*1.5 {
-				printf("\nValue alternative: %s (%.2f impact per 1k gold vs %.2f)\n",
-					second.CardName, second.ValuePerGold, top.ValuePerGold)
-			}
+	top := topImpacts[0]
+	printf("Best upgrade: %s (Level %d -> %d)\n", top.CardName, top.CurrentLevel, top.UpgradedLevel)
+	printf("  Impact: %.1f points | Gold: %d | Unlocks %d deck(s)\n",
+		top.ImpactScore, top.GoldCost, top.UnlockPotential)
+
+	if len(topImpacts) > 1 {
+		second := topImpacts[1]
+		if second.ValuePerGold > top.ValuePerGold*1.5 {
+			printf("\nValue alternative: %s (%.2f impact per 1k gold vs %.2f)\n",
+				second.CardName, second.ValuePerGold, top.ValuePerGold)
 		}
 	}
+}
+
+func displayUpgradeImpactAnalysis(impactAnalysis *analysis.UpgradeImpactAnalysis, showAll, showUnlockTree bool) {
+	displayUpgradeImpactHeader(impactAnalysis)
+	displayUpgradeImpactSummary(impactAnalysis.Summary)
+
+	impacts := impactAnalysis.TopImpacts
+	if showAll && len(impactAnalysis.CardImpacts) > len(impacts) {
+		impacts = impactAnalysis.CardImpacts
+	}
+	displayTopImpactCards(impacts, showAll)
+
+	if len(impactAnalysis.KeyCards) > 0 {
+		displayKeyCards(impactAnalysis.KeyCards)
+	}
+
+	if showUnlockTree && len(impactAnalysis.UnlockTree) > 0 {
+		displayArchetypeUnlockTree(impactAnalysis.UnlockTree)
+	}
+
+	if showAll && len(impactAnalysis.TopImpacts) > 0 {
+		displayDetailedDeckImpact(impactAnalysis.TopImpacts)
+	}
+
+	displayUpgradeImpactRecommendations(impactAnalysis.TopImpacts)
 }
 
 func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) error {
