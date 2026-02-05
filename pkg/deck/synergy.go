@@ -90,8 +90,18 @@ func LoadSynergyDatabase(dataDir, filename string) *SynergyDatabase {
 		categories[pair.SynergyType] = append(categories[pair.SynergyType], pair)
 	}
 
+	return buildSynergyDatabase(synergyData.Pairs)
+}
+
+// buildCategoryMap organizes synergy pairs by category type
+func buildSynergyDatabase(pairs []SynergyPair) *SynergyDatabase {
+	categories := make(map[SynergyCategory][]SynergyPair)
+	for _, pair := range pairs {
+		categories[pair.SynergyType] = append(categories[pair.SynergyType], pair)
+	}
+
 	return &SynergyDatabase{
-		Pairs:      synergyData.Pairs,
+		Pairs:      pairs,
 		Categories: categories,
 	}
 }
@@ -233,16 +243,7 @@ func NewSynergyDatabase() *SynergyDatabase {
 		{Card1: "Three Musketeers", Card2: "Ice Golem", SynergyType: SynergyWinCondition, Score: 0.8, Description: "Ice Golem tanks for 3M split"},
 	}
 
-	// Organize by category
-	categories := make(map[SynergyCategory][]SynergyPair)
-	for _, pair := range pairs {
-		categories[pair.SynergyType] = append(categories[pair.SynergyType], pair)
-	}
-
-	return &SynergyDatabase{
-		Pairs:      pairs,
-		Categories: categories,
-	}
+	return buildSynergyDatabase(pairs)
 }
 
 // GetSynergy returns the synergy score between two cards (0.0 to 1.0)
