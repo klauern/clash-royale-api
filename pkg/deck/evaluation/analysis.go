@@ -841,6 +841,39 @@ type upgradePriority struct {
 	reason       string
 }
 
+// isEvolutionPriority checks if card needs evolution upgrade
+func isEvolutionPriority(info CardLevelInfo) (bool, string) {
+	if info.MaxEvolutionLevel > 0 && info.EvolutionLevel == 0 {
+		return true, "evolvable"
+	}
+	if info.MaxEvolutionLevel > 0 && info.EvolutionLevel < info.MaxEvolutionLevel {
+		return true, "evolution upgrade"
+	}
+	return false, ""
+}
+
+// isSpellCard checks if card is a spell (big or small)
+func isSpellCard(card deck.CardCandidate) bool {
+	return card.Role != nil && (*card.Role == deck.RoleSpellBig || *card.Role == deck.RoleSpellSmall)
+}
+
+// determineUpgradeTierAndReason assigns priority tier and reason based on card characteristics
+func determineUpgradeTierAndReason(card deck.CardCandidate, info CardLevelInfo) (tier int, reason string) {
+	if isEvolution, evolutionReason := isEvolutionPriority(info); isEvolution {
+		return 0, evolutionReason
+	}
+	if card.Role != nil && *card.Role == deck.RoleWinCondition {
+		return 1, "win condition"
+	}
+	if isSpellCard(card) {
+		return 2, "spell breakpoints"
+	}
+	if card.Stats != nil && card.Stats.DamagePerSecond > 150 {
+		return 3, "tank killer"
+	}
+	return 4, "support"
+}
+
 // calculateUpgradePriorities returns sorted upgrade recommendations
 func calculateUpgradePriorities(deckCards []deck.CardCandidate, playerContext *PlayerContext) []upgradePriority {
 	priorities := []upgradePriority{}
@@ -856,35 +889,15 @@ func calculateUpgradePriorities(deckCards []deck.CardCandidate, playerContext *P
 			continue // Already maxed
 		}
 
+		tier, reason := determineUpgradeTierAndReason(card, info)
+
 		priority := upgradePriority{
 			cardName:     card.Name,
 			currentLevel: info.Level,
 			maxLevel:     info.MaxLevel,
 			gap:          gap,
-		}
-
-		// Assign tier and reason
-		// Priority: Evolvable cards > Win Conditions > Spells > Tank Killers > Support
-		if info.MaxEvolutionLevel > 0 && info.EvolutionLevel == 0 {
-			// Unevolved cards get highest priority (tier 0)
-			priority.tier = 0
-			priority.reason = "evolvable"
-		} else if info.MaxEvolutionLevel > 0 && info.EvolutionLevel < info.MaxEvolutionLevel {
-			// Partially evolved cards get high priority (tier 0.5)
-			priority.tier = 0
-			priority.reason = "evolution upgrade"
-		} else if card.Role != nil && *card.Role == deck.RoleWinCondition {
-			priority.tier = 1
-			priority.reason = "win condition"
-		} else if card.Role != nil && (*card.Role == deck.RoleSpellBig || *card.Role == deck.RoleSpellSmall) {
-			priority.tier = 2
-			priority.reason = "spell breakpoints"
-		} else if card.Stats != nil && card.Stats.DamagePerSecond > 150 {
-			priority.tier = 3
-			priority.reason = "tank killer"
-		} else {
-			priority.tier = 4
-			priority.reason = "support"
+			tier:         tier,
+			reason:       reason,
 		}
 
 		priorities = append(priorities, priority)

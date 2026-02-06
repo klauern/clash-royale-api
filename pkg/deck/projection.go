@@ -267,6 +267,27 @@ func (p *DeckProjection) SimulateUpgrade(cardName string, newLevel int) *DeckPro
 	return NewProjection(simulatedDeck, p.TargetLevelPolicy, p.TargetLevels)
 }
 
+// generateRecommendation creates a recommendation message based on score and cost differences
+func generateRecommendation(deckAName, deckBName string, scoreDiff float64, costDiff int, valueA, valueB float64) string {
+	const scoreThreshold = 0.5
+	switch {
+	case scoreDiff > scoreThreshold && costDiff < 0:
+		return fmt.Sprintf("%s is stronger and cheaper", deckAName)
+	case scoreDiff > scoreThreshold:
+		return fmt.Sprintf("%s is stronger (worth the extra cost)", deckAName)
+	case scoreDiff < -scoreThreshold && costDiff > 0:
+		return fmt.Sprintf("%s is stronger and cheaper", deckBName)
+	case scoreDiff < -scoreThreshold:
+		return fmt.Sprintf("%s is stronger (worth the extra cost)", deckBName)
+	case valueA > valueB:
+		return fmt.Sprintf("%s has better value per gold spent", deckAName)
+	case valueB > valueA:
+		return fmt.Sprintf("%s has better value per gold spent", deckBName)
+	default:
+		return "Equal value"
+	}
+}
+
 // CompareProjections compares two deck projections
 func CompareProjections(a, b *DeckProjection) *ProjectionComparison {
 	if a == nil || b == nil {
@@ -292,21 +313,7 @@ func CompareProjections(a, b *DeckProjection) *ProjectionComparison {
 		valueB = (b.ScoreImprovement / float64(b.UpgradePath.TotalGold)) * 1000.0
 	}
 
-	// Make recommendation
-	recommendation := "Equal value"
-	if scoreDiff > 0.5 && costDiff < 0 {
-		recommendation = fmt.Sprintf("%s is stronger and cheaper", deckAName)
-	} else if scoreDiff > 0.5 {
-		recommendation = fmt.Sprintf("%s is stronger (worth the extra cost)", deckAName)
-	} else if scoreDiff < -0.5 && costDiff > 0 {
-		recommendation = fmt.Sprintf("%s is stronger and cheaper", deckBName)
-	} else if scoreDiff < -0.5 {
-		recommendation = fmt.Sprintf("%s is stronger (worth the extra cost)", deckBName)
-	} else if valueA > valueB {
-		recommendation = fmt.Sprintf("%s has better value per gold spent", deckAName)
-	} else if valueB > valueA {
-		recommendation = fmt.Sprintf("%s has better value per gold spent", deckBName)
-	}
+	recommendation := generateRecommendation(deckAName, deckBName, scoreDiff, costDiff, valueA, valueB)
 
 	return &ProjectionComparison{
 		DeckA:           deckAName,

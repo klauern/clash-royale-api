@@ -87,34 +87,18 @@ func DetectArchetype(deckCards []deck.CardCandidate) ArchetypeDetectionResult {
 	return result
 }
 
+// isArchetypePair checks if two archetypes match a pair (order-independent)
+func isArchetypePair(a1, a2, target1, target2 Archetype) bool {
+	return (a1 == target1 && a2 == target2) || (a1 == target2 && a2 == target1)
+}
+
 // areRelatedArchetypes returns true if two archetypes are closely related
 // and shouldn't be marked as "hybrid" together
 func areRelatedArchetypes(a1, a2 Archetype) bool {
-	// Siege and Control are related (both defensive)
-	if (a1 == ArchetypeSiege && a2 == ArchetypeControl) ||
-		(a1 == ArchetypeControl && a2 == ArchetypeSiege) {
-		return true
-	}
-
-	// Graveyard and Control are related
-	if (a1 == ArchetypeGraveyard && a2 == ArchetypeControl) ||
-		(a1 == ArchetypeControl && a2 == ArchetypeGraveyard) {
-		return true
-	}
-
-	// Miner and Cycle are related (both low-cost chip damage)
-	if (a1 == ArchetypeMiner && a2 == ArchetypeCycle) ||
-		(a1 == ArchetypeCycle && a2 == ArchetypeMiner) {
-		return true
-	}
-
-	// Bridge Spam and Beatdown can overlap
-	if (a1 == ArchetypeBridge && a2 == ArchetypeBeatdown) ||
-		(a1 == ArchetypeBeatdown && a2 == ArchetypeBridge) {
-		return true
-	}
-
-	return false
+	return isArchetypePair(a1, a2, ArchetypeSiege, ArchetypeControl) ||
+		isArchetypePair(a1, a2, ArchetypeGraveyard, ArchetypeControl) ||
+		isArchetypePair(a1, a2, ArchetypeMiner, ArchetypeCycle) ||
+		isArchetypePair(a1, a2, ArchetypeBridge, ArchetypeBeatdown)
 }
 
 // normalizeConfidence converts a 0-10 score to 0.0-1.0 confidence

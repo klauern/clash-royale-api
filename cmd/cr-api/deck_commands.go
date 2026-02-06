@@ -3570,6 +3570,26 @@ func displayStrategyDeck(rank int, strategy deck.Strategy, rec *deck.DeckRecomme
 	printf("\n")
 }
 
+// convertToDecKCardAnalysis converts analysis.CardAnalysis to deck.CardAnalysis
+func convertToDecKCardAnalysis(cardAnalysis *analysis.CardAnalysis, player *clashroyale.Player) deck.CardAnalysis {
+	result := deck.CardAnalysis{
+		CardLevels:   make(map[string]deck.CardLevelData),
+		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
+		PlayerName:   player.Name,
+		PlayerTag:    player.Tag,
+	}
+	for cardName, cardInfo := range cardAnalysis.CardLevels {
+		result.CardLevels[cardName] = deck.CardLevelData{
+			Level:             cardInfo.Level,
+			MaxLevel:          cardInfo.MaxLevel,
+			Rarity:            cardInfo.Rarity,
+			Elixir:            cardInfo.Elixir,
+			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
+		}
+	}
+	return result
+}
+
 func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	maxCards := cmd.Int("max-cards")
@@ -3642,22 +3662,7 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Convert analysis.CardAnalysis to deck.CardAnalysis
-	deckCardAnalysis := deck.CardAnalysis{
-		CardLevels:   make(map[string]deck.CardLevelData),
-		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
-		PlayerName:   player.Name,
-		PlayerTag:    player.Tag,
-	}
-
-	for cardName, cardInfo := range cardAnalysis.CardLevels {
-		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
-			Level:             cardInfo.Level,
-			MaxLevel:          cardInfo.MaxLevel,
-			Rarity:            cardInfo.Rarity,
-			Elixir:            cardInfo.Elixir,
-			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
-		}
-	}
+	deckCardAnalysis := convertToDecKCardAnalysis(cardAnalysis, player)
 
 	// Find optimal decks
 	result, err := finder.FindOptimalDecks(deckCardAnalysis, player.Tag, player.Name)
