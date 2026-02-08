@@ -31,6 +31,8 @@ func addDeckBuildCommand() *cli.Command {
 			&cli.StringFlag{Name: "analysis-file", Usage: "Specific analysis file path (overrides --analysis-dir lookup)"},
 			&cli.BoolFlag{Name: "enable-synergy", Usage: "Enable synergy-based card selection (considers card interactions and combos)"},
 			&cli.Float64Flag{Name: "synergy-weight", Value: 0.15, Usage: "Weight for synergy scoring (0.0-1.0, default 0.15 = 15%)"},
+			&cli.BoolFlag{Name: "prefer-unique", Usage: "Enable uniqueness/anti-meta scoring (prefers less common cards)"},
+			&cli.Float64Flag{Name: "uniqueness-weight", Value: 0.2, Usage: "Weight for uniqueness scoring (0.0-0.3, default 0.2 = 20%)"},
 			&cli.BoolFlag{Name: "no-suggest-upgrades", Usage: "Disable upgrade recommendations for the built deck (recommendations are shown by default)"},
 			&cli.IntFlag{Name: "upgrade-count", Value: 5, Usage: "Number of upgrade recommendations to show (default 5)"},
 			&cli.BoolFlag{Name: "ideal-deck", Usage: "Show ideal deck composition after applying recommended upgrades"},

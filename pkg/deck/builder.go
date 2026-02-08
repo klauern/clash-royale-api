@@ -30,6 +30,9 @@ type Builder struct {
 	synergyEnabled     bool
 	synergyWeight      float64
 	synergyCache       map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
+	uniquenessEnabled  bool
+	uniquenessWeight   float64
+	uniquenessScorer   *UniquenessScorer
 	includeCards       []string           // Cards to force into the deck
 	excludeCards       []string           // Cards to exclude from consideration
 	fuzzIntegration    *FuzzIntegration   // Fuzz stats integration for data-driven card scoring
@@ -85,6 +88,17 @@ func NewBuilder(dataDir string) *Builder {
 	builder.synergyDB = NewSynergyDatabase()
 	builder.synergyEnabled = false // Disabled by default, enabled via CLI flag
 	builder.synergyWeight = 0.15   // Default: 15% of total score from synergy
+
+	// Initialize uniqueness scorer with default configuration
+	uniquenessConfig := UniquenessConfig{
+		Enabled:                false, // Disabled by default, enabled via CLI flag
+		Weight:                 0.2,   // Default: 20% weight when enabled
+		MinUniquenessThreshold: 0.3,   // Only bonus for cards below 30% popularity
+		UseGeometricMean:       false, // Use arithmetic mean for deck-level uniqueness
+	}
+	builder.uniquenessScorer = NewUniquenessScorer(uniquenessConfig)
+	builder.uniquenessEnabled = false // Disabled by default
+	builder.uniquenessWeight = 0.2    // Default: 20% of total score from uniqueness
 
 	return builder
 }
@@ -266,7 +280,7 @@ func (b *Builder) selectCardsByRole(deck []*CardCandidate, candidates []*CardCan
 // fillRemainingSlots fills remaining deck slots (up to 8) with highest-scoring unused cards
 func (b *Builder) fillRemainingSlots(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) []*CardCandidate {
 	if len(deck) < 8 {
-		remaining := b.getHighestScoreCards(candidates, used, 8-len(deck))
+		remaining := b.getHighestScoreCards(candidates, used, 8-len(deck), deck)
 		deck = append(deck, remaining...)
 	}
 	// Ensure exactly 8 cards
@@ -702,6 +716,22 @@ func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[
 		}
 	}
 
+	// Apply uniqueness bonuses if enabled
+	if b.uniquenessEnabled && b.uniquenessScorer != nil {
+		for _, candidate := range pool {
+			// Build hypothetical deck with this candidate
+			deckCardNames := make([]string, 0, len(currentDeck)+1)
+			for _, card := range currentDeck {
+				deckCardNames = append(deckCardNames, card.Name)
+			}
+			deckCardNames = append(deckCardNames, candidate.Name)
+
+			// Calculate uniqueness score for this hypothetical deck
+			uniquenessScore := b.uniquenessScorer.ScoreDeck(deckCardNames)
+			candidate.Score += uniquenessScore * b.uniquenessWeight
+		}
+	}
+
 	// Return highest scoring card
 	sort.Slice(pool, func(i, j int) bool {
 		return pool[i].Score > pool[j].Score
@@ -732,6 +762,22 @@ func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[
 		}
 	}
 
+	// Apply uniqueness bonuses if enabled
+	if b.uniquenessEnabled && b.uniquenessScorer != nil {
+		for _, candidate := range pool {
+			// Build hypothetical deck with this candidate
+			deckCardNames := make([]string, 0, len(currentDeck)+1)
+			for _, card := range currentDeck {
+				deckCardNames = append(deckCardNames, card.Name)
+			}
+			deckCardNames = append(deckCardNames, candidate.Name)
+
+			// Calculate uniqueness score for this hypothetical deck
+			uniquenessScore := b.uniquenessScorer.ScoreDeck(deckCardNames)
+			candidate.Score += uniquenessScore * b.uniquenessWeight
+		}
+	}
+
 	sort.Slice(pool, func(i, j int) bool {
 		return pool[i].Score > pool[j].Score
 	})
@@ -743,11 +789,35 @@ func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[
 	return pool[:count]
 }
 
-func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[string]bool, count int) []*CardCandidate {
+func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[string]bool, count int, currentDeck []*CardCandidate) []*CardCandidate {
 	var pool []*CardCandidate
 	for _, candidate := range candidates {
 		if !used[candidate.Name] {
 			pool = append(pool, candidate)
+		}
+	}
+
+	// Apply synergy bonuses if enabled
+	if b.synergyEnabled && len(currentDeck) > 0 {
+		for _, candidate := range pool {
+			synergyBonus := b.calculateSynergyScore(candidate.Name, currentDeck)
+			candidate.Score += synergyBonus * b.synergyWeight
+		}
+	}
+
+	// Apply uniqueness bonuses if enabled
+	if b.uniquenessEnabled && b.uniquenessScorer != nil {
+		for _, candidate := range pool {
+			// Build hypothetical deck with this candidate
+			deckCardNames := make([]string, 0, len(currentDeck)+1)
+			for _, card := range currentDeck {
+				deckCardNames = append(deckCardNames, card.Name)
+			}
+			deckCardNames = append(deckCardNames, candidate.Name)
+
+			// Calculate uniqueness score for this hypothetical deck
+			uniquenessScore := b.uniquenessScorer.ScoreDeck(deckCardNames)
+			candidate.Score += uniquenessScore * b.uniquenessWeight
 		}
 	}
 
@@ -876,6 +946,24 @@ func (b *Builder) SetSynergyWeight(weight float64) {
 		weight = 1.0
 	}
 	b.synergyWeight = weight
+}
+
+// SetUniquenessEnabled enables or disables uniqueness/anti-meta scoring
+func (b *Builder) SetUniquenessEnabled(enabled bool) {
+	b.uniquenessEnabled = enabled
+}
+
+// SetUniquenessWeight sets the weight for uniqueness scoring (0.0 to 0.3)
+// Default is 0.2 (20% of total score from uniqueness)
+// Higher values give more preference to less common/anti-meta cards
+func (b *Builder) SetUniquenessWeight(weight float64) {
+	if weight < 0.0 {
+		weight = 0.0
+	}
+	if weight > 0.3 {
+		weight = 0.3 // Cap at 0.3 to prevent over-prioritizing uniqueness
+	}
+	b.uniquenessWeight = weight
 }
 
 // SetIncludeCards sets the cards that must be included in the deck

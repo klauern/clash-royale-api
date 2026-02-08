@@ -2949,6 +2949,7 @@ func configureDeckBuilder(cmd *cli.Command, dataDir string, strategy string) (*d
 	}
 
 	configureSynergy(cmd, builder, verbose)
+	configureUniqueness(cmd, builder, verbose)
 
 	return builder, nil
 }
@@ -3010,6 +3011,22 @@ func configureSynergy(cmd *cli.Command, builder *deck.Builder, verbose bool) {
 
 	if verbose {
 		printf("Synergy scoring enabled (weight: %.2f)\n", cmd.Float64("synergy-weight"))
+	}
+}
+
+func configureUniqueness(cmd *cli.Command, builder *deck.Builder, verbose bool) {
+	if !cmd.Bool("prefer-unique") {
+		return
+	}
+
+	builder.SetUniquenessEnabled(true)
+
+	if uniquenessWeight := cmd.Float64("uniqueness-weight"); uniquenessWeight > 0 {
+		builder.SetUniquenessWeight(uniquenessWeight)
+	}
+
+	if verbose {
+		printf("Uniqueness/anti-meta scoring enabled (weight: %.2f)\n", cmd.Float64("uniqueness-weight"))
 	}
 }
 
