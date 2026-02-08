@@ -2950,6 +2950,7 @@ func configureDeckBuilder(cmd *cli.Command, dataDir string, strategy string) (*d
 
 	configureSynergy(cmd, builder, verbose)
 	configureUniqueness(cmd, builder, verbose)
+	configureArchetypeAvoidance(cmd, builder, verbose)
 
 	return builder, nil
 }
@@ -3027,6 +3028,20 @@ func configureUniqueness(cmd *cli.Command, builder *deck.Builder, verbose bool) 
 
 	if verbose {
 		printf("Uniqueness/anti-meta scoring enabled (weight: %.2f)\n", cmd.Float64("uniqueness-weight"))
+	}
+}
+
+// configureArchetypeAvoidance sets archetypes to avoid during deck building
+func configureArchetypeAvoidance(cmd *cli.Command, builder *deck.Builder, verbose bool) {
+	archetypes := cmd.StringSlice("avoid-archetype")
+	if len(archetypes) == 0 {
+		return
+	}
+
+	builder.SetAvoidArchetypes(archetypes)
+
+	if verbose {
+		printf("Avoiding archetypes: %v\n", archetypes)
 	}
 }
 

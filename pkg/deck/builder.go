@@ -30,12 +30,14 @@ type Builder struct {
 	synergyEnabled     bool
 	synergyWeight      float64
 	synergyCache       map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
-	uniquenessEnabled  bool
-	uniquenessWeight   float64
-	uniquenessScorer   *UniquenessScorer
-	includeCards       []string           // Cards to force into the deck
-	excludeCards       []string           // Cards to exclude from consideration
-	fuzzIntegration    *FuzzIntegration   // Fuzz stats integration for data-driven card scoring
+	uniquenessEnabled         bool
+	uniquenessWeight          float64
+	uniquenessScorer          *UniquenessScorer
+	avoidArchetypes           []string                      // Archetypes to avoid when building decks
+	archetypeAvoidanceScorer  *ArchetypeAvoidanceScorer     // Scorer for archetype avoidance
+	includeCards              []string                      // Cards to force into the deck
+	excludeCards              []string                      // Cards to exclude from consideration
+	fuzzIntegration           *FuzzIntegration              // Fuzz stats integration for data-driven card scoring
 }
 
 // NewBuilder creates a new deck builder instance
@@ -732,6 +734,14 @@ func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[
 		}
 	}
 
+	// Apply archetype avoidance penalties if configured
+	if b.archetypeAvoidanceScorer != nil && b.archetypeAvoidanceScorer.IsEnabled() {
+		for _, candidate := range pool {
+			penalty := b.archetypeAvoidanceScorer.ScoreCard(candidate.Name)
+			candidate.Score += penalty
+		}
+	}
+
 	// Return highest scoring card
 	sort.Slice(pool, func(i, j int) bool {
 		return pool[i].Score > pool[j].Score
@@ -778,6 +788,14 @@ func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[
 		}
 	}
 
+	// Apply archetype avoidance penalties if configured
+	if b.archetypeAvoidanceScorer != nil && b.archetypeAvoidanceScorer.IsEnabled() {
+		for _, candidate := range pool {
+			penalty := b.archetypeAvoidanceScorer.ScoreCard(candidate.Name)
+			candidate.Score += penalty
+		}
+	}
+
 	sort.Slice(pool, func(i, j int) bool {
 		return pool[i].Score > pool[j].Score
 	})
@@ -818,6 +836,14 @@ func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[str
 			// Calculate uniqueness score for this hypothetical deck
 			uniquenessScore := b.uniquenessScorer.ScoreDeck(deckCardNames)
 			candidate.Score += uniquenessScore * b.uniquenessWeight
+		}
+	}
+
+	// Apply archetype avoidance penalties if configured
+	if b.archetypeAvoidanceScorer != nil && b.archetypeAvoidanceScorer.IsEnabled() {
+		for _, candidate := range pool {
+			penalty := b.archetypeAvoidanceScorer.ScoreCard(candidate.Name)
+			candidate.Score += penalty
 		}
 	}
 
@@ -976,6 +1002,13 @@ func (b *Builder) SetIncludeCards(cards []string) {
 // These cards will never be selected for the deck
 func (b *Builder) SetExcludeCards(cards []string) {
 	b.excludeCards = cards
+}
+
+// SetAvoidArchetypes sets the archetypes to avoid when building decks
+// Cards strongly associated with these archetypes will receive score penalties
+func (b *Builder) SetAvoidArchetypes(archetypes []string) {
+	b.avoidArchetypes = archetypes
+	b.archetypeAvoidanceScorer = NewArchetypeAvoidanceScorer(archetypes)
 }
 
 // SetFuzzIntegration sets the fuzz integration instance for data-driven card scoring

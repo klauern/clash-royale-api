@@ -33,6 +33,7 @@ func addDeckBuildCommand() *cli.Command {
 			&cli.Float64Flag{Name: "synergy-weight", Value: 0.15, Usage: "Weight for synergy scoring (0.0-1.0, default 0.15 = 15%)"},
 			&cli.BoolFlag{Name: "prefer-unique", Usage: "Enable uniqueness/anti-meta scoring (prefers less common cards)"},
 			&cli.Float64Flag{Name: "uniqueness-weight", Value: 0.2, Usage: "Weight for uniqueness scoring (0.0-0.3, default 0.2 = 20%)"},
+			&cli.StringSliceFlag{Name: "avoid-archetype", Usage: "Archetypes to avoid when building decks (e.g., beatdown, cycle, control, siege, bridge_spam, bait, spawndeck, midrange)"},
 			&cli.BoolFlag{Name: "no-suggest-upgrades", Usage: "Disable upgrade recommendations for the built deck (recommendations are shown by default)"},
 			&cli.IntFlag{Name: "upgrade-count", Value: 5, Usage: "Number of upgrade recommendations to show (default 5)"},
 			&cli.BoolFlag{Name: "ideal-deck", Usage: "Show ideal deck composition after applying recommended upgrades"},
