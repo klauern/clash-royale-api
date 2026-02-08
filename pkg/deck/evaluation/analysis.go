@@ -1229,6 +1229,60 @@ func BuildEvolutionAnalysis(deckCards []deck.CardCandidate, playerContext *Playe
 // Phase 5: Main Orchestrator
 // ============================================================================
 
+// applyCriticalFlawPenalties applies additional penalties for critical compositional flaws
+// that make a deck fundamentally unviable, beyond what category scores capture
+func applyCriticalFlawPenalties(baseScore float64, deckCards []deck.CardCandidate) float64 {
+	score := baseScore
+
+	// Check for critical attack flaws
+	winConditionCount := 0
+	spellCount := 0
+	bigSpellCount := 0
+	for _, card := range deckCards {
+		if card.Role != nil {
+			if *card.Role == deck.RoleWinCondition {
+				winConditionCount++
+			}
+			if *card.Role == deck.RoleSpellBig {
+				bigSpellCount++
+			}
+			if *card.Role == deck.RoleSpellBig || *card.Role == deck.RoleSpellSmall {
+				spellCount++
+			}
+		}
+	}
+
+	// Penalty for no win condition: -2.0 points (critical flaw)
+	if winConditionCount == 0 {
+		score -= 2.0
+	}
+
+	// Penalty for no spells: -1.5 points (severe limitation)
+	if spellCount == 0 {
+		score -= 1.5
+	}
+
+	// Check for critical defense flaws
+	antiAirCount := 0
+	for _, card := range deckCards {
+		if card.Stats != nil && (card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground") {
+			antiAirCount++
+		}
+	}
+
+	// Penalty for no anti-air: -2.0 points (critical vulnerability)
+	if antiAirCount == 0 {
+		score -= 2.0
+	}
+
+	// Ensure score doesn't go below 0
+	if score < 0 {
+		score = 0
+	}
+
+	return score
+}
+
 // Evaluate performs comprehensive deck evaluation with all scoring and analysis
 // If playerContext is provided, evaluation will include player-specific context such as:
 // - Card levels from player's collection
@@ -1264,18 +1318,24 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 	evolutionAnalysis := BuildEvolutionAnalysis(deckCards, playerContext)
 
 	// Phase 4: Calculate Overall Score (weighted average)
-	// Weights: Attack 18%, Defense 18%, Synergy 22%, Versatility 18%, F2P 12%, Playability 12%
+	// Weights: Attack 23%, Defense 22%, Synergy 21%, Versatility 14%, F2P 10%, Playability 10%
+	// Balanced emphasis on attack/defense/synergy fundamentals
+	// Critical flaws are separately penalized via applyCriticalFlawPenalties
 	// When player context is available, replace Playability with ladder viability.
-	overallScore := (attackScore.Score * 0.18) +
-		(defenseScore.Score * 0.18) +
-		(synergyScore.Score * 0.22) +
-		(versatilityScore.Score * 0.18) +
-		(f2pScore.Score * 0.12) +
-		(playabilityScore.Score * 0.12)
+	overallScore := (attackScore.Score * 0.23) +
+		(defenseScore.Score * 0.22) +
+		(synergyScore.Score * 0.21) +
+		(versatilityScore.Score * 0.14) +
+		(f2pScore.Score * 0.10) +
+		(playabilityScore.Score * 0.10)
 
 	if playerContext != nil {
 		overallScore = overallScore - (playabilityScore.Score * 0.12) + (ladderAnalysis.Score * 0.12)
 	}
+
+	// Apply penalties for critical compositional flaws
+	// These are severe enough to warrant direct overall score penalties
+	overallScore = applyCriticalFlawPenalties(overallScore, deckCards)
 
 	overallRating := ScoreToRating(overallScore)
 

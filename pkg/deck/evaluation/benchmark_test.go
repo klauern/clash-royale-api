@@ -391,11 +391,7 @@ func TestQualityComparison_MetaVsBad(t *testing.T) {
 	t.Logf("Bad Deck Average Score: %.2f/10.0", avgBad)
 	t.Logf("Score Gap: %.2f points", scoreGap)
 
-	t.Run("note: quality separation thresholds deferred", func(t *testing.T) {
-		t.Skip("Quality separation thresholds deferred - requires scorer calibration (task clash-royale-api-18pp)")
-	})
-	// Keep the original assertions commented for reference
-	/*
+	// Verify quality separation thresholds
 	if avgMeta < 7.0 {
 		t.Errorf("Meta deck average %.2f is below threshold 7.0", avgMeta)
 	}
@@ -405,7 +401,6 @@ func TestQualityComparison_MetaVsBad(t *testing.T) {
 	if scoreGap < 2.5 {
 		t.Errorf("Score gap %.2f is too small - algorithm may not distinguish quality well", scoreGap)
 	}
-	*/
 }
 
 // TestQualityComparison_CoherenceScores verifies that coherent archetypes

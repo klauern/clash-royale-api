@@ -54,9 +54,9 @@ func scoreWinConditions(count int, quality float64) float64 {
 	if count >= 2 {
 		return 10.0 // Multiple win conditions = excellent
 	} else if count == 1 {
-		return 7.0 + (quality * 3.0) // Single win condition with quality bonus
+		return 7.5 + (quality * 2.5) // Single win condition with quality bonus
 	}
-	return 3.0 // No dedicated win condition
+	return 0.0 // No dedicated win condition - critical flaw
 }
 
 // scoreSpellDamage calculates the spell damage score component (0-10 scale)
@@ -64,9 +64,11 @@ func scoreSpellDamage(spellDamage float64) float64 {
 	if spellDamage >= 2.0 {
 		return 10.0 // Strong spell damage
 	} else if spellDamage >= 1.0 {
-		return 6.0 + (spellDamage * 2.0)
+		return 6.5 + (spellDamage * 2.0)
+	} else if spellDamage > 0 {
+		return 2.5 + (spellDamage * 4.0)
 	}
-	return 2.0 + (spellDamage * 4.0)
+	return 0.0 // No spells = critical flaw
 }
 
 // scoreDamagePotential calculates the overall damage score component (0-10 scale)
@@ -74,9 +76,9 @@ func scoreDamagePotential(avgDamage float64) float64 {
 	if avgDamage >= 200 {
 		return 10.0
 	} else if avgDamage >= 100 {
-		return 5.0 + ((avgDamage - 100) / 100 * 5.0)
+		return 5.5 + ((avgDamage - 100) / 100 * 4.5)
 	}
-	return (avgDamage / 100) * 5.0
+	return (avgDamage / 100) * 5.5
 }
 
 // ScoreAttack calculates the attack score for a deck (0-10 scale)
@@ -166,9 +168,9 @@ func scoreAntiAir(count int) float64 {
 	if count >= 4 {
 		return 10.0 // Excellent air defense
 	} else if count >= 3 {
-		return 8.0
+		return 8.5
 	} else if count >= 2 {
-		return 5.0
+		return 5.5
 	} else if count == 1 {
 		return 3.0
 	}
@@ -182,7 +184,7 @@ func scoreBuildings(count int, quality float64) float64 {
 	} else if count == 1 {
 		return 6.0 + (quality * 2.0)
 	}
-	return 3.0 // No building is risky
+	return 5.0 // No building is acceptable for aggressive archetypes
 }
 
 // scoreSupport calculates the support troop score component (0-10 scale)
@@ -326,9 +328,9 @@ func scoreRoleDiversity(uniqueRoles int) float64 {
 	if uniqueRoles >= 5 {
 		return 10.0 // Excellent role diversity
 	} else if uniqueRoles >= 4 {
-		return 7.0
+		return 7.5
 	} else if uniqueRoles >= 3 {
-		return 5.0
+		return 5.5
 	}
 	return float64(uniqueRoles) * 2.0
 }
