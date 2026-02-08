@@ -6,6 +6,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
+
+	"github.com/klauer/clash-royale-api/go/internal/errors"
+	"github.com/klauer/clash-royale-api/go/internal/util"
 )
 
 // EventType represents the type of Clash Royale event
@@ -52,16 +55,9 @@ type Deck struct {
 
 // CalculateAvgElixir calculates the average elixir cost of cards in the deck
 func (d *Deck) CalculateAvgElixir() float64 {
-	if len(d.Cards) == 0 {
-		return 0
-	}
-
-	total := 0
-	for _, card := range d.Cards {
-		total += card.ElixirCost
-	}
-
-	return float64(total) / float64(len(d.Cards))
+	return util.CalcAvgElixir(d.Cards, func(card CardInDeck) int {
+		return card.ElixirCost
+	})
 }
 
 // Validate checks if the deck has exactly 8 cards and valid elixir costs
@@ -219,39 +215,25 @@ func (edc *EventDeckCollection) AddDeck(deck EventDeck) {
 
 // GetDecksByType returns all event decks of a specific type
 func (edc *EventDeckCollection) GetDecksByType(eventType EventType) []EventDeck {
-	var filtered []EventDeck
-	for _, deck := range edc.Decks {
-		if deck.EventType == eventType {
-			filtered = append(filtered, deck)
-		}
-	}
-	return filtered
+	return util.FilterSlice(edc.Decks, func(deck EventDeck) bool {
+		return deck.EventType == eventType
+	})
 }
 
 // GetRecentDecks returns event decks from the last N days
 func (edc *EventDeckCollection) GetRecentDecks(days int) []EventDeck {
 	cutoff := time.Now().AddDate(0, 0, -days)
-	var recent []EventDeck
-
-	for _, deck := range edc.Decks {
-		if deck.StartTime.After(cutoff) {
-			recent = append(recent, deck)
-		}
-	}
-
-	return recent
+	return util.FilterSlice(edc.Decks, func(deck EventDeck) bool {
+		return deck.StartTime.After(cutoff)
+	})
 }
 
 // GetBestDecksByWinRate returns top N event decks by win rate (min battles required)
 func (edc *EventDeckCollection) GetBestDecksByWinRate(minBattles, limit int) []EventDeck {
-	var qualified []EventDeck
-
 	// Filter decks with minimum battle count
-	for _, deck := range edc.Decks {
-		if deck.Performance.TotalBattles() >= minBattles {
-			qualified = append(qualified, deck)
-		}
-	}
+	qualified := util.FilterSlice(edc.Decks, func(deck EventDeck) bool {
+		return deck.Performance.TotalBattles() >= minBattles
+	})
 
 	// Sort by win rate (descending)
 	// Note: In production, use sort.Slice for actual sorting
@@ -298,24 +280,16 @@ type BattleLog []BattleRecord
 
 // FilterByResult filters battle log by result (win/loss)
 func (bl BattleLog) FilterByResult(result string) BattleLog {
-	var filtered BattleLog
-	for _, battle := range bl {
-		if battle.Result == result {
-			filtered = append(filtered, battle)
-		}
-	}
-	return filtered
+	return util.FilterSlice(bl, func(battle BattleRecord) bool {
+		return battle.Result == result
+	})
 }
 
 // FilterByTimeRange filters battle log by time range
 func (bl BattleLog) FilterByTimeRange(start, end time.Time) BattleLog {
-	var filtered BattleLog
-	for _, battle := range bl {
-		if !battle.Timestamp.Before(start) && !battle.Timestamp.After(end) {
-			filtered = append(filtered, battle)
-		}
-	}
-	return filtered
+	return util.FilterSlice(bl, func(battle BattleRecord) bool {
+		return !battle.Timestamp.Before(start) && !battle.Timestamp.After(end)
+	})
 }
 
 // TotalCrowns returns total crowns earned across all battles
@@ -372,12 +346,5 @@ var (
 	ErrInvalidEventType  = &EventError{Code: "INVALID_EVENT_TYPE", Message: "invalid event type"}
 )
 
-// EventError represents an event-related error
-type EventError struct {
-	Code    string
-	Message string
-}
-
-func (e *EventError) Error() string {
-	return e.Message
-}
+// EventError represents an event-related error (type alias for shared CodedError)
+type EventError = errors.CodedError

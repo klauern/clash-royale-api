@@ -5,6 +5,8 @@ package analysis
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/klauer/clash-royale-api/go/internal/errors"
 )
 
 // CardAnalysis represents a complete analysis of a player's card collection
@@ -249,12 +251,5 @@ var (
 	ErrInvalidPriorityScore = &AnalysisError{Code: "INVALID_PRIORITY_SCORE", Message: "priority score must be between 0 and 100"}
 )
 
-// AnalysisError represents an analysis-related error
-type AnalysisError struct {
-	Code    string
-	Message string
-}
-
-func (e *AnalysisError) Error() string {
-	return e.Message
-}
+// AnalysisError represents an analysis-related error (type alias for shared CodedError)
+type AnalysisError = errors.CodedError

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
+	"github.com/klauer/clash-royale-api/go/internal/util"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
@@ -762,16 +763,10 @@ func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[str
 }
 
 func (b *Builder) calculateAvgElixir(deck []*CardCandidate) float64 {
-	if len(deck) == 0 {
-		return 0
-	}
-
-	total := 0
-	for _, card := range deck {
-		total += card.Elixir
-	}
-
-	return roundToTwo(float64(total) / float64(len(deck)))
+	avg := util.CalcAvgElixir(deck, func(card *CardCandidate) int {
+		return card.Elixir
+	})
+	return roundToTwo(avg)
 }
 
 func (b *Builder) addStrategicNotes(recommendation *DeckRecommendation) {

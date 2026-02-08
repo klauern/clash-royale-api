@@ -7,6 +7,8 @@ import (
 	"strings"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
+	"github.com/klauer/clash-royale-api/go/internal/errors"
+	"github.com/klauer/clash-royale-api/go/internal/util"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
@@ -170,16 +172,10 @@ type CardDetail struct {
 
 // CalculateAvgElixir calculates the average elixir cost from card details
 func (dr *DeckRecommendation) CalculateAvgElixir() float64 {
-	if len(dr.DeckDetail) == 0 {
-		return 0
-	}
-
-	total := 0
-	for _, card := range dr.DeckDetail {
-		total += card.Elixir
-	}
-
-	return roundToTwo(float64(total) / float64(len(dr.DeckDetail)))
+	avg := util.CalcAvgElixir(dr.DeckDetail, func(card CardDetail) int {
+		return card.Elixir
+	})
+	return roundToTwo(avg)
 }
 
 // FormatEvolutionBadge returns a formatted evolution badge for a card.
@@ -221,15 +217,8 @@ var (
 	ErrInsufficientCards = &DeckError{Code: "INSUFFICIENT_CARDS", Message: "insufficient cards available for deck building"}
 )
 
-// DeckError represents a deck building error
-type DeckError struct {
-	Code    string
-	Message string
-}
-
-func (e *DeckError) Error() string {
-	return e.Message
-}
+// DeckError represents a deck building error (type alias for shared CodedError)
+type DeckError = errors.CodedError
 
 // UpgradeRecommendation represents a single card upgrade recommendation
 type UpgradeRecommendation struct {

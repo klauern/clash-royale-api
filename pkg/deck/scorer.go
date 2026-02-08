@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
+	"github.com/klauer/clash-royale-api/go/internal/util"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
@@ -222,16 +223,9 @@ func ExcludeCards(candidates []CardCandidate, excludeNames []string) []CardCandi
 
 // CalculateAvgElixir calculates average elixir cost from a slice of candidates
 func CalculateAvgElixir(candidates []CardCandidate) float64 {
-	if len(candidates) == 0 {
-		return 0.0
-	}
-
-	total := 0
-	for _, candidate := range candidates {
-		total += candidate.Elixir
-	}
-
-	return float64(total) / float64(len(candidates))
+	return util.CalcAvgElixir(candidates, func(candidate CardCandidate) int {
+		return candidate.Elixir
+	})
 }
 
 // GetLevelDistribution returns count of cards at each level
