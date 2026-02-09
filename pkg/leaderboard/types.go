@@ -2,6 +2,12 @@ package leaderboard
 
 import "time"
 
+// ArchetypeCount represents an archetype with its number of decks.
+type ArchetypeCount struct {
+	Archetype string `json:"archetype"`
+	Count     int    `json:"count"`
+}
+
 // DeckEntry represents a single deck entry in the leaderboard with all evaluation data
 type DeckEntry struct {
 	ID                int       `json:"id"`                 // Auto-incremented primary key

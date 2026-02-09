@@ -546,6 +546,54 @@ func TestGetByArchetype(t *testing.T) {
 	}
 }
 
+func TestGetArchetypeCounts(t *testing.T) {
+	storage, cleanup := createTestStorage(t)
+	defer cleanup()
+
+	entries := []struct {
+		archetype string
+		score     float64
+	}{
+		{"beatdown", 9.1},
+		{"beatdown", 8.9},
+		{"cycle", 8.4},
+		{"control", 8.2},
+		{"control", 7.8},
+	}
+
+	for i, e := range entries {
+		deck := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", string(rune('H' + i))}, e.score)
+		deck.Archetype = e.archetype
+		if _, _, err := storage.InsertDeck(deck); err != nil {
+			t.Fatalf("failed to insert deck: %v", err)
+		}
+	}
+
+	counts, err := storage.GetArchetypeCounts()
+	if err != nil {
+		t.Fatalf("failed to get archetype counts: %v", err)
+	}
+
+	if len(counts) != 3 {
+		t.Fatalf("expected 3 archetypes, got %d", len(counts))
+	}
+
+	got := map[string]int{}
+	for _, c := range counts {
+		got[c.Archetype] = c.Count
+	}
+
+	if got["beatdown"] != 2 {
+		t.Errorf("expected beatdown count 2, got %d", got["beatdown"])
+	}
+	if got["control"] != 2 {
+		t.Errorf("expected control count 2, got %d", got["control"])
+	}
+	if got["cycle"] != 1 {
+		t.Errorf("expected cycle count 1, got %d", got["cycle"])
+	}
+}
+
 func TestQuery_Pagination(t *testing.T) {
 	storage, cleanup := createTestStorage(t)
 	defer cleanup()

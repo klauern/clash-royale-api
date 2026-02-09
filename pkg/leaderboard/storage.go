@@ -502,3 +502,30 @@ func (s *Storage) Count() (int, error) {
 	}
 	return count, nil
 }
+
+// GetArchetypeCounts returns deck counts grouped by archetype, ordered by count descending.
+func (s *Storage) GetArchetypeCounts() ([]ArchetypeCount, error) {
+	rows, err := s.db.Query(`
+		SELECT archetype, COUNT(*) AS deck_count
+		FROM decks
+		GROUP BY archetype
+		ORDER BY deck_count DESC, archetype ASC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query archetype counts: %w", err)
+	}
+	defer closeWithLog(rows, "archetype count rows")
+
+	counts := make([]ArchetypeCount, 0)
+	for rows.Next() {
+		var c ArchetypeCount
+		if err := rows.Scan(&c.Archetype, &c.Count); err != nil {
+			return nil, fmt.Errorf("failed to scan archetype count row: %w", err)
+		}
+		counts = append(counts, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating archetype count rows: %w", err)
+	}
+	return counts, nil
+}

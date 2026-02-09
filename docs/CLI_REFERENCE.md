@@ -956,6 +956,9 @@ cr-api deck leaderboard filter --tag <TAG> --archetype cycle --min-elixir 2.5 --
 # View statistics
 cr-api deck leaderboard stats --tag <TAG> --archetypes
 
+# View storage statistics (DB size + archetype distribution)
+cr-api deck storage stats --tag <TAG>
+
 # Export leaderboard
 cr-api deck leaderboard export --tag <TAG> --format csv --output decks.csv
 ```

@@ -60,6 +60,7 @@ func addDeckCommands() *cli.Command {
 			addDeckCompareAlgorithmsCommand(),
 			addDiscoverCommands(),
 			addLeaderboardCommands(),
+			addStorageCommands(),
 		},
 	}
 }
@@ -1361,6 +1362,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 
 	return writeEvalBatchOutput(output, flags.OutputDir, flags.Format, setup.PlayerTag, flags.SaveAggregated)
 }
+
 // runPhase0CardConstraints runs the optional card constraint suggestion phase
 func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, constraintThreshold float64, topN int, verbose bool) error {
 	if !suggestConstraints {
@@ -1426,6 +1428,7 @@ func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, cons
 	fmt.Println()
 	return nil
 }
+
 // runPhase1BuildDeckVariations builds deck variations for the analysis suite
 func runPhase1BuildDeckVariations(tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
 	decksDir := filepath.Join(outputDir, "decks")
@@ -1570,6 +1573,7 @@ func runPhase1BuildDeckVariations(tag, strategiesStr, outputDir string, variatio
 
 	return builtDecks, playerData, successCount, failCount, suiteSummaryPath, nil
 }
+
 // runPhase2EvaluateAllDecks evaluates all built decks for the analysis suite
 func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlayerData, outputDir, tag, apiToken string, fromAnalysis, verbose bool, timestamp string) ([]suiteEvalResult, string, error) {
 	evaluationsDir := filepath.Join(outputDir, "evaluations")
