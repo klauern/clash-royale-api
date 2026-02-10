@@ -96,6 +96,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	refineRounds := cmd.Int("refine")
 	uniquenessWeight := cmd.Float64("uniqueness-weight")
 	ensureArchetypes := cmd.Bool("ensure-archetypes")
+	ensureElixirBuckets := cmd.Bool("ensure-elixir-buckets")
 	mode := strings.ToLower(cmd.String("mode"))
 	gaPopulation := cmd.Int("ga-population")
 	gaGenerations := cmd.Int("ga-generations")
@@ -781,6 +782,9 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	if ensureArchetypes && mode != "genetic" {
 		dedupedResults = ensureArchetypeCoverage(dedupedResults, top, verbose)
 	}
+	if ensureElixirBuckets {
+		dedupedResults = ensureElixirBucketDistribution(dedupedResults, top, verbose)
+	}
 
 	// Get top N results
 	topResults := getTopResults(dedupedResults, top)
@@ -1378,6 +1382,92 @@ func ensureArchetypeCoverage(results []FuzzingResult, top int, verbose bool) []F
 			first = false
 		}
 		fprintln(os.Stderr)
+	}
+
+	return finalResults
+}
+
+const (
+	elixirBucketLow    = "low"
+	elixirBucketMedium = "medium"
+	elixirBucketHigh   = "high"
+)
+
+func getElixirBucket(avgElixir float64) string {
+	switch {
+	case avgElixir < 3.3:
+		return elixirBucketLow
+	case avgElixir <= 4.0:
+		return elixirBucketMedium
+	default:
+		return elixirBucketHigh
+	}
+}
+
+// ensureElixirBucketDistribution ensures top results include decks from low/medium/high elixir buckets.
+func ensureElixirBucketDistribution(results []FuzzingResult, top int, verbose bool) []FuzzingResult {
+	if len(results) == 0 {
+		return results
+	}
+
+	bucketOrder := []string{elixirBucketLow, elixirBucketMedium, elixirBucketHigh}
+	bucketGroups := make(map[string][]FuzzingResult, len(bucketOrder))
+	for _, bucket := range bucketOrder {
+		bucketGroups[bucket] = make([]FuzzingResult, 0)
+	}
+
+	for _, result := range results {
+		bucket := getElixirBucket(result.AvgElixir)
+		bucketGroups[bucket] = append(bucketGroups[bucket], result)
+	}
+
+	if verbose {
+		fprintf(os.Stderr, "Elixir bucket distribution in candidates: low=%d, medium=%d, high=%d\n",
+			len(bucketGroups[elixirBucketLow]), len(bucketGroups[elixirBucketMedium]), len(bucketGroups[elixirBucketHigh]))
+	}
+
+	finalResults := make([]FuzzingResult, 0, len(results))
+	usedDecks := make(map[string]bool, len(results))
+
+	// First pass: ensure at least one from each bucket that has decks.
+	for _, bucket := range bucketOrder {
+		group := bucketGroups[bucket]
+		if len(group) == 0 {
+			continue
+		}
+		for _, result := range group {
+			key := deckKeyForResult(result)
+			if !usedDecks[key] {
+				finalResults = append(finalResults, result)
+				usedDecks[key] = true
+				break
+			}
+		}
+	}
+
+	// Second pass: fill remaining slots with best remaining decks.
+	for _, result := range results {
+		key := deckKeyForResult(result)
+		if usedDecks[key] {
+			continue
+		}
+		finalResults = append(finalResults, result)
+		usedDecks[key] = true
+	}
+
+	if verbose {
+		topN := min(top, len(finalResults))
+		topBuckets := map[string]int{
+			elixirBucketLow:    0,
+			elixirBucketMedium: 0,
+			elixirBucketHigh:   0,
+		}
+		for i := 0; i < topN; i++ {
+			bucket := getElixirBucket(finalResults[i].AvgElixir)
+			topBuckets[bucket]++
+		}
+		fprintf(os.Stderr, "Top %d decks elixir buckets: low=%d, medium=%d, high=%d\n",
+			topN, topBuckets[elixirBucketLow], topBuckets[elixirBucketMedium], topBuckets[elixirBucketHigh])
 	}
 
 	return finalResults
@@ -2259,7 +2349,7 @@ func loadSavedDecksForSeeding(n int, _ *clashroyale.Player, verbose bool) ([][]s
 }
 
 // generateDeckMutations generates mutations of saved decks by swapping cards
-func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, count int, mutationIntensity int, verbose bool) [][]string {
+func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, count, mutationIntensity int, verbose bool) [][]string {
 	if player == nil || len(player.Cards) == 0 {
 		if verbose {
 			fprintf(os.Stderr, "No player cards available for mutations\n")
@@ -2369,7 +2459,7 @@ func loadDeckFromStorage(deckRef string, verbose bool) ([]string, error) {
 }
 
 // generateVariations generates variations of a base deck by swapping some cards
-func generateVariations(baseDeck []string, player *clashroyale.Player, count int, mutationIntensity int, verbose bool) [][]string {
+func generateVariations(baseDeck []string, player *clashroyale.Player, count, mutationIntensity int, verbose bool) [][]string {
 	if player == nil || len(player.Cards) == 0 {
 		if verbose {
 			fprintf(os.Stderr, "No player cards available for variations\n")

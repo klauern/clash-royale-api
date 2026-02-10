@@ -322,6 +322,10 @@ func archetypeFlags() []cli.Flag {
 			Name:  "ensure-archetypes",
 			Usage: "Ensure generated decks cover all archetypes (beatdown, control, cycle, bridge, siege, bait, graveyard, miner)",
 		},
+		&cli.BoolFlag{
+			Name:  "ensure-elixir-buckets",
+			Usage: "Ensure top decks are spread across low/medium/high average elixir buckets",
+		},
 	}
 }
 
