@@ -441,6 +441,8 @@ func calculateDefensiveCoreBonus(counts roleCounts, details *ScorerV2Details) fl
 
 // calculateCounterCoverageScore evaluates defensive capabilities against threats.
 // Implements the WASTED framework: Win condition, Air, Splash, Tank killer, Elixir, Defense.
+//
+//nolint:funlen,gocognit,gocyclo // Counter coverage scoring uses explicit per-threat branching.
 func calculateCounterCoverageScore(cards []CardCandidate, details *ScorerV2Details) float64 {
 	// Count defensive capabilities
 	airDefense := 0
@@ -537,6 +539,8 @@ func calculateCoverageScore(count, minRequired, ideal int) float64 {
 }
 
 // calculateArchetypeScore evaluates strategic coherence and detects anti-synergies.
+//
+//nolint:funlen,gocognit,gocyclo // Archetype scoring keeps explicit strategy rules for transparency.
 func calculateArchetypeScore(cards []CardCandidate, strategy Strategy, details *ScorerV2Details) float64 {
 	// Count cards by role for archetype analysis
 	winConditions := 0
@@ -787,9 +791,10 @@ func calculateCombatStatsScore(cards []CardCandidate) float64 {
 
 		// Target coverage
 		targetScore := 0.5
-		if card.Stats.Targets == "Air & Ground" {
+		switch card.Stats.Targets {
+		case "Air & Ground":
 			targetScore = 1.0
-		} else if card.Stats.Targets == "Air" || card.Stats.Targets == "Ground" {
+		case "Air", "Ground":
 			targetScore = 0.7
 		}
 

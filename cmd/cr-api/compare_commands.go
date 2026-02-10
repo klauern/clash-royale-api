@@ -303,16 +303,7 @@ func formatTableCategoryScoresSection(sb *strings.Builder, names []string, resul
 	sb.WriteString("\n")
 	sb.WriteString(strings.Repeat("─", 15+23*len(names)) + "\n")
 
-	categories := []struct {
-		name string
-		get  func(evaluation.EvaluationResult) evaluation.CategoryScore
-	}{
-		{"Attack", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Attack }},
-		{"Defense", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Defense }},
-		{"Synergy", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Synergy }},
-		{"Versatility", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Versatility }},
-		{"F2P Friendly", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.F2PFriendly }},
-	}
+	categories := getEvaluationCategories()
 
 	for _, cat := range categories {
 		sb.WriteString(fmt.Sprintf("%-15s", cat.name))
@@ -374,23 +365,23 @@ func formatTableVerboseAnalysisSection(sb *strings.Builder, names []string, resu
 	sb.WriteString("════════════════════\n\n")
 
 	for i, r := range results {
-		sb.WriteString(fmt.Sprintf("═══ %s ═══\n\n", names[i]))
+		fmt.Fprintf(sb, "═══ %s ═══\n\n", names[i])
 
-		sb.WriteString(fmt.Sprintf("Defense (%.1f/10.0): %s\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating))
+		fmt.Fprintf(sb, "Defense (%.1f/10.0): %s\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating)
 		for _, detail := range r.DefenseAnalysis.Details {
-			sb.WriteString(fmt.Sprintf("  • %s\n", detail))
+			fmt.Fprintf(sb, "  • %s\n", detail)
 		}
 		sb.WriteString("\n")
 
-		sb.WriteString(fmt.Sprintf("Attack (%.1f/10.0): %s\n", r.AttackAnalysis.Score, r.AttackAnalysis.Rating))
+		fmt.Fprintf(sb, "Attack (%.1f/10.0): %s\n", r.AttackAnalysis.Score, r.AttackAnalysis.Rating)
 		for _, detail := range r.AttackAnalysis.Details {
-			sb.WriteString(fmt.Sprintf("  • %s\n", detail))
+			fmt.Fprintf(sb, "  • %s\n", detail)
 		}
 		sb.WriteString("\n")
 
 		if r.SynergyMatrix.PairCount > 0 {
-			sb.WriteString(fmt.Sprintf("Synergy: %d pairs found (%.1f%% coverage)\n",
-				r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage))
+			fmt.Fprintf(sb, "Synergy: %d pairs found (%.1f%% coverage)\n",
+				r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage)
 			sb.WriteString("\n")
 		}
 	}
@@ -666,23 +657,23 @@ func formatMarkdownVerboseAnalysisSection(sb *strings.Builder, names []string, r
 	sb.WriteString("## Detailed Analysis\n\n")
 	for i, name := range names {
 		r := results[i]
-		sb.WriteString(fmt.Sprintf("### %s\n\n", name))
+		fmt.Fprintf(sb, "### %s\n\n", name)
 
-		sb.WriteString(fmt.Sprintf("**Defense** (%.1f/10.0): %s\n\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating))
+		fmt.Fprintf(sb, "**Defense** (%.1f/10.0): %s\n\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating)
 		for _, detail := range r.DefenseAnalysis.Details {
-			sb.WriteString(fmt.Sprintf("- %s\n", detail))
+			fmt.Fprintf(sb, "- %s\n", detail)
 		}
 		sb.WriteString("\n")
 
-		sb.WriteString(fmt.Sprintf("**Attack** (%.1f/10.0): %s\n\n", r.AttackAnalysis.Score, r.AttackAnalysis.Rating))
+		fmt.Fprintf(sb, "**Attack** (%.1f/10.0): %s\n\n", r.AttackAnalysis.Score, r.AttackAnalysis.Rating)
 		for _, detail := range r.AttackAnalysis.Details {
-			sb.WriteString(fmt.Sprintf("- %s\n", detail))
+			fmt.Fprintf(sb, "- %s\n", detail)
 		}
 		sb.WriteString("\n")
 
 		if r.SynergyMatrix.PairCount > 0 {
-			sb.WriteString(fmt.Sprintf("**Synergy**: %d pairs found (%.1f%% coverage)\n\n",
-				r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage))
+			fmt.Fprintf(sb, "**Synergy**: %d pairs found (%.1f%% coverage)\n\n",
+				r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage)
 		}
 	}
 }
@@ -887,7 +878,7 @@ func formatDeckStrengthsAndWeaknesses(sb *strings.Builder, r evaluation.Evaluati
 
 	for _, s := range strengths[:min(3, len(strengths))] {
 		if s.score.Score >= 7.0 {
-			sb.WriteString(fmt.Sprintf("- %s: %.1f/10.0 - %s\n", s.name, s.score.Score, s.score.Assessment))
+			fmt.Fprintf(sb, "- %s: %.1f/10.0 - %s\n", s.name, s.score.Score, s.score.Assessment)
 		}
 	}
 	sb.WriteString("\n")
@@ -897,7 +888,7 @@ func formatDeckStrengthsAndWeaknesses(sb *strings.Builder, r evaluation.Evaluati
 	for i := len(strengths) - 1; i >= max(0, len(strengths)-3); i-- {
 		s := strengths[i]
 		if s.score.Score < 7.0 {
-			sb.WriteString(fmt.Sprintf("- %s: %.1f/10.0 - %s\n", s.name, s.score.Score, s.score.Assessment))
+			fmt.Fprintf(sb, "- %s: %.1f/10.0 - %s\n", s.name, s.score.Score, s.score.Assessment)
 		}
 	}
 	sb.WriteString("\n")
@@ -907,26 +898,26 @@ func formatDeckStrengthsAndWeaknesses(sb *strings.Builder, r evaluation.Evaluati
 func formatDeckAnalysis(sb *strings.Builder, r evaluation.EvaluationResult) {
 	// Defense analysis
 	if len(r.DefenseAnalysis.Details) > 0 {
-		sb.WriteString(fmt.Sprintf("**Defense Analysis** (%.1f/10.0):\n", r.DefenseAnalysis.Score))
+		fmt.Fprintf(sb, "**Defense Analysis** (%.1f/10.0):\n", r.DefenseAnalysis.Score)
 		for _, detail := range r.DefenseAnalysis.Details {
-			sb.WriteString(fmt.Sprintf("- %s\n", detail))
+			fmt.Fprintf(sb, "- %s\n", detail)
 		}
 		sb.WriteString("\n")
 	}
 
 	// Attack analysis
 	if len(r.AttackAnalysis.Details) > 0 {
-		sb.WriteString(fmt.Sprintf("**Attack Analysis** (%.1f/10.0):\n", r.AttackAnalysis.Score))
+		fmt.Fprintf(sb, "**Attack Analysis** (%.1f/10.0):\n", r.AttackAnalysis.Score)
 		for _, detail := range r.AttackAnalysis.Details {
-			sb.WriteString(fmt.Sprintf("- %s\n", detail))
+			fmt.Fprintf(sb, "- %s\n", detail)
 		}
 		sb.WriteString("\n")
 	}
 
 	// Synergy information
 	if r.SynergyMatrix.PairCount > 0 {
-		sb.WriteString(fmt.Sprintf("**Synergy**: %d card pairs found (%.1f%% coverage, avg synergy: %.2f)\n\n",
-			r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage, r.SynergyMatrix.AverageSynergy))
+		fmt.Fprintf(sb, "**Synergy**: %d card pairs found (%.1f%% coverage, avg synergy: %.2f)\n\n",
+			r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage, r.SynergyMatrix.AverageSynergy)
 	}
 }
 

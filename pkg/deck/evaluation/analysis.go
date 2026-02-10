@@ -23,6 +23,8 @@ const (
 
 // scoreTierThresholds applies tiered scoring based on value thresholds
 // Returns the score for the first threshold met (thresholds checked in order)
+//
+//nolint:unused // Shared helper retained for incremental scoring refactors.
 func scoreTierThresholds(value float64, thresholds, scores []float64) float64 {
 	for i, threshold := range thresholds {
 		if value >= threshold {
@@ -108,6 +110,8 @@ func filterByAirTargeting(cards []deck.CardCandidate) []deck.CardCandidate {
 // ============================================================================
 
 // generateSummaryFromScore returns summary text based on score thresholds
+//
+//nolint:unused // Shared helper retained for incremental analysis refactors.
 func generateSummaryFromScore(score float64, summaries map[float64]string) string {
 	// Sort thresholds descending
 	type threshold struct {
@@ -135,8 +139,11 @@ func generateSummaryFromScore(score float64, summaries map[float64]string) strin
 // Phase 1: Foundation Helpers - Legacy Functions
 // ============================================================================
 
-// countAirTargeters returns cards that can target air units
-// Deprecated: Use filterByAirTargeting instead
+// countAirTargeters returns cards that can target air units.
+//
+// Deprecated: Use filterByAirTargeting instead.
+//
+//nolint:unused // Deprecated compatibility shim retained for external callers.
 func countAirTargeters(cards []deck.CardCandidate) []deck.CardCandidate {
 	return filterByAirTargeting(cards)
 }
@@ -260,13 +267,14 @@ func BuildDefenseAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 	buildingCount := float64(len(buildings))
 
 	summary := "Solid defensive capabilities"
-	if airCount == 0 {
+	switch {
+	case airCount == 0:
 		summary = "No anti-air coverage - vulnerable to aerial threats"
-	} else if airCount < 2 {
+	case airCount < 2:
 		summary = "Weak anti-air coverage"
-	} else if buildingCount == 0 {
+	case buildingCount == 0:
 		summary = "Good anti-air but lacks defensive buildings"
-	} else if airCount >= 3 && buildingCount >= 1 {
+	case airCount >= 3 && buildingCount >= 1:
 		summary = "Excellent defensive coverage with strong anti-air and buildings"
 	}
 
@@ -786,16 +794,18 @@ func calculatePlayerLevelMetrics(deckCards []deck.CardCandidate, playerContext *
 
 // generateViabilityRating assigns competitive viability rating from score
 func generateViabilityRating(competitiveViability float64) string {
-	if competitiveViability >= 9.0 {
+	switch {
+	case competitiveViability >= 9.0:
 		return "Tournament ready"
-	} else if competitiveViability >= 7.0 {
+	case competitiveViability >= 7.0:
 		return "Ladder competitive"
-	} else if competitiveViability >= 5.0 {
+	case competitiveViability >= 5.0:
 		return "Playable but underleveled"
-	} else if competitiveViability >= 3.0 {
+	case competitiveViability >= 3.0:
 		return "Significant disadvantage"
+	default:
+		return "Not competitive"
 	}
-	return "Not competitive"
 }
 
 // collectRarityBreakdown counts cards by rarity
@@ -1240,6 +1250,8 @@ func BuildEvolutionAnalysis(deckCards []deck.CardCandidate, playerContext *Playe
 
 // applyCriticalFlawPenalties applies additional penalties for critical compositional flaws
 // that make a deck fundamentally unviable, beyond what category scores capture
+//
+//nolint:gocognit,gocyclo // Domain penalty matrix is explicit to keep balancing transparent.
 func applyCriticalFlawPenalties(baseScore float64, deckCards []deck.CardCandidate) float64 {
 	score := baseScore
 

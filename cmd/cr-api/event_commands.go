@@ -16,7 +16,7 @@ import (
 )
 
 // eventTagFlag returns the standard player tag flag for event commands
-func eventTagFlag() cli.Flag {
+func eventTagFlag() *cli.StringFlag {
 	return &cli.StringFlag{
 		Name:     "tag",
 		Aliases:  []string{"p"},
@@ -26,7 +26,7 @@ func eventTagFlag() cli.Flag {
 }
 
 // eventExportCSVFlag returns the standard export-csv flag
-func eventExportCSVFlag() cli.Flag {
+func eventExportCSVFlag() *cli.BoolFlag {
 	return &cli.BoolFlag{
 		Name:  "export-csv",
 		Usage: "Export to CSV",

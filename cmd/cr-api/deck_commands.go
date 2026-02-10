@@ -26,6 +26,8 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/klauer/clash-royale-api/go/pkg/recommend"
 	"github.com/urfave/cli/v3"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 const (
@@ -150,6 +152,8 @@ type suitePlayerData struct {
 	PlayerName   string
 	PlayerTag    string
 }
+
+//nolint:unused // Reserved for phased suite refactor tracked in beads.
 type suiteDeckInfo struct {
 	Strategy  string   `json:"strategy"`
 	Variation int      `json:"variation"`
@@ -157,6 +161,8 @@ type suiteDeckInfo struct {
 	AvgElixir float64  `json:"avg_elixir"`
 	FilePath  string   `json:"file_path"`
 }
+
+//nolint:unused // Reserved for phased suite refactor tracked in beads.
 type suiteEvalResult struct {
 	Name      string                      `json:"name"`
 	Strategy  string                      `json:"strategy"`
@@ -184,9 +190,10 @@ func loadSuitePlayerDataFromAnalysis(builder *deck.Builder, tag, dataDir string,
 	}, nil
 }
 
+//nolint:dupl // Shared API loading refactor tracked under clash-royale-api-sg50.
 func loadSuitePlayerDataFromAPI(builder *deck.Builder, tag, apiToken string, verbose bool) (*suitePlayerData, error) {
 	if apiToken == "" {
-		return nil, fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
+		return nil, fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode")
 	}
 	client := clashroyale.NewClient(apiToken)
 	if verbose {
@@ -1364,6 +1371,8 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 }
 
 // runPhase0CardConstraints runs the optional card constraint suggestion phase
+//
+//nolint:unused // Reserved for phased suite refactor tracked in beads.
 func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, constraintThreshold float64, topN int, verbose bool) error {
 	if !suggestConstraints {
 		return nil
@@ -1430,6 +1439,8 @@ func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, cons
 }
 
 // runPhase1BuildDeckVariations builds deck variations for the analysis suite
+//
+//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
 func runPhase1BuildDeckVariations(tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
 	decksDir := filepath.Join(outputDir, "decks")
 	if err := os.MkdirAll(decksDir, 0o755); err != nil {
@@ -1575,6 +1586,8 @@ func runPhase1BuildDeckVariations(tag, strategiesStr, outputDir string, variatio
 }
 
 // runPhase2EvaluateAllDecks evaluates all built decks for the analysis suite
+//
+//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
 func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlayerData, outputDir, tag, apiToken string, fromAnalysis, verbose bool, timestamp string) ([]suiteEvalResult, string, error) {
 	evaluationsDir := filepath.Join(outputDir, "evaluations")
 	if err := os.MkdirAll(evaluationsDir, 0o755); err != nil {
@@ -1742,6 +1755,8 @@ func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlay
 }
 
 // runPhase3CompareTopPerformers compares top decks and generates final report
+//
+//nolint:unused,funlen // Reserved for phased suite refactor tracked in beads.
 func runPhase3CompareTopPerformers(results []suiteEvalResult, topN int, outputDir, timestamp string, playerData *suitePlayerData, successCount int, suiteSummaryPath, evalFilePath string) (string, error) {
 	// Select top N decks
 	compareCount := topN
@@ -1823,6 +1838,8 @@ func runPhase3CompareTopPerformers(results []suiteEvalResult, topN int, outputDi
 // (2) Evaluate all built decks using evaluate-batch logic
 // (3) Compare top performers using compare logic
 // (4) Generate comprehensive markdown report
+//
+//nolint:funlen,gocognit,gocyclo,gocritic,dupl // Legacy orchestration path pending extraction in clash-royale-api-1g1r.
 func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Extract flags
 	tag := cmd.String("tag")
@@ -2342,6 +2359,7 @@ func deckAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+//nolint:funlen,gocognit,gocyclo // Command flow complexity scheduled for decomposition in clash-royale-api-1g1r.
 func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	cardNames := cmd.StringSlice("cards")
@@ -2431,7 +2449,7 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	printf("🃏 Current Deck: %s\n", strings.Join(cardNames, " • "))
 	printf("📊 Average Elixir: %.2f\n", currentResult.AvgElixir)
 	printf("🎯 Archetype: %s (%.0f%% confidence)\n",
-		strings.Title(string(currentResult.DetectedArchetype)),
+		cases.Title(language.English).String(string(currentResult.DetectedArchetype)),
 		currentResult.ArchetypeConfidence*100)
 	fmt.Println()
 	printf("⭐ Current Overall Score: %.1f/10 - %s\n",
@@ -2504,6 +2522,7 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+//nolint:funlen,gocognit,gocyclo // Command flow complexity scheduled for decomposition in clash-royale-api-1g1r.
 func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	limit := cmd.Int("limit")
@@ -2563,7 +2582,7 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	} else {
 		// ONLINE MODE: Fetch from API
 		if apiToken == "" {
-			return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
+			return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode")
 		}
 
 		client := clashroyale.NewClient(apiToken)
@@ -3170,9 +3189,11 @@ func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile
 }
 
 // loadPlayerDataOnline fetches and analyzes player data from the API
+//
+//nolint:dupl // Shared API loading refactor tracked under clash-royale-api-sg50.
 func loadPlayerDataOnline(builder *deck.Builder, tag, apiToken string, verbose bool) (*playerDataLoadResult, error) {
 	if apiToken == "" {
-		return nil, fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode.")
+		return nil, fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode")
 	}
 
 	client := clashroyale.NewClient(apiToken)
@@ -3248,6 +3269,8 @@ func applyExcludeFilter(cardAnalysis *deck.CardAnalysis, excludeCards []string) 
 }
 
 // displayIdealDeck shows the deck with recommended upgrades applied
+//
+//nolint:funlen,gocognit,gocyclo // Presentation logic slated for extraction to dedicated display package.
 func displayIdealDeck(cmd *cli.Command, builder *deck.Builder, cardAnalysis deck.CardAnalysis, deckRec *deck.DeckRecommendation, playerName, playerTag string, upgrades *deck.UpgradeRecommendations) {
 	if upgrades == nil || len(upgrades.Recommendations) == 0 {
 		return
@@ -3979,6 +4002,8 @@ func fetchPlayerContextIfNeeded(playerTag, apiToken string, verbose bool) *evalu
 }
 
 // persistEvaluationResult saves evaluation result to storage if player tag is provided
+//
+//nolint:gocyclo // Error-path branching required for storage fallbacks.
 func persistEvaluationResult(result *evaluation.EvaluationResult, playerTag string, verbose bool) error {
 	if playerTag == "" {
 		return nil
@@ -4135,8 +4160,10 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	// Evaluate the deck
 	result := evaluation.Evaluate(deckCards, synergyDB, playerContext)
 
-	// Save to persistent storage
-	_ = persistEvaluationResult(&result, playerTag, verbose)
+	// Save to persistent storage.
+	if err := persistEvaluationResult(&result, playerTag, verbose); err != nil && verbose {
+		fprintf(os.Stderr, "warning: failed to persist evaluation result: %v\n", err)
+	}
 
 	// Format output
 	formattedOutput, err := formatEvaluationResult(&result, format)
@@ -4870,6 +4897,8 @@ func truncateWithEllipsis(s string, maxLen int) string {
 }
 
 // formatScoreWithRating formats a score and rating in a consistent format
+//
+//nolint:unused // Shared formatter candidate retained for follow-up display refactor.
 func formatScoreWithRating(score float64, rating string) string {
 	return fmt.Sprintf("%.2f (%s)", score, rating)
 }
@@ -4902,8 +4931,8 @@ func writeSummaryHeader(buf *strings.Builder, playerName, playerTag string) {
 
 // writeSummaryStats writes the statistics section for batch summary
 func writeSummaryStats(buf *strings.Builder, totalDecks, evaluatedCount int, totalTime time.Duration, sortBy string) {
-	buf.WriteString(fmt.Sprintf("Total Decks: %d | Evaluated: %d | Sorted by: %s\n", totalDecks, evaluatedCount, sortBy))
-	buf.WriteString(fmt.Sprintf("Total Time: %v | Avg: %v\n\n", totalTime, totalTime/time.Duration(max(evaluatedCount, 1))))
+	fmt.Fprintf(buf, "Total Decks: %d | Evaluated: %d | Sorted by: %s\n", totalDecks, evaluatedCount, sortBy)
+	fmt.Fprintf(buf, "Total Time: %v | Avg: %v\n\n", totalTime, totalTime/time.Duration(max(evaluatedCount, 1)))
 }
 
 // writeSummaryTable writes the results table for batch summary
@@ -5019,41 +5048,41 @@ func writeDetailedResults[T any](buf *strings.Builder, results []T) {
 
 // writeDeckHeader writes the deck number and name header
 func writeDeckHeader(buf *strings.Builder, deckNum int, name string) {
-	buf.WriteString(fmt.Sprintf("═══════════════════ DECK #%d: %s ═══════════════════\n\n", deckNum, name))
+	fmt.Fprintf(buf, "═══════════════════ DECK #%d: %s ═══════════════════\n\n", deckNum, name)
 }
 
 // writeDeckInfo writes basic deck information (strategy, cards, elixir, archetype)
 func writeDeckInfo(buf *strings.Builder, strategy string, deck []string, result evaluation.EvaluationResult) {
 	if strategy != "" && strategy != "unknown" {
-		buf.WriteString(fmt.Sprintf("Strategy: %s\n", strategy))
+		fmt.Fprintf(buf, "Strategy: %s\n", strategy)
 	}
-	buf.WriteString(fmt.Sprintf("Deck: %s\n", strings.Join(deck, " - ")))
-	buf.WriteString(fmt.Sprintf("Avg Elixir: %.2f\n", result.AvgElixir))
-	buf.WriteString(fmt.Sprintf("Archetype: %s (%.1f%% confidence)\n\n", result.DetectedArchetype, result.ArchetypeConfidence*100))
+	fmt.Fprintf(buf, "Deck: %s\n", strings.Join(deck, " - "))
+	fmt.Fprintf(buf, "Avg Elixir: %.2f\n", result.AvgElixir)
+	fmt.Fprintf(buf, "Archetype: %s (%.1f%% confidence)\n\n", result.DetectedArchetype, result.ArchetypeConfidence*100)
 }
 
 // writeDeckScores writes all category scores for a deck
 func writeDeckScores(buf *strings.Builder, result evaluation.EvaluationResult) {
 	buf.WriteString("SCORES:\n")
-	buf.WriteString(fmt.Sprintf("  Overall:     %.2f (%s)\n", result.OverallScore, result.OverallRating))
-	buf.WriteString(fmt.Sprintf("  Attack:      %.2f (%s)\n", result.Attack.Score, result.Attack.Rating))
-	buf.WriteString(fmt.Sprintf("  Defense:     %.2f (%s)\n", result.Defense.Score, result.Defense.Rating))
-	buf.WriteString(fmt.Sprintf("  Synergy:     %.2f (%s)\n", result.Synergy.Score, result.Synergy.Rating))
-	buf.WriteString(fmt.Sprintf("  Versatility: %.2f (%s)\n", result.Versatility.Score, result.Versatility.Rating))
-	buf.WriteString(fmt.Sprintf("  F2P:         %.2f (%s)\n", result.F2PFriendly.Score, result.F2PFriendly.Rating))
-	buf.WriteString(fmt.Sprintf("  Playability: %.2f (%s)\n\n", result.Playability.Score, result.Playability.Rating))
+	fmt.Fprintf(buf, "  Overall:     %.2f (%s)\n", result.OverallScore, result.OverallRating)
+	fmt.Fprintf(buf, "  Attack:      %.2f (%s)\n", result.Attack.Score, result.Attack.Rating)
+	fmt.Fprintf(buf, "  Defense:     %.2f (%s)\n", result.Defense.Score, result.Defense.Rating)
+	fmt.Fprintf(buf, "  Synergy:     %.2f (%s)\n", result.Synergy.Score, result.Synergy.Rating)
+	fmt.Fprintf(buf, "  Versatility: %.2f (%s)\n", result.Versatility.Score, result.Versatility.Rating)
+	fmt.Fprintf(buf, "  F2P:         %.2f (%s)\n", result.F2PFriendly.Score, result.F2PFriendly.Rating)
+	fmt.Fprintf(buf, "  Playability: %.2f (%s)\n\n", result.Playability.Score, result.Playability.Rating)
 }
 
 // writeDeckAssessments writes key assessments for attack, defense, and synergy
 func writeDeckAssessments(buf *strings.Builder, result evaluation.EvaluationResult) {
 	if result.Attack.Assessment != "" {
-		buf.WriteString(fmt.Sprintf("Attack: %s\n", result.Attack.Assessment))
+		fmt.Fprintf(buf, "Attack: %s\n", result.Attack.Assessment)
 	}
 	if result.Defense.Assessment != "" {
-		buf.WriteString(fmt.Sprintf("Defense: %s\n", result.Defense.Assessment))
+		fmt.Fprintf(buf, "Defense: %s\n", result.Defense.Assessment)
 	}
 	if result.Synergy.Assessment != "" {
-		buf.WriteString(fmt.Sprintf("Synergy: %s\n", result.Synergy.Assessment))
+		fmt.Fprintf(buf, "Synergy: %s\n", result.Synergy.Assessment)
 	}
 }
 

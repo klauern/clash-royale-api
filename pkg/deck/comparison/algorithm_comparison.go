@@ -186,6 +186,8 @@ func DefaultComparisonConfig() ComparisonConfig {
 }
 
 // CompareAlgorithms runs comprehensive comparison between V1 and V2 algorithms
+//
+//nolint:funlen // Comparison pipeline intentionally linear for auditability.
 func CompareAlgorithms(playerTag string, cardAnalysis deck.CardAnalysis, config ComparisonConfig) (*AlgorithmComparisonResult, error) {
 	if config.PlayerTag == "" {
 		config.PlayerTag = playerTag
@@ -238,11 +240,12 @@ func CompareAlgorithms(playerTag string, cardAnalysis deck.CardAnalysis, config 
 	result.Summary.SignificantLosses = significantLosses
 
 	// Determine winner
-	if result.Summary.V2AverageScore > result.Summary.V1AverageScore*(1+config.SignificanceThreshold) {
+	switch {
+	case result.Summary.V2AverageScore > result.Summary.V1AverageScore*(1+config.SignificanceThreshold):
 		result.Summary.Winner = WinnerV2
-	} else if result.Summary.V1AverageScore > result.Summary.V2AverageScore*(1+config.SignificanceThreshold) {
+	case result.Summary.V1AverageScore > result.Summary.V2AverageScore*(1+config.SignificanceThreshold):
 		result.Summary.Winner = WinnerV1
-	} else {
+	default:
 		result.Summary.Winner = WinnerTie
 	}
 
@@ -487,7 +490,8 @@ func generateRecommendations(result *AlgorithmComparisonResult, config Compariso
 	}
 
 	// Determine recommendation
-	if result.Summary.Winner == WinnerV2 {
+	switch result.Summary.Winner {
+	case WinnerV2:
 		recs.AlgorithmCutover = WinnerV2
 		if result.Summary.Improvement > 20 {
 			recs.Confidence = ConfidenceHigh
@@ -496,12 +500,12 @@ func generateRecommendations(result *AlgorithmComparisonResult, config Compariso
 			recs.Confidence = ConfidenceMedium
 			recs.Reasoning = append(recs.Reasoning, fmt.Sprintf("V2 shows modest %.1f%% improvement", result.Summary.Improvement))
 		}
-	} else if result.Summary.Winner == WinnerV1 {
+	case WinnerV1:
 		recs.AlgorithmCutover = WinnerV1
 		recs.Confidence = ConfidenceHigh
 		recs.Reasoning = append(recs.Reasoning, "V1 still outperforms V2")
 		recs.KnownIssues = append(recs.KnownIssues, "V2 algorithm needs refinement")
-	} else {
+	default:
 		recs.AlgorithmCutover = WinnerV1
 		recs.Confidence = ConfidenceLow
 		recs.Reasoning = append(recs.Reasoning, "No significant difference between V1 and V2")

@@ -392,6 +392,11 @@ func addDeckFuzzListCommand() *cli.Command {
 				Name:  "max-elixir",
 				Usage: "Maximum average elixir",
 			},
+			&cli.IntFlag{
+				Name:  "max-same-archetype",
+				Usage: "Maximum decks per archetype in returned results (0 = unlimited)",
+				Value: 0,
+			},
 			&cli.StringFlag{
 				Name:  "format",
 				Value: "summary",

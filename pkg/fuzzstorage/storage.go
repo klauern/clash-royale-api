@@ -366,6 +366,89 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	return s.scanRows(rows)
 }
 
+// ArchetypeHistogram returns deck counts grouped by archetype for the given filters.
+// Limit and offset are intentionally ignored so the histogram represents the full matching set.
+//
+//nolint:funlen,gocognit,gocyclo // Query assembly contains explicit filter combinations.
+func (s *Storage) ArchetypeHistogram(opts QueryOptions) (map[string]int, error) {
+	query := `
+		SELECT archetype, COUNT(*) AS deck_count
+		FROM top_decks
+		WHERE 1=1
+	`
+	args := []any{}
+
+	if opts.MinScore > 0 {
+		query += " AND overall_score >= ?"
+		args = append(args, opts.MinScore)
+	}
+	if opts.MaxScore > 0 {
+		query += " AND overall_score <= ?"
+		args = append(args, opts.MaxScore)
+	}
+	if opts.Archetype != "" {
+		query += " AND archetype = ?"
+		args = append(args, opts.Archetype)
+	}
+	if opts.MinAvgElixir > 0 {
+		query += " AND avg_elixir >= ?"
+		args = append(args, opts.MinAvgElixir)
+	}
+	if opts.MaxAvgElixir > 0 {
+		query += " AND avg_elixir <= ?"
+		args = append(args, opts.MaxAvgElixir)
+	}
+
+	if len(opts.RequireAllCards) > 0 {
+		for _, card := range opts.RequireAllCards {
+			query += " AND cards LIKE ?"
+			args = append(args, "%"+card+"%")
+		}
+	}
+	if len(opts.RequireAnyCards) > 0 {
+		var subQuery strings.Builder
+		subQuery.WriteString(" AND (")
+		for i, card := range opts.RequireAnyCards {
+			if i > 0 {
+				subQuery.WriteString(" OR ")
+			}
+			subQuery.WriteString("cards LIKE ?")
+			args = append(args, "%"+card+"%")
+		}
+		subQuery.WriteString(")")
+		query += subQuery.String()
+	}
+	if len(opts.ExcludeCards) > 0 {
+		for _, card := range opts.ExcludeCards {
+			query += " AND cards NOT LIKE ?"
+			args = append(args, "%"+card+"%")
+		}
+	}
+
+	query += " GROUP BY archetype ORDER BY deck_count DESC, archetype ASC"
+
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query archetype histogram: %w", err)
+	}
+	defer closeWithLog(rows, "archetype histogram rows")
+
+	histogram := make(map[string]int)
+	for rows.Next() {
+		var archetype string
+		var count int
+		if err := rows.Scan(&archetype, &count); err != nil {
+			return nil, fmt.Errorf("failed to scan archetype histogram row: %w", err)
+		}
+		histogram[archetype] = count
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating archetype histogram rows: %w", err)
+	}
+
+	return histogram, nil
+}
+
 // scanRows scans rows from a query into DeckEntry slices
 func (s *Storage) scanRows(rows *sql.Rows) ([]DeckEntry, error) {
 	entries := []DeckEntry{}

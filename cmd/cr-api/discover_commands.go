@@ -580,8 +580,10 @@ func handleDiscoveryResult(err error, runner *deck.DiscoveryRunner, playerTag st
 	}
 	printf("\nView results with: cr-api deck leaderboard show --tag %s\n", playerTag)
 
-	// Clear checkpoint on successful completion
-	_ = runner.ClearCheckpoint() // Error is acceptable - checkpoint cleanup is best-effort
+	// Clear checkpoint on successful completion.
+	if err := runner.ClearCheckpoint(); err != nil && verbose {
+		fprintf(os.Stderr, "warning: failed to clear checkpoint: %v\n", err)
+	}
 
 	return nil
 }
@@ -601,7 +603,10 @@ func attemptResume(runner *deck.DiscoveryRunner, resume, verbose bool) {
 
 // warnExistingCheckpoint checks for and warns about existing checkpoints when starting fresh
 func warnExistingCheckpoint(playerTag string) {
-	homeDir, _ := os.UserHomeDir()
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		homeDir = "."
+	}
 	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
 	if _, err := os.Stat(checkpointPath); err == nil {
@@ -611,6 +616,8 @@ func warnExistingCheckpoint(playerTag string) {
 }
 
 // runDiscoveryCommand is the shared implementation for start/run commands
+//
+//nolint:gocyclo,funlen // Command setup/teardown has many required branches.
 func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
 	playerTag := cmd.String("tag")
 	strategy := deck.GeneratorStrategy(cmd.String("strategy"))
@@ -891,6 +898,8 @@ func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 }
 
 // runDiscoveryInBackground runs the discovery session as a background daemon
+//
+//nolint:funlen,gocognit,gocyclo // Process management and flag forwarding require explicit control flow.
 func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
 	playerTag := cmd.String("tag")
 
@@ -903,10 +912,14 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	// Check for already running process
 	pidFile := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.pid", sanitizedTag))
 	if _, err := os.Stat(pidFile); err == nil {
-		pidData, _ := os.ReadFile(pidFile)
+		pidData, readErr := os.ReadFile(pidFile)
+		if readErr != nil {
+			return fmt.Errorf("failed to read PID file: %w", readErr)
+		}
 		var pid int
-		// Parse error is acceptable - invalid PID will just fail FindProcess
-		_, _ = fmt.Sscanf(string(pidData), "%d", &pid)
+		if _, scanErr := fmt.Sscanf(string(pidData), "%d", &pid); scanErr != nil {
+			return fmt.Errorf("failed to parse PID file: %w", scanErr)
+		}
 		process, err := os.FindProcess(pid)
 		if err == nil {
 			// Try to signal the process to check if it's alive
@@ -915,7 +928,9 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 			}
 		}
 		// Process is dead, clean up PID file
-		_ = os.Remove(pidFile) // Error is acceptable - file may have been deleted by another process
+		if removeErr := os.Remove(pidFile); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("failed to remove stale PID file: %w", removeErr)
+		}
 	}
 
 	// Ensure PID directory exists
@@ -997,7 +1012,9 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 
 	// Write PID file
 	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", process.Pid)), 0o644); err != nil {
-		_ = process.Kill() // Best-effort cleanup - process was just started, may not be running yet
+		if killErr := process.Kill(); killErr != nil && !errors.Is(killErr, os.ErrProcessDone) {
+			fmt.Fprintf(os.Stderr, "warning: failed to kill process after PID write error: %v\n", killErr)
+		}
 		return fmt.Errorf("failed to write PID file: %w", err)
 	}
 

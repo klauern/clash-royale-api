@@ -1,6 +1,10 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
+)
 
 func TestGetElixirBucket(t *testing.T) {
 	testCases := []struct {
@@ -66,5 +70,39 @@ func TestEnsureElixirBucketDistribution_MissingBucketFallsBackToScoreOrder(t *te
 	}
 	if reordered[1].Deck[0] != "M1" {
 		t.Fatalf("second result should come from medium bucket, got %s", reordered[1].Deck[0])
+	}
+}
+
+func TestLimitArchetypeRepetition(t *testing.T) {
+	input := []FuzzingResult{
+		{Deck: []string{"1"}, Archetype: "cycle"},
+		{Deck: []string{"2"}, Archetype: "cycle"},
+		{Deck: []string{"3"}, Archetype: "beatdown"},
+		{Deck: []string{"4"}, Archetype: "cycle"},
+		{Deck: []string{"5"}, Archetype: "beatdown"},
+	}
+
+	decks := make([]fuzzstorage.DeckEntry, 0, len(input))
+	for _, r := range input {
+		decks = append(decks, fuzzstorage.DeckEntry{
+			Cards:     r.Deck,
+			Archetype: r.Archetype,
+		})
+	}
+
+	filtered := limitArchetypeRepetition(decks, 1)
+	if len(filtered) != 2 {
+		t.Fatalf("expected 2 decks after limiting archetypes, got %d", len(filtered))
+	}
+
+	counts := map[string]int{}
+	for _, deck := range filtered {
+		counts[deck.Archetype]++
+	}
+	if counts["cycle"] != 1 {
+		t.Fatalf("expected 1 cycle deck, got %d", counts["cycle"])
+	}
+	if counts["beatdown"] != 1 {
+		t.Fatalf("expected 1 beatdown deck, got %d", counts["beatdown"])
 	}
 }

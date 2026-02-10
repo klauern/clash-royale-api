@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+const testArchetypeCycle = "cycle"
+
 // createTestStorage creates a temporary test database
 func createTestStorage(t *testing.T) (*Storage, func()) {
 	t.Helper()
@@ -638,5 +640,143 @@ func TestQuery_Pagination(t *testing.T) {
 	if page1[2].OverallScore <= page2[0].OverallScore {
 		t.Errorf("pages overlap: page1 last=%f, page2 first=%f",
 			page1[2].OverallScore, page2[0].OverallScore)
+	}
+}
+
+func TestCleanup(t *testing.T) {
+	storage, cleanup := createTestStorage(t)
+	defer cleanup()
+
+	now := time.Now()
+
+	lowOld := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", "L"}, 6.0)
+	lowOld.Archetype = testArchetypeCycle
+	lowOld.EvaluatedAt = now.AddDate(0, 0, -10)
+	if _, _, err := storage.InsertDeck(lowOld); err != nil {
+		t.Fatalf("failed to insert lowOld: %v", err)
+	}
+
+	lowNew := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", "M"}, 6.5)
+	lowNew.Archetype = testArchetypeCycle
+	lowNew.EvaluatedAt = now
+	if _, _, err := storage.InsertDeck(lowNew); err != nil {
+		t.Fatalf("failed to insert lowNew: %v", err)
+	}
+
+	highOld := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", "N"}, 8.8)
+	highOld.Archetype = testArchetypeCycle
+	highOld.EvaluatedAt = now.AddDate(0, 0, -10)
+	if _, _, err := storage.InsertDeck(highOld); err != nil {
+		t.Fatalf("failed to insert highOld: %v", err)
+	}
+
+	deleted, err := storage.Cleanup(CleanupOptions{
+		MinScore:  7.0,
+		OlderThan: now.AddDate(0, 0, -7),
+		Archetype: testArchetypeCycle,
+	})
+	if err != nil {
+		t.Fatalf("cleanup failed: %v", err)
+	}
+	if deleted != 1 {
+		t.Fatalf("expected 1 deleted deck, got %d", deleted)
+	}
+
+	count, err := storage.Count()
+	if err != nil {
+		t.Fatalf("count failed: %v", err)
+	}
+	if count != 2 {
+		t.Fatalf("expected 2 decks remaining, got %d", count)
+	}
+}
+
+func TestPruneTopNPerArchetype(t *testing.T) {
+	storage, cleanup := createTestStorage(t)
+	defer cleanup()
+
+	archetypes := []string{"beatdown", "beatdown", "beatdown", "cycle", "cycle"}
+	scores := []float64{9.5, 8.9, 7.1, 8.4, 7.8}
+	for i := range archetypes {
+		entry := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", string(rune('H' + i))}, scores[i])
+		entry.Archetype = archetypes[i]
+		if _, _, err := storage.InsertDeck(entry); err != nil {
+			t.Fatalf("insert failed: %v", err)
+		}
+	}
+
+	deleted, err := storage.PruneTopNPerArchetype(1)
+	if err != nil {
+		t.Fatalf("prune failed: %v", err)
+	}
+	if deleted != 3 {
+		t.Fatalf("expected 3 deleted decks, got %d", deleted)
+	}
+
+	counts, err := storage.GetArchetypeCounts()
+	if err != nil {
+		t.Fatalf("GetArchetypeCounts failed: %v", err)
+	}
+	for _, c := range counts {
+		if c.Count != 1 {
+			t.Fatalf("expected archetype %s count 1, got %d", c.Archetype, c.Count)
+		}
+	}
+}
+
+func TestExportImportJSON(t *testing.T) {
+	storage, cleanup := createTestStorage(t)
+	defer cleanup()
+
+	for i := 0; i < 3; i++ {
+		entry := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", string(rune('H' + i))}, 9.0-float64(i))
+		if _, _, err := storage.InsertDeck(entry); err != nil {
+			t.Fatalf("insert failed: %v", err)
+		}
+	}
+
+	exportPath := filepath.Join(t.TempDir(), "backup.json")
+	exported, err := storage.ExportJSON(exportPath)
+	if err != nil {
+		t.Fatalf("ExportJSON failed: %v", err)
+	}
+	if exported != 3 {
+		t.Fatalf("expected 3 exported decks, got %d", exported)
+	}
+
+	if err := storage.Clear(); err != nil {
+		t.Fatalf("Clear failed: %v", err)
+	}
+
+	inserted, updated, err := storage.ImportJSON(exportPath)
+	if err != nil {
+		t.Fatalf("ImportJSON failed: %v", err)
+	}
+	if inserted != 3 || updated != 0 {
+		t.Fatalf("expected inserted=3 updated=0, got inserted=%d updated=%d", inserted, updated)
+	}
+
+	count, err := storage.Count()
+	if err != nil {
+		t.Fatalf("Count failed: %v", err)
+	}
+	if count != 3 {
+		t.Fatalf("expected 3 decks after import, got %d", count)
+	}
+}
+
+func TestVacuum(t *testing.T) {
+	storage, cleanup := createTestStorage(t)
+	defer cleanup()
+
+	for i := 0; i < 10; i++ {
+		entry := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", string(rune('H' + i))}, 9.0-float64(i)/10.0)
+		if _, _, err := storage.InsertDeck(entry); err != nil {
+			t.Fatalf("insert failed: %v", err)
+		}
+	}
+
+	if err := storage.Vacuum(); err != nil {
+		t.Fatalf("Vacuum failed: %v", err)
 	}
 }

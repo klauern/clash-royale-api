@@ -25,88 +25,89 @@ func formatStars(count int) string {
 
 // formatSynergyStrength converts numeric strength to visual representation
 func formatSynergyStrength(strength float64) string {
-	if strength >= 0.8 {
+	switch {
+	case strength >= 0.8:
 		return "🔥🔥🔥 Excellent"
-	} else if strength >= 0.6 {
+	case strength >= 0.6:
 		return "🔥🔥 Strong"
-	} else if strength >= 0.4 {
+	case strength >= 0.4:
 		return "🔥 Good"
-	} else {
+	default:
 		return "• Moderate"
 	}
 }
 
 // getSynergyStrengthLabel converts numeric synergy score to strength label
 func getSynergyStrengthLabel(score float64) string {
-	if score >= 0.8 {
+	switch {
+	case score >= 0.8:
 		return "Excellent"
-	} else if score >= 0.6 {
+	case score >= 0.6:
 		return "Strong"
-	} else if score >= 0.4 {
+	case score >= 0.4:
 		return "Good"
-	} else {
+	default:
 		return "Moderate"
 	}
 }
 
 // deriveStrengths extracts strengths from high-scoring categories
 func deriveStrengths(result *EvaluationResult) []string {
-	var strengths []string
-
-	if result.Attack.Score >= 7.0 {
-		strengths = append(strengths, "Strong offensive potential")
-	}
-	if result.Defense.Score >= 7.0 {
-		strengths = append(strengths, "Solid defensive capabilities")
-	}
-	if result.Synergy.Score >= 7.0 {
-		strengths = append(strengths, "Excellent card synergies")
-	}
-	if result.Versatility.Score >= 7.0 {
-		strengths = append(strengths, "Highly versatile and adaptable")
-	}
-	if result.F2PFriendly.Score >= 7.0 {
-		strengths = append(strengths, "Easy to upgrade for F2P players")
-	}
-	if result.Playability.Score >= 7.0 {
-		strengths = append(strengths, "All cards available - fully playable")
-	}
-
-	if len(strengths) == 0 {
-		strengths = append(strengths, "Balanced deck with no major standout strengths")
-	}
-
-	return strengths
+	return deriveCategoryMessages(
+		result,
+		7.0,
+		true,
+		"Balanced deck with no major standout strengths",
+		[]string{
+			"Strong offensive potential",
+			"Solid defensive capabilities",
+			"Excellent card synergies",
+			"Highly versatile and adaptable",
+			"Easy to upgrade for F2P players",
+			"All cards available - fully playable",
+		},
+	)
 }
 
 // deriveWeaknesses extracts weaknesses from low-scoring categories
 func deriveWeaknesses(result *EvaluationResult) []string {
-	var weaknesses []string
+	return deriveCategoryMessages(
+		result,
+		5.0,
+		false,
+		"No critical weaknesses identified",
+		[]string{
+			"Weak offensive pressure",
+			"Vulnerable defensive structure",
+			"Poor card synergies",
+			"Limited adaptability to different matchups",
+			"Expensive upgrade path",
+			"Missing cards - not fully playable",
+		},
+	)
+}
 
-	if result.Attack.Score < 5.0 {
-		weaknesses = append(weaknesses, "Weak offensive pressure")
-	}
-	if result.Defense.Score < 5.0 {
-		weaknesses = append(weaknesses, "Vulnerable defensive structure")
-	}
-	if result.Synergy.Score < 5.0 {
-		weaknesses = append(weaknesses, "Poor card synergies")
-	}
-	if result.Versatility.Score < 5.0 {
-		weaknesses = append(weaknesses, "Limited adaptability to different matchups")
-	}
-	if result.F2PFriendly.Score < 5.0 {
-		weaknesses = append(weaknesses, "Expensive upgrade path")
-	}
-	if result.Playability.Score < 5.0 {
-		weaknesses = append(weaknesses, "Missing cards - not fully playable")
+func deriveCategoryMessages(result *EvaluationResult, threshold float64, useGTE bool, fallback string, messages []string) []string {
+	scores := []float64{
+		result.Attack.Score,
+		result.Defense.Score,
+		result.Synergy.Score,
+		result.Versatility.Score,
+		result.F2PFriendly.Score,
+		result.Playability.Score,
 	}
 
-	if len(weaknesses) == 0 {
-		weaknesses = append(weaknesses, "No critical weaknesses identified")
+	out := make([]string, 0, len(messages))
+	for i, score := range scores {
+		if (useGTE && score >= threshold) || (!useGTE && score < threshold) {
+			out = append(out, messages[i])
+		}
+	}
+	if len(out) == 0 {
+		out = append(out, fallback)
 	}
 
-	return weaknesses
+	return out
 }
 
 // generateRecommendations creates improvement suggestions based on scores

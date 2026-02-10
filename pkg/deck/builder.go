@@ -188,6 +188,8 @@ func (b *Builder) addIncludedCards(deck, candidates []*CardCandidate, used map[s
 
 // selectCardsByRole selects cards for each role with composition override support
 // getOverrideCount returns the override count for a role, or the default if not overridden
+//
+//nolint:gocyclo // Role override matrix requires explicit precedence rules.
 func (b *Builder) getOverrideCount(role CardRole, defaultCount int) int {
 	if b.strategyConfig.CompositionOverrides == nil {
 		return defaultCount
@@ -807,6 +809,7 @@ func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[
 	return pool[:count]
 }
 
+//nolint:gocyclo // Selection logic intentionally branches on availability/constraints.
 func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[string]bool, count int, currentDeck []*CardCandidate) []*CardCandidate {
 	var pool []*CardCandidate
 	for _, candidate := range candidates {

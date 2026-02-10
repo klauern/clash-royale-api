@@ -184,6 +184,8 @@ func NewDiscoveryRunner(config DiscoveryConfig) (*DiscoveryRunner, error) {
 }
 
 // Run executes the discovery process
+//
+//nolint:gocognit,gocyclo // Runner lifecycle intentionally keeps explicit checkpoint/error paths.
 func (r *DiscoveryRunner) Run(ctx context.Context) (err error) {
 	defer func() {
 		if closeErr := r.iterator.Close(); closeErr != nil {

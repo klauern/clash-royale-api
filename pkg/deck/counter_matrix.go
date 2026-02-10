@@ -248,6 +248,8 @@ func (cm *CounterMatrix) CountCardsWithCapability(cardNames []string, category C
 }
 
 // AnalyzeThreatCoverage analyzes how well a deck can counter a specific threat
+//
+//nolint:funlen,gocognit,gocyclo,gocritic // Coverage grading branches mirror domain thresholds directly.
 func (cm *CounterMatrix) AnalyzeThreatCoverage(deckCards []string, threatName string) ThreatCoverage {
 	coverage := ThreatCoverage{
 		ThreatName: threatName,

@@ -79,7 +79,7 @@ func normalizeArchetype(input string) string {
 	case "cycle":
 		return "cycle"
 	case "control":
-		return "control"
+		return string(ThreatTypeControl)
 	case "siege":
 		return "siege"
 	case "bridge_spam", "bridgespam", "bridge spam":

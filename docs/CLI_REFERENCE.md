@@ -959,6 +959,22 @@ cr-api deck leaderboard stats --tag <TAG> --archetypes
 # View storage statistics (DB size + archetype distribution)
 cr-api deck storage stats --tag <TAG>
 
+# Purge all stored decks (with confirmation prompt)
+cr-api deck storage purge --tag <TAG>
+
+# Remove low-score or stale decks
+cr-api deck storage cleanup --tag <TAG> --min-score 7.0 --older-than-days 30
+
+# Keep only top N decks per archetype
+cr-api deck storage prune --tag <TAG> --keep 50
+
+# Compact SQLite file after cleanup/purge
+cr-api deck storage vacuum --tag <TAG>
+
+# Backup/restore deck storage
+cr-api deck storage export --tag <TAG> --output leaderboard-backup.json
+cr-api deck storage import --tag <TAG> --input leaderboard-backup.json
+
 # Export leaderboard
 cr-api deck leaderboard export --tag <TAG> --format csv --output decks.csv
 ```
@@ -974,5 +990,13 @@ cr-api deck leaderboard export --tag <TAG> --format csv --output decks.csv
 - `--require-all <cards>` - Decks must contain ALL cards
 - `--require-any <cards>` - Decks must contain ANY cards
 - `--exclude <cards>` - Exclude decks with ANY cards
+
+**Storage Flags:**
+- `storage purge`: `--confirm` to skip prompt
+- `storage cleanup`: `--min-score`, `--older-than-days`, `--archetype`, `--dry-run`, `--confirm`
+- `storage prune`: `--keep`, `--dry-run`, `--confirm`
+- `storage vacuum`: no extra flags
+- `storage export`: `--output`, `--format json`
+- `storage import`: `--input`, `--confirm`
 
 See [DECK_DISCOVERY.md](DECK_DISCOVERY.md) for complete documentation.

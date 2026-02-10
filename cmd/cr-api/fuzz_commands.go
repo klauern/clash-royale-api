@@ -1297,6 +1297,8 @@ func filterResultsByArchetype(results []FuzzingResult, archetypes []string, _ bo
 
 // ensureArchetypeCoverage ensures the top results include at least one deck from each archetype.
 // It reorders results to guarantee archetype diversity while preserving score-based ranking as much as possible.
+//
+//nolint:funlen,gocognit,gocyclo // Selection heuristics intentionally explicit for readability.
 func ensureArchetypeCoverage(results []FuzzingResult, top int, verbose bool) []FuzzingResult {
 	if len(results) == 0 {
 		return results
@@ -1405,6 +1407,8 @@ func getElixirBucket(avgElixir float64) string {
 }
 
 // ensureElixirBucketDistribution ensures top results include decks from low/medium/high elixir buckets.
+//
+//nolint:gocyclo,funlen // Bucket balancing logic is branch-heavy by design.
 func ensureElixirBucketDistribution(results []FuzzingResult, top int, verbose bool) []FuzzingResult {
 	if len(results) == 0 {
 		return results
@@ -1906,6 +1910,7 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	maxScore := cmd.Float64("max-score")
 	minElixir := cmd.Float64("min-elixir")
 	maxElixir := cmd.Float64("max-elixir")
+	maxSameArchetype := cmd.Int("max-same-archetype")
 	format := cmd.String("format")
 
 	storage, err := fuzzstorage.NewStorage("")
@@ -1940,6 +1945,14 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to query decks: %w", err)
 	}
+	if maxSameArchetype > 0 {
+		decks = limitArchetypeRepetition(decks, maxSameArchetype)
+	}
+
+	histogram, err := storage.ArchetypeHistogram(queryOpts)
+	if err != nil {
+		return fmt.Errorf("failed to query archetype histogram: %w", err)
+	}
 
 	total, _ := storage.Count()
 	dbPath := storage.GetDBPath()
@@ -1950,13 +1963,13 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	// Format output
 	switch format {
 	case "json":
-		return formatListResultsJSON(decks, dbPath, total)
+		return formatListResultsJSON(decks, dbPath, total, histogram)
 	case "csv":
 		return formatListResultsCSV(decks)
 	case "detailed":
-		return formatListResultsDetailed(decks, dbPath, total)
+		return formatListResultsDetailed(decks, dbPath, total, histogram)
 	default:
-		return formatListResultsSummary(decks, dbPath, total)
+		return formatListResultsSummary(decks, dbPath, total, histogram)
 	}
 }
 
@@ -2174,7 +2187,7 @@ func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, player *cl
 }
 
 // formatListResultsSummary formats list results in summary format
-func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
+func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, total int, histogram map[string]int) error {
 	printf("Saved Top Decks\n")
 	printf("Database: %s\n", dbPath)
 	printf("Total decks: %d\n\n", total)
@@ -2200,16 +2213,22 @@ func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, tota
 	}
 
 	flushWriter(w)
+
+	if len(histogram) > 0 {
+		printf("\nArchetype Histogram (matching query):\n")
+		printArchetypeHistogram(histogram)
+	}
 	return nil
 }
 
 // formatListResultsJSON formats list results in JSON format
-func formatListResultsJSON(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
+func formatListResultsJSON(decks []fuzzstorage.DeckEntry, dbPath string, total int, histogram map[string]int) error {
 	output := map[string]any{
-		"database": dbPath,
-		"total":    total,
-		"returned": len(decks),
-		"results":  decks,
+		"database":            dbPath,
+		"total":               total,
+		"returned":            len(decks),
+		"results":             decks,
+		"archetype_histogram": histogram,
 	}
 
 	encoder := json.NewEncoder(os.Stdout)
@@ -2253,7 +2272,7 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
 }
 
 // formatListResultsDetailed formats list results in detailed format
-func formatListResultsDetailed(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
+func formatListResultsDetailed(decks []fuzzstorage.DeckEntry, dbPath string, total int, histogram map[string]int) error {
 	printf("Saved Top Decks\n")
 	printf("Database: %s\n", dbPath)
 	printf("Total decks: %d\n\n", total)
@@ -2268,7 +2287,56 @@ func formatListResultsDetailed(decks []fuzzstorage.DeckEntry, dbPath string, tot
 		printf("Evaluated: %s\n\n", deck.EvaluatedAt.Format(time.RFC3339))
 	}
 
+	if len(histogram) > 0 {
+		printf("Archetype Histogram (matching query):\n")
+		printArchetypeHistogram(histogram)
+	}
+
 	return nil
+}
+
+func printArchetypeHistogram(histogram map[string]int) {
+	type entry struct {
+		archetype string
+		count     int
+	}
+
+	entries := make([]entry, 0, len(histogram))
+	for archetype, count := range histogram {
+		entries = append(entries, entry{archetype: archetype, count: count})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].count == entries[j].count {
+			return entries[i].archetype < entries[j].archetype
+		}
+		return entries[i].count > entries[j].count
+	})
+
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 2, ' ', 0)
+	fprintln(w, "Archetype\tCount")
+	fprintln(w, "---------\t-----")
+	for _, e := range entries {
+		fprintf(w, "%s\t%d\n", e.archetype, e.count)
+	}
+	flushWriter(w)
+}
+
+func limitArchetypeRepetition(decks []fuzzstorage.DeckEntry, maxPerArchetype int) []fuzzstorage.DeckEntry {
+	if maxPerArchetype <= 0 {
+		return decks
+	}
+
+	counts := make(map[string]int, len(decks))
+	filtered := make([]fuzzstorage.DeckEntry, 0, len(decks))
+	for _, deck := range decks {
+		if counts[deck.Archetype] >= maxPerArchetype {
+			continue
+		}
+		counts[deck.Archetype]++
+		filtered = append(filtered, deck)
+	}
+	return filtered
 }
 
 // loadCardsFromSavedDecks loads unique cards from top N saved decks
@@ -2349,6 +2417,8 @@ func loadSavedDecksForSeeding(n int, _ *clashroyale.Player, verbose bool) ([][]s
 }
 
 // generateDeckMutations generates mutations of saved decks by swapping cards
+//
+//nolint:gocognit,gocyclo // Mutation pipeline uses explicit branching for reproducibility.
 func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, count, mutationIntensity int, verbose bool) [][]string {
 	if player == nil || len(player.Cards) == 0 {
 		if verbose {
@@ -2459,6 +2529,8 @@ func loadDeckFromStorage(deckRef string, verbose bool) ([]string, error) {
 }
 
 // generateVariations generates variations of a base deck by swapping some cards
+//
+//nolint:gocyclo // Variation generation includes multiple guarded mutation paths.
 func generateVariations(baseDeck []string, player *clashroyale.Player, count, mutationIntensity int, verbose bool) [][]string {
 	if player == nil || len(player.Cards) == 0 {
 		if verbose {

@@ -435,6 +435,8 @@ func (cs *CoherenceScorer) detectArchetype(cards []CardCandidate, result *Cohere
 }
 
 // applyAntiSynergyPenalties checks for conflicting card combinations
+//
+//nolint:gocognit,gocyclo // Anti-synergy rules are intentionally explicit and table-driven follow-up is tracked.
 func (cs *CoherenceScorer) applyAntiSynergyPenalties(cards []CardCandidate, result *CoherenceResult) {
 	cardNames := make(map[string]bool)
 	for _, card := range cards {

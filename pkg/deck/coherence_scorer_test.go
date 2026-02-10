@@ -5,6 +5,11 @@ import (
 	"testing"
 )
 
+const (
+	cardGolem         = "Golem"
+	archetypeBeatdown = "beatdown"
+)
+
 // Helper to create a card candidate
 func makeCard(name string, elixir int, role CardRole) CardCandidate {
 	return CardCandidate{
@@ -142,7 +147,7 @@ func TestCoherenceSiegeVsBeatdown(t *testing.T) {
 		if v.Type == "anti_synergy" {
 			// Check if the conflict mentions siege/beatdown
 			for _, card := range v.Cards {
-				if card == "X-Bow" || card == "Golem" {
+				if card == "X-Bow" || card == cardGolem {
 					foundConflict = true
 					break
 				}
@@ -241,7 +246,7 @@ func TestCoherenceBaitDeck(t *testing.T) {
 	result := scorer.AnalyzeCoherence(cards, StrategyBalanced)
 
 	// Should detect as bait archetype
-	if result.PrimaryArchetype != "bait" {
+	if result.PrimaryArchetype != string(SynergyBait) {
 		t.Errorf("Expected primary archetype 'bait', got '%s'", result.PrimaryArchetype)
 	}
 
@@ -276,7 +281,7 @@ func TestCoherenceBridgeSpam(t *testing.T) {
 
 	// Should detect as bridge_spam archetype (or beatdown which is similar)
 	// Note: PEKKA is in both beatdown and bridge_spam win conditions
-	if result.PrimaryArchetype != "bridge_spam" && result.PrimaryArchetype != "beatdown" {
+	if result.PrimaryArchetype != string(SynergyBridgeSpam) && result.PrimaryArchetype != archetypeBeatdown {
 		t.Errorf("Expected primary archetype 'bridge_spam' or 'beatdown', got '%s'", result.PrimaryArchetype)
 	}
 

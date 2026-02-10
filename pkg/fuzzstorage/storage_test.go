@@ -79,3 +79,70 @@ func TestUpdateDeck(t *testing.T) {
 		t.Errorf("expected evaluated_at to be set")
 	}
 }
+
+func TestArchetypeHistogram(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "fuzz_test.db")
+	storage, err := NewStorage(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create storage: %v", err)
+	}
+	defer storage.Close()
+
+	input := []DeckEntry{
+		{
+			Cards:            []string{"A", "B", "C", "D", "E", "F", "G", "H"},
+			OverallScore:     8.9,
+			AttackScore:      8.0,
+			DefenseScore:     8.1,
+			SynergyScore:     8.2,
+			VersatilityScore: 7.9,
+			AvgElixir:        3.1,
+			Archetype:        "cycle",
+			ArchetypeConf:    0.9,
+			EvaluatedAt:      time.Now(),
+		},
+		{
+			Cards:            []string{"I", "J", "K", "L", "M", "N", "O", "P"},
+			OverallScore:     8.7,
+			AttackScore:      7.9,
+			DefenseScore:     8.0,
+			SynergyScore:     8.1,
+			VersatilityScore: 7.8,
+			AvgElixir:        4.2,
+			Archetype:        "beatdown",
+			ArchetypeConf:    0.9,
+			EvaluatedAt:      time.Now(),
+		},
+		{
+			Cards:            []string{"Q", "R", "S", "T", "U", "V", "W", "X"},
+			OverallScore:     8.5,
+			AttackScore:      7.8,
+			DefenseScore:     7.9,
+			SynergyScore:     8.0,
+			VersatilityScore: 7.7,
+			AvgElixir:        3.0,
+			Archetype:        "cycle",
+			ArchetypeConf:    0.85,
+			EvaluatedAt:      time.Now(),
+		},
+	}
+
+	for i := range input {
+		entry := input[i]
+		if _, _, err := storage.InsertDeck(&entry); err != nil {
+			t.Fatalf("failed to insert deck %d: %v", i, err)
+		}
+	}
+
+	histogram, err := storage.ArchetypeHistogram(QueryOptions{})
+	if err != nil {
+		t.Fatalf("failed to build histogram: %v", err)
+	}
+
+	if histogram["cycle"] != 2 {
+		t.Fatalf("expected cycle count 2, got %d", histogram["cycle"])
+	}
+	if histogram["beatdown"] != 1 {
+		t.Fatalf("expected beatdown count 1, got %d", histogram["beatdown"])
+	}
+}

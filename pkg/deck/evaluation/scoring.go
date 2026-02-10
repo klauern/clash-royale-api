@@ -127,6 +127,8 @@ type defenseMetrics struct {
 }
 
 // extractDefenseMetrics collects defense-related metrics from deck cards
+//
+//nolint:gocognit,gocyclo // Defensive metric extraction keeps explicit weighted branches.
 func extractDefenseMetrics(deckCards []deck.CardCandidate) defenseMetrics {
 	metrics := defenseMetrics{}
 
@@ -165,16 +167,18 @@ func extractDefenseMetrics(deckCards []deck.CardCandidate) defenseMetrics {
 
 // scoreAntiAir calculates the anti-air coverage score component (0-10 scale)
 func scoreAntiAir(count int) float64 {
-	if count >= 4 {
+	switch {
+	case count >= 4:
 		return 10.0 // Excellent air defense
-	} else if count >= 3 {
+	case count >= 3:
 		return 8.5
-	} else if count >= 2 {
+	case count >= 2:
 		return 5.5
-	} else if count == 1 {
+	case count == 1:
 		return 3.0
+	default:
+		return 0.0 // No anti-air = critical weakness
 	}
-	return 0.0 // No anti-air = critical weakness
 }
 
 // scoreBuildings calculates the building presence score component (0-10 scale)
@@ -189,14 +193,16 @@ func scoreBuildings(count int, quality float64) float64 {
 
 // scoreSupport calculates the support troop score component (0-10 scale)
 func scoreSupport(count int) float64 {
-	if count >= 4 {
+	switch {
+	case count >= 4:
 		return 10.0
-	} else if count >= 3 {
+	case count >= 3:
 		return 7.0
-	} else if count >= 2 {
+	case count >= 2:
 		return 5.0
+	default:
+		return 2.0
 	}
-	return 2.0
 }
 
 // ScoreDefense calculates the defense score for a deck (0-10 scale)
