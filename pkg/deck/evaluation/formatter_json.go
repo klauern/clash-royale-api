@@ -45,6 +45,24 @@ func FormatJSON(result *EvaluationResult) (string, error) {
 		},
 	}
 
+	if result.OverallBreakdown != nil {
+		evaluationMap, ok := output["evaluation"].(map[string]interface{})
+		if ok {
+			overallMap, ok := evaluationMap["overall"].(map[string]interface{})
+			if ok {
+				overallMap["breakdown"] = map[string]interface{}{
+					"base_score":           result.OverallBreakdown.BaseScore,
+					"contextual_score":     result.OverallBreakdown.ContextualScore,
+					"ladder_score":         result.OverallBreakdown.LadderScore,
+					"normalized_score":     result.OverallBreakdown.NormalizedScore,
+					"final_score":          result.OverallBreakdown.FinalScore,
+					"deck_level_ratio":     result.OverallBreakdown.DeckLevelRatio,
+					"normalization_factor": result.OverallBreakdown.NormalizationFactor,
+				}
+			}
+		}
+	}
+
 	// Marshal to pretty-printed JSON
 	jsonData, err := json.MarshalIndent(output, "", "  ")
 	if err != nil {

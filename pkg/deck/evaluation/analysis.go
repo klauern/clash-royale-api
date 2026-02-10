@@ -850,6 +850,58 @@ func calculateLadderViabilityScore(avgLevelGap float64, maxLevelGap int) float64
 	return score
 }
 
+func clampScoreToTen(score float64) float64 {
+	if score < 0 {
+		return 0
+	}
+	if score > 10 {
+		return 10
+	}
+	return score
+}
+
+func calculateDeckLevelRatio(deckCards []deck.CardCandidate, playerContext *PlayerContext) float64 {
+	if playerContext == nil || len(deckCards) == 0 {
+		return 1.0
+	}
+
+	totalRatio := 0.0
+	seen := 0
+	for _, card := range deckCards {
+		info, exists := playerContext.Collection[card.Name]
+		if !exists || info.MaxLevel <= 0 {
+			continue
+		}
+		levelRatio := float64(info.Level) / float64(info.MaxLevel)
+		if levelRatio < 0 {
+			levelRatio = 0
+		}
+		if levelRatio > 1 {
+			levelRatio = 1
+		}
+		totalRatio += levelRatio
+		seen++
+	}
+
+	if seen == 0 {
+		return 1.0
+	}
+
+	return totalRatio / float64(seen)
+}
+
+func calculateLevelNormalizationFactor(levelRatio float64) float64 {
+	if levelRatio < 0 {
+		levelRatio = 0
+	}
+	if levelRatio > 1 {
+		levelRatio = 1
+	}
+
+	// Keep the prototype conservative to avoid destabilizing existing score scales.
+	return 0.90 + (levelRatio * 0.20)
+}
+
 // upgradePriority represents an upgrade recommendation
 type upgradePriority struct {
 	cardName     string
@@ -1342,17 +1394,34 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 	// Weights: Attack 23%, Defense 22%, Synergy 21%, Versatility 14%, F2P 10%, Playability 10%
 	// Balanced emphasis on attack/defense/synergy fundamentals
 	// Critical flaws are separately penalized via applyCriticalFlawPenalties
-	// When player context is available, replace Playability with ladder viability at the same weight.
-	overallScore := (attackScore.Score * overallWeightAttack) +
+	baseOverallScore := (attackScore.Score * overallWeightAttack) +
 		(defenseScore.Score * overallWeightDefense) +
 		(synergyScore.Score * overallWeightSynergy) +
 		(versatilityScore.Score * overallWeightVersatility) +
 		(f2pScore.Score * overallWeightF2P) +
 		(playabilityScore.Score * overallWeightPlayability)
 
+	// When player context is available, replace Playability with ladder viability at the same weight.
+	contextualScore := baseOverallScore
 	if playerContext != nil {
-		overallScore = overallScore - (playabilityScore.Score * overallWeightPlayability) + (ladderAnalysis.Score * overallWeightPlayability)
+		contextualScore = baseOverallScore - (playabilityScore.Score * overallWeightPlayability) + (ladderAnalysis.Score * overallWeightPlayability)
 	}
+
+	levelRatio := 1.0
+	normalizationFactor := 1.0
+	normalizedScore := contextualScore
+	overallScore := contextualScore
+
+	if playerContext != nil {
+		levelRatio = calculateDeckLevelRatio(deckCards, playerContext)
+		normalizationFactor = calculateLevelNormalizationFactor(levelRatio)
+		normalizedScore = clampScoreToTen(contextualScore * normalizationFactor)
+
+		// Prototype blend: preserve base signal, then fold in ladder and level-normalized context.
+		overallScore = (contextualScore * 0.75) + (ladderAnalysis.Score * 0.15) + (normalizedScore * 0.10)
+	}
+
+	overallScore = clampScoreToTen(overallScore)
 
 	// Apply penalties for critical compositional flaws
 	// These are severe enough to warrant direct overall score penalties
@@ -1405,12 +1474,23 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 			overallScore -= penalty
 
 			// Ensure score doesn't go below 0
-			if overallScore < 0 {
-				overallScore = 0
-			}
+			overallScore = clampScoreToTen(overallScore)
 
 			// Recalculate overall rating with penalty applied
 			overallRating = ScoreToRating(overallScore)
+		}
+	}
+
+	var overallBreakdown *OverallScoreBreakdown
+	if playerContext != nil {
+		overallBreakdown = &OverallScoreBreakdown{
+			BaseScore:           baseOverallScore,
+			ContextualScore:     contextualScore,
+			LadderScore:         ladderAnalysis.Score,
+			NormalizedScore:     normalizedScore,
+			FinalScore:          overallScore,
+			DeckLevelRatio:      levelRatio,
+			NormalizationFactor: normalizationFactor,
 		}
 	}
 
@@ -1441,5 +1521,6 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 
 		SynergyMatrix:        synergyMatrix,
 		MissingCardsAnalysis: missingCardsAnalysis,
+		OverallBreakdown:     overallBreakdown,
 	}
 }

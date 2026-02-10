@@ -818,6 +818,11 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 type FuzzingResult struct {
 	Deck                []string
 	OverallScore        float64
+	ContextualScore     float64
+	LadderScore         float64
+	NormalizedScore     float64
+	DeckLevelRatio      float64
+	NormalizationFactor float64
 	AttackScore         float64
 	DefenseScore        float64
 	SynergyScore        float64
@@ -1040,9 +1045,27 @@ func evaluateSingleDeck(
 	// Run evaluation
 	evalResult := evaluation.Evaluate(candidates, synergyDB, playerContext)
 
+	contextualScore := evalResult.OverallScore
+	ladderScore := 0.0
+	normalizedScore := evalResult.OverallScore
+	deckLevelRatio := 1.0
+	normalizationFactor := 1.0
+	if evalResult.OverallBreakdown != nil {
+		contextualScore = evalResult.OverallBreakdown.ContextualScore
+		ladderScore = evalResult.OverallBreakdown.LadderScore
+		normalizedScore = evalResult.OverallBreakdown.NormalizedScore
+		deckLevelRatio = evalResult.OverallBreakdown.DeckLevelRatio
+		normalizationFactor = evalResult.OverallBreakdown.NormalizationFactor
+	}
+
 	return FuzzingResult{
 		Deck:                deckCards,
 		OverallScore:        evalResult.OverallScore,
+		ContextualScore:     contextualScore,
+		LadderScore:         ladderScore,
+		NormalizedScore:     normalizedScore,
+		DeckLevelRatio:      deckLevelRatio,
+		NormalizationFactor: normalizationFactor,
 		AttackScore:         evalResult.Attack.Score,
 		DefenseScore:        evalResult.Defense.Score,
 		SynergyScore:        evalResult.Synergy.Score,
@@ -1605,7 +1628,7 @@ func formatResultsSummary(
 	// Print table header with multi-line deck display
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 2, ' ', 0)
-	fprintln(w, "Rank\tDeck\tOverall\tAttack\tDefense\tSynergy\tElixir")
+	fprintln(w, "Rank\tDeck\tOverall\tLadder\tNorm\tAttack\tDefense\tSynergy\tElixir")
 
 	// Print each deck with all 8 cards
 	for i, result := range results {
@@ -1616,10 +1639,12 @@ func formatResultsSummary(
 		if len(deckStr) > 50 {
 			// First line: Rank, first 4 cards, scores
 			firstLine := strings.Join(result.Deck[:4], ", ")
-			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
 				i+1,
 				firstLine+",",
 				result.OverallScore,
+				result.LadderScore,
+				result.NormalizedScore,
 				result.AttackScore,
 				result.DefenseScore,
 				result.SynergyScore,
@@ -1631,10 +1656,12 @@ func formatResultsSummary(
 			fprintf(w, "\t%s\n", secondLine)
 		} else {
 			// Single line format for shorter deck strings
-			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
 				i+1,
 				deckStr,
 				result.OverallScore,
+				result.LadderScore,
+				result.NormalizedScore,
 				result.AttackScore,
 				result.DefenseScore,
 				result.SynergyScore,
@@ -1692,7 +1719,7 @@ func formatResultsCSV(results []FuzzingResult) error {
 	w := csv.NewWriter(os.Stdout)
 
 	// Write header
-	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
+	header := []string{"Rank", "Deck", "Overall", "Contextual", "Ladder", "Normalized", "LevelRatio", "NormFactor", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -1704,6 +1731,11 @@ func formatResultsCSV(results []FuzzingResult) error {
 			strconv.Itoa(i + 1),
 			deckStr,
 			fmt.Sprintf("%.2f", result.OverallScore),
+			fmt.Sprintf("%.2f", result.ContextualScore),
+			fmt.Sprintf("%.2f", result.LadderScore),
+			fmt.Sprintf("%.2f", result.NormalizedScore),
+			fmt.Sprintf("%.3f", result.DeckLevelRatio),
+			fmt.Sprintf("%.3f", result.NormalizationFactor),
 			fmt.Sprintf("%.2f", result.AttackScore),
 			fmt.Sprintf("%.2f", result.DefenseScore),
 			fmt.Sprintf("%.2f", result.SynergyScore),
@@ -1738,6 +1770,10 @@ func formatResultsDetailed(
 		printf("Cards: %s\n", strings.Join(result.Deck, ", "))
 		printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
 			result.OverallScore, result.AttackScore, result.DefenseScore, result.SynergyScore, result.VersatilityScore)
+		printf("Contextual: %.2f | Ladder: %.2f | Normalized: %.2f\n",
+			result.ContextualScore, result.LadderScore, result.NormalizedScore)
+		printf("Level Ratio: %.3f | Normalization Factor: %.3f\n",
+			result.DeckLevelRatio, result.NormalizationFactor)
 		printf("Avg Elixir: %.2f | Archetype: %s (%.0f%% confidence)\n",
 			result.AvgElixir, result.Archetype, result.ArchetypeConfidence*100)
 		printf("Evaluated: %s\n\n", result.EvaluatedAt.Format(time.RFC3339))
