@@ -185,8 +185,8 @@ func TestNewDiscoveryRunner(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Setup storage for valid config test
-			if tt.config.Storage == nil && !tt.wantErr {
+			// Setup storage for cases where storage should not be the primary validation error
+			if tt.config.Storage == nil && (!tt.wantErr || tt.errContains == "player tag is required") {
 				tmpDir, _ := os.MkdirTemp("", "discovery_test_*")
 				originalHome := os.Getenv("HOME")
 				os.Setenv("HOME", tmpDir)
@@ -779,8 +779,7 @@ func TestDiscoveryRunner_BestDeckTracking(t *testing.T) {
 
 // Helper function
 func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (
-		s[:len(substr)] == substr ||
+	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && (s[:len(substr)] == substr ||
 		s[len(s)-len(substr):] == substr ||
 		containsMiddleString(s, substr)))
 }

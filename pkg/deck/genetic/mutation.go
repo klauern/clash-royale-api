@@ -28,6 +28,7 @@ func (g *DeckGenome) Mutate() error {
 
 	positions := g.pickMutationPositions(numToMutate)
 	used := g.currentCardSet()
+	changed := false
 
 	for _, pos := range positions {
 		oldCard := g.Cards[pos]
@@ -55,6 +56,21 @@ func (g *DeckGenome) Mutate() error {
 
 		g.Cards[pos] = replacement
 		used[replacement] = true
+		changed = true
+	}
+
+	// Ensure low-intensity mutation still mutates when alternatives exist.
+	if !changed {
+		pos := randomInt(len(g.Cards))
+		oldCard := g.Cards[pos]
+		delete(used, oldCard)
+		replacement := g.singleCardSwap(used)
+		if replacement != "" && replacement != oldCard {
+			g.Cards[pos] = replacement
+			used[replacement] = true
+		} else {
+			used[oldCard] = true
+		}
 	}
 
 	g.Cards = g.repairDeck(g.Cards, g)
