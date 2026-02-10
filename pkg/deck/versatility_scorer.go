@@ -168,7 +168,7 @@ func (vs *VersatilityScorer) calculateRoleDiversity(deck []Card) float64 {
 }
 
 // MultiRoleVersatility calculates the multi-role component of versatility.
-func (vs *VersatilityScorer) MultiRoleVersatility(primary CardRole, secondary []CardRole, evolution []CardRole) float64 {
+func (vs *VersatilityScorer) MultiRoleVersatility(primary CardRole, secondary, evolution []CardRole) float64 {
 	roleCount := 1 + len(secondary) // Count primary + secondary roles
 	baseScore := 1.0 + float64(roleCount-1)*0.6
 

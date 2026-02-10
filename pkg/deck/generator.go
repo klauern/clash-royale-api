@@ -133,14 +133,14 @@ type DeckIterator interface {
 
 // DeckGenerator orchestrates deck generation with multiple strategies
 type DeckGenerator struct {
-	config      GeneratorConfig
-	candidates  []*CardCandidate
+	config           GeneratorConfig
+	candidates       []*CardCandidate
 	candidatesByRole map[CardRole][]*CardCandidate
-	includeMap  map[string]bool
-	excludeMap  map[string]bool
-	composition RoleComposition
-	rng         *rand.Rand
-	mu          sync.RWMutex
+	includeMap       map[string]bool
+	excludeMap       map[string]bool
+	composition      RoleComposition
+	rng              *rand.Rand
+	mu               sync.RWMutex
 }
 
 // NewDeckGenerator creates a new generator with the given configuration
@@ -170,11 +170,11 @@ func NewDeckGenerator(config GeneratorConfig) (*DeckGenerator, error) {
 	}
 
 	gen := &DeckGenerator{
-		config:      config,
-		composition: composition,
-		rng:         rand.New(rand.NewSource(seed)),
-		includeMap:  make(map[string]bool),
-		excludeMap:  make(map[string]bool),
+		config:           config,
+		composition:      composition,
+		rng:              rand.New(rand.NewSource(seed)),
+		includeMap:       make(map[string]bool),
+		excludeMap:       make(map[string]bool),
 		candidatesByRole: make(map[CardRole][]*CardCandidate),
 	}
 

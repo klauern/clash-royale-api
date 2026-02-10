@@ -47,10 +47,10 @@ type CounterCategoryGroup struct {
 
 // counterDataFile represents the JSON data structure for loading counter relationships
 type counterDataFile struct {
-	Version         int                   `json:"version"`
-	Description     string                `json:"description"`
-	LastUpdated     string                `json:"last_updated"`
-	Threats         []Threat              `json:"threats"`
+	Version           int                    `json:"version"`
+	Description       string                 `json:"description"`
+	LastUpdated       string                 `json:"last_updated"`
+	Threats           []Threat               `json:"threats"`
 	CounterCategories []CounterCategoryGroup `json:"counter_categories"`
 }
 
@@ -71,9 +71,9 @@ type CounterMatrix struct {
 // NewCounterMatrix creates a new empty counter matrix
 func NewCounterMatrix() *CounterMatrix {
 	return &CounterMatrix{
-		threatCounters:     make(map[string][]Counter),
-		counterCategories:  make(map[CounterCategory][]string),
-		cardCapabilities:   make(map[string][]CounterCategory),
+		threatCounters:    make(map[string][]Counter),
+		counterCategories: make(map[CounterCategory][]string),
+		cardCapabilities:  make(map[string][]CounterCategory),
 	}
 }
 
@@ -323,13 +323,13 @@ func (cm *CounterMatrix) AnalyzeThreatCoverage(deckCards []string, threatName st
 
 // ThreatCoverage represents how well a deck can counter a specific threat
 type ThreatCoverage struct {
-	ThreatName       string     `json:"threat_name"`
-	CanCounter       bool       `json:"can_counter"`
-	Effectiveness    float64    `json:"effectiveness"`
-	DeckCounters     []Counter  `json:"deck_counters"`
-	MissingCounters  []Counter  `json:"missing_counters"`
-	Reason           string     `json:"reason"`
-	Suggestion       string     `json:"suggestion,omitempty"`
+	ThreatName      string    `json:"threat_name"`
+	CanCounter      bool      `json:"can_counter"`
+	Effectiveness   float64   `json:"effectiveness"`
+	DeckCounters    []Counter `json:"deck_counters"`
+	MissingCounters []Counter `json:"missing_counters"`
+	Reason          string    `json:"reason"`
+	Suggestion      string    `json:"suggestion,omitempty"`
 }
 
 // formatCounterNames returns a comma-separated list of counter card names

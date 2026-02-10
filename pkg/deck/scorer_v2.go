@@ -124,13 +124,13 @@ type StrategyElixirProfile struct {
 // StrategyElixirProfiles maps strategies to their optimal elixir ranges.
 // These profiles guide the elixir fit scoring component.
 var StrategyElixirProfiles = map[Strategy]StrategyElixirProfile{
-	StrategyCycle:      {Target: 2.8, Min: 2.4, Max: 3.2},
-	StrategyControl:    {Target: 3.5, Min: 3.0, Max: 4.0},
-	StrategyAggro:      {Target: 3.8, Min: 3.2, Max: 4.3},
-	StrategyBalanced:   {Target: 3.3, Min: 2.8, Max: 3.8},
-	StrategySplash:     {Target: 3.5, Min: 3.0, Max: 4.0},
-	StrategySpell:      {Target: 3.5, Min: 3.0, Max: 4.0},
-	StrategySynergy:    {Target: 3.4, Min: 2.8, Max: 4.0},
+	StrategyCycle:    {Target: 2.8, Min: 2.4, Max: 3.2},
+	StrategyControl:  {Target: 3.5, Min: 3.0, Max: 4.0},
+	StrategyAggro:    {Target: 3.8, Min: 3.2, Max: 4.3},
+	StrategyBalanced: {Target: 3.3, Min: 2.8, Max: 3.8},
+	StrategySplash:   {Target: 3.5, Min: 3.0, Max: 4.0},
+	StrategySpell:    {Target: 3.5, Min: 3.0, Max: 4.0},
+	StrategySynergy:  {Target: 3.4, Min: 2.8, Max: 4.0},
 }
 
 // ScorerV2Result contains the detailed breakdown of a V2 deck score.
@@ -171,12 +171,12 @@ type ScorerV2Details struct {
 	AvgSynergyStrength   float64
 
 	// Counter coverage details
-	AirDefenseCount   int
-	TankKillerCount   int
-	SplashCount       int
-	SwarmSpellCount   int
-	BuildingCount     int
-	CoverageGaps      []string
+	AirDefenseCount int
+	TankKillerCount int
+	SplashCount     int
+	SwarmSpellCount int
+	BuildingCount   int
+	CoverageGaps    []string
 
 	// Archetype details
 	PrimaryArchetype    string
@@ -916,7 +916,7 @@ func CalculateCounterCoverageWithMatrix(cards []CardCandidate, counterMatrix *Co
 	if counterMatrix == nil {
 		return &DefensiveCoverageReport{
 			OverallScore: 0.0,
-			CoverageGaps:  []string{"No counter matrix provided"},
+			CoverageGaps: []string{"No counter matrix provided"},
 		}
 	}
 
@@ -930,4 +930,3 @@ func CalculateCounterCoverageWithMatrix(cards []CardCandidate, counterMatrix *Co
 	defensiveScorer := NewDefensiveScorer(counterMatrix)
 	return defensiveScorer.CalculateDefensiveCoverage(cardNames)
 }
-

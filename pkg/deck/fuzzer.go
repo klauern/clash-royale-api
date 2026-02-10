@@ -252,11 +252,11 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 	}
 
 	fuzzer := &DeckFuzzer{
-		cardsByRole:      cardsByRole,
-		allCards:         allCards,
-		config:           cfg,
-		composition:      DefaultRoleComposition(),
-		rng:              rng,
+		cardsByRole: cardsByRole,
+		allCards:    allCards,
+		config:      cfg,
+		composition: DefaultRoleComposition(),
+		rng:         rng,
 		stats: &FuzzingStats{
 			StartTime:       time.Now(),
 			GenerationTimes: make([]time.Duration, 0, cfg.Count),

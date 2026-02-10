@@ -2935,7 +2935,7 @@ func configureCombatStats(cmd *cli.Command) error {
 }
 
 // configureDeckBuilder sets up the deck builder with evolutions, filters, strategy, and synergy
-func configureDeckBuilder(cmd *cli.Command, dataDir string, strategy string) (*deck.Builder, error) {
+func configureDeckBuilder(cmd *cli.Command, dataDir, strategy string) (*deck.Builder, error) {
 	includeCards := cmd.StringSlice("include-cards")
 	excludeCards := cmd.StringSlice("exclude-cards")
 	verbose := cmd.Bool("verbose")
@@ -3340,7 +3340,7 @@ func displayIdealDeck(cmd *cli.Command, builder *deck.Builder, cardAnalysis deck
 }
 
 // saveDeckIfRequested saves the deck to disk if the save flag is set
-func saveDeckIfRequested(cmd *cli.Command, builder *deck.Builder, deckRec *deck.DeckRecommendation, playerTag string, dataDir string) error {
+func saveDeckIfRequested(cmd *cli.Command, builder *deck.Builder, deckRec *deck.DeckRecommendation, playerTag, dataDir string) error {
 	saveData := cmd.Bool("save")
 	verbose := cmd.Bool("verbose")
 

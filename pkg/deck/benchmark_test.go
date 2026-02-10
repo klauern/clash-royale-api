@@ -14,8 +14,8 @@ import (
 // BenchmarkDeckSpaceCalculator benchmarks the deck space calculator
 func BenchmarkDeckSpaceCalculator(b *testing.B) {
 	player := &clashroyale.Player{
-		Tag:  "#BENCH",
-		Name: "Benchmark Player",
+		Tag:   "#BENCH",
+		Name:  "Benchmark Player",
 		Cards: createLargeCardCollection(),
 	}
 
@@ -29,8 +29,8 @@ func BenchmarkDeckSpaceCalculator(b *testing.B) {
 // BenchmarkCalculateConstrainedCombinations benchmarks the constrained combinations calculation
 func BenchmarkCalculateConstrainedCombinations(b *testing.B) {
 	player := &clashroyale.Player{
-		Tag:  "#BENCH",
-		Name: "Benchmark Player",
+		Tag:   "#BENCH",
+		Name:  "Benchmark Player",
 		Cards: createLargeCardCollection(),
 	}
 
@@ -254,37 +254,81 @@ func createLargeCardCollection() []clashroyale.Card {
 	cards := make([]clashroyale.Card, 0, 50)
 
 	// Add cards with various roles
-	winConditions := []struct{ name string; elixir int }{
-		{"Hog Rider", 4}, {"Giant", 5}, {"Golem", 8}, {"Miner", 3},
-		{"Balloon", 5}, {"Royal Giant", 6}, {"Goblin Barrel", 3},
-		{"Graveyard", 5}, {"P.E.K.K.A", 7}, {"Mega Knight", 7},
+	winConditions := []struct {
+		name   string
+		elixir int
+	}{
+		{"Hog Rider", 4},
+		{"Giant", 5},
+		{"Golem", 8},
+		{"Miner", 3},
+		{"Balloon", 5},
+		{"Royal Giant", 6},
+		{"Goblin Barrel", 3},
+		{"Graveyard", 5},
+		{"P.E.K.K.A", 7},
+		{"Mega Knight", 7},
 	}
 
-	buildings := []struct{ name string; elixir int }{
-		{"Cannon", 3}, {"Tesla", 4}, {"Inferno Tower", 5},
-		{"Bomb Tower", 4}, {"X-Bow", 6}, {"Mortar", 4},
+	buildings := []struct {
+		name   string
+		elixir int
+	}{
+		{"Cannon", 3},
+		{"Tesla", 4},
+		{"Inferno Tower", 5},
+		{"Bomb Tower", 4},
+		{"X-Bow", 6},
+		{"Mortar", 4},
 		{"Elixir Collector", 6},
 	}
 
-	bigSpells := []struct{ name string; elixir int }{
-		{"Fireball", 4}, {"Poison", 4}, {"Rocket", 6},
+	bigSpells := []struct {
+		name   string
+		elixir int
+	}{
+		{"Fireball", 4},
+		{"Poison", 4},
+		{"Rocket", 6},
 		{"Lightning", 6},
 	}
 
-	smallSpells := []struct{ name string; elixir int }{
-		{"Zap", 2}, {"Log", 2}, {"Arrows", 3},
-		{"Barbarian Barrel", 2}, {"Snowball", 2},
+	smallSpells := []struct {
+		name   string
+		elixir int
+	}{
+		{"Zap", 2},
+		{"Log", 2},
+		{"Arrows", 3},
+		{"Barbarian Barrel", 2},
+		{"Snowball", 2},
 	}
 
-	support := []struct{ name string; elixir int }{
-		{"Musketeer", 4}, {"Archers", 3}, {"Baby Dragon", 4},
-		{"Valkyrie", 4}, {"Wizard", 5}, {"Electro Wizard", 4},
-		{"Hunter", 4}, {"Witch", 5}, {"Night Witch", 4},
+	support := []struct {
+		name   string
+		elixir int
+	}{
+		{"Musketeer", 4},
+		{"Archers", 3},
+		{"Baby Dragon", 4},
+		{"Valkyrie", 4},
+		{"Wizard", 5},
+		{"Electro Wizard", 4},
+		{"Hunter", 4},
+		{"Witch", 5},
+		{"Night Witch", 4},
 	}
 
-	cycle := []struct{ name string; elixir int }{
-		{"Skeletons", 1}, {"Ice Spirit", 1}, {"Bats", 2},
-		{"Goblin Gang", 3}, {"Knight", 3}, {"Ice Golem", 2},
+	cycle := []struct {
+		name   string
+		elixir int
+	}{
+		{"Skeletons", 1},
+		{"Ice Spirit", 1},
+		{"Bats", 2},
+		{"Goblin Gang", 3},
+		{"Knight", 3},
+		{"Ice Golem", 2},
 		{"Rascals", 5},
 	}
 
@@ -332,35 +376,77 @@ func createLargeCardCollection() []clashroyale.Card {
 func createLargeCandidateSet(count int) []*CardCandidate {
 	candidates := make([]*CardCandidate, 0, count)
 
-	winConditionCards := []struct{ name string; elixir int }{
-		{"Hog Rider", 4}, {"Giant", 5}, {"Golem", 8}, {"Miner", 3},
-		{"Balloon", 5}, {"Royal Giant", 6}, {"Goblin Barrel", 3},
-		{"Graveyard", 5}, {"P.E.K.K.A", 7}, {"Mega Knight", 7},
+	winConditionCards := []struct {
+		name   string
+		elixir int
+	}{
+		{"Hog Rider", 4},
+		{"Giant", 5},
+		{"Golem", 8},
+		{"Miner", 3},
+		{"Balloon", 5},
+		{"Royal Giant", 6},
+		{"Goblin Barrel", 3},
+		{"Graveyard", 5},
+		{"P.E.K.K.A", 7},
+		{"Mega Knight", 7},
 	}
 
-	buildingCards := []struct{ name string; elixir int }{
-		{"Cannon", 3}, {"Tesla", 4}, {"Inferno Tower", 5},
-		{"Bomb Tower", 4}, {"X-Bow", 6}, {"Mortar", 4},
+	buildingCards := []struct {
+		name   string
+		elixir int
+	}{
+		{"Cannon", 3},
+		{"Tesla", 4},
+		{"Inferno Tower", 5},
+		{"Bomb Tower", 4},
+		{"X-Bow", 6},
+		{"Mortar", 4},
 	}
 
-	bigSpellCards := []struct{ name string; elixir int }{
-		{"Fireball", 4}, {"Poison", 4}, {"Rocket", 6},
+	bigSpellCards := []struct {
+		name   string
+		elixir int
+	}{
+		{"Fireball", 4},
+		{"Poison", 4},
+		{"Rocket", 6},
 		{"Lightning", 6},
 	}
 
-	smallSpellCards := []struct{ name string; elixir int }{
-		{"Zap", 2}, {"Log", 2}, {"Arrows", 3},
-		{"Barbarian Barrel", 2}, {"Snowball", 2},
+	smallSpellCards := []struct {
+		name   string
+		elixir int
+	}{
+		{"Zap", 2},
+		{"Log", 2},
+		{"Arrows", 3},
+		{"Barbarian Barrel", 2},
+		{"Snowball", 2},
 	}
 
-	supportCards := []struct{ name string; elixir int }{
-		{"Musketeer", 4}, {"Archers", 3}, {"Baby Dragon", 4},
-		{"Valkyrie", 4}, {"Wizard", 5}, {"Electro Wizard", 4},
+	supportCards := []struct {
+		name   string
+		elixir int
+	}{
+		{"Musketeer", 4},
+		{"Archers", 3},
+		{"Baby Dragon", 4},
+		{"Valkyrie", 4},
+		{"Wizard", 5},
+		{"Electro Wizard", 4},
 	}
 
-	cycleCards := []struct{ name string; elixir int }{
-		{"Skeletons", 1}, {"Ice Spirit", 1}, {"Bats", 2},
-		{"Goblin Gang", 3}, {"Knight", 3}, {"Ice Golem", 2},
+	cycleCards := []struct {
+		name   string
+		elixir int
+	}{
+		{"Skeletons", 1},
+		{"Ice Spirit", 1},
+		{"Bats", 2},
+		{"Goblin Gang", 3},
+		{"Knight", 3},
+		{"Ice Golem", 2},
 	}
 
 	// Add win conditions
@@ -389,12 +475,12 @@ func createLargeCandidateSet(count int) []*CardCandidate {
 		}
 		role := RoleBuilding
 		candidates = append(candidates, &CardCandidate{
-			Name:              card.name,
-			Level:             11,
-			MaxLevel:          14,
-			Elixir:            card.elixir,
-			Role:              &role,
-			Score:             1.0 + float64(i)*0.01,
+			Name:     card.name,
+			Level:    11,
+			MaxLevel: 14,
+			Elixir:   card.elixir,
+			Role:     &role,
+			Score:    1.0 + float64(i)*0.01,
 		})
 	}
 
@@ -405,12 +491,12 @@ func createLargeCandidateSet(count int) []*CardCandidate {
 		}
 		role := RoleSpellBig
 		candidates = append(candidates, &CardCandidate{
-			Name:              card.name,
-			Level:             11,
-			MaxLevel:          14,
-			Elixir:            card.elixir,
-			Role:              &role,
-			Score:             1.0 + float64(i)*0.01,
+			Name:     card.name,
+			Level:    11,
+			MaxLevel: 14,
+			Elixir:   card.elixir,
+			Role:     &role,
+			Score:    1.0 + float64(i)*0.01,
 		})
 	}
 
@@ -421,12 +507,12 @@ func createLargeCandidateSet(count int) []*CardCandidate {
 		}
 		role := RoleSpellSmall
 		candidates = append(candidates, &CardCandidate{
-			Name:              card.name,
-			Level:             11,
-			MaxLevel:          14,
-			Elixir:            card.elixir,
-			Role:              &role,
-			Score:             1.0 + float64(i)*0.01,
+			Name:     card.name,
+			Level:    11,
+			MaxLevel: 14,
+			Elixir:   card.elixir,
+			Role:     &role,
+			Score:    1.0 + float64(i)*0.01,
 		})
 	}
 
@@ -437,12 +523,12 @@ func createLargeCandidateSet(count int) []*CardCandidate {
 		}
 		role := RoleSupport
 		candidates = append(candidates, &CardCandidate{
-			Name:              card.name,
-			Level:             11,
-			MaxLevel:          14,
-			Elixir:            card.elixir,
-			Role:              &role,
-			Score:             1.0 + float64(i)*0.01,
+			Name:     card.name,
+			Level:    11,
+			MaxLevel: 14,
+			Elixir:   card.elixir,
+			Role:     &role,
+			Score:    1.0 + float64(i)*0.01,
 		})
 	}
 
@@ -454,12 +540,12 @@ func createLargeCandidateSet(count int) []*CardCandidate {
 				break
 			}
 			candidates = append(candidates, &CardCandidate{
-				Name:              card.name,
-				Level:             11,
-				MaxLevel:          14,
-				Elixir:            card.elixir,
-				Role:              &role,
-				Score:             0.8,
+				Name:     card.name,
+				Level:    11,
+				MaxLevel: 14,
+				Elixir:   card.elixir,
+				Role:     &role,
+				Score:    0.8,
 			})
 		}
 	}

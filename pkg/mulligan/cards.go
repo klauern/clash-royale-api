@@ -10,7 +10,7 @@ var defaultCardsJSON []byte
 
 // CardConfig represents the JSON configuration structure for card data
 type CardConfig struct {
-	Version int                    `json:"version"`
+	Version int                     `json:"version"`
 	Cards   map[string]CardInfoJSON `json:"cards"`
 }
 

@@ -39,14 +39,14 @@ func TestCalculateDefensiveCoverage_BalancedDeck(t *testing.T) {
 
 	// A well-balanced deck with good coverage
 	balancedDeck := []string{
-		"Musketeer",      // Air defense
-		"Inferno Tower",  // Tank killer, air defense, building
-		"P.E.K.K.A",      // Tank killer
-		"Valkyrie",       // Splash defense
-		"The Log",        // Swarm clear
-		"Zap",            // Swarm clear
-		"Hog Rider",      // Win condition
-		"Fireball",       // Big spell
+		"Musketeer",     // Air defense
+		"Inferno Tower", // Tank killer, air defense, building
+		"P.E.K.K.A",     // Tank killer
+		"Valkyrie",      // Splash defense
+		"The Log",       // Swarm clear
+		"Zap",           // Swarm clear
+		"Hog Rider",     // Win condition
+		"Fireball",      // Big spell
 	}
 
 	report := scorer.CalculateDefensiveCoverage(balancedDeck)

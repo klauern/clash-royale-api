@@ -19,25 +19,25 @@ import (
 // Builder handles the construction of balanced Clash Royale decks
 // from player card analysis data.
 type Builder struct {
-	dataDir            string
-	unlockedEvolutions map[string]bool
-	evolutionSlotLimit int
-	statsRegistry      *clashroyale.CardStatsRegistry
-	strategy           Strategy
-	strategyConfig     StrategyConfig
-	levelCurve         *LevelCurve
-	synergyDB          *SynergyDatabase
-	synergyEnabled     bool
-	synergyWeight      float64
-	synergyCache       map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
-	uniquenessEnabled         bool
-	uniquenessWeight          float64
-	uniquenessScorer          *UniquenessScorer
-	avoidArchetypes           []string                      // Archetypes to avoid when building decks
-	archetypeAvoidanceScorer  *ArchetypeAvoidanceScorer     // Scorer for archetype avoidance
-	includeCards              []string                      // Cards to force into the deck
-	excludeCards              []string                      // Cards to exclude from consideration
-	fuzzIntegration           *FuzzIntegration              // Fuzz stats integration for data-driven card scoring
+	dataDir                  string
+	unlockedEvolutions       map[string]bool
+	evolutionSlotLimit       int
+	statsRegistry            *clashroyale.CardStatsRegistry
+	strategy                 Strategy
+	strategyConfig           StrategyConfig
+	levelCurve               *LevelCurve
+	synergyDB                *SynergyDatabase
+	synergyEnabled           bool
+	synergyWeight            float64
+	synergyCache             map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
+	uniquenessEnabled        bool
+	uniquenessWeight         float64
+	uniquenessScorer         *UniquenessScorer
+	avoidArchetypes          []string                  // Archetypes to avoid when building decks
+	archetypeAvoidanceScorer *ArchetypeAvoidanceScorer // Scorer for archetype avoidance
+	includeCards             []string                  // Cards to force into the deck
+	excludeCards             []string                  // Cards to exclude from consideration
+	fuzzIntegration          *FuzzIntegration          // Fuzz stats integration for data-driven card scoring
 }
 
 // NewBuilder creates a new deck builder instance
@@ -168,7 +168,7 @@ func (b *Builder) filterExcludedCards(candidates []*CardCandidate) []*CardCandid
 }
 
 // addIncludedCards adds force-included cards to deck and marks them as used
-func (b *Builder) addIncludedCards(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool) {
+func (b *Builder) addIncludedCards(deck, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool) {
 	if len(b.includeCards) == 0 {
 		return deck, used
 	}
@@ -224,7 +224,7 @@ func (b *Builder) getOverrideCount(role CardRole, defaultCount int) int {
 }
 
 // selectCardsForRole selects cards of a specific role using pickBest and updates deck/used
-func (b *Builder) selectCardsForRole(role CardRole, count int, deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool, trackMissing bool) ([]*CardCandidate, map[string]bool, []string) {
+func (b *Builder) selectCardsForRole(role CardRole, count int, deck, candidates []*CardCandidate, used map[string]bool, trackMissing bool) ([]*CardCandidate, map[string]bool, []string) {
 	notes := make([]string, 0)
 
 	for i := 0; i < count; i++ {
@@ -240,7 +240,7 @@ func (b *Builder) selectCardsForRole(role CardRole, count int, deck []*CardCandi
 }
 
 // selectMultipleCardsForRole selects multiple cards of a role using pickMany and updates deck/used
-func (b *Builder) selectMultipleCardsForRole(role CardRole, count int, deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool) {
+func (b *Builder) selectMultipleCardsForRole(role CardRole, count int, deck, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool) {
 	cards := b.pickMany(role, candidates, used, count, deck)
 	deck = append(deck, cards...)
 	for _, card := range cards {
@@ -250,7 +250,7 @@ func (b *Builder) selectMultipleCardsForRole(role CardRole, count int, deck []*C
 }
 
 // Returns notes for missing win conditions
-func (b *Builder) selectCardsByRole(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool, []string) {
+func (b *Builder) selectCardsByRole(deck, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool, []string) {
 	notes := make([]string, 0)
 
 	// Core roles: win condition, building, two spells
@@ -280,7 +280,7 @@ func (b *Builder) selectCardsByRole(deck []*CardCandidate, candidates []*CardCan
 }
 
 // fillRemainingSlots fills remaining deck slots (up to 8) with highest-scoring unused cards
-func (b *Builder) fillRemainingSlots(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) []*CardCandidate {
+func (b *Builder) fillRemainingSlots(deck, candidates []*CardCandidate, used map[string]bool) []*CardCandidate {
 	if len(deck) < 8 {
 		remaining := b.getHighestScoreCards(candidates, used, 8-len(deck), deck)
 		deck = append(deck, remaining...)
@@ -290,7 +290,7 @@ func (b *Builder) fillRemainingSlots(deck []*CardCandidate, candidates []*CardCa
 }
 
 // buildRecommendationDetails builds the DeckRecommendation struct and populates card details
-func (b *Builder) buildRecommendationDetails(deck []*CardCandidate, analysisTime string, evolutionSlots []string, notes []string) *DeckRecommendation {
+func (b *Builder) buildRecommendationDetails(deck []*CardCandidate, analysisTime string, evolutionSlots, notes []string) *DeckRecommendation {
 	recommendation := &DeckRecommendation{
 		Deck:           make([]string, 8),
 		DeckDetail:     make([]CardDetail, 8),

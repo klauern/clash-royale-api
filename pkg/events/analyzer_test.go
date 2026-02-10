@@ -6,7 +6,7 @@ import (
 )
 
 // Helper function to create a test event deck
-func createTestEventDeck(cards []string, wins int, losses int) EventDeck {
+func createTestEventDeck(cards []string, wins, losses int) EventDeck {
 	deckCards := make([]CardInDeck, len(cards))
 	totalElixir := 0
 	for i, cardName := range cards {
@@ -55,15 +55,15 @@ func TestSuggestCardConstraints_EmptyDecks(t *testing.T) {
 
 func TestSuggestCardConstraints_ThresholdFiltering(t *testing.T) {
 	tests := []struct {
-		name           string
-		threshold      float64
-		expectedCount  int
-		expectedCards  []string
+		name          string
+		threshold     float64
+		expectedCount int
+		expectedCards []string
 	}{
 		{
 			name:          "0% threshold - all cards",
 			threshold:     0.0,
-			expectedCount: 10, // Top 10 cards (limited by analyzeCardUsage)
+			expectedCount: 10,                                                    // Top 10 cards (limited by analyzeCardUsage)
 			expectedCards: []string{"Skeleton Dragons", "Tornado", "Ice Wizard"}, // Only verify top cards
 		},
 		{

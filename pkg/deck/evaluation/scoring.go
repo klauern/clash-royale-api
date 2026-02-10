@@ -287,10 +287,10 @@ func ScoreSynergy(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabas
 
 // versatilityMetrics holds extracted metrics from deck cards for versatility scoring
 type versatilityMetrics struct {
-	roleCount      map[deck.CardRole]int
-	elixirVariety  map[int]bool
-	targetsAir     int
-	targetsGround  int
+	roleCount     map[deck.CardRole]int
+	elixirVariety map[int]bool
+	targetsAir    int
+	targetsGround int
 }
 
 // collectRoleStats collects role, elixir, and targeting statistics from deck cards

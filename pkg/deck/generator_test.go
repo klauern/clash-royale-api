@@ -348,7 +348,10 @@ func createTestCandidates(count int) []*CardCandidate {
 	candidates := make([]*CardCandidate, 0, count)
 
 	// Add win conditions (4 cards - need at least 1)
-	winConditionCards := []struct{ name string; elixir int }{
+	winConditionCards := []struct {
+		name   string
+		elixir int
+	}{
 		{"Hog Rider", 4},
 		{"Giant", 5},
 		{"Miner", 3},
@@ -373,7 +376,10 @@ func createTestCandidates(count int) []*CardCandidate {
 	}
 
 	// Add buildings (3 cards - need at least 1)
-	buildingCards := []struct{ name string; elixir int }{
+	buildingCards := []struct {
+		name   string
+		elixir int
+	}{
 		{"Cannon", 3},
 		{"Tesla", 4},
 		{"Inferno Tower", 5},
@@ -394,7 +400,10 @@ func createTestCandidates(count int) []*CardCandidate {
 	}
 
 	// Add big spells (3 cards - need at least 1)
-	bigSpellCards := []struct{ name string; elixir int }{
+	bigSpellCards := []struct {
+		name   string
+		elixir int
+	}{
 		{"Fireball", 4},
 		{"Rocket", 6},
 		{"Lightning", 6},
@@ -415,7 +424,10 @@ func createTestCandidates(count int) []*CardCandidate {
 	}
 
 	// Add small spells (3 cards - need at least 1)
-	smallSpellCards := []struct{ name string; elixir int }{
+	smallSpellCards := []struct {
+		name   string
+		elixir int
+	}{
 		{"Zap", 2},
 		{"Log", 2},
 		{"Arrows", 3},

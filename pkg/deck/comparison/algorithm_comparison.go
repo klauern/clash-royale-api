@@ -35,10 +35,10 @@ type ComparisonDimensions struct {
 // AlgorithmComparisonResult contains comprehensive comparison results between V1 and V2 algorithms
 type AlgorithmComparisonResult struct {
 	// Metadata
-	PlayerTag   string   `json:"player_tag"`
-	Timestamp   string   `json:"timestamp"`
-	Strategies  []string `json:"strategies_tested"`
-	TotalDecks  int      `json:"total_decks_compared"`
+	PlayerTag  string   `json:"player_tag"`
+	Timestamp  string   `json:"timestamp"`
+	Strategies []string `json:"strategies_tested"`
+	TotalDecks int      `json:"total_decks_compared"`
 
 	// Overall summary
 	Summary ComparisonSummary `json:"summary"`
@@ -58,8 +58,8 @@ type ComparisonSummary struct {
 	Winner            string  `json:"winning_algorithm"` // "v1", "v2", or "tie"
 	V1AverageScore    float64 `json:"v1_average_score"`
 	V2AverageScore    float64 `json:"v2_average_score"`
-	Improvement       float64 `json:"improvement_percent"` // ((v2 - v1) / v1) * 100
-	SignificantWins   int     `json:"v2_significant_wins"` // v2 wins by >10%
+	Improvement       float64 `json:"improvement_percent"`   // ((v2 - v1) / v1) * 100
+	SignificantWins   int     `json:"v2_significant_wins"`   // v2 wins by >10%
 	SignificantLosses int     `json:"v2_significant_losses"` // v2 loses by >10%
 }
 
@@ -83,11 +83,11 @@ type StrategyComparison struct {
 
 // StrategyMetrics contains detailed metric comparison for a strategy
 type StrategyMetrics struct {
-	SynergyScore        MetricComparison `json:"synergy_score"`
-	CounterCoverage     MetricComparison `json:"counter_coverage"`
-	ArchetypeCoherence  MetricComparison `json:"archetype_coherence"`
-	DefensiveCapability MetricComparison `json:"defensive_capability"`
-	ElixirRangeAdherence MetricComparison `json:"elixir_range_adherence"`
+	SynergyScore          MetricComparison `json:"synergy_score"`
+	CounterCoverage       MetricComparison `json:"counter_coverage"`
+	ArchetypeCoherence    MetricComparison `json:"archetype_coherence"`
+	DefensiveCapability   MetricComparison `json:"defensive_capability"`
+	ElixirRangeAdherence  MetricComparison `json:"elixir_range_adherence"`
 	CardLevelDistribution MetricComparison `json:"card_level_distribution"`
 }
 
@@ -105,31 +105,31 @@ type DeckComparison struct {
 	DeckName string `json:"deck_name"`
 
 	// V1 results
-	V1Deck []string `json:"v1_deck"`
-	V1Score float64 `json:"v1_score"`
+	V1Deck  []string `json:"v1_deck"`
+	V1Score float64  `json:"v1_score"`
 
 	// V2 results
-	V2Deck []string `json:"v2_deck"`
-	V2Score float64 `json:"v2_score"`
+	V2Deck  []string `json:"v2_deck"`
+	V2Score float64  `json:"v2_score"`
 
 	// V2 evaluation metrics (from quality test suite)
 	V2Evaluation EvaluationMetrics `json:"v2_evaluation"`
 
 	// Comparison
 	ScoreDifference float64 `json:"score_difference"`
-	Winner          string `json:"winner"` // "v1", "v2", or "tie"
+	Winner          string  `json:"winner"` // "v1", "v2", or "tie"
 }
 
 // EvaluationMetrics contains the metrics from the evaluation package
 type EvaluationMetrics struct {
-	OverallScore         float64                `json:"overall_score"`
-	AttackScore          float64                `json:"attack_score"`
-	DefenseScore         float64                `json:"defense_score"`
-	SynergyScore         float64                `json:"synergy_score"`
-	VersatilityScore     float64                `json:"versatility_score"`
-	Archetype            evaluation.Archetype   `json:"archetype"`
-	ArchetypeConfidence  float64                `json:"archetype_confidence"`
-	SynergyPairs         int                    `json:"synergy_pairs"`
+	OverallScore        float64              `json:"overall_score"`
+	AttackScore         float64              `json:"attack_score"`
+	DefenseScore        float64              `json:"defense_score"`
+	SynergyScore        float64              `json:"synergy_score"`
+	VersatilityScore    float64              `json:"versatility_score"`
+	Archetype           evaluation.Archetype `json:"archetype"`
+	ArchetypeConfidence float64              `json:"archetype_confidence"`
+	SynergyPairs        int                  `json:"synergy_pairs"`
 }
 
 // MetricBreakdown provides aggregate metrics across all strategies
@@ -144,13 +144,13 @@ type MetricBreakdown struct {
 
 // AggregateMetric provides statistical summary for a metric
 type AggregateMetric struct {
-	V1Mean     float64 `json:"v1_mean"`
-	V2Mean     float64 `json:"v2_mean"`
-	V1StdDev   float64 `json:"v1_stddev"`
-	V2StdDev   float64 `json:"v2_stddev"`
+	V1Mean      float64 `json:"v1_mean"`
+	V2Mean      float64 `json:"v2_mean"`
+	V1StdDev    float64 `json:"v1_stddev"`
+	V2StdDev    float64 `json:"v2_stddev"`
 	Improvement float64 `json:"improvement_percent"`
-	PValue     float64 `json:"p_value"` // Simplified statistical significance
-	Winner     string  `json:"winner"`
+	PValue      float64 `json:"p_value"` // Simplified statistical significance
+	Winner      string  `json:"winner"`
 }
 
 // Recommendations provides actionable recommendations based on comparison
@@ -164,10 +164,10 @@ type Recommendations struct {
 
 // ComparisonConfig configures the algorithm comparison
 type ComparisonConfig struct {
-	PlayerTag            string         `json:"player_tag"`
-	Strategies           []deck.Strategy `json:"strategies"`
-	SignificanceThreshold float64        `json:"significance_threshold"` // Default: 0.05 (5%)
-	WinThreshold         float64        `json:"win_threshold"` // Default: 0.10 (10%)
+	PlayerTag             string          `json:"player_tag"`
+	Strategies            []deck.Strategy `json:"strategies"`
+	SignificanceThreshold float64         `json:"significance_threshold"` // Default: 0.05 (5%)
+	WinThreshold          float64         `json:"win_threshold"`          // Default: 0.10 (10%)
 }
 
 // DefaultComparisonConfig returns default comparison configuration
@@ -181,7 +181,7 @@ func DefaultComparisonConfig() ComparisonConfig {
 			deck.StrategySplash,
 		},
 		SignificanceThreshold: 0.05,
-		WinThreshold: 0.10,
+		WinThreshold:          0.10,
 	}
 }
 
@@ -635,13 +635,13 @@ func convertToCardCandidates(details []deck.CardDetail) []deck.CardCandidate {
 	for i, d := range details {
 		role := deck.CardRole(d.Role)
 		candidates[i] = deck.CardCandidate{
-			Name:             d.Name,
-			Level:            d.Level,
-			MaxLevel:         d.MaxLevel,
-			Rarity:           d.Rarity,
-			Elixir:           d.Elixir,
-			Role:             &role,
-			EvolutionLevel:   d.EvolutionLevel,
+			Name:              d.Name,
+			Level:             d.Level,
+			MaxLevel:          d.MaxLevel,
+			Rarity:            d.Rarity,
+			Elixir:            d.Elixir,
+			Role:              &role,
+			EvolutionLevel:    d.EvolutionLevel,
 			MaxEvolutionLevel: d.MaxEvolutionLevel,
 		}
 	}

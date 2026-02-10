@@ -246,10 +246,10 @@ func TestRepairDeck(t *testing.T) {
 	genome, _ := NewDeckGenomeFromCards(cards, candidates, strategy, &cfg)
 
 	tests := []struct {
-		name         string
-		brokenDeck   []string
-		wantSize     int
-		wantUnique   bool
+		name       string
+		brokenDeck []string
+		wantSize   int
+		wantUnique bool
 	}{
 		{
 			name:       "already valid deck",

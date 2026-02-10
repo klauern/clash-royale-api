@@ -115,9 +115,9 @@ func TestAnalyzeThreat(t *testing.T) {
 	// Test with good counters
 	goodDeck := []string{"Inferno Tower", "P.E.K.K.A", "Musketeer", "Baby Dragon"}
 	threat := ThreatDefinition{
-		Name:        "Mega Knight",
-		Type:        ThreatTypeTank,
-		Description: "High HP jumping tank",
+		Name:          "Mega Knight",
+		Type:          ThreatTypeTank,
+		Description:   "High HP jumping tank",
 		MetaRelevance: 0.95,
 	}
 
@@ -143,9 +143,9 @@ func TestAnalyzeThreat_NoCounters(t *testing.T) {
 	// Test with no counters
 	badDeck := []string{"Skeletons", "Goblins", "Spear Goblins"}
 	threat := ThreatDefinition{
-		Name:        "Mega Knight",
-		Type:        ThreatTypeTank,
-		Description: "High HP jumping tank",
+		Name:          "Mega Knight",
+		Type:          ThreatTypeTank,
+		Description:   "High HP jumping tank",
 		MetaRelevance: 0.95,
 	}
 
@@ -167,11 +167,11 @@ func TestCalculateOverallScore(t *testing.T) {
 	// Create test matches
 	matches := []ThreatMatch{
 		{
-			Threat: ThreatDefinition{Name: "Threat1", MetaRelevance: 1.0},
+			Threat:        ThreatDefinition{Name: "Threat1", MetaRelevance: 1.0},
 			Effectiveness: 1.0,
 		},
 		{
-			Threat: ThreatDefinition{Name: "Threat2", MetaRelevance: 0.5},
+			Threat:        ThreatDefinition{Name: "Threat2", MetaRelevance: 0.5},
 			Effectiveness: 0.5,
 		},
 	}
@@ -191,18 +191,18 @@ func TestIdentifyCriticalGaps(t *testing.T) {
 	// Create matches with gaps
 	matches := []ThreatMatch{
 		{
-			Threat: ThreatDefinition{Name: "Balloon", MetaRelevance: 0.85, Type: ThreatTypeAir},
-			CanCounter: false,
+			Threat:        ThreatDefinition{Name: "Balloon", MetaRelevance: 0.85, Type: ThreatTypeAir},
+			CanCounter:    false,
 			Effectiveness: 0.0,
 		},
 		{
-			Threat: ThreatDefinition{Name: "Mega Knight", MetaRelevance: 0.95, Type: ThreatTypeTank},
-			CanCounter: true,
+			Threat:        ThreatDefinition{Name: "Mega Knight", MetaRelevance: 0.95, Type: ThreatTypeTank},
+			CanCounter:    true,
 			Effectiveness: 0.9,
 		},
 		{
-			Threat: ThreatDefinition{Name: "Hog Rider", MetaRelevance: 0.9, Type: ThreatTypeWinCondition},
-			CanCounter: false,
+			Threat:        ThreatDefinition{Name: "Hog Rider", MetaRelevance: 0.9, Type: ThreatTypeWinCondition},
+			CanCounter:    false,
 			Effectiveness: 0.3,
 		},
 	}
@@ -234,18 +234,18 @@ func TestIdentifyStrongDefenses(t *testing.T) {
 	// Create matches with strong defenses
 	matches := []ThreatMatch{
 		{
-			Threat: ThreatDefinition{Name: "Balloon", MetaRelevance: 0.85, Type: ThreatTypeAir},
-			CanCounter: true,
+			Threat:        ThreatDefinition{Name: "Balloon", MetaRelevance: 0.85, Type: ThreatTypeAir},
+			CanCounter:    true,
 			Effectiveness: 0.9,
 		},
 		{
-			Threat: ThreatDefinition{Name: "Mega Knight", MetaRelevance: 0.95, Type: ThreatTypeTank},
-			CanCounter: true,
+			Threat:        ThreatDefinition{Name: "Mega Knight", MetaRelevance: 0.95, Type: ThreatTypeTank},
+			CanCounter:    true,
 			Effectiveness: 0.85,
 		},
 		{
-			Threat: ThreatDefinition{Name: "Minor Threat", MetaRelevance: 0.5, Type: ThreatTypeWinCondition},
-			CanCounter: true,
+			Threat:        ThreatDefinition{Name: "Minor Threat", MetaRelevance: 0.5, Type: ThreatTypeWinCondition},
+			CanCounter:    true,
 			Effectiveness: 1.0,
 		},
 	}
@@ -312,9 +312,9 @@ func TestAddCustomThreat(t *testing.T) {
 	analyzer := NewThreatAnalyzer(matrix)
 
 	customThreat := ThreatDefinition{
-		Name:        "Custom Threat",
-		Type:        ThreatTypeWinCondition,
-		Description: "A custom threat for testing",
+		Name:          "Custom Threat",
+		Type:          ThreatTypeWinCondition,
+		Description:   "A custom threat for testing",
 		MetaRelevance: 0.7,
 	}
 
@@ -417,9 +417,9 @@ func BenchmarkAnalyzeThreat(b *testing.B) {
 	analyzer := NewThreatAnalyzer(matrix)
 	deck := []string{"Musketeer", "Inferno Tower", "P.E.K.K.A", "Valkyrie"}
 	threat := ThreatDefinition{
-		Name:        "Mega Knight",
-		Type:        ThreatTypeTank,
-		Description: "High HP jumping tank",
+		Name:          "Mega Knight",
+		Type:          ThreatTypeTank,
+		Description:   "High HP jumping tank",
 		MetaRelevance: 0.95,
 	}
 

@@ -9,12 +9,12 @@ import (
 
 // DefensiveCoverageReport represents a comprehensive defensive analysis of a deck
 type DefensiveCoverageReport struct {
-	OverallScore       float64                  `json:"overall_score"`        // 0.0 to 1.0
-	CategoryScores     map[CounterCategory]float64 `json:"category_scores"`     // Score per category
-	ThreatAnalysis     []ThreatCoverage          `json:"threat_analysis"`      // Analysis of specific threats
-	CoverageGaps       []string                  `json:"coverage_gaps"`        // Missing counter capabilities
-	StrongCounters     []Counter                 `json:"strong_counters"`      // Deck's best counters
-	RecommendedAdds    []string                  `json:"recommended_adds"`     // Cards to consider adding
+	OverallScore    float64                     `json:"overall_score"`    // 0.0 to 1.0
+	CategoryScores  map[CounterCategory]float64 `json:"category_scores"`  // Score per category
+	ThreatAnalysis  []ThreatCoverage            `json:"threat_analysis"`  // Analysis of specific threats
+	CoverageGaps    []string                    `json:"coverage_gaps"`    // Missing counter capabilities
+	StrongCounters  []Counter                   `json:"strong_counters"`  // Deck's best counters
+	RecommendedAdds []string                    `json:"recommended_adds"` // Cards to consider adding
 }
 
 // DefensiveScorer analyzes deck defensive capabilities
@@ -239,7 +239,7 @@ func findFirstAvailableCard(candidates []string, deckMap map[string]bool) string
 }
 
 // generateRecommendations suggests cards to add based on coverage gaps
-func (ds *DefensiveScorer) generateRecommendations(deckCards []string, gaps []string) []string {
+func (ds *DefensiveScorer) generateRecommendations(deckCards, gaps []string) []string {
 	var recommendations []string
 	deckMap := buildDeckCardMap(deckCards)
 

@@ -38,7 +38,7 @@ func ensureDir(path string) error {
 type exportFunc func(dataDir string, data any) error
 
 // exportWithFeedback wraps an export call with consistent error handling and success message
-func exportWithFeedback(fn exportFunc, dataDir string, data any, description string, targetFile string) error {
+func exportWithFeedback(fn exportFunc, dataDir string, data any, description, targetFile string) error {
 	if err := fn(dataDir, data); err != nil {
 		return fmt.Errorf("failed to export %s: %w", description, err)
 	}

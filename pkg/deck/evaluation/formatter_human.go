@@ -89,7 +89,6 @@ func formatScoringGrid(result *EvaluationResult) string {
 	return grid.String()
 }
 
-
 // formatDetailedAnalysis creates the detailed analysis sections
 func formatDetailedAnalysis(result *EvaluationResult) string {
 	var analysis strings.Builder

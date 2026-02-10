@@ -47,7 +47,7 @@ type DiscoveryStats struct {
 	ETA time.Duration
 
 	// Current best deck
-	BestDeck []string
+	BestDeck  []string
 	BestScore float64
 
 	// Start time of discovery session
@@ -168,10 +168,10 @@ func NewDiscoveryRunner(config DiscoveryConfig) (*DiscoveryRunner, error) {
 		strategy:      config.GeneratorConfig.Strategy,
 		OnProgress:    config.OnProgress,
 		stats: DiscoveryStats{
-			StartTime:  time.Now(),
-			Strategy:   config.GeneratorConfig.Strategy,
-			PlayerTag:  config.PlayerTag,
-			TopScores:  make([]float64, 0, 5),
+			StartTime: time.Now(),
+			Strategy:  config.GeneratorConfig.Strategy,
+			PlayerTag: config.PlayerTag,
+			TopScores: make([]float64, 0, 5),
 		},
 	}
 

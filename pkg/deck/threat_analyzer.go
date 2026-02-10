@@ -11,46 +11,46 @@ import (
 type ThreatType string
 
 const (
-	ThreatTypeWinCondition  ThreatType = "win_condition"  // Primary tower damage
-	ThreatTypeTank          ThreatType = "tank"           // High HP beatdown
-	ThreatTypeAir           ThreatType = "air"            // Air threats
-	ThreatTypeSwarm         ThreatType = "swarm"          // Swarm pushes
-	ThreatTypeSiege         ThreatType = "siege"          // Building siege
-	ThreatTypeSpell         ThreatType = "spell"          // Spell win conditions
-	ThreatTypeRush          ThreatType = "rush"           // Fast charge attacks
-	ThreatTypeControl       ThreatType = "control"        // Control/stall decks
+	ThreatTypeWinCondition ThreatType = "win_condition" // Primary tower damage
+	ThreatTypeTank         ThreatType = "tank"          // High HP beatdown
+	ThreatTypeAir          ThreatType = "air"           // Air threats
+	ThreatTypeSwarm        ThreatType = "swarm"         // Swarm pushes
+	ThreatTypeSiege        ThreatType = "siege"         // Building siege
+	ThreatTypeSpell        ThreatType = "spell"         // Spell win conditions
+	ThreatTypeRush         ThreatType = "rush"          // Fast charge attacks
+	ThreatTypeControl      ThreatType = "control"       // Control/stall decks
 )
 
 // ThreatDefinition defines a threat that a deck may face
 type ThreatDefinition struct {
-	Name        string     `json:"name"`
-	Type        ThreatType `json:"type"`
-	Description string     `json:"description"`
-	MetaRelevance float64  `json:"meta_relevance"` // 0.0 to 1.0, how common in meta
+	Name          string     `json:"name"`
+	Type          ThreatType `json:"type"`
+	Description   string     `json:"description"`
+	MetaRelevance float64    `json:"meta_relevance"` // 0.0 to 1.0, how common in meta
 }
 
 // ThreatMatch represents how well a deck can counter a threat
 type ThreatMatch struct {
-	Threat       ThreatDefinition `json:"threat"`
-	CanCounter   bool             `json:"can_counter"`
-	Effectiveness float64         `json:"effectiveness"` // 0.0 to 1.0
-	CounterCards []string         `json:"counter_cards"`  // Cards in deck that counter this threat
-	Gaps         []string         `json:"gaps"`           // What the deck is missing
+	Threat        ThreatDefinition `json:"threat"`
+	CanCounter    bool             `json:"can_counter"`
+	Effectiveness float64          `json:"effectiveness"` // 0.0 to 1.0
+	CounterCards  []string         `json:"counter_cards"` // Cards in deck that counter this threat
+	Gaps          []string         `json:"gaps"`          // What the deck is missing
 }
 
 // ThreatAnalysisReport provides comprehensive threat analysis for a deck
 type ThreatAnalysisReport struct {
-	OverallDefensiveScore float64         `json:"overall_defensive_score"` // 0.0 to 1.0
-	MetaThreatMatches     []ThreatMatch   `json:"meta_threat_matches"`     // Analysis of meta-relevant threats
-	CriticalGaps          []string        `json:"critical_gaps"`           // Threats deck cannot counter
-	StrongDefenses        []ThreatMatch   `json:"strong_defenses"`         // Threats deck counters well
-	ThreatBreakdown       map[ThreatType]int `json:"threat_breakdown"`     // Count by threat type
+	OverallDefensiveScore float64            `json:"overall_defensive_score"` // 0.0 to 1.0
+	MetaThreatMatches     []ThreatMatch      `json:"meta_threat_matches"`     // Analysis of meta-relevant threats
+	CriticalGaps          []string           `json:"critical_gaps"`           // Threats deck cannot counter
+	StrongDefenses        []ThreatMatch      `json:"strong_defenses"`         // Threats deck counters well
+	ThreatBreakdown       map[ThreatType]int `json:"threat_breakdown"`        // Count by threat type
 }
 
 // ThreatAnalyzer analyzes threats and deck capabilities against them
 type ThreatAnalyzer struct {
-	matrix         *CounterMatrix
-	metaThreats    []ThreatDefinition
+	matrix      *CounterMatrix
+	metaThreats []ThreatDefinition
 }
 
 // NewThreatAnalyzer creates a new threat analyzer with the given counter matrix

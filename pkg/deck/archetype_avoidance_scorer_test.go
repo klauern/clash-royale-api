@@ -6,11 +6,11 @@ import (
 
 func TestArchetypeAvoidanceScorer_ScoreCard(t *testing.T) {
 	tests := []struct {
-		name             string
-		avoidArchetypes  []string
-		cardName         string
-		expectedPenalty  float64
-		description      string
+		name            string
+		avoidArchetypes []string
+		cardName        string
+		expectedPenalty float64
+		description     string
 	}{
 		{
 			name:            "no archetypes to avoid",

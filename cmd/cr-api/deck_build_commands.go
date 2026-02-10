@@ -44,6 +44,7 @@ func addDeckBuildCommand() *cli.Command {
 		Action: deckBuildCommand,
 	}
 }
+
 func addDeckBuildSuiteCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "build-suite",

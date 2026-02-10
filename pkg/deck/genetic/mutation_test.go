@@ -63,10 +63,10 @@ func TestDeckGenomeMutateExecution(t *testing.T) {
 
 func TestDeckGenomeMutateIntensityLevels(t *testing.T) {
 	tests := []struct {
-		name                string
-		intensity           float64
-		minExpectedChanges  int
-		maxExpectedChanges  int
+		name               string
+		intensity          float64
+		minExpectedChanges int
+		maxExpectedChanges int
 	}{
 		{
 			name:               "low intensity (10%)",

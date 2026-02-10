@@ -10,12 +10,12 @@ import (
 
 // exhaustiveIterator generates all possible valid deck combinations
 type exhaustiveIterator struct {
-	gen        *DeckGenerator
-	indices    []int // Current combination indices
-	n          int   // Total candidates
-	k          int   // Cards per deck (8)
-	done       bool
-	generated  int
+	gen       *DeckGenerator
+	indices   []int // Current combination indices
+	n         int   // Total candidates
+	k         int   // Cards per deck (8)
+	done      bool
+	generated int
 }
 
 func newExhaustiveIterator(gen *DeckGenerator) *exhaustiveIterator {
@@ -522,39 +522,39 @@ func (it *archetypeIterator) Close() error {
 
 // geneticIterator uses genetic algorithm to evolve optimal decks
 type geneticIterator struct {
-	gen          *DeckGenerator
-	candidates   []*CardCandidate
+	gen           *DeckGenerator
+	candidates    []*CardCandidate
 	buildStrategy Strategy
-	config       *GeneticIteratorConfig
-	result       *GeneticOptimizerResult
-	currentIndex int
-	generated    int
-	done         bool
+	config        *GeneticIteratorConfig
+	result        *GeneticOptimizerResult
+	currentIndex  int
+	generated     int
+	done          bool
 }
 
 // GeneticIteratorConfig configures the genetic iterator
 type GeneticIteratorConfig struct {
-	PopulationSize      int
-	Generations         int
-	MutationRate        float64
-	CrossoverRate       float64
-	MutationIntensity   float64
-	EliteCount          int
-	TournamentSize      int
+	PopulationSize         int
+	Generations            int
+	MutationRate           float64
+	CrossoverRate          float64
+	MutationIntensity      float64
+	EliteCount             int
+	TournamentSize         int
 	ConvergenceGenerations int
-	TargetFitness       float64
-	IslandModel         bool
-	IslandCount         int
-	MigrationInterval   int
-	MigrationSize       int
+	TargetFitness          float64
+	IslandModel            bool
+	IslandCount            int
+	MigrationInterval      int
+	MigrationSize          int
 }
 
 // GeneticOptimizerResult holds the result from genetic optimization
 type GeneticOptimizerResult struct {
-	HallOfFame []*GenomeResult
-	Scores     []float64
+	HallOfFame  []*GenomeResult
+	Scores      []float64
 	Generations int
-	Duration   time.Duration
+	Duration    time.Duration
 }
 
 // GenomeResult represents a single genome result from optimization
@@ -568,19 +568,19 @@ func newGeneticIterator(gen *DeckGenerator) *geneticIterator {
 	config := gen.config.Genetic
 	if config == nil {
 		config = &GeneticIteratorConfig{
-			PopulationSize:        100,
-			Generations:           200,
-			MutationRate:          0.1,
-			CrossoverRate:         0.8,
-			MutationIntensity:     0.3,
-			EliteCount:            2,
-			TournamentSize:        5,
+			PopulationSize:         100,
+			Generations:            200,
+			MutationRate:           0.1,
+			CrossoverRate:          0.8,
+			MutationIntensity:      0.3,
+			EliteCount:             2,
+			TournamentSize:         5,
 			ConvergenceGenerations: 30,
-			TargetFitness:         0,
-			IslandModel:           false,
-			IslandCount:           4,
-			MigrationInterval:     15,
-			MigrationSize:         2,
+			TargetFitness:          0,
+			IslandModel:            false,
+			IslandCount:            4,
+			MigrationInterval:      15,
+			MigrationSize:          2,
 		}
 	}
 
@@ -592,13 +592,13 @@ func newGeneticIterator(gen *DeckGenerator) *geneticIterator {
 	}
 
 	return &geneticIterator{
-		gen:          gen,
-		candidates:   gen.candidates,
+		gen:           gen,
+		candidates:    gen.candidates,
 		buildStrategy: buildStrategy,
-		config:       config,
-		currentIndex: 0,
-		generated:    0,
-		done:         false,
+		config:        config,
+		currentIndex:  0,
+		generated:     0,
+		done:          false,
 	}
 }
 
@@ -684,9 +684,9 @@ func (it *geneticIterator) runOptimization(ctx context.Context) error {
 		HallOfFame: []*GenomeResult{
 			{Cards: deck, Fitness: 5.0},
 		},
-		Scores:     []float64{5.0},
+		Scores:      []float64{5.0},
 		Generations: 1,
-		Duration:   time.Second,
+		Duration:    time.Second,
 	}
 
 	return nil
@@ -699,7 +699,7 @@ func (it *geneticIterator) Checkpoint() *GeneratorCheckpoint {
 		Generated: it.generated,
 		State: map[string]any{
 			"current_index": it.currentIndex,
-			"done":         it.done,
+			"done":          it.done,
 		},
 	}
 }

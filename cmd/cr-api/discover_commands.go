@@ -419,12 +419,12 @@ func deckDiscoverRunCommand(ctx context.Context, cmd *cli.Command) error {
 
 // discoveryResources holds all the initialized resources needed for discovery
 type discoveryResources struct {
-	player      *clashroyale.Player
-	cardStats   *clashroyale.CardStatsRegistry
-	playerCtx   *evaluation.PlayerContext
-	synergyDB   *deck.SynergyDatabase
-	storage     *leaderboard.Storage
-	dataDir     string
+	player    *clashroyale.Player
+	cardStats *clashroyale.CardStatsRegistry
+	playerCtx *evaluation.PlayerContext
+	synergyDB *deck.SynergyDatabase
+	storage   *leaderboard.Storage
+	dataDir   string
 }
 
 // initializeDiscoveryResources sets up all required resources for discovery

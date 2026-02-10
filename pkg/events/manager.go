@@ -307,7 +307,7 @@ func findDeckInCollection(collection *EventDeckCollection, eventID string) *Even
 	return nil
 }
 
-func findDeckFileInDirectory(subdir string, eventID string) (string, error) {
+func findDeckFileInDirectory(subdir, eventID string) (string, error) {
 	files, err := filepath.Glob(filepath.Join(subdir, "*.json"))
 	if err != nil {
 		return "", fmt.Errorf("failed to list files: %w", err)

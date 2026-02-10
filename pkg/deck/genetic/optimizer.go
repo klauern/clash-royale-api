@@ -307,7 +307,8 @@ func (mod elitismModel) Validate() error {
 }
 
 func generateOffsprings(n uint, indis eaopt.Individuals, sel eaopt.Selector, crossRate float64,
-	rng *rand.Rand) (eaopt.Individuals, error) {
+	rng *rand.Rand,
+) (eaopt.Individuals, error) {
 	offsprings := make(eaopt.Individuals, n)
 	i := 0
 	for i < len(offsprings) {

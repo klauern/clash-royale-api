@@ -10,7 +10,7 @@ import (
 
 // makeAPIRequest is a generic helper to reduce duplication across API endpoints.
 // It handles the common pattern of: create request, execute, check status, decode JSON.
-func makeAPIRequest[T any](c *Client, endpoint string, errorMsg string) (*T, error) {
+func makeAPIRequest[T any](c *Client, endpoint, errorMsg string) (*T, error) {
 	req, err := c.NewRequest(context.Background(), "GET", endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)

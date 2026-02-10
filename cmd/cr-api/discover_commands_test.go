@@ -32,8 +32,8 @@ func createTestCheckpoint(t *testing.T, playerTag string, stats deck.DiscoverySt
 
 	checkpoint := deck.DiscoveryCheckpoint{
 		GeneratorCheckpoint: &deck.GeneratorCheckpoint{
-			Strategy: deck.StrategySmartSample,
-			Position: 100,
+			Strategy:  deck.StrategySmartSample,
+			Position:  100,
 			Generated: 100,
 		},
 		Stats:     stats,
@@ -85,7 +85,7 @@ func TestDeckDiscoverCheckpointPersistence(t *testing.T) {
 	}
 
 	// Verify checkpoint data
-	if checkpoint.PlayerTag != "#" + tag {
+	if checkpoint.PlayerTag != "#"+tag {
 		t.Errorf("expected player tag #%s, got %s", tag, checkpoint.PlayerTag)
 	}
 
@@ -103,19 +103,19 @@ func TestDeckDiscoverCheckpointValidation(t *testing.T) {
 
 	// Create comprehensive checkpoint
 	stats := deck.DiscoveryStats{
-		Evaluated:   500,
-		Total:       1000,
-		Stored:      250,
-		AvgScore:    7.2,
-		BestScore:   9.1,
-		BestDeck:    []string{"Hog Rider", "Musketeer", "Fireball", "Zap", "Cannon", "Ice Spirit", "Skeletons", "Archers"},
-		StartTime:   time.Now().Add(-30 * time.Minute),
-		Elapsed:     30 * time.Minute,
-		Rate:        16.67,
-		ETA:         30 * time.Minute,
-		Strategy:    deck.StrategySmartSample,
-		PlayerTag:   "#" + tag,
-		TopScores:   []float64{9.1, 8.9, 8.7, 8.5, 8.3},
+		Evaluated: 500,
+		Total:     1000,
+		Stored:    250,
+		AvgScore:  7.2,
+		BestScore: 9.1,
+		BestDeck:  []string{"Hog Rider", "Musketeer", "Fireball", "Zap", "Cannon", "Ice Spirit", "Skeletons", "Archers"},
+		StartTime: time.Now().Add(-30 * time.Minute),
+		Elapsed:   30 * time.Minute,
+		Rate:      16.67,
+		ETA:       30 * time.Minute,
+		Strategy:  deck.StrategySmartSample,
+		PlayerTag: "#" + tag,
+		TopScores: []float64{9.1, 8.9, 8.7, 8.5, 8.3},
 	}
 
 	checkpointPath := createTestCheckpoint(t, tag, stats)
@@ -262,19 +262,19 @@ func TestDeckDiscoverCheckpointRoundTrip(t *testing.T) {
 
 	// Create original checkpoint
 	originalStats := deck.DiscoveryStats{
-		Evaluated:   123,
-		Total:       456,
-		Stored:      78,
-		AvgScore:    6.5,
-		BestScore:   8.9,
-		BestDeck:    []string{"Card1", "Card2", "Card3", "Card4", "Card5", "Card6", "Card7", "Card8"},
-		StartTime:   time.Now(),
-		Elapsed:     10 * time.Minute,
-		Rate:        12.3,
-		ETA:         5 * time.Minute,
-		Strategy:    deck.StrategyExhaustive,
-		PlayerTag:   "#" + tag,
-		TopScores:   []float64{8.9, 8.7, 8.5, 8.3, 8.1},
+		Evaluated: 123,
+		Total:     456,
+		Stored:    78,
+		AvgScore:  6.5,
+		BestScore: 8.9,
+		BestDeck:  []string{"Card1", "Card2", "Card3", "Card4", "Card5", "Card6", "Card7", "Card8"},
+		StartTime: time.Now(),
+		Elapsed:   10 * time.Minute,
+		Rate:      12.3,
+		ETA:       5 * time.Minute,
+		Strategy:  deck.StrategyExhaustive,
+		PlayerTag: "#" + tag,
+		TopScores: []float64{8.9, 8.7, 8.5, 8.3, 8.1},
 	}
 
 	originalCheckpoint := deck.DiscoveryCheckpoint{
