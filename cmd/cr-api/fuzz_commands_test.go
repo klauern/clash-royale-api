@@ -106,3 +106,29 @@ func TestLimitArchetypeRepetition(t *testing.T) {
 		t.Fatalf("expected 1 beatdown deck, got %d", counts["beatdown"])
 	}
 }
+
+func TestFormatScoreTransition(t *testing.T) {
+	t.Run("without theoretical value", func(t *testing.T) {
+		got := formatScoreTransition(nil, 123, 4.2, func(entry fuzzstorage.DeckEntry) float64 {
+			return entry.OverallScore
+		})
+		if got != "4.20" {
+			t.Fatalf("formatScoreTransition() = %q, want %q", got, "4.20")
+		}
+	})
+
+	t.Run("with theoretical value", func(t *testing.T) {
+		theoreticalByID := map[int]fuzzstorage.DeckEntry{
+			123: {
+				ID:           123,
+				OverallScore: 9.0,
+			},
+		}
+		got := formatScoreTransition(theoreticalByID, 123, 4.2, func(entry fuzzstorage.DeckEntry) float64 {
+			return entry.OverallScore
+		})
+		if got != "9.00->4.20" {
+			t.Fatalf("formatScoreTransition() = %q, want %q", got, "9.00->4.20")
+		}
+	})
+}

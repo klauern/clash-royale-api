@@ -402,6 +402,24 @@ func addDeckFuzzListCommand() *cli.Command {
 				Value: "summary",
 				Usage: "Output format: summary, json, csv, detailed",
 			},
+			&cli.StringFlag{
+				Name:  "tag",
+				Usage: "Player tag (without #) to re-evaluate saved decks with your card levels",
+			},
+			&cli.StringFlag{
+				Name:  "api-token",
+				Usage: "Clash Royale API token (defaults to CLASH_ROYALE_API_TOKEN env var)",
+			},
+			&cli.IntFlag{
+				Name:  "workers",
+				Value: 1,
+				Usage: "Number of parallel workers for player-specific re-evaluation",
+			},
+			&cli.BoolFlag{
+				Name:    "verbose",
+				Aliases: []string{"v"},
+				Usage:   "Show detailed progress information",
+			},
 		},
 		Action: deckFuzzListCommand,
 	}

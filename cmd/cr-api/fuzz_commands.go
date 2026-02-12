@@ -1948,6 +1948,16 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	maxElixir := cmd.Float64("max-elixir")
 	maxSameArchetype := cmd.Int("max-same-archetype")
 	format := cmd.String("format")
+	playerTag := cmd.String("tag")
+	workers := cmd.Int("workers")
+	verbose := cmd.Bool("verbose")
+
+	if workers == 1 && playerTag != "" {
+		workers = runtime.NumCPU()
+		if verbose {
+			fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", runtime.NumCPU(), workers)
+		}
+	}
 
 	storage, err := fuzzstorage.NewStorage("")
 	if err != nil {
@@ -1981,13 +1991,49 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to query decks: %w", err)
 	}
-	if maxSameArchetype > 0 {
-		decks = limitArchetypeRepetition(decks, maxSameArchetype)
-	}
-
 	histogram, err := storage.ArchetypeHistogram(queryOpts)
 	if err != nil {
 		return fmt.Errorf("failed to query archetype histogram: %w", err)
+	}
+
+	var theoreticalByID map[int]fuzzstorage.DeckEntry
+	if playerTag != "" && len(decks) > 0 {
+		apiToken := cmd.String("api-token")
+		if apiToken == "" {
+			apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
+		}
+		if apiToken == "" {
+			return fmt.Errorf("API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)")
+		}
+
+		client := clashroyale.NewClient(apiToken)
+		cleanTag := strings.TrimPrefix(playerTag, "#")
+		player, playerErr := client.GetPlayer(cleanTag)
+		if playerErr != nil {
+			return fmt.Errorf("failed to load player data for %s: %w", playerTag, playerErr)
+		}
+		playerContext := evaluation.NewPlayerContextFromPlayer(player)
+
+		theoreticalByID = make(map[int]fuzzstorage.DeckEntry, len(decks))
+		for _, deck := range decks {
+			theoreticalByID[deck.ID] = deck
+		}
+
+		decks = reevaluateStoredDecks(decks, player, player.Tag, playerContext, workers, verbose)
+		sort.Slice(decks, func(i, j int) bool {
+			return decks[i].OverallScore > decks[j].OverallScore
+		})
+
+		if maxSameArchetype > 0 {
+			decks = limitArchetypeRepetition(decks, maxSameArchetype)
+		}
+
+		if verbose {
+			printf("Loaded player context for %s (%s)\n", player.Name, player.Tag)
+		}
+	}
+	if maxSameArchetype > 0 {
+		decks = limitArchetypeRepetition(decks, maxSameArchetype)
 	}
 
 	total, _ := storage.Count()
@@ -1999,13 +2045,13 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	// Format output
 	switch format {
 	case "json":
-		return formatListResultsJSON(decks, dbPath, total, histogram)
+		return formatListResultsJSON(decks, dbPath, total, histogram, theoreticalByID)
 	case "csv":
-		return formatListResultsCSV(decks)
+		return formatListResultsCSV(decks, theoreticalByID)
 	case "detailed":
-		return formatListResultsDetailed(decks, dbPath, total, histogram)
+		return formatListResultsDetailed(decks, dbPath, total, histogram, theoreticalByID)
 	default:
-		return formatListResultsSummary(decks, dbPath, total, histogram)
+		return formatListResultsSummary(decks, dbPath, total, histogram, theoreticalByID)
 	}
 }
 
@@ -2112,6 +2158,22 @@ type storedDeckWork struct {
 type storedDeckResult struct {
 	index int
 	entry fuzzstorage.DeckEntry
+}
+
+func formatScoreTransition(
+	theoreticalByID map[int]fuzzstorage.DeckEntry,
+	deckID int,
+	current float64,
+	extract func(fuzzstorage.DeckEntry) float64,
+) string {
+	if theoreticalByID == nil {
+		return fmt.Sprintf("%.2f", current)
+	}
+	theoretical, ok := theoreticalByID[deckID]
+	if !ok {
+		return fmt.Sprintf("%.2f", current)
+	}
+	return fmt.Sprintf("%.2f->%.2f", extract(theoretical), current)
 }
 
 func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, player *clashroyale.Player, playerTag string, playerContext *evaluation.PlayerContext, workers int, verbose bool) []fuzzstorage.DeckEntry {
@@ -2223,7 +2285,13 @@ func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, player *cl
 }
 
 // formatListResultsSummary formats list results in summary format
-func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, total int, histogram map[string]int) error {
+func formatListResultsSummary(
+	decks []fuzzstorage.DeckEntry,
+	dbPath string,
+	total int,
+	histogram map[string]int,
+	theoreticalByID map[int]fuzzstorage.DeckEntry,
+) error {
 	printf("Saved Top Decks\n")
 	printf("Database: %s\n", dbPath)
 	printf("Total decks: %d\n\n", total)
@@ -2234,17 +2302,19 @@ func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, tota
 
 	for i, deck := range decks {
 		deckStr := strings.Join(deck.Cards, ", ")
+		overall := formatScoreTransition(theoreticalByID, deck.ID, deck.OverallScore, func(entry fuzzstorage.DeckEntry) float64 { return entry.OverallScore })
+		attack := formatScoreTransition(theoreticalByID, deck.ID, deck.AttackScore, func(entry fuzzstorage.DeckEntry) float64 { return entry.AttackScore })
+		defense := formatScoreTransition(theoreticalByID, deck.ID, deck.DefenseScore, func(entry fuzzstorage.DeckEntry) float64 { return entry.DefenseScore })
+		synergy := formatScoreTransition(theoreticalByID, deck.ID, deck.SynergyScore, func(entry fuzzstorage.DeckEntry) float64 { return entry.SynergyScore })
 		if len(deckStr) > 50 {
 			firstLine := strings.Join(deck.Cards[:4], ", ")
-			fprintf(w, "%d\t%s,\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
-				i+1, firstLine, deck.OverallScore, deck.AttackScore, deck.DefenseScore,
-				deck.SynergyScore, deck.AvgElixir, deck.Archetype)
+			fprintf(w, "%d\t%s,\t%s\t%s\t%s\t%s\t%.2f\t%s\n",
+				i+1, firstLine, overall, attack, defense, synergy, deck.AvgElixir, deck.Archetype)
 			secondLine := strings.Join(deck.Cards[4:], ", ")
 			fprintf(w, "\t%s\n", secondLine)
 		} else {
-			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
-				i+1, deckStr, deck.OverallScore, deck.AttackScore, deck.DefenseScore,
-				deck.SynergyScore, deck.AvgElixir, deck.Archetype)
+			fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\t%.2f\t%s\n",
+				i+1, deckStr, overall, attack, defense, synergy, deck.AvgElixir, deck.Archetype)
 		}
 	}
 
@@ -2258,12 +2328,44 @@ func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, tota
 }
 
 // formatListResultsJSON formats list results in JSON format
-func formatListResultsJSON(decks []fuzzstorage.DeckEntry, dbPath string, total int, histogram map[string]int) error {
+func formatListResultsJSON(
+	decks []fuzzstorage.DeckEntry,
+	dbPath string,
+	total int,
+	histogram map[string]int,
+	theoreticalByID map[int]fuzzstorage.DeckEntry,
+) error {
+	results := make([]map[string]any, 0, len(decks))
+	for _, deck := range decks {
+		result := map[string]any{
+			"id":                deck.ID,
+			"cards":             deck.Cards,
+			"overall_score":     deck.OverallScore,
+			"attack_score":      deck.AttackScore,
+			"defense_score":     deck.DefenseScore,
+			"synergy_score":     deck.SynergyScore,
+			"versatility_score": deck.VersatilityScore,
+			"avg_elixir":        deck.AvgElixir,
+			"archetype":         deck.Archetype,
+			"archetype_conf":    deck.ArchetypeConf,
+			"evaluated_at":      deck.EvaluatedAt,
+		}
+		if theoreticalByID != nil {
+			if theoretical, ok := theoreticalByID[deck.ID]; ok {
+				result["stored_overall_score"] = theoretical.OverallScore
+				result["stored_attack_score"] = theoretical.AttackScore
+				result["stored_defense_score"] = theoretical.DefenseScore
+				result["stored_synergy_score"] = theoretical.SynergyScore
+			}
+		}
+		results = append(results, result)
+	}
+
 	output := map[string]any{
 		"database":            dbPath,
 		"total":               total,
 		"returned":            len(decks),
-		"results":             decks,
+		"results":             results,
 		"archetype_histogram": histogram,
 	}
 
@@ -2273,10 +2375,20 @@ func formatListResultsJSON(decks []fuzzstorage.DeckEntry, dbPath string, total i
 }
 
 // formatListResultsCSV formats list results in CSV format
-func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
+func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int]fuzzstorage.DeckEntry) error {
 	w := csv.NewWriter(os.Stdout)
 
 	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
+	if theoreticalByID != nil {
+		header = []string{
+			"Rank", "Deck",
+			"StoredOverall", "PlayerOverall",
+			"StoredAttack", "PlayerAttack",
+			"StoredDefense", "PlayerDefense",
+			"StoredSynergy", "PlayerSynergy",
+			"Versatility", "AvgElixir", "Archetype",
+		}
+	}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -2286,13 +2398,32 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
 		row := []string{
 			strconv.Itoa(i + 1),
 			deckStr,
-			fmt.Sprintf("%.2f", deck.OverallScore),
-			fmt.Sprintf("%.2f", deck.AttackScore),
-			fmt.Sprintf("%.2f", deck.DefenseScore),
-			fmt.Sprintf("%.2f", deck.SynergyScore),
-			fmt.Sprintf("%.2f", deck.VersatilityScore),
-			fmt.Sprintf("%.2f", deck.AvgElixir),
-			deck.Archetype,
+		}
+		if theoreticalByID != nil {
+			theoretical := theoreticalByID[deck.ID]
+			row = append(row,
+				fmt.Sprintf("%.2f", theoretical.OverallScore),
+				fmt.Sprintf("%.2f", deck.OverallScore),
+				fmt.Sprintf("%.2f", theoretical.AttackScore),
+				fmt.Sprintf("%.2f", deck.AttackScore),
+				fmt.Sprintf("%.2f", theoretical.DefenseScore),
+				fmt.Sprintf("%.2f", deck.DefenseScore),
+				fmt.Sprintf("%.2f", theoretical.SynergyScore),
+				fmt.Sprintf("%.2f", deck.SynergyScore),
+				fmt.Sprintf("%.2f", deck.VersatilityScore),
+				fmt.Sprintf("%.2f", deck.AvgElixir),
+				deck.Archetype,
+			)
+		} else {
+			row = append(row,
+				fmt.Sprintf("%.2f", deck.OverallScore),
+				fmt.Sprintf("%.2f", deck.AttackScore),
+				fmt.Sprintf("%.2f", deck.DefenseScore),
+				fmt.Sprintf("%.2f", deck.SynergyScore),
+				fmt.Sprintf("%.2f", deck.VersatilityScore),
+				fmt.Sprintf("%.2f", deck.AvgElixir),
+				deck.Archetype,
+			)
 		}
 		if err := w.Write(row); err != nil {
 			return err
@@ -2308,7 +2439,13 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
 }
 
 // formatListResultsDetailed formats list results in detailed format
-func formatListResultsDetailed(decks []fuzzstorage.DeckEntry, dbPath string, total int, histogram map[string]int) error {
+func formatListResultsDetailed(
+	decks []fuzzstorage.DeckEntry,
+	dbPath string,
+	total int,
+	histogram map[string]int,
+	theoreticalByID map[int]fuzzstorage.DeckEntry,
+) error {
 	printf("Saved Top Decks\n")
 	printf("Database: %s\n", dbPath)
 	printf("Total decks: %d\n\n", total)
@@ -2316,8 +2453,23 @@ func formatListResultsDetailed(decks []fuzzstorage.DeckEntry, dbPath string, tot
 	for i, deck := range decks {
 		printf("=== Deck %d ===\n", i+1)
 		printf("Cards: %s\n", strings.Join(deck.Cards, ", "))
-		printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
-			deck.OverallScore, deck.AttackScore, deck.DefenseScore, deck.SynergyScore, deck.VersatilityScore)
+		if theoreticalByID != nil {
+			if theoretical, ok := theoreticalByID[deck.ID]; ok {
+				printf("Overall: %.2f -> %.2f | Attack: %.2f -> %.2f | Defense: %.2f -> %.2f | Synergy: %.2f -> %.2f | Versatility: %.2f\n",
+					theoretical.OverallScore, deck.OverallScore,
+					theoretical.AttackScore, deck.AttackScore,
+					theoretical.DefenseScore, deck.DefenseScore,
+					theoretical.SynergyScore, deck.SynergyScore,
+					deck.VersatilityScore,
+				)
+			} else {
+				printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
+					deck.OverallScore, deck.AttackScore, deck.DefenseScore, deck.SynergyScore, deck.VersatilityScore)
+			}
+		} else {
+			printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
+				deck.OverallScore, deck.AttackScore, deck.DefenseScore, deck.SynergyScore, deck.VersatilityScore)
+		}
 		printf("Avg Elixir: %.2f | Archetype: %s (%.0f%% confidence)\n",
 			deck.AvgElixir, deck.Archetype, deck.ArchetypeConf*100)
 		printf("Evaluated: %s\n\n", deck.EvaluatedAt.Format(time.RFC3339))
