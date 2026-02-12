@@ -1,6 +1,9 @@
 package evaluation
 
-import "github.com/klauer/clash-royale-api/go/pkg/deck"
+import (
+	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
+	"github.com/klauer/clash-royale-api/go/pkg/deck"
+)
 
 var (
 	testWinConditions = map[string]bool{
@@ -69,6 +72,13 @@ var (
 		"Skeleton Dragons": 4, "Mother Witch": 4, "Dark Prince": 4,
 		"Fisherman": 3, "Royal Delivery": 3, "Phoenix": 4,
 	}
+	testAirTargetingCards = map[string]bool{
+		"Archers": true, "Archer Queen": true, "Baby Dragon": true, "Bats": true,
+		"Dart Goblin": true, "Electro Wizard": true, "Executioner": true, "Hunter": true,
+		"Magic Archer": true, "Mega Minion": true, "Minions": true, "Musketeer": true,
+		"Night Witch": true, "Phoenix": true, "Princess": true, "Skeleton Dragons": true,
+		"Spear Goblins": true, "Wizard": true, "Witch": true,
+	}
 )
 
 func determineTestCardRole(name string) deck.CardRole {
@@ -105,4 +115,46 @@ func determineTestCardElixir(name string) int {
 		return elixir
 	}
 	return 4
+}
+
+func determineTestCardTargets(name string, role deck.CardRole) string {
+	if role == deck.RoleSpellBig || role == deck.RoleSpellSmall {
+		return "Ground"
+	}
+	if testAirTargetingCards[name] {
+		return "Air & Ground"
+	}
+	return "Ground"
+}
+
+func createTestCardCandidate(name string) deck.CardCandidate {
+	role := determineTestCardRole(name)
+	rarity := determineTestCardRarity(name)
+	elixir := determineTestCardElixir(name)
+	targets := determineTestCardTargets(name, role)
+
+	dps := 90
+	switch role {
+	case deck.RoleWinCondition:
+		dps = 120
+	case deck.RoleBuilding:
+		dps = 70
+	case deck.RoleCycle:
+		dps = 60
+	case deck.RoleSpellBig, deck.RoleSpellSmall:
+		dps = 0
+	}
+
+	return deck.CardCandidate{
+		Name:     name,
+		Level:    11,
+		MaxLevel: 14,
+		Rarity:   rarity,
+		Elixir:   elixir,
+		Role:     &role,
+		Stats: &clashroyale.CombatStats{
+			DamagePerSecond: dps,
+			Targets:         targets,
+		},
+	}
 }

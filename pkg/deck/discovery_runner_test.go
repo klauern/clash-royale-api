@@ -38,16 +38,6 @@ func (m *mockDeckEvaluator) Evaluate(deck []string) (*leaderboard.DeckEntry, err
 	if m.evaluateFn != nil {
 		return m.evaluateFn(deck)
 	}
-	m.callCount++
-	m.lastDeck = deck
-
-	if m.delay > 0 {
-		time.Sleep(m.delay)
-	}
-
-	if m.err != nil {
-		return nil, m.err
-	}
 
 	return &leaderboard.DeckEntry{
 		Cards:             deck,
@@ -122,10 +112,11 @@ func createTestDiscoveryRunner(t *testing.T, evaluator *mockDeckEvaluator) (*Dis
 
 func TestNewDiscoveryRunner(t *testing.T) {
 	tests := []struct {
-		name        string
-		config      DiscoveryConfig
-		wantErr     bool
-		errContains string
+		name         string
+		config       DiscoveryConfig
+		setupStorage bool
+		wantErr      bool
+		errContains  string
 	}{
 		{
 			name: "valid config",
@@ -139,7 +130,8 @@ func TestNewDiscoveryRunner(t *testing.T) {
 				Evaluator: &mockDeckEvaluator{score: 8.0},
 				PlayerTag: "#TEST123",
 			},
-			wantErr: false,
+			setupStorage: true,
+			wantErr:      false,
 		},
 		{
 			name: "missing evaluator",
@@ -178,15 +170,16 @@ func TestNewDiscoveryRunner(t *testing.T) {
 				Evaluator: &mockDeckEvaluator{score: 8.0},
 				PlayerTag: "",
 			},
-			wantErr:     true,
-			errContains: "player tag is required",
+			setupStorage: true,
+			wantErr:      true,
+			errContains:  "player tag is required",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Setup storage for cases where storage should not be the primary validation error
-			if tt.config.Storage == nil && (!tt.wantErr || tt.errContains == "player tag is required") {
+			if tt.setupStorage && tt.config.Storage == nil {
 				tmpDir, _ := os.MkdirTemp("", "discovery_test_*")
 				originalHome := os.Getenv("HOME")
 				os.Setenv("HOME", tmpDir)
@@ -218,6 +211,34 @@ func TestNewDiscoveryRunner(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestMockDeckEvaluatorEvaluate_SideEffectsOnce(t *testing.T) {
+	evaluator := &mockDeckEvaluator{
+		score:     8.2,
+		archetype: "cycle",
+		delay:     30 * time.Millisecond,
+	}
+
+	start := time.Now()
+	result, err := evaluator.Evaluate([]string{"Hog Rider", "Musketeer"})
+	elapsed := time.Since(start)
+
+	if err != nil {
+		t.Fatalf("Evaluate() error = %v", err)
+	}
+	if result == nil {
+		t.Fatal("Evaluate() returned nil result")
+	}
+	if evaluator.callCount != 1 {
+		t.Fatalf("callCount = %d, want 1", evaluator.callCount)
+	}
+	if elapsed < evaluator.delay {
+		t.Fatalf("elapsed = %v, want >= %v", elapsed, evaluator.delay)
+	}
+	if elapsed >= 50*time.Millisecond {
+		t.Fatalf("elapsed = %v, expected single delay sleep", elapsed)
 	}
 }
 
