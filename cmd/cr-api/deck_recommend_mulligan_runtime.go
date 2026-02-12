@@ -19,6 +19,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+//nolint:gocognit,gocyclo,funlen // Supports offline/online execution branches; full split tracked in clash-royale-api-sb3q.
 func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	limit := cmd.Int("limit")

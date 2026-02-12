@@ -99,7 +99,9 @@ func sortEvaluationResults[T any](results []T, sortBy string) {
 			if rv.IsValid() && rv.Kind() == reflect.Struct {
 				field := rv.FieldByName("Result")
 				if field.IsValid() && field.Type() == reflect.TypeOf(evaluation.EvaluationResult{}) {
-					return field.Interface().(evaluation.EvaluationResult)
+					if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
+						return result
+					}
 				}
 			}
 			return evaluation.EvaluationResult{}
@@ -249,7 +251,7 @@ func writeSummaryHeader(buf *strings.Builder, playerName, playerTag string) {
 	buf.WriteString("╚═══════════════════════════════════════════════════════════════════════════════╝\n\n")
 
 	if playerName != "" || playerTag != "" {
-		buf.WriteString(fmt.Sprintf("Player: %s (%s)\n", playerName, playerTag))
+		fmt.Fprintf(buf, "Player: %s (%s)\n", playerName, playerTag)
 	}
 }
 
@@ -274,13 +276,13 @@ func writeSummaryTable[T any](buf *strings.Builder, results []T) {
 		result := extractResult(r)
 		archetype := truncateWithEllipsis(string(result.DetectedArchetype), 12)
 
-		buf.WriteString(fmt.Sprintf("│ %3d │ %-28s │  %5.2f  │  %5.2f │  %5.2f │  %5.2f │ %-12s │\n",
+		fmt.Fprintf(buf, "│ %3d │ %-28s │  %5.2f  │  %5.2f │  %5.2f │  %5.2f │ %-12s │\n",
 			i+1, name,
 			result.OverallScore,
 			result.Attack.Score,
 			result.Defense.Score,
 			result.Synergy.Score,
-			archetype))
+			archetype)
 	}
 
 	buf.WriteString("└─────┴──────────────────────────────┴─────────┴────────┴────────┴────────┴──────────────┘\n")
@@ -312,7 +314,7 @@ func writeCSVRows[T any](buf *strings.Builder, results []T) {
 		deck := extractDeck(r)
 		result := extractResult(r)
 
-		buf.WriteString(fmt.Sprintf("%d,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%.2f,\"%s\"\n",
+		fmt.Fprintf(buf, "%d,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%.2f,\"%s\"\n",
 			i+1,
 			name,
 			strategy,
@@ -325,7 +327,7 @@ func writeCSVRows[T any](buf *strings.Builder, results []T) {
 			result.Playability.Score,
 			result.DetectedArchetype,
 			result.AvgElixir,
-			strings.Join(deck, " - ")))
+			strings.Join(deck, " - "))
 	}
 }
 
@@ -346,7 +348,7 @@ func writeDetailedHeader(buf *strings.Builder, playerName, playerTag string) {
 	buf.WriteString("╚═══════════════════════════════════════════════════════════════════════════════╝\n\n")
 
 	if playerName != "" || playerTag != "" {
-		buf.WriteString(fmt.Sprintf("Player: %s (%s)\n\n", playerName, playerTag))
+		fmt.Fprintf(buf, "Player: %s (%s)\n\n", playerName, playerTag)
 	}
 }
 

@@ -156,16 +156,16 @@ func formatEvaluationResult(result *evaluation.EvaluationResult, format string) 
 	var err error
 
 	switch strings.ToLower(format) {
-	case "human":
+	case batchFormatHuman:
 		formattedOutput = evaluation.FormatHuman(result)
-	case "json":
+	case batchFormatJSON:
 		formattedOutput, err = evaluation.FormatJSON(result)
 		if err != nil {
 			return "", fmt.Errorf("failed to format JSON: %w", err)
 		}
-	case "csv":
+	case batchFormatCSV:
 		formattedOutput = evaluation.FormatCSV(result)
-	case "detailed":
+	case batchFormatDetailed:
 		formattedOutput = evaluation.FormatDetailed(result)
 	default:
 		return "", fmt.Errorf("unknown format: %s (supported: human, json, csv, detailed)", format)
@@ -196,7 +196,7 @@ func performUpgradeAnalysisIfRequested(showUpgradeImpact bool, format string, de
 	}
 
 	// Only for human output format (not applicable to JSON/CSV)
-	if format == "human" || format == "detailed" {
+	if format == batchFormatHuman || format == batchFormatDetailed {
 		if err := performDeckUpgradeImpactAnalysis(deckCardNames, playerTag, topUpgrades, apiToken, dataDir, verbose); err != nil {
 			// Log error but don't fail the entire command
 			fprintf(os.Stderr, "\nWarning: Failed to perform upgrade impact analysis: %v\n", err)
@@ -435,15 +435,15 @@ func calculateUpgradeGoldCost(rarity string, fromLevel, toLevel int) int {
 	// Simplified gold cost calculation
 	baseCost := 0
 	switch rarity {
-	case "Common":
+	case rarityCommon:
 		baseCost = 100
-	case "Rare":
+	case rarityRare:
 		baseCost = 400
-	case "Epic":
+	case rarityEpic:
 		baseCost = 1000
-	case "Legendary":
+	case rarityLegendary:
 		baseCost = 4000
-	case "Champion":
+	case rarityChampion:
 		baseCost = 5000
 	}
 
@@ -457,15 +457,15 @@ func calculateUpgradeCardsNeeded(rarity string, fromLevel, toLevel int) int {
 	// Simplified card cost calculation
 	baseCards := 2
 	switch rarity {
-	case "Common":
+	case rarityCommon:
 		baseCards = 2
-	case "Rare":
+	case rarityRare:
 		baseCards = 2
-	case "Epic":
+	case rarityEpic:
 		baseCards = 2
-	case "Legendary":
+	case rarityLegendary:
 		baseCards = 1
-	case "Champion":
+	case rarityChampion:
 		baseCards = 1
 	}
 
@@ -482,6 +482,8 @@ func sortUpgradeImpactsByScore(impacts []DeckCardUpgrade) {
 }
 
 // displayDeckUpgradeImpactAnalysis displays the upgrade impact analysis for deck cards
+//
+//nolint:funlen // Output formatting block kept cohesive; broader extraction tracked in clash-royale-api-sb3q.
 func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCardUpgrade, topN int, player *clashroyale.Player) {
 	printf("\n")
 	printf("╔════════════════════════════════════════════════════════════════════╗\n")
@@ -583,10 +585,12 @@ func convertToCardCandidates(cardNames []string) []deck.CardCandidate {
 func inferRarity(name string) string {
 	// This is a simplified version - in reality, you'd look this up from a database
 	// For now, we'll use common as default
-	return "Common"
+	return rarityCommon
 }
 
 // inferRole infers card role from card name
+//
+//nolint:gocyclo // Heuristic matcher intentionally linear until role classifier refactor in clash-royale-api-sb3q.
 func inferRole(name string) *deck.CardRole {
 	lowercaseName := strings.ToLower(name)
 

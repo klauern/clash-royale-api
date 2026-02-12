@@ -44,14 +44,14 @@ func deckPossibleCountCommand(ctx context.Context, cmd *cli.Command) error {
 	// Format output
 	var output string
 	switch strings.ToLower(format) {
-	case "json":
+	case storageFormatJSON:
 		output, err = formatPossibleCountJSON(player, stats)
 		if err != nil {
 			return fmt.Errorf("failed to format JSON: %w", err)
 		}
-	case "csv":
+	case batchFormatCSV:
 		output = formatPossibleCountCSV(player, stats, verbose)
-	case "human":
+	case batchFormatHuman:
 		fallthrough
 	default:
 		output = formatPossibleCountHuman(player, stats, verbose)
@@ -71,6 +71,7 @@ func deckPossibleCountCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+//nolint:funlen // Structured output writer retained as a single routine until formatter extraction in clash-royale-api-sb3q.
 func formatPossibleCountHuman(player *clashroyale.Player, stats *deck.DeckSpaceStats, verbose bool) string {
 	var buf strings.Builder
 
