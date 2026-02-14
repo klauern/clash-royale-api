@@ -35,6 +35,8 @@ type GeneticOptimizer struct {
 	Strategy   deck.Strategy
 	Progress   func(GeneticProgress)
 	RNG        *rand.Rand
+	// FitnessFunc overrides default genome fitness evaluation when set.
+	FitnessFunc func([]deck.CardCandidate) (float64, error)
 }
 
 // NewGeneticOptimizer constructs a genetic optimizer with validation.
@@ -181,6 +183,7 @@ func (o *GeneticOptimizer) genomeFactory() func(rng *rand.Rand) eaopt.Genome {
 			cards := seeds[seedIndex]
 			seedIndex++
 			if genome, err := NewDeckGenomeFromCards(cards, o.Candidates, o.Strategy, o.Config); err == nil {
+				genome.fitnessEvaluator = o.FitnessFunc
 				return &eaoptDeckGenome{genome: genome}
 			}
 		}
@@ -188,13 +191,15 @@ func (o *GeneticOptimizer) genomeFactory() func(rng *rand.Rand) eaopt.Genome {
 		genome, err := NewDeckGenome(o.Candidates, o.Strategy, o.Config)
 		if err != nil {
 			return &eaoptDeckGenome{genome: &DeckGenome{
-				Cards:      []string{},
-				Fitness:    0,
-				config:     o.Config,
-				candidates: o.Candidates,
-				strategy:   o.Strategy,
+				Cards:            []string{},
+				Fitness:          0,
+				config:           o.Config,
+				candidates:       o.Candidates,
+				strategy:         o.Strategy,
+				fitnessEvaluator: o.FitnessFunc,
 			}}
 		}
+		genome.fitnessEvaluator = o.FitnessFunc
 		return &eaoptDeckGenome{genome: genome}
 	}
 }

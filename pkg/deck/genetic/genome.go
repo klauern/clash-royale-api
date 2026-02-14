@@ -29,6 +29,9 @@ type DeckGenome struct {
 
 	// strategy is the deck building strategy to use for fitness evaluation.
 	strategy deck.Strategy
+
+	// fitnessEvaluator overrides default Evaluate behavior when set.
+	fitnessEvaluator func([]deck.CardCandidate) (float64, error)
 }
 
 // NewDeckGenome creates a new random deck genome from the available candidates.
@@ -168,6 +171,16 @@ func (g *DeckGenome) Evaluate() (float64, error) {
 		return g.Fitness, nil
 	}
 
+	if g.fitnessEvaluator != nil {
+		fitness, err := g.fitnessEvaluator(deckCards)
+		if err != nil {
+			return 0, err
+		}
+		g.Fitness = fitness
+		storeCachedFitness(g.Cards, g.Fitness)
+		return g.Fitness, nil
+	}
+
 	// Create synergy database for evaluation
 	synergyDB := deck.NewSynergyDatabase()
 
@@ -189,11 +202,12 @@ func (g *DeckGenome) Clone() interface{} {
 	copy(cards, g.Cards)
 
 	return &DeckGenome{
-		Cards:      cards,
-		Fitness:    g.Fitness,
-		config:     g.config,
-		candidates: g.candidates,
-		strategy:   g.strategy,
+		Cards:            cards,
+		Fitness:          g.Fitness,
+		config:           g.config,
+		candidates:       g.candidates,
+		strategy:         g.strategy,
+		fitnessEvaluator: g.fitnessEvaluator,
 	}
 }
 

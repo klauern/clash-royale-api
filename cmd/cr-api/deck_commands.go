@@ -32,6 +32,7 @@ func addDeckCommands() *cli.Command {
 			addDeckPossibleCountCommand(),
 			addDeckFuzzCommand(),
 			addDeckCompareAlgorithmsCommand(),
+			addDeckResearchEvalCommand(),
 			addDiscoverCommands(),
 			addLeaderboardCommands(),
 			addStorageCommands(),
