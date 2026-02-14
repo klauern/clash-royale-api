@@ -38,6 +38,9 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	if apiToken == "" {
 		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
 	}
+	if tag == "" {
+		return fmt.Errorf("player tag is required. Use --tag flag to specify a player tag")
+	}
 
 	client := clashroyale.NewClient(apiToken)
 
@@ -149,9 +152,9 @@ func parseSortCriteria(s string) budget.SortCriteria {
 
 // displayBudgetResult displays budget analysis results in a formatted way
 func displayBudgetResult(result *budget.BudgetFinderResult, player *clashroyale.Player, options budget.BudgetFinderOptions) {
-	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	printf("║              BUDGET-OPTIMIZED DECK FINDER                          ║\n")
-	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printf("\n╔══════════════════════════════════════════════════════════════════════╗\n")
+	printf("║                   BUDGET-OPTIMIZED DECK FINDER                     ║\n")
+	printf("╚══════════════════════════════════════════════════════════════════════╝\n\n")
 
 	printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
 	printf("Average Card Level: %.2f\n\n", result.Summary.PlayerAverageLevel)
@@ -219,8 +222,8 @@ func displayBudgetDeckDetail(rank int, analysis *budget.DeckBudgetAnalysis) {
 
 	// Deck cards table
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fprintf(w, "Card\tLevel\t\tElixir\tRole\n")
-	fprintf(w, "────\t─────\t\t──────\t────\n")
+	fprintf(w, "Card\tLevel\tElixir\tRole\n")
+	fprintf(w, "────\t─────\t──────\t────\n")
 
 	for _, card := range analysis.Deck.DeckDetail {
 		evoBadge := deck.FormatEvolutionBadge(card.EvolutionLevel)

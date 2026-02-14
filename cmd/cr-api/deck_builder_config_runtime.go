@@ -453,9 +453,7 @@ func saveDeckIfRequested(cmd *cli.Command, builder *deck.Builder, deckRec *deck.
 }
 
 func displayDeckRecommendationOffline(rec *deck.DeckRecommendation, playerName, playerTag string) {
-	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	printf("║              RECOMMENDED 1v1 LADDER DECK                           ║\n")
-	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printDeckBuilderHeader("RECOMMENDED 1v1 LADDER DECK")
 
 	printf("Player: %s (%s)\n", playerName, playerTag)
 	printf("Average Elixir: %.2f\n", rec.AvgElixir)
@@ -504,9 +502,7 @@ func displayDeckRecommendationOffline(rec *deck.DeckRecommendation, playerName, 
 
 // displayUpgradeRecommendations displays upgrade recommendations in a formatted table
 func displayUpgradeRecommendations(upgrades *deck.UpgradeRecommendations) {
-	printf("╔════════════════════════════════════════════════════════════════════╗\n")
-	printf("║              UPGRADE RECOMMENDATIONS                                ║\n")
-	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printDeckBuilderHeader("UPGRADE RECOMMENDATIONS")
 
 	if len(upgrades.Recommendations) == 0 {
 		fmt.Println("No upgrade recommendations - all cards are at max level!")
@@ -605,10 +601,29 @@ func getAllDeckStrategies() []deck.Strategy {
 
 // displayAllStrategiesHeader prints the header for all-strategies display
 func displayAllStrategiesHeader(playerName, playerTag string) {
-	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	printf("║              ALL DECK BUILDING STRATEGIES                          ║\n")
-	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printDeckBuilderHeader("ALL DECK BUILDING STRATEGIES")
 	printf("Player: %s (%s)\n\n", playerName, playerTag)
+}
+
+const deckBuilderHeaderWidth = 68
+
+func printDeckBuilderHeader(title string) {
+	printf("\n╔%s╗\n", strings.Repeat("═", deckBuilderHeaderWidth))
+	printf("║%s║\n", padHeaderTitle(title, deckBuilderHeaderWidth))
+	printf("╚%s╝\n\n", strings.Repeat("═", deckBuilderHeaderWidth))
+}
+
+func padHeaderTitle(title string, width int) string {
+	if width <= 0 {
+		return ""
+	}
+	if len(title) >= width {
+		return title[:width]
+	}
+	padding := width - len(title)
+	left := padding / 2
+	right := padding - left
+	return strings.Repeat(" ", left) + title + strings.Repeat(" ", right)
 }
 
 // createStrategyBuilder creates a new builder with configuration from command

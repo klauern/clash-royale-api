@@ -220,14 +220,14 @@ func writeEvaluationOutput(formattedOutput, outputFile string, verbose bool) err
 }
 
 // performUpgradeAnalysisIfRequested performs optional upgrade impact analysis
-func performUpgradeAnalysisIfRequested(showUpgradeImpact bool, format string, deckCardNames []string, playerTag string, topUpgrades int, apiToken, dataDir string, verbose bool) error {
+func performUpgradeAnalysisIfRequested(showUpgradeImpact bool, format string, deckCardNames []string, playerTag string, topUpgrades int, apiToken string, verbose bool) error {
 	if !showUpgradeImpact {
 		return nil
 	}
 
 	// Only for human output format (not applicable to JSON/CSV)
 	if format == batchFormatHuman || format == batchFormatDetailed {
-		if err := performDeckUpgradeImpactAnalysis(deckCardNames, playerTag, topUpgrades, apiToken, dataDir, verbose); err != nil {
+		if err := performDeckUpgradeImpactAnalysis(deckCardNames, playerTag, topUpgrades, apiToken, verbose); err != nil {
 			// Log error but don't fail the entire command
 			fprintf(os.Stderr, "\nWarning: Failed to perform upgrade impact analysis: %v\n", err)
 		}
@@ -249,7 +249,6 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	topUpgrades := cmd.Int("top-upgrades")
 	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
-	dataDir := cmd.String("data-dir")
 
 	// Validate flags
 	if err := validateEvaluateFlags(deckString, fromAnalysis, playerTag, apiToken, showUpgradeImpact); err != nil {
@@ -294,12 +293,12 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Perform upgrade analysis if requested
-	return performUpgradeAnalysisIfRequested(showUpgradeImpact, format, deckCardNames, playerTag, topUpgrades, apiToken, dataDir, verbose)
+	return performUpgradeAnalysisIfRequested(showUpgradeImpact, format, deckCardNames, playerTag, topUpgrades, apiToken, verbose)
 }
 
 // performDeckUpgradeImpactAnalysis performs upgrade impact analysis for a specific deck
 // It fetches the player's card levels and shows which deck card upgrades would have the most impact
-func performDeckUpgradeImpactAnalysis(deckCardNames []string, playerTag string, topN int, apiToken, dataDir string, verbose bool) error {
+func performDeckUpgradeImpactAnalysis(deckCardNames []string, playerTag string, topN int, apiToken string, verbose bool) error {
 	// Create client to fetch player data
 	client := clashroyale.NewClient(apiToken)
 
@@ -327,11 +326,8 @@ func performDeckUpgradeImpactAnalysis(deckCardNames []string, playerTag string, 
 
 	deckCardAnalysis := convertToDeckCardAnalysis(cardAnalysis, player)
 
-	// Create a deck builder to build the current deck
-	builder := deck.NewBuilder(dataDir)
-
 	// Find which deck cards can be upgraded and calculate their impact
-	upgradeImpacts := calculateDeckCardUpgrades(deckCardNames, deckCardAnalysis, builder)
+	upgradeImpacts := calculateDeckCardUpgrades(deckCardNames, deckCardAnalysis)
 
 	// Sort by impact score (highest first)
 	sortUpgradeImpactsByScore(upgradeImpacts)
@@ -358,7 +354,7 @@ type DeckCardUpgrade struct {
 }
 
 // calculateDeckCardUpgrades calculates upgrade impacts for cards in the deck
-func calculateDeckCardUpgrades(deckCardNames []string, cardAnalysis deck.CardAnalysis, builder *deck.Builder) []DeckCardUpgrade {
+func calculateDeckCardUpgrades(deckCardNames []string, cardAnalysis deck.CardAnalysis) []DeckCardUpgrade {
 	impacts := make([]DeckCardUpgrade, 0, len(deckCardNames))
 
 	for _, cardName := range deckCardNames {
@@ -520,9 +516,9 @@ func sortUpgradeImpactsByScore(impacts []DeckCardUpgrade) {
 //nolint:funlen // Output formatting block kept cohesive; broader extraction tracked in clash-royale-api-sb3q.
 func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCardUpgrade, topN int, player *clashroyale.Player) {
 	printf("\n")
-	printf("╔════════════════════════════════════════════════════════════════════╗\n")
-	printf("║                    UPGRADE IMPACT ANALYSIS                          ║\n")
-	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	printf("╔══════════════════════════════════════════════════════════════════════╗\n")
+	printf("║                      UPGRADE IMPACT ANALYSIS                       ║\n")
+	printf("╚══════════════════════════════════════════════════════════════════════╝\n\n")
 
 	printf("Player: %s (%s)\n", player.Name, player.Tag)
 	printf("Deck: %v\n\n", deckCardNames)
