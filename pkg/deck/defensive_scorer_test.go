@@ -219,10 +219,13 @@ func TestIdentifyGaps(t *testing.T) {
 func TestGenerateRecommendations(t *testing.T) {
 	matrix := NewCounterMatrixWithDefaults()
 	scorer := NewDefensiveScorer(matrix)
-	const knightCard = "Knight"
+	const (
+		knightCard   = "Knight"
+		hogRiderCard = "Hog Rider"
+	)
 
 	gaps := []string{"Insufficient air defense", "No splash damage"}
-	deckCards := []string{"Hog Rider", knightCard, "Golem", "P.E.K.K.A"}
+	deckCards := []string{hogRiderCard, knightCard, "Golem", "P.E.K.K.A"}
 
 	recommendations := scorer.generateRecommendations(deckCards, gaps)
 
@@ -232,7 +235,7 @@ func TestGenerateRecommendations(t *testing.T) {
 
 	// Should recommend air defenders and splash cards not in deck
 	for _, rec := range recommendations {
-		if rec == "Hog Rider" || rec == knightCard || rec == "Golem" || rec == "P.E.K.K.A" {
+		if rec == hogRiderCard || rec == knightCard || rec == "Golem" || rec == "P.E.K.K.A" {
 			t.Errorf("Should not recommend cards already in deck: %s", rec)
 		}
 	}

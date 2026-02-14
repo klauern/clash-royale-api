@@ -45,7 +45,7 @@ func getSynergyStrengthLabel(score float64) string {
 	case score >= 0.6:
 		return "Strong"
 	case score >= 0.4:
-		return "Good"
+		return string(RatingGood)
 	default:
 		return "Moderate"
 	}

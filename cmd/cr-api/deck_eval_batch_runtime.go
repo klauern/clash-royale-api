@@ -518,9 +518,9 @@ func formatEvalBatchResults(
 		return formatEvaluationBatchSummary(results, totalDecks, totalTime, sortBy, playerName, playerTag), nil
 	case "json":
 		return formatEvalBatchResultsAsJSON(results, playerName, playerTag, totalDecks, sortBy, totalTime)
-	case "csv":
+	case batchFormatCSV:
 		return formatEvaluationBatchCSV(results), nil
-	case "detailed":
+	case batchFormatDetailed:
 		return formatEvaluationBatchDetailed(results, playerName, playerTag), nil
 	default:
 		return "", fmt.Errorf("unknown format: %s (supported: summary, json, csv, detailed)", format)

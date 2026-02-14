@@ -76,8 +76,8 @@ func normalizeArchetype(input string) string {
 	switch normalized {
 	case "beatdown":
 		return "beatdown"
-	case "cycle":
-		return "cycle"
+	case string(SynergyCycle):
+		return string(SynergyCycle)
 	case "control":
 		return string(ThreatTypeControl)
 	case "siege":
