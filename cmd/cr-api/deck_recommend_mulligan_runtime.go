@@ -161,7 +161,7 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 // displayRecommendations displays deck recommendations in a formatted table
 func displayRecommendations(result *recommend.RecommendationResult, verbose bool) {
 	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	printf("║              DECK RECOMMENDATIONS                                  ║\n")
+	printf("║                    DECK RECOMMENDATIONS                            ║\n")
 	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
 	printf("Player: %s (%s)\n", result.PlayerName, result.PlayerTag)
@@ -350,7 +350,7 @@ func deckMulliganCommand(ctx context.Context, cmd *cli.Command) error {
 // displayMulliganGuide displays a formatted mulligan guide
 func displayMulliganGuide(guide *mulligan.MulliganGuide) {
 	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	printf("║                    MULLIGAN GUIDE - OPENING PLAYS               ║\n")
+	printf("║                 MULLIGAN GUIDE - OPENING PLAYS                    ║\n")
 	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
 	printf("Deck: %s (%s)\n", guide.DeckName, guide.Archetype.String())
@@ -455,9 +455,3 @@ func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
 
 	return nil
 }
-
-// displayDeckRecommendationOffline displays a formatted deck recommendation without full player object
-// Used for offline mode where we only have player name and tag as strings
-// Helper functions extracted from deckBuildCommand to reduce complexity
-
-// configureCombatStats configures combat stats weight based on CLI flags

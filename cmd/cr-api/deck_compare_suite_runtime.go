@@ -132,10 +132,18 @@ func loadSuitePlayerDataFromAnalysis(builder *deck.Builder, tag, dataDir string,
 	if err != nil {
 		return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
 	}
+	playerName := loadedAnalysis.PlayerName
+	if playerName == "" {
+		playerName = tag
+	}
+	playerTag := loadedAnalysis.PlayerTag
+	if playerTag == "" {
+		playerTag = tag
+	}
 	return &suitePlayerData{
 		CardAnalysis: *loadedAnalysis,
-		PlayerName:   tag,
-		PlayerTag:    tag,
+		PlayerName:   playerName,
+		PlayerTag:    playerTag,
 	}, nil
 }
 
@@ -193,7 +201,7 @@ func loadSuitePlayerData(builder *deck.Builder, tag, apiToken, dataDir string, f
 // printComparisonHeader prints the algorithm comparison header
 func printComparisonHeader() {
 	printf("╔════════════════════════════════════════════════════════════════════╗\n")
-	printf("║              ALGORITHM COMPARISON: V1 vs V2                         ║\n")
+	printf("║              ALGORITHM COMPARISON: V1 vs V2                        ║\n")
 	printf("╚════════════════════════════════════════════════════════════════════╝\n\n")
 }
 
@@ -259,6 +267,6 @@ func formatComparisonOutput(result *comparison.AlgorithmComparisonResult, format
 	case compareFormatMarkdown, compareFormatMD:
 		return result.ExportMarkdown(), nil
 	default:
-		return "", fmt.Errorf("unknown format: %s (supported: json, markdown)", format)
+		return "", fmt.Errorf("unknown format: %s (supported: json, markdown, md)", format)
 	}
 }

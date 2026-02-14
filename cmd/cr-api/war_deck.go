@@ -177,8 +177,8 @@ func displayWarDecks(player *clashroyale.Player, warDecks []warDeckCandidate) {
 			printf("Scoring: Traditional only (combat stats disabled)\n")
 		} else {
 			printf("Scoring: %.0f%% traditional, %.0f%% combat stats\n",
-				(1-mustParseFloat(combatWeight))*100,
-				mustParseFloat(combatWeight)*100)
+				(1-parseFloatOrZero(combatWeight))*100,
+				parseFloatOrZero(combatWeight)*100)
 		}
 	}
 

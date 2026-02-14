@@ -23,10 +23,7 @@ func deckAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("exactly 8 cards are required for deck analysis")
 	}
 
-	printf("Analyzing deck with cards: %v\n", cardNames)
-	fmt.Println("Note: Full deck analysis not yet implemented")
-
-	return nil
+	return fmt.Errorf("deck analyze is not implemented yet")
 }
 
 //nolint:funlen,gocognit,gocyclo // Command flow complexity scheduled for decomposition in clash-royale-api-1g1r.
@@ -36,9 +33,16 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	apiToken := cmd.String("api-token")
 	dataDir := cmd.String("data-dir")
 	verbose := cmd.Bool("verbose")
-	_ = cmd.Int("max-changes")   // TODO: implement max-changes filtering
-	_ = cmd.Bool("keep-win-con") // TODO: implement win condition preservation
+	maxChanges := cmd.Int("max-changes")
+	keepWinCondition := cmd.Bool("keep-win-con")
 	exportCSV := cmd.Bool("export-csv")
+
+	if maxChanges > 0 {
+		fprintf(os.Stderr, "Warning: --max-changes is not implemented yet and will be ignored (got %d)\n", maxChanges)
+	}
+	if keepWinCondition {
+		fprintf(os.Stderr, "Warning: --keep-win-con is not implemented yet and will be ignored\n")
+	}
 
 	if apiToken == "" {
 		return fmt.Errorf("API token is required")

@@ -299,5 +299,3 @@ func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 	printf("Budget analysis saved to: %s\n", filename)
 	return nil
 }
-
-// validateEvaluateFlags validates the flag combinations for deck evaluation

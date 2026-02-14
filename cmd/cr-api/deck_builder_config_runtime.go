@@ -466,8 +466,8 @@ func displayDeckRecommendationOffline(rec *deck.DeckRecommendation, playerName, 
 			printf("Scoring: Traditional only (combat stats disabled)\n")
 		} else {
 			printf("Scoring: %.0f%% traditional, %.0f%% combat stats\n",
-				(1-mustParseFloat(combatWeight))*100,
-				mustParseFloat(combatWeight)*100)
+				(1-parseFloatOrZero(combatWeight))*100,
+				parseFloatOrZero(combatWeight)*100)
 		}
 	}
 	printf("\n")
@@ -550,8 +550,8 @@ func displayUpgradeRecommendations(upgrades *deck.UpgradeRecommendations) {
 	}
 }
 
-// mustParseFloat parses a float from a string, returning 0 if parsing fails
-func mustParseFloat(s string) float64 {
+// parseFloatOrZero parses a float from a string, returning 0 if parsing fails.
+func parseFloatOrZero(s string) float64 {
 	if val, err := strconv.ParseFloat(s, 64); err == nil {
 		return val
 	}

@@ -68,31 +68,54 @@ func loadDeckCardsFromInput(deckString, fromAnalysis string) ([]string, error) {
 	return deckCardNames, nil
 }
 
-// fetchPlayerContextIfNeeded fetches player context from API if tag and token are provided
-func fetchPlayerContextIfNeeded(playerTag, apiToken string, verbose bool) *evaluation.PlayerContext {
-	if playerTag == "" || apiToken == "" {
-		return nil
+// fetchPlayerContextIfNeeded fetches player context from API when available and applies arena overrides.
+func fetchPlayerContextIfNeeded(playerTag, apiToken string, arena int, verbose bool) *evaluation.PlayerContext {
+	var playerContext *evaluation.PlayerContext
+
+	if playerTag != "" && apiToken != "" {
+		if verbose {
+			printf("Fetching player data for context-aware evaluation...\n")
+		}
+
+		client := clashroyale.NewClient(apiToken)
+		player, err := client.GetPlayer(playerTag)
+		if err != nil {
+			// Log warning but continue with evaluation using fallback context if possible.
+			fprintf(os.Stderr, "Warning: Failed to fetch player data: %v\n", err)
+			fprintf(os.Stderr, "Continuing with evaluation without player context.\n")
+		} else {
+			if verbose {
+				printf("Player context loaded: %s (%s), Arena: %s\n",
+					player.Name, player.Tag, player.Arena.Name)
+			}
+			playerContext = evaluation.NewPlayerContextFromPlayer(player)
+		}
 	}
 
-	if verbose {
-		printf("Fetching player data for context-aware evaluation...\n")
+	if arena > 0 {
+		if playerContext == nil {
+			playerContext = &evaluation.PlayerContext{
+				ArenaID:            arena,
+				ArenaName:          fmt.Sprintf("Arena %d", arena),
+				Collection:         make(map[string]evaluation.CardLevelInfo),
+				UnlockedEvolutions: make(map[string]bool),
+				PlayerTag:          playerTag,
+			}
+		} else {
+			playerContext.ArenaID = arena
+			playerContext.ArenaName = fmt.Sprintf("Arena %d", arena)
+			playerContext.Arena = &clashroyale.Arena{
+				ID:   arena,
+				Name: playerContext.ArenaName,
+			}
+		}
+
+		if verbose {
+			printf("Using arena override for unlock analysis: %d\n", arena)
+		}
 	}
 
-	client := clashroyale.NewClient(apiToken)
-	player, err := client.GetPlayer(playerTag)
-	if err != nil {
-		// Log warning but continue with evaluation without context
-		fprintf(os.Stderr, "Warning: Failed to fetch player data: %v\n", err)
-		fprintf(os.Stderr, "Continuing with evaluation without player context.\n")
-		return nil
-	}
-
-	if verbose {
-		printf("Player context loaded: %s (%s), Arena: %s\n",
-			player.Name, player.Tag, player.Arena.Name)
-	}
-
-	return evaluation.NewPlayerContextFromPlayer(player)
+	return playerContext
 }
 
 // persistEvaluationResult saves evaluation result to storage if player tag is provided
@@ -219,7 +242,7 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	deckString := cmd.String("deck")
 	playerTag := cmd.String("tag")
 	fromAnalysis := cmd.String("from-analysis")
-	_ = cmd.Int("arena") // TODO: Use for arena-specific analysis in future tasks
+	arena := cmd.Int("arena")
 	format := cmd.String("format")
 	outputFile := cmd.String("output")
 	showUpgradeImpact := cmd.Bool("show-upgrade-impact")
@@ -249,7 +272,7 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	synergyDB := deck.NewSynergyDatabase()
 
 	// Fetch player context if available
-	playerContext := fetchPlayerContextIfNeeded(playerTag, apiToken, verbose)
+	playerContext := fetchPlayerContextIfNeeded(playerTag, apiToken, arena, verbose)
 
 	// Evaluate the deck
 	result := evaluation.Evaluate(deckCards, synergyDB, playerContext)
@@ -602,47 +625,14 @@ func inferRarity(name string) string {
 	return rarityCommon
 }
 
-// inferRole infers card role from card name
-//
-//nolint:gocyclo // Heuristic matcher intentionally linear until role classifier refactor in clash-royale-api-sb3q.
+// inferRole infers card role from card name.
 func inferRole(name string) *deck.CardRole {
-	lowercaseName := strings.ToLower(name)
-
-	// Win conditions
-	if strings.Contains(lowercaseName, "hog") ||
-		strings.Contains(lowercaseName, "balloon") ||
-		strings.Contains(lowercaseName, "giant") ||
-		strings.Contains(lowercaseName, "golem") ||
-		strings.Contains(lowercaseName, "graveyard") {
-		role := deck.RoleWinCondition
+	if configRole := config.GetCardRole(name); configRole != "" {
+		role := deck.CardRole(configRole)
 		return &role
 	}
 
-	// Spells (big)
-	if strings.Contains(lowercaseName, "fireball") ||
-		strings.Contains(lowercaseName, "lightning") ||
-		strings.Contains(lowercaseName, "rocket") {
-		role := deck.RoleSpellBig
-		return &role
-	}
-
-	// Buildings
-	if strings.Contains(lowercaseName, "tesla") ||
-		strings.Contains(lowercaseName, "cannon") ||
-		strings.Contains(lowercaseName, "inferno tower") {
-		role := deck.RoleBuilding
-		return &role
-	}
-
-	// Support troops
-	if strings.Contains(lowercaseName, "wizard") ||
-		strings.Contains(lowercaseName, "witch") ||
-		strings.Contains(lowercaseName, "musketeer") {
-		role := deck.RoleSupport
-		return &role
-	}
-
-	// Default to support
+	// Unknown cards default to support to keep scoring resilient for new/reworked cards.
 	role := deck.RoleSupport
 	return &role
 }
