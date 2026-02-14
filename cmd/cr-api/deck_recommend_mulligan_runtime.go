@@ -278,9 +278,9 @@ func exportRecommendationsToCSV(dataDir string, result *recommend.Recommendation
 			evoSlotsStr,
 			reasonsStr,
 		}
-			if err := writer.Write(row); err != nil {
-				return fmt.Errorf("failed to write row: %w", err)
-			}
+		if err := writer.Write(row); err != nil {
+			return fmt.Errorf("failed to write row: %w", err)
+		}
 	}
 	if err := writer.Error(); err != nil {
 		return fmt.Errorf("failed to flush CSV data: %w", err)
@@ -408,6 +408,7 @@ func outputMulliganGuideJSON(guide *mulligan.MulliganGuide) error {
 	return nil
 }
 
+//nolint:gocyclo // Filename sanitization intentionally handles multiple character classes explicitly.
 func sanitizePathComponent(value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {

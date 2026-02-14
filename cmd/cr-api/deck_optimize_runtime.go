@@ -54,10 +54,10 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 			printf("Fetching player data for tag: %s\n", tag)
 		}
 
-			player, err = client.GetPlayer(tag)
-			if err != nil {
-				return fmt.Errorf("failed to get player: %w", err)
-			}
+		player, err = client.GetPlayer(tag)
+		if err != nil {
+			return fmt.Errorf("failed to get player: %w", err)
+		}
 
 		if len(player.CurrentDeck) == 0 {
 			return fmt.Errorf("player %s has no current deck configured", tag)

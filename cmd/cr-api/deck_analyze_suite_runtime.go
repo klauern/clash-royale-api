@@ -123,19 +123,19 @@ func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDi
 	failCount := 0
 	buildStart := time.Now()
 
-		for _, strategy := range strategies {
-			for v := 1; v <= variations; v++ {
-				deckBuilder, err := configureDeckBuilder(cmd, dataDir, string(strategy))
-				if err != nil {
-					printf("  ✗ Failed to configure builder for %s variation %d: %v\n", strategy, v, err)
-					failCount++
-					continue
-				}
-				if err := configureFuzzIntegration(cmd, deckBuilder); err != nil {
-					printf("  ✗ Failed to configure fuzz integration for %s variation %d: %v\n", strategy, v, err)
-					failCount++
-					continue
-				}
+	for _, strategy := range strategies {
+		for v := 1; v <= variations; v++ {
+			deckBuilder, err := configureDeckBuilder(cmd, dataDir, string(strategy))
+			if err != nil {
+				printf("  ✗ Failed to configure builder for %s variation %d: %v\n", strategy, v, err)
+				failCount++
+				continue
+			}
+			if err := configureFuzzIntegration(cmd, deckBuilder); err != nil {
+				printf("  ✗ Failed to configure fuzz integration for %s variation %d: %v\n", strategy, v, err)
+				failCount++
+				continue
+			}
 
 			// Build deck
 			deckRec, err := deckBuilder.BuildDeckFromAnalysis(playerData.CardAnalysis)

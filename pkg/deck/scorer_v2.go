@@ -262,7 +262,7 @@ func ScoreDeckV2WithUniqueness(cards []CardCandidate, strategy Strategy, synergy
 			cardNames[i] = card.Name
 		}
 		uniquenessResult := uniquenessScorer.ScoreDeckWithDetails(cardNames)
-			result.WeightedUniqueness = uniquenessResult.WeightedScore * normalizationFactor
+		result.WeightedUniqueness = uniquenessResult.WeightedScore * normalizationFactor
 		result.UniquenessDetails = &uniquenessResult
 	}
 

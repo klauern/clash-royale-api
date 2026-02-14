@@ -771,7 +771,8 @@ func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[str
 	return pool[:count]
 }
 
-func (b *Builder) applyContextualScoring(pool []*CardCandidate, currentDeck []*CardCandidate) {
+//nolint:gocyclo // Contextual scoring combines optional subsystems (synergy, uniqueness, archetype avoidance).
+func (b *Builder) applyContextualScoring(pool, currentDeck []*CardCandidate) {
 	if len(pool) == 0 {
 		return
 	}

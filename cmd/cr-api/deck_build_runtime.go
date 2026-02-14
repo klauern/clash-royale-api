@@ -195,27 +195,27 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			printf("Building decks for strategy: %s\n", strategy)
 		}
 
-			for v := 1; v <= variations; v++ {
-				// Create a fully configured builder for this deck/strategy
-				deckBuilder, err := configureDeckBuilder(cmd, dataDir, string(strategy))
-				if err != nil {
-					results = append(results, deckResult{
-						Strategy:   string(strategy),
-						Variation:  v,
-						BuildError: err,
-					})
-					printf("  ⚠ Variation %d: Failed to configure builder: %v\n", v, err)
-					continue
-				}
-				if err := configureFuzzIntegration(cmd, deckBuilder); err != nil {
-					results = append(results, deckResult{
-						Strategy:   string(strategy),
-						Variation:  v,
-						BuildError: err,
-					})
-					printf("  ⚠ Variation %d: Failed to configure fuzz integration: %v\n", v, err)
-					continue
-				}
+		for v := 1; v <= variations; v++ {
+			// Create a fully configured builder for this deck/strategy
+			deckBuilder, err := configureDeckBuilder(cmd, dataDir, string(strategy))
+			if err != nil {
+				results = append(results, deckResult{
+					Strategy:   string(strategy),
+					Variation:  v,
+					BuildError: err,
+				})
+				printf("  ⚠ Variation %d: Failed to configure builder: %v\n", v, err)
+				continue
+			}
+			if err := configureFuzzIntegration(cmd, deckBuilder); err != nil {
+				results = append(results, deckResult{
+					Strategy:   string(strategy),
+					Variation:  v,
+					BuildError: err,
+				})
+				printf("  ⚠ Variation %d: Failed to configure fuzz integration: %v\n", v, err)
+				continue
+			}
 
 			// Build deck
 			deckRec, err := deckBuilder.BuildDeckFromAnalysis(playerData.CardAnalysis)
