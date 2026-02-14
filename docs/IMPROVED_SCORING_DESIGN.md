@@ -55,15 +55,18 @@ Analysis of 100 player decks shows:
 ### 2.1 Core Formula
 
 ```
-finalScore = (cardQuality * 0.60) +
-             (synergyScore * 0.20) +
-             (counterCoverage * 0.15) +
-             (archetypeCoherence * 0.10) +
-             (elixirFit * 0.25) +
-             (combatStats * 0.20)
+rawScore = (cardQuality * 0.60) +
+           (synergyScore * 0.20) +
+           (counterCoverage * 0.15) +
+           (archetypeCoherence * 0.10) +
+           (elixirFit * 0.25) +
+           (combatStats * 0.20)
+
+normalizationFactor = 1.0 / (0.60 + 0.20 + 0.15 + 0.10 + 0.25 + 0.20) // 1 / 1.50
+finalScore = clamp(rawScore * normalizationFactor, 0.0, 1.0)
 ```
 
-**Normalization:** All sub-scores are normalized to 0.0-1.0 range before weighting.
+**Normalization:** Component sub-scores are in 0.0-1.0, and weighted totals are normalized by total active weight before final clamp.
 
 ### 2.2 Component Details
 
@@ -295,7 +298,7 @@ var StrategyElixirTargets = map[Strategy]struct {
 | Archetype Coherence | Cycle match 0.95, no anti-synergy | 0.95 |
 | Elixir Fit | 2.6 avg, target 2.8 | 0.95 |
 | Combat Stats | Good DPS efficiency | 0.75 |
-| **Weighted Total** | (0.51*0.6)+(0.72*0.2)+(0.90*0.15)+(0.95*0.1)+(0.95*0.25)+(0.75*0.2) | **0.82** |
+| **Weighted Total** | Raw: (0.51*0.6)+(0.72*0.2)+(0.90*0.15)+(0.95*0.1)+(0.95*0.25)+(0.75*0.2)=1.07; Final: 1.07/1.50 | **0.71** |
 
 ### 4.2 Golem Beatdown
 
@@ -309,7 +312,7 @@ var StrategyElixirTargets = map[Strategy]struct {
 | Archetype Coherence | Beatdown match 0.95 | 0.95 |
 | Elixir Fit | 4.1 avg, target 4.0 | 0.90 |
 | Combat Stats | High HP efficiency | 0.80 |
-| **Weighted Total** | Weighted sum | **0.79** |
+| **Weighted Total** | Raw weighted sum 1.06; Final 1.06/1.50 | **0.70** |
 
 ### 4.3 Poor Deck (Mixed Strategies)
 
@@ -323,7 +326,7 @@ var StrategyElixirTargets = map[Strategy]struct {
 | Archetype Coherence | Golem+Hog+X-Bow conflict, -0.5 penalty | 0.20 |
 | Elixir Fit | 3.4 avg, no clear strategy | 0.50 |
 | Combat Stats | Average | 0.60 |
-| **Weighted Total** | Weighted sum | **0.46** |
+| **Weighted Total** | Raw weighted sum 0.69; Final 0.69/1.50 | **0.46** |
 
 ---
 

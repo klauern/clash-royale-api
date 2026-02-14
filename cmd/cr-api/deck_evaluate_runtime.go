@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/bits"
 	"os"
 	"sort"
 	"strings"
@@ -431,6 +432,19 @@ func calculateBaseImpact(rarity string, level int) float64 {
 
 // calculateUpgradeGoldCost estimates the gold cost for an upgrade
 // This is a simplified calculation - actual costs vary by specific card
+func calculateLevelMultiplier(fromLevel int) int {
+	if fromLevel <= 1 {
+		return 1
+	}
+
+	shift := fromLevel - 1
+	maxShift := bits.UintSize - 2 // keep within signed int range
+	if shift > maxShift {
+		shift = maxShift
+	}
+	return 1 << uint(shift)
+}
+
 func calculateUpgradeGoldCost(rarity string, fromLevel, toLevel int) int {
 	// Simplified gold cost calculation
 	baseCost := 0
@@ -447,8 +461,12 @@ func calculateUpgradeGoldCost(rarity string, fromLevel, toLevel int) int {
 		baseCost = 5000
 	}
 
+	if toLevel <= fromLevel {
+		return 0
+	}
+
 	// Cost increases with level
-	levelMultiplier := 1 << uint(fromLevel-1) // Doubles each level
+	levelMultiplier := calculateLevelMultiplier(fromLevel)
 	return baseCost * levelMultiplier * (toLevel - fromLevel)
 }
 
@@ -469,8 +487,12 @@ func calculateUpgradeCardsNeeded(rarity string, fromLevel, toLevel int) int {
 		baseCards = 1
 	}
 
+	if toLevel <= fromLevel {
+		return 0
+	}
+
 	// Cards needed increase with level
-	levelMultiplier := 1 << uint(fromLevel-1) // Doubles each level
+	levelMultiplier := calculateLevelMultiplier(fromLevel)
 	return baseCards * levelMultiplier * (toLevel - fromLevel)
 }
 

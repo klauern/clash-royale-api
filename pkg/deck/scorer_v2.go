@@ -23,7 +23,7 @@ import (
 
 // ScorerV2Weights contains the weight constants for the V2 scoring algorithm.
 // These weights are designed to balance card quality with strategic factors.
-// All weights should sum to 1.0 for normalization.
+// They are normalized at runtime before calculating weighted component scores.
 const (
 	// ScorerV2CardQualityWeight is the weight for individual card quality (reduced from 120%)
 	// This reduces level dominance while still valuing card strength
@@ -54,6 +54,20 @@ const (
 	// Disabled by default (0.0), can be enabled via config
 	ScorerV2UniquenessWeight = 0.0
 )
+
+func scorerV2NormalizationFactor(uniquenessWeight float64) float64 {
+	totalWeight := ScorerV2CardQualityWeight +
+		ScorerV2SynergyWeight +
+		ScorerV2CounterWeight +
+		ScorerV2ArchetypeWeight +
+		ScorerV2ElixirWeight +
+		ScorerV2CombatWeight +
+		uniquenessWeight
+	if totalWeight <= 0 {
+		return 0.0
+	}
+	return 1.0 / totalWeight
+}
 
 // CounterCoverageThresholds defines minimum requirements for defensive coverage.
 // These thresholds implement the WASTED framework for deck viability.
@@ -227,13 +241,19 @@ func ScoreDeckV2WithUniqueness(cards []CardCandidate, strategy Strategy, synergy
 	result.ElixirFitScore = calculateElixirFitScore(cards, strategy, &result.Details)
 	result.CombatStatsScore = calculateCombatStatsScore(cards)
 
+	uniquenessWeight := 0.0
+	if uniquenessScorer != nil && uniquenessScorer.config.Enabled {
+		uniquenessWeight = uniquenessScorer.config.Weight
+	}
+	normalizationFactor := scorerV2NormalizationFactor(uniquenessWeight)
+
 	// Calculate weighted contributions
-	result.WeightedCardQuality = result.CardQualityScore * ScorerV2CardQualityWeight
-	result.WeightedSynergy = result.SynergyScore * ScorerV2SynergyWeight
-	result.WeightedCounterCoverage = result.CounterCoverageScore * ScorerV2CounterWeight
-	result.WeightedArchetype = result.ArchetypeScore * ScorerV2ArchetypeWeight
-	result.WeightedElixirFit = result.ElixirFitScore * ScorerV2ElixirWeight
-	result.WeightedCombatStats = result.CombatStatsScore * ScorerV2CombatWeight
+	result.WeightedCardQuality = result.CardQualityScore * ScorerV2CardQualityWeight * normalizationFactor
+	result.WeightedSynergy = result.SynergyScore * ScorerV2SynergyWeight * normalizationFactor
+	result.WeightedCounterCoverage = result.CounterCoverageScore * ScorerV2CounterWeight * normalizationFactor
+	result.WeightedArchetype = result.ArchetypeScore * ScorerV2ArchetypeWeight * normalizationFactor
+	result.WeightedElixirFit = result.ElixirFitScore * ScorerV2ElixirWeight * normalizationFactor
+	result.WeightedCombatStats = result.CombatStatsScore * ScorerV2CombatWeight * normalizationFactor
 
 	// Calculate uniqueness score if scorer provided and enabled
 	if uniquenessScorer != nil && uniquenessScorer.config.Enabled {
@@ -242,7 +262,7 @@ func ScoreDeckV2WithUniqueness(cards []CardCandidate, strategy Strategy, synergy
 			cardNames[i] = card.Name
 		}
 		uniquenessResult := uniquenessScorer.ScoreDeckWithDetails(cardNames)
-		result.WeightedUniqueness = uniquenessResult.WeightedScore
+			result.WeightedUniqueness = uniquenessResult.WeightedScore * normalizationFactor
 		result.UniquenessDetails = &uniquenessResult
 	}
 

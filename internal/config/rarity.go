@@ -94,9 +94,12 @@ var cardRarityByNormalizedName = map[string]string{
 	"lavahound":     "Legendary",
 	"megaknight":    "Legendary",
 
+	// Rares
+	"minipekka":       "Rare",
+	"threemusketeers": "Rare",
+
 	// Epics
 	"pekka":           "Epic",
-	"minipekka":       "Rare",
 	"golem":           "Epic",
 	"balloon":         "Epic",
 	"babydragon":      "Epic",
@@ -125,7 +128,6 @@ var cardRarityByNormalizedName = map[string]string{
 	"hunter":          "Epic",
 	"electrogiant":    "Epic",
 	"elixirgolem":     "Epic",
-	"threemusketeers": "Epic",
 }
 
 // NormalizeRarity ensures rarity strings are in TitleCase for consistent map lookups.

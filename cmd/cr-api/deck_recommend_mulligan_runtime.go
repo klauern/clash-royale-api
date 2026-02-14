@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -247,12 +248,15 @@ func exportRecommendationsToCSV(dataDir string, result *recommend.Recommendation
 	}
 	defer closeFile(file)
 
+	writer := csv.NewWriter(file)
+	defer writer.Flush()
+
 	// Write header
 	header := []string{
 		"Rank", "Archetype", "Type", "Compatibility", "Synergy", "Overall",
 		"AvgElixir", "Cards", "EvolutionSlots", "Reasons",
 	}
-	if _, err := file.WriteString(strings.Join(header, ",") + "\n"); err != nil {
+	if err := writer.Write(header); err != nil {
 		return fmt.Errorf("failed to write header: %w", err)
 	}
 
@@ -274,9 +278,12 @@ func exportRecommendationsToCSV(dataDir string, result *recommend.Recommendation
 			evoSlotsStr,
 			reasonsStr,
 		}
-		if _, err := file.WriteString(strings.Join(row, ",") + "\n"); err != nil {
-			return fmt.Errorf("failed to write row: %w", err)
-		}
+			if err := writer.Write(row); err != nil {
+				return fmt.Errorf("failed to write row: %w", err)
+			}
+	}
+	if err := writer.Error(); err != nil {
+		return fmt.Errorf("failed to flush CSV data: %w", err)
 	}
 
 	return nil
@@ -401,6 +408,29 @@ func outputMulliganGuideJSON(guide *mulligan.MulliganGuide) error {
 	return nil
 }
 
+func sanitizePathComponent(value string) string {
+	value = strings.TrimSpace(value)
+	if value == "" {
+		return "deck"
+	}
+
+	var b strings.Builder
+	for _, r := range value {
+		isAlphaNum := (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9')
+		if isAlphaNum || r == '-' || r == '_' {
+			b.WriteRune(r)
+			continue
+		}
+		b.WriteByte('_')
+	}
+
+	sanitized := strings.Trim(b.String(), "._-")
+	if sanitized == "" {
+		return "deck"
+	}
+	return sanitized
+}
+
 // saveMulliganGuide saves the mulligan guide to a JSON file
 func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
 	// Create mulligan directory if it doesn't exist
@@ -411,7 +441,8 @@ func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
 
 	// Generate filename with timestamp
 	timestamp := guide.GeneratedAt.Format("20060102_150405")
-	filename := filepath.Join(mulliganDir, fmt.Sprintf("%s_%s.json", guide.DeckName, timestamp))
+	safeDeckName := sanitizePathComponent(guide.DeckName)
+	filename := filepath.Join(mulliganDir, fmt.Sprintf("%s_%s.json", safeDeckName, timestamp))
 
 	// Save as JSON
 	data, err := json.MarshalIndent(guide, "", "  ")

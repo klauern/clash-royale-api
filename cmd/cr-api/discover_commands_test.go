@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -13,32 +14,20 @@ import (
 )
 
 // createTestCheckpoint creates a test checkpoint file
-func createTestCheckpoint(t *testing.T, playerTag string, stats deck.DiscoveryStats) string {
+func createCheckpointFixture(t *testing.T, checkpoint deck.DiscoveryCheckpoint) string {
 	t.Helper()
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
+	sanitizedTag := strings.TrimPrefix(checkpoint.PlayerTag, "#")
+	if sanitizedTag == "" {
+		sanitizedTag = strings.TrimPrefix(checkpoint.Stats.PlayerTag, "#")
 	}
-	sanitizedTag := playerTag
-	if sanitizedTag[0] == '#' {
-		sanitizedTag = sanitizedTag[1:]
-	}
-	checkpointDir := filepath.Join(homeDir, ".cr-api", "discover")
-	if err := os.MkdirAll(checkpointDir, 0o755); err != nil {
-		t.Fatalf("failed to create checkpoint dir: %v", err)
+	if sanitizedTag == "" {
+		sanitizedTag = "test"
 	}
 
-	checkpoint := deck.DiscoveryCheckpoint{
-		GeneratorCheckpoint: &deck.GeneratorCheckpoint{
-			Strategy:  deck.StrategySmartSample,
-			Position:  100,
-			Generated: 100,
-		},
-		Stats:     stats,
-		Timestamp: time.Now(),
-		PlayerTag: playerTag,
-		Strategy:  deck.StrategySmartSample,
+	checkpointDir := filepath.Join(t.TempDir(), ".cr-api", "discover")
+	if err := os.MkdirAll(checkpointDir, 0o755); err != nil {
+		t.Fatalf("failed to create checkpoint dir: %v", err)
 	}
 
 	data, err := json.MarshalIndent(checkpoint, "", "  ")
@@ -52,6 +41,23 @@ func createTestCheckpoint(t *testing.T, playerTag string, stats deck.DiscoverySt
 	}
 
 	return checkpointPath
+}
+
+func createTestCheckpoint(t *testing.T, playerTag string, stats deck.DiscoveryStats) string {
+	t.Helper()
+
+	sanitizedTag := strings.TrimPrefix(playerTag, "#")
+	return createCheckpointFixture(t, deck.DiscoveryCheckpoint{
+		GeneratorCheckpoint: &deck.GeneratorCheckpoint{
+			Strategy:  deck.StrategySmartSample,
+			Position:  100,
+			Generated: 100,
+		},
+		Stats:     stats,
+		Timestamp: time.Now(),
+		PlayerTag: "#" + sanitizedTag,
+		Strategy:  deck.StrategySmartSample,
+	})
 }
 
 func TestDeckDiscoverCheckpointPersistence(t *testing.T) {
@@ -292,7 +298,7 @@ func TestDeckDiscoverCheckpointRoundTrip(t *testing.T) {
 	}
 
 	// Write checkpoint
-	checkpointPath := createTestCheckpoint(t, tag, originalStats)
+	checkpointPath := createCheckpointFixture(t, originalCheckpoint)
 	defer os.Remove(checkpointPath)
 
 	// Read back

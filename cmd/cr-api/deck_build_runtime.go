@@ -133,12 +133,16 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	dataDir := cmd.String("data-dir")
 	minElixir := cmd.Float64("min-elixir")
 	maxElixir := cmd.Float64("max-elixir")
-	includeCards := cmd.StringSlice("include-cards")
 	excludeCards := cmd.StringSlice("exclude-cards")
 
 	// Determine output directory
 	if outputDir == "" {
 		outputDir = filepath.Join(dataDir, "decks")
+	}
+
+	// Configure combat stats behavior for suite builds
+	if err := configureCombatStats(cmd); err != nil {
+		return err
 	}
 
 	// Parse strategies
@@ -152,15 +156,10 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			len(strategies), variations, len(strategies)*variations)
 	}
 
-	// Create deck builder and load player data
-	builder := deck.NewBuilder(dataDir)
-
-	// Set include/exclude card filters if provided
-	if len(includeCards) > 0 {
-		builder.SetIncludeCards(includeCards)
-	}
-	if len(excludeCards) > 0 {
-		builder.SetExcludeCards(excludeCards)
+	// Create configured builder and load player data
+	builder, err := configureDeckBuilder(cmd, dataDir, "")
+	if err != nil {
+		return err
 	}
 
 	// Load player data
@@ -196,28 +195,27 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			printf("Building decks for strategy: %s\n", strategy)
 		}
 
-		for v := 1; v <= variations; v++ {
-			// Create a new builder for this deck
-			deckBuilder := deck.NewBuilder(dataDir)
-
-			// Copy configuration
-			if len(includeCards) > 0 {
-				deckBuilder.SetIncludeCards(includeCards)
-			}
-			if len(excludeCards) > 0 {
-				deckBuilder.SetExcludeCards(excludeCards)
-			}
-
-			// Set strategy
-			if err := deckBuilder.SetStrategy(strategy); err != nil {
-				results = append(results, deckResult{
-					Strategy:   string(strategy),
-					Variation:  v,
-					BuildError: err,
-				})
-				printf("  ⚠ Variation %d: Failed to set strategy: %v\n", v, err)
-				continue
-			}
+			for v := 1; v <= variations; v++ {
+				// Create a fully configured builder for this deck/strategy
+				deckBuilder, err := configureDeckBuilder(cmd, dataDir, string(strategy))
+				if err != nil {
+					results = append(results, deckResult{
+						Strategy:   string(strategy),
+						Variation:  v,
+						BuildError: err,
+					})
+					printf("  ⚠ Variation %d: Failed to configure builder: %v\n", v, err)
+					continue
+				}
+				if err := configureFuzzIntegration(cmd, deckBuilder); err != nil {
+					results = append(results, deckResult{
+						Strategy:   string(strategy),
+						Variation:  v,
+						BuildError: err,
+					})
+					printf("  ⚠ Variation %d: Failed to configure fuzz integration: %v\n", v, err)
+					continue
+				}
 
 			// Build deck
 			deckRec, err := deckBuilder.BuildDeckFromAnalysis(playerData.CardAnalysis)
@@ -291,7 +289,11 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	printf("Successful:      %d\n", successful)
 	printf("Failed:          %d\n", failed)
 	printf("Build time:      %v\n", totalTime)
-	printf("Avg per deck:    %v\n\n", totalTime/time.Duration(len(results)))
+	if len(results) > 0 {
+		printf("Avg per deck:    %v\n\n", totalTime/time.Duration(len(results)))
+	} else {
+		printf("Avg per deck:    n/a (no generated decks)\n\n")
+	}
 
 	// Save summary JSON if requested
 	if saveData && successful > 0 {

@@ -745,10 +745,18 @@ func formatReportExecutiveSummary(sb *strings.Builder, names []string, results [
 // formatReportRankings formats the rankings with medal emojis
 func formatReportRankings(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("### Overall Rankings\n\n")
-	for i, name := range names {
-		emoji := getRankingEmoji(i + 1)
+	indices := make([]int, len(names))
+	for i := range indices {
+		indices[i] = i
+	}
+	sort.Slice(indices, func(i, j int) bool {
+		return results[indices[i]].OverallScore > results[indices[j]].OverallScore
+	})
+
+	for rank, idx := range indices {
+		emoji := getRankingEmoji(rank + 1)
 		sb.WriteString(fmt.Sprintf("%s **%s** - %.2f/10.0 (%s)\n",
-			emoji, name, results[i].OverallScore, results[i].OverallRating))
+			emoji, names[idx], results[idx].OverallScore, results[idx].OverallRating))
 	}
 }
 

@@ -45,6 +45,8 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	client := clashroyale.NewClient(apiToken)
+	var player *clashroyale.Player
+	var err error
 
 	// If no cards provided, fetch player's current deck from API
 	if len(cardNames) == 0 {
@@ -52,10 +54,10 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 			printf("Fetching player data for tag: %s\n", tag)
 		}
 
-		player, err := client.GetPlayer(tag)
-		if err != nil {
-			return fmt.Errorf("failed to get player: %w", err)
-		}
+			player, err = client.GetPlayer(tag)
+			if err != nil {
+				return fmt.Errorf("failed to get player: %w", err)
+			}
 
 		if len(player.CurrentDeck) == 0 {
 			return fmt.Errorf("player %s has no current deck configured", tag)
@@ -79,9 +81,11 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Fetch player data for context
-	player, err := client.GetPlayer(tag)
-	if err != nil {
-		return fmt.Errorf("failed to get player: %w", err)
+	if player == nil {
+		player, err = client.GetPlayer(tag)
+		if err != nil {
+			return fmt.Errorf("failed to get player: %w", err)
+		}
 	}
 
 	// Convert card names to CardCandidates

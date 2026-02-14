@@ -712,37 +712,7 @@ func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[
 		return nil
 	}
 
-	// Apply synergy bonuses if enabled
-	if b.synergyEnabled && len(currentDeck) > 0 {
-		for _, candidate := range pool {
-			synergyBonus := b.calculateSynergyScore(candidate.Name, currentDeck)
-			candidate.Score += synergyBonus * b.synergyWeight
-		}
-	}
-
-	// Apply uniqueness bonuses if enabled
-	if b.uniquenessEnabled && b.uniquenessScorer != nil {
-		for _, candidate := range pool {
-			// Build hypothetical deck with this candidate
-			deckCardNames := make([]string, 0, len(currentDeck)+1)
-			for _, card := range currentDeck {
-				deckCardNames = append(deckCardNames, card.Name)
-			}
-			deckCardNames = append(deckCardNames, candidate.Name)
-
-			// Calculate uniqueness score for this hypothetical deck
-			uniquenessScore := b.uniquenessScorer.ScoreDeck(deckCardNames)
-			candidate.Score += uniquenessScore * b.uniquenessWeight
-		}
-	}
-
-	// Apply archetype avoidance penalties if configured
-	if b.archetypeAvoidanceScorer != nil && b.archetypeAvoidanceScorer.IsEnabled() {
-		for _, candidate := range pool {
-			penalty := b.archetypeAvoidanceScorer.ScoreCard(candidate.Name)
-			candidate.Score += penalty
-		}
-	}
+	b.applyContextualScoring(pool, currentDeck)
 
 	// Return highest scoring card
 	sort.Slice(pool, func(i, j int) bool {
@@ -766,37 +736,7 @@ func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[
 		}
 	}
 
-	// Apply synergy bonuses if enabled
-	if b.synergyEnabled && len(currentDeck) > 0 {
-		for _, candidate := range pool {
-			synergyBonus := b.calculateSynergyScore(candidate.Name, currentDeck)
-			candidate.Score += synergyBonus * b.synergyWeight
-		}
-	}
-
-	// Apply uniqueness bonuses if enabled
-	if b.uniquenessEnabled && b.uniquenessScorer != nil {
-		for _, candidate := range pool {
-			// Build hypothetical deck with this candidate
-			deckCardNames := make([]string, 0, len(currentDeck)+1)
-			for _, card := range currentDeck {
-				deckCardNames = append(deckCardNames, card.Name)
-			}
-			deckCardNames = append(deckCardNames, candidate.Name)
-
-			// Calculate uniqueness score for this hypothetical deck
-			uniquenessScore := b.uniquenessScorer.ScoreDeck(deckCardNames)
-			candidate.Score += uniquenessScore * b.uniquenessWeight
-		}
-	}
-
-	// Apply archetype avoidance penalties if configured
-	if b.archetypeAvoidanceScorer != nil && b.archetypeAvoidanceScorer.IsEnabled() {
-		for _, candidate := range pool {
-			penalty := b.archetypeAvoidanceScorer.ScoreCard(candidate.Name)
-			candidate.Score += penalty
-		}
-	}
+	b.applyContextualScoring(pool, currentDeck)
 
 	sort.Slice(pool, func(i, j int) bool {
 		return pool[i].Score > pool[j].Score
@@ -818,6 +758,24 @@ func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[str
 		}
 	}
 
+	b.applyContextualScoring(pool, currentDeck)
+
+	sort.Slice(pool, func(i, j int) bool {
+		return pool[i].Score > pool[j].Score
+	})
+
+	if len(pool) < count {
+		return pool
+	}
+
+	return pool[:count]
+}
+
+func (b *Builder) applyContextualScoring(pool []*CardCandidate, currentDeck []*CardCandidate) {
+	if len(pool) == 0 {
+		return
+	}
+
 	// Apply synergy bonuses if enabled
 	if b.synergyEnabled && len(currentDeck) > 0 {
 		for _, candidate := range pool {
@@ -828,15 +786,13 @@ func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[str
 
 	// Apply uniqueness bonuses if enabled
 	if b.uniquenessEnabled && b.uniquenessScorer != nil {
+		baseDeckCardNames := make([]string, 0, len(currentDeck))
+		for _, card := range currentDeck {
+			baseDeckCardNames = append(baseDeckCardNames, card.Name)
+		}
 		for _, candidate := range pool {
-			// Build hypothetical deck with this candidate
-			deckCardNames := make([]string, 0, len(currentDeck)+1)
-			for _, card := range currentDeck {
-				deckCardNames = append(deckCardNames, card.Name)
-			}
+			deckCardNames := append([]string{}, baseDeckCardNames...)
 			deckCardNames = append(deckCardNames, candidate.Name)
-
-			// Calculate uniqueness score for this hypothetical deck
 			uniquenessScore := b.uniquenessScorer.ScoreDeck(deckCardNames)
 			candidate.Score += uniquenessScore * b.uniquenessWeight
 		}
@@ -849,16 +805,6 @@ func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[str
 			candidate.Score += penalty
 		}
 	}
-
-	sort.Slice(pool, func(i, j int) bool {
-		return pool[i].Score > pool[j].Score
-	})
-
-	if len(pool) < count {
-		return pool
-	}
-
-	return pool[:count]
 }
 
 func (b *Builder) calculateAvgElixir(deck []*CardCandidate) float64 {
