@@ -586,9 +586,9 @@ func buildEvalOutputFilename(timestamp, format, playerTag string) string {
 	extension := "txt"
 	switch format {
 	case batchFormatJSON:
-		extension = "json"
+		extension = batchFormatJSON
 	case batchFormatCSV:
-		extension = "csv"
+		extension = batchFormatCSV
 	}
 	return fmt.Sprintf("%s_deck_evaluations_%s.%s", timestamp, playerTag, extension)
 }

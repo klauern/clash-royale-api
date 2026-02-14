@@ -351,35 +351,32 @@ func applySortingAndPagination(query string, args *[]interface{}, opts QueryOpti
 	return query
 }
 
+const defaultSortColumn = "overall_score"
+
+var allowedSortColumns = map[string]struct{}{
+	defaultSortColumn:   {},
+	"attack_score":      {},
+	"defense_score":     {},
+	"synergy_score":     {},
+	"versatility_score": {},
+	"f2p_score":         {},
+	"playability_score": {},
+	"avg_elixir":        {},
+	"archetype":         {},
+	"strategy":          {},
+	"evaluated_at":      {},
+	"id":                {},
+}
+
 func safeSortColumn(sortBy string) string {
-	switch strings.ToLower(strings.TrimSpace(sortBy)) {
-	case "", "overall_score":
-		return "overall_score"
-	case "attack_score":
-		return "attack_score"
-	case "defense_score":
-		return "defense_score"
-	case "synergy_score":
-		return "synergy_score"
-	case "versatility_score":
-		return "versatility_score"
-	case "f2p_score":
-		return "f2p_score"
-	case "playability_score":
-		return "playability_score"
-	case "avg_elixir":
-		return "avg_elixir"
-	case "archetype":
-		return "archetype"
-	case "strategy":
-		return "strategy"
-	case "evaluated_at":
-		return "evaluated_at"
-	case "id":
-		return "id"
-	default:
-		return "overall_score"
+	normalized := strings.ToLower(strings.TrimSpace(sortBy))
+	if normalized == "" {
+		return defaultSortColumn
 	}
+	if _, ok := allowedSortColumns[normalized]; ok {
+		return normalized
+	}
+	return defaultSortColumn
 }
 
 // scanDeckEntries scans database rows into DeckEntry structs
