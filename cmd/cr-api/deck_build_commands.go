@@ -45,6 +45,7 @@ func addDeckBuildCommand() *cli.Command {
 	}
 }
 
+//nolint:funlen // Command flag matrix is intentionally explicit for CLI discoverability.
 func addDeckBuildSuiteCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "build-suite",
@@ -93,6 +94,18 @@ func addDeckBuildSuiteCommand() *cli.Command {
 				Name:  "exclude-cards",
 				Usage: "Cards that must be excluded from all decks",
 			},
+			&cli.StringFlag{Name: "unlocked-evolutions", Usage: "Comma-separated list of cards with unlocked evolutions (overrides UNLOCKED_EVOLUTIONS env var)"},
+			&cli.IntFlag{Name: "evolution-slots", Value: 2, Usage: "Number of evolution slots available (default 2)"},
+			&cli.Float64Flag{Name: "combat-stats-weight", Value: 0.25, Usage: "Weight for combat stats in scoring (0.0-1.0, where 0=disabled, 0.25=default, 1.0=combat-only)"},
+			&cli.BoolFlag{Name: "disable-combat-stats", Usage: "Disable combat stats completely (use traditional scoring only)"},
+			&cli.BoolFlag{Name: "enable-synergy", Usage: "Enable synergy-based card selection (considers card interactions and combos)"},
+			&cli.Float64Flag{Name: "synergy-weight", Value: 0.15, Usage: "Weight for synergy scoring (0.0-1.0, default 0.15 = 15%)"},
+			&cli.BoolFlag{Name: "prefer-unique", Usage: "Enable uniqueness/anti-meta scoring (prefers less common cards)"},
+			&cli.Float64Flag{Name: "uniqueness-weight", Value: 0.2, Usage: "Weight for uniqueness scoring (0.0-0.3, default 0.2 = 20%)"},
+			&cli.StringSliceFlag{Name: "avoid-archetype", Usage: "Archetypes to avoid when building decks (e.g., beatdown, cycle, control, siege, bridge_spam, bait, spawndeck, midrange)"},
+			&cli.StringFlag{Name: "fuzz-storage", Usage: "Path to fuzz storage database for data-driven card scoring (default: ~/.cr-api/fuzz_top_decks.db)"},
+			&cli.Float64Flag{Name: "fuzz-weight", Value: 0.10, Usage: "Weight for fuzz-based card scoring (0.0-1.0, default 0.10 = 10%)"},
+			&cli.IntFlag{Name: "fuzz-deck-limit", Value: 100, Usage: "Number of top fuzz decks to analyze for card stats (default 100)"},
 			&cli.BoolFlag{
 				Name:  "save",
 				Value: true,
@@ -119,7 +132,18 @@ func addDeckAnalyzeSuiteCommand() *cli.Command {
 			&cli.Float64Flag{Name: "max-elixir", Value: 4.5, Usage: "Maximum average elixir for decks"},
 			&cli.StringSliceFlag{Name: "include-cards", Usage: "Cards that must be included in all decks"},
 			&cli.StringSliceFlag{Name: "exclude-cards", Usage: "Cards that must be excluded from all decks"},
-			&cli.BoolFlag{Name: "verbose", Aliases: []string{"v"}, Usage: "Show detailed progress information"},
+			&cli.StringFlag{Name: "unlocked-evolutions", Usage: "Comma-separated list of cards with unlocked evolutions (overrides UNLOCKED_EVOLUTIONS env var)"},
+			&cli.IntFlag{Name: "evolution-slots", Value: 2, Usage: "Number of evolution slots available (default 2)"},
+			&cli.Float64Flag{Name: "combat-stats-weight", Value: 0.25, Usage: "Weight for combat stats in scoring (0.0-1.0, where 0=disabled, 0.25=default, 1.0=combat-only)"},
+			&cli.BoolFlag{Name: "disable-combat-stats", Usage: "Disable combat stats completely (use traditional scoring only)"},
+			&cli.BoolFlag{Name: "enable-synergy", Usage: "Enable synergy-based card selection (considers card interactions and combos)"},
+			&cli.Float64Flag{Name: "synergy-weight", Value: 0.15, Usage: "Weight for synergy scoring (0.0-1.0, default 0.15 = 15%)"},
+			&cli.BoolFlag{Name: "prefer-unique", Usage: "Enable uniqueness/anti-meta scoring (prefers less common cards)"},
+			&cli.Float64Flag{Name: "uniqueness-weight", Value: 0.2, Usage: "Weight for uniqueness scoring (0.0-0.3, default 0.2 = 20%)"},
+			&cli.StringSliceFlag{Name: "avoid-archetype", Usage: "Archetypes to avoid when building decks (e.g., beatdown, cycle, control, siege, bridge_spam, bait, spawndeck, midrange)"},
+			&cli.StringFlag{Name: "fuzz-storage", Usage: "Path to fuzz storage database for data-driven card scoring (default: ~/.cr-api/fuzz_top_decks.db)"},
+			&cli.Float64Flag{Name: "fuzz-weight", Value: 0.10, Usage: "Weight for fuzz-based card scoring (0.0-1.0, default 0.10 = 10%)"},
+			&cli.IntFlag{Name: "fuzz-deck-limit", Value: 100, Usage: "Number of top fuzz decks to analyze for card stats (default 100)"},
 			&cli.BoolFlag{Name: "suggest-constraints", Usage: "analyze top N decks and suggest card constraints based on frequency", Value: false},
 			&cli.Float64Flag{Name: "constraint-threshold", Usage: "minimum percentage threshold for card suggestions (0-100)", Value: 50.0},
 		},

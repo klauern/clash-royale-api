@@ -19,6 +19,16 @@ func makeCard(name string, elixir int, role CardRole) CardCandidate {
 	}
 }
 
+func mustLoadCoherenceScorer(t *testing.T) *CoherenceScorer {
+	t.Helper()
+
+	scorer, err := LoadCoherenceScorer("")
+	if err != nil {
+		t.Fatalf("failed to load coherence scorer: %v", err)
+	}
+	return scorer
+}
+
 // TestLoadCoherenceScorer tests loading the coherence scorer configuration
 func TestLoadCoherenceScorer(t *testing.T) {
 	// Load with embedded defaults
@@ -38,7 +48,7 @@ func TestLoadCoherenceScorer(t *testing.T) {
 
 // TestCoherenceHogCycle tests that a pure Hog Cycle deck scores high on coherence
 func TestCoherenceHogCycle(t *testing.T) {
-	scorer, _ := LoadCoherenceScorer("")
+	scorer := mustLoadCoherenceScorer(t)
 
 	// Pure Hog 2.6 Cycle deck
 	cards := []CardCandidate{
@@ -88,7 +98,7 @@ func TestCoherenceHogCycle(t *testing.T) {
 
 // TestCoherenceBeatdownPlusCycle tests that mixing beatdown and cycle deck scores low
 func TestCoherenceBeatdownPlusCycle(t *testing.T) {
-	scorer, _ := LoadCoherenceScorer("")
+	scorer := mustLoadCoherenceScorer(t)
 
 	// Mixed beatdown + cycle deck (Golem + Hog Rider - bad combination)
 	cards := []CardCandidate{
@@ -125,7 +135,7 @@ func TestCoherenceBeatdownPlusCycle(t *testing.T) {
 
 // TestCoherenceSiegeVsBeatdown tests siege vs beatdown anti-synergy
 func TestCoherenceSiegeVsBeatdown(t *testing.T) {
-	scorer, _ := LoadCoherenceScorer("")
+	scorer := mustLoadCoherenceScorer(t)
 
 	// Siege + beatdown mix (X-Bow + Golem - bad combination)
 	cards := []CardCandidate{
@@ -165,7 +175,7 @@ func TestCoherenceSiegeVsBeatdown(t *testing.T) {
 
 // TestCoherenceTooManyBuildings tests too many buildings penalty
 func TestCoherenceTooManyBuildings(t *testing.T) {
-	scorer, _ := LoadCoherenceScorer("")
+	scorer := mustLoadCoherenceScorer(t)
 
 	// Deck with 4 buildings (threshold is 3, so 4 should trigger violation)
 	cards := []CardCandidate{
@@ -197,7 +207,7 @@ func TestCoherenceTooManyBuildings(t *testing.T) {
 
 // TestCoherenceNoWinCondition tests no win condition penalty
 func TestCoherenceNoWinCondition(t *testing.T) {
-	scorer, _ := LoadCoherenceScorer("")
+	scorer := mustLoadCoherenceScorer(t)
 
 	// Deck with no clear win condition
 	cards := []CardCandidate{
@@ -229,7 +239,7 @@ func TestCoherenceNoWinCondition(t *testing.T) {
 
 // TestCoherenceBaitDeck tests that a proper bait deck scores well
 func TestCoherenceBaitDeck(t *testing.T) {
-	scorer, _ := LoadCoherenceScorer("")
+	scorer := mustLoadCoherenceScorer(t)
 
 	// Log Bait deck
 	cards := []CardCandidate{
@@ -263,7 +273,7 @@ func TestCoherenceBaitDeck(t *testing.T) {
 
 // TestCoherenceBridgeSpam tests bridge spam deck detection
 func TestCoherenceBridgeSpam(t *testing.T) {
-	scorer, _ := LoadCoherenceScorer("")
+	scorer := mustLoadCoherenceScorer(t)
 
 	// PEKKA Bridge Spam deck - using many fast threats
 	cards := []CardCandidate{
@@ -298,7 +308,7 @@ func TestCoherenceBridgeSpam(t *testing.T) {
 
 // TestGetCoherenceScore tests the quick score function
 func TestGetCoherenceScore(t *testing.T) {
-	scorer, _ := LoadCoherenceScorer("")
+	scorer := mustLoadCoherenceScorer(t)
 
 	cards := []CardCandidate{
 		makeCard("Hog Rider", 4, RoleWinCondition),
@@ -324,7 +334,7 @@ func TestGetCoherenceScore(t *testing.T) {
 
 // TestCoherenceArchetypeRequirementsElixir tests elixir range validation
 func TestCoherenceArchetypeRequirementsElixir(t *testing.T) {
-	scorer, _ := LoadCoherenceScorer("")
+	scorer := mustLoadCoherenceScorer(t)
 
 	// High elixir deck being used as cycle strategy (should elicit warning)
 	cards := []CardCandidate{

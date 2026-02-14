@@ -58,7 +58,7 @@ cmd-internal:
   files:
     - cmd/**
   deny:
-    - pkg: github.com/klauer/clash-royale-api/internal
+    - pkg: github.com/klauer/clash-royale-api/go/internal
       desc: cmd should not import internal packages
 ```
 

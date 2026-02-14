@@ -114,6 +114,26 @@ var (
 	}
 )
 
+func cloneRequiredRoles(in map[deck.CardRole]int) map[deck.CardRole]int {
+	if in == nil {
+		return nil
+	}
+	out := make(map[deck.CardRole]int, len(in))
+	for k, v := range in {
+		out[k] = v
+	}
+	return out
+}
+
+func cloneCards(in []string) []string {
+	if in == nil {
+		return nil
+	}
+	out := make([]string, len(in))
+	copy(out, in)
+	return out
+}
+
 // GetArchetypeConstraints returns predefined constraints for all 8 archetypes.
 // These constraints guide deck building to match specific playstyle characteristics.
 func GetArchetypeConstraints() map[mulligan.Archetype]ArchetypeConstraints {
@@ -122,53 +142,53 @@ func GetArchetypeConstraints() map[mulligan.Archetype]ArchetypeConstraints {
 			Archetype:      mulligan.ArchetypeBeatdown,
 			MinElixir:      4.0,
 			MaxElixir:      5.5,
-			RequiredRoles:  beatdownRoles,
-			PreferredCards: beatdownPreferred,
-			ExcludedCards:  beatdownExcluded,
+			RequiredRoles:  cloneRequiredRoles(beatdownRoles),
+			PreferredCards: cloneCards(beatdownPreferred),
+			ExcludedCards:  cloneCards(beatdownExcluded),
 			Description:    "Heavy tank-based deck with support troops for big pushes",
 		},
 		mulligan.ArchetypeCycle: {
 			Archetype:      mulligan.ArchetypeCycle,
 			MinElixir:      2.5,
 			MaxElixir:      3.5,
-			RequiredRoles:  cycleRoles,
-			PreferredCards: cyclePreferred,
-			ExcludedCards:  cycleExcluded,
+			RequiredRoles:  cloneRequiredRoles(cycleRoles),
+			PreferredCards: cloneCards(cyclePreferred),
+			ExcludedCards:  cloneCards(cycleExcluded),
 			Description:    "Fast cycling deck with low elixir cards for constant pressure",
 		},
 		mulligan.ArchetypeControl: {
 			Archetype:      mulligan.ArchetypeControl,
 			MinElixir:      3.5,
 			MaxElixir:      4.5,
-			RequiredRoles:  controlRoles,
-			PreferredCards: controlPreferred,
-			ExcludedCards:  controlExcluded,
+			RequiredRoles:  cloneRequiredRoles(controlRoles),
+			PreferredCards: cloneCards(controlPreferred),
+			ExcludedCards:  cloneCards(controlExcluded),
 			Description:    "Defensive deck with strong reactive plays and spell control",
 		},
 		mulligan.ArchetypeSiege: {
 			Archetype:      mulligan.ArchetypeSiege,
 			MinElixir:      3.0,
 			MaxElixir:      4.0,
-			RequiredRoles:  siegeRoles,
-			PreferredCards: siegePreferred,
-			ExcludedCards:  siegeExcluded,
+			RequiredRoles:  cloneRequiredRoles(siegeRoles),
+			PreferredCards: cloneCards(siegePreferred),
+			ExcludedCards:  cloneCards(siegeExcluded),
 			Description:    "Siege building-focused deck with strong defensive support",
 		},
 		mulligan.ArchetypeBridgeSpam: {
 			Archetype:      mulligan.ArchetypeBridgeSpam,
 			MinElixir:      3.0,
 			MaxElixir:      4.0,
-			RequiredRoles:  bridgeSpamRoles,
-			PreferredCards: bridgeSpamPreferred,
-			ExcludedCards:  bridgeSpamExcluded,
+			RequiredRoles:  cloneRequiredRoles(bridgeSpamRoles),
+			PreferredCards: cloneCards(bridgeSpamPreferred),
+			ExcludedCards:  cloneCards(bridgeSpamExcluded),
 			Description:    "Aggressive deck with fast units for quick bridge pressure",
 		},
 		mulligan.ArchetypeMidrange: {
 			Archetype:      mulligan.ArchetypeMidrange,
 			MinElixir:      3.0,
 			MaxElixir:      4.0,
-			RequiredRoles:  midrangeRoles,
-			PreferredCards: midrangePreferred,
+			RequiredRoles:  cloneRequiredRoles(midrangeRoles),
+			PreferredCards: cloneCards(midrangePreferred),
 			ExcludedCards:  []string{},
 			Description:    "Balanced deck with flexible offense and defense options",
 		},
@@ -176,18 +196,18 @@ func GetArchetypeConstraints() map[mulligan.Archetype]ArchetypeConstraints {
 			Archetype:      mulligan.ArchetypeSpawndeck,
 			MinElixir:      3.5,
 			MaxElixir:      5.0,
-			RequiredRoles:  spawndeckRoles,
-			PreferredCards: spawndeckPreferred,
-			ExcludedCards:  spawndeckExcluded,
+			RequiredRoles:  cloneRequiredRoles(spawndeckRoles),
+			PreferredCards: cloneCards(spawndeckPreferred),
+			ExcludedCards:  cloneCards(spawndeckExcluded),
 			Description:    "Spawn building-based deck with continuous troop generation",
 		},
 		mulligan.ArchetypeBait: {
 			Archetype:      mulligan.ArchetypeBait,
 			MinElixir:      2.8,
 			MaxElixir:      3.8,
-			RequiredRoles:  baitRoles,
-			PreferredCards: baitPreferred,
-			ExcludedCards:  baitExcluded,
+			RequiredRoles:  cloneRequiredRoles(baitRoles),
+			PreferredCards: cloneCards(baitPreferred),
+			ExcludedCards:  cloneCards(baitExcluded),
 			Description:    "Spell bait deck with multiple targets for enemy spells",
 		},
 	}

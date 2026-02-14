@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
@@ -16,6 +17,20 @@ const (
 	overallWeightF2P         = 0.10
 	overallWeightPlayability = 0.10
 )
+
+const counterMatrixDataDir = "data"
+
+var (
+	counterMatrixOnce sync.Once
+	counterMatrix     *deck.CounterMatrix
+)
+
+func getCounterMatrix() *deck.CounterMatrix {
+	counterMatrixOnce.Do(func() {
+		counterMatrix = deck.LoadCounterMatrix(counterMatrixDataDir, "")
+	})
+	return counterMatrix
+}
 
 // ============================================================================
 // Phase 1: Foundation Helpers - Tier Scoring
@@ -222,7 +237,7 @@ func extractNonEmptyCardNames(cards []deck.CardCandidate) []string {
 }
 
 func getResetRetargetCoverage(cards []deck.CardCandidate) []string {
-	matrix := deck.NewCounterMatrixWithDefaults()
+	matrix := getCounterMatrix()
 	return matrix.GetDeckCardsWithCapability(extractNonEmptyCardNames(cards), deck.CounterResetRetarget)
 }
 

@@ -86,7 +86,7 @@ func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, cons
 // runPhase1BuildDeckVariations builds deck variations for the analysis suite
 //
 //nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
-func runPhase1BuildDeckVariations(tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
+func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
 	decksDir := filepath.Join(outputDir, "decks")
 	if err := os.MkdirAll(decksDir, 0o755); err != nil {
 		return nil, nil, 0, 0, "", fmt.Errorf("failed to create decks directory: %w", err)
@@ -104,8 +104,11 @@ func runPhase1BuildDeckVariations(tag, strategiesStr, outputDir string, variatio
 		printf("Total decks to build: %d\n", len(strategies)*variations)
 	}
 
-	// Build decks using build-suite logic
-	builder := deck.NewBuilder(dataDir)
+	// Build decks using build-suite logic with shared configuration pipeline
+	builder, err := configureDeckBuilder(cmd, dataDir, "")
+	if err != nil {
+		return nil, nil, 0, 0, "", err
+	}
 
 	// Load player data
 	playerData, err := loadSuitePlayerData(builder, tag, apiToken, dataDir, fromAnalysis, verbose)
@@ -122,19 +125,14 @@ func runPhase1BuildDeckVariations(tag, strategiesStr, outputDir string, variatio
 
 	for _, strategy := range strategies {
 		for v := 1; v <= variations; v++ {
-			deckBuilder := deck.NewBuilder(dataDir)
-
-			// Apply configuration
-			if len(includeCards) > 0 {
-				deckBuilder.SetIncludeCards(includeCards)
+			deckBuilder, err := configureDeckBuilder(cmd, dataDir, string(strategy))
+			if err != nil {
+				printf("  ✗ Failed to configure builder for %s variation %d: %v\n", strategy, v, err)
+				failCount++
+				continue
 			}
-			if len(excludeCards) > 0 {
-				deckBuilder.SetExcludeCards(excludeCards)
-			}
-
-			// Set strategy
-			if err := deckBuilder.SetStrategy(strategy); err != nil {
-				printf("  ✗ Failed to set strategy %s variation %d: %v\n", strategy, v, err)
+			if err := configureFuzzIntegration(cmd, deckBuilder); err != nil {
+				printf("  ✗ Failed to configure fuzz integration for %s variation %d: %v\n", strategy, v, err)
 				failCount++
 				continue
 			}
@@ -399,20 +397,32 @@ func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlay
 	return results, evalFilePath, nil
 }
 
-// runPhase3CompareTopPerformers compares top decks and generates final report
-//
-//nolint:unused,funlen // Reserved for phased suite refactor tracked in beads.
-func runPhase3CompareTopPerformers(results []suiteEvalResult, topN int, outputDir, timestamp string, playerData *suitePlayerData, successCount int, suiteSummaryPath, evalFilePath string) (string, error) {
-	// Select top N decks
+func calculateCompareCount(resultCount, topN int) (int, error) {
+	if resultCount < 2 {
+		return 0, fmt.Errorf("need at least 2 evaluated decks to compare, got %d", resultCount)
+	}
+
 	compareCount := topN
-	if compareCount > len(results) {
-		compareCount = len(results)
+	if compareCount > resultCount {
+		compareCount = resultCount
 	}
 	if compareCount < 2 {
 		compareCount = 2
 	}
 	if compareCount > 5 {
 		compareCount = 5
+	}
+	return compareCount, nil
+}
+
+// runPhase3CompareTopPerformers compares top decks and generates final report
+//
+//nolint:unused,funlen // Reserved for phased suite refactor tracked in beads.
+func runPhase3CompareTopPerformers(results []suiteEvalResult, topN int, outputDir, timestamp string, playerData *suitePlayerData, successCount int, suiteSummaryPath, evalFilePath string) (string, error) {
+	// Select top N decks
+	compareCount, err := calculateCompareCount(len(results), topN)
+	if err != nil {
+		return "", err
 	}
 
 	topResults := results[:compareCount]
@@ -509,6 +519,10 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		dataDir = "data"
 	}
 
+	if err := configureCombatStats(cmd); err != nil {
+		return err
+	}
+
 	// Create timestamp for consistent file naming across all phases
 	timestamp := time.Now().Format("20060102_150405")
 
@@ -533,6 +547,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Println("─────────────────────────────────────────────────────────────────────")
 
 	builtDecks, playerData, successCount, _, suiteSummaryPath, err := runPhase1BuildDeckVariations(
+		cmd,
 		tag, strategiesStr, outputDir, variations, topN, includeCards, excludeCards, verbose,
 		apiToken, dataDir, fromAnalysis, minElixir, maxElixir, timestamp,
 	)
@@ -566,15 +581,9 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	compareCount := topN
-	if compareCount > len(results) {
-		compareCount = len(results)
-	}
-	if compareCount < 2 {
-		compareCount = 2
-	}
-	if compareCount > 5 {
-		compareCount = 5
+	compareCount, err := calculateCompareCount(len(results), topN)
+	if err != nil {
+		return err
 	}
 
 	// ========================================================================

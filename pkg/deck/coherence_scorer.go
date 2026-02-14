@@ -230,11 +230,11 @@ func (cs *CoherenceScorer) AnalyzeCoherence(cards []CardCandidate, strategy Stra
 	// Analyze card composition
 	cs.analyzeComposition(cards, result)
 
+	// Calculate elixir metrics before archetype detection so elixir fit can contribute.
+	result.AverageElixir = cs.calculateAverageElixir(cards)
+
 	// Detect primary archetype
 	result.PrimaryArchetype, result.ArchetypeConfidence = cs.detectArchetype(cards, result)
-
-	// Calculate elixer metrics
-	result.AverageElixir = cs.calculateAverageElixir(cards)
 
 	// Apply anti-synergy penalties
 	cs.applyAntiSynergyPenalties(cards, result)

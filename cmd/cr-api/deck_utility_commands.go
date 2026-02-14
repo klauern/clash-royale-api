@@ -170,3 +170,95 @@ func addDeckCompareAlgorithmsCommand() *cli.Command {
 		Action: deckCompareAlgorithmsCommand,
 	}
 }
+
+// addDeckResearchEvalCommand adds the deck research-eval command.
+//
+//nolint:funlen // Flag list is intentionally explicit for discoverability.
+func addDeckResearchEvalCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "research-eval",
+		Usage: "Benchmark archetype-free deck-building methods against baseline",
+		Flags: []cli.Flag{
+			&cli.StringSliceFlag{
+				Name:  "tags",
+				Usage: "Player tags to benchmark (without #). If omitted, uses phase-1 defaults",
+			},
+			&cli.StringFlag{
+				Name:  "methods",
+				Value: "baseline,genetic,constraint,role-first",
+				Usage: "Comma-separated methods: baseline, genetic, constraint, role-first",
+			},
+			&cli.IntFlag{
+				Name:  "seed",
+				Value: 42,
+				Usage: "Random seed for reproducible benchmarking",
+			},
+			&cli.IntFlag{
+				Name:  "top",
+				Value: 1,
+				Usage: "Method-specific top-N setting (reserved for future multi-deck outputs)",
+			},
+			&cli.StringFlag{
+				Name:  "output-dir",
+				Value: "reports/research-eval",
+				Usage: "Directory for benchmark.json and benchmark.md",
+			},
+			&cli.StringFlag{
+				Name:  "data-dir",
+				Value: "data",
+				Usage: "Directory containing card metadata (cards_stats.json)",
+			},
+			&cli.IntFlag{
+				Name:  "min-wincons",
+				Value: 1,
+				Usage: "Minimum win conditions required by hard constraints",
+			},
+			&cli.IntFlag{
+				Name:  "min-spells",
+				Value: 1,
+				Usage: "Minimum spells required by hard constraints",
+			},
+			&cli.IntFlag{
+				Name:  "min-air",
+				Value: 2,
+				Usage: "Minimum air-defense cards required by hard constraints",
+			},
+			&cli.IntFlag{
+				Name:  "min-tank-killers",
+				Value: 1,
+				Usage: "Minimum tank-killers required by hard constraints",
+			},
+			&cli.Float64Flag{
+				Name:  "weight-synergy",
+				Value: 0.30,
+				Usage: "Soft-objective weight for synergy score",
+			},
+			&cli.Float64Flag{
+				Name:  "weight-coverage",
+				Value: 0.25,
+				Usage: "Soft-objective weight for coverage score",
+			},
+			&cli.Float64Flag{
+				Name:  "weight-role-fit",
+				Value: 0.20,
+				Usage: "Soft-objective weight for role-fit score",
+			},
+			&cli.Float64Flag{
+				Name:  "weight-elixir-fit",
+				Value: 0.15,
+				Usage: "Soft-objective weight for elixir-fit score",
+			},
+			&cli.Float64Flag{
+				Name:  "weight-card-quality",
+				Value: 0.10,
+				Usage: "Soft-objective weight for card-quality score",
+			},
+			&cli.StringFlag{
+				Name:    "api-token",
+				Aliases: []string{"t"},
+				Usage:   "Clash Royale API token",
+			},
+		},
+		Action: deckResearchEvalCommand,
+	}
+}

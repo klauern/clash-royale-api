@@ -350,6 +350,7 @@ func TestLookupCardRarity(t *testing.T) {
 		{name: "Champion", cardName: "Little Prince", wantRarity: "Champion", wantFound: true},
 		{name: "Epic punctuation variant", cardName: "P.E.K.K.A", wantRarity: "Epic", wantFound: true},
 		{name: "Rare punctuation variant", cardName: "Mini P.E.K.K.A", wantRarity: "Rare", wantFound: true},
+		{name: "Rare three musketeers", cardName: "Three Musketeers", wantRarity: "Rare", wantFound: true},
 		{name: "Unknown card", cardName: "Unknown Card", wantRarity: "", wantFound: false},
 	}
 

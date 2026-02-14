@@ -516,7 +516,7 @@ func formatEvalBatchResults(
 	switch strings.ToLower(format) {
 	case "summary", compareFormatHuman:
 		return formatEvaluationBatchSummary(results, totalDecks, totalTime, sortBy, playerName, playerTag), nil
-	case "json":
+	case batchFormatJSON:
 		return formatEvalBatchResultsAsJSON(results, playerName, playerTag, totalDecks, sortBy, totalTime)
 	case batchFormatCSV:
 		return formatEvaluationBatchCSV(results), nil
@@ -585,9 +585,9 @@ func writeEvalBatchOutput(output, outputDir, format, playerTag string, saveAggre
 func buildEvalOutputFilename(timestamp, format, playerTag string) string {
 	extension := "txt"
 	switch format {
-	case "json":
+	case batchFormatJSON:
 		extension = "json"
-	case "csv":
+	case batchFormatCSV:
 		extension = "csv"
 	}
 	return fmt.Sprintf("%s_deck_evaluations_%s.%s", timestamp, playerTag, extension)

@@ -585,7 +585,11 @@ func buildAllStrategies(ctx context.Context, cmd *cli.Command, builder *deck.Bui
 	filteredAnalysis := applyCardExclusions(cardAnalysis, excludeCards)
 
 	for i, strategy := range strategies {
-		strategyBuilder := createStrategyBuilder(cmd)
+		strategyBuilder, err := createStrategyBuilder(cmd)
+		if err != nil {
+			printf("⚠ Failed to configure strategy builder: %v\n\n", err)
+			continue
+		}
 		if err := strategyBuilder.SetStrategy(strategy); err != nil {
 			printf("⚠ Failed to set strategy %s: %v\n\n", strategy, err)
 			continue
@@ -624,23 +628,15 @@ func displayAllStrategiesHeader(playerName, playerTag string) {
 }
 
 // createStrategyBuilder creates a new builder with configuration from command
-func createStrategyBuilder(cmd *cli.Command) *deck.Builder {
-	builder := deck.NewBuilder(cmd.String("data-dir"))
-
-	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
-		builder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+func createStrategyBuilder(cmd *cli.Command) (*deck.Builder, error) {
+	builder, err := configureDeckBuilder(cmd, cmd.String("data-dir"), "")
+	if err != nil {
+		return nil, err
 	}
-	if slots := cmd.Int("evolution-slots"); slots > 0 {
-		builder.SetEvolutionSlotLimit(slots)
+	if err := configureFuzzIntegration(cmd, builder); err != nil {
+		return nil, err
 	}
-	if enableSynergy := cmd.Bool("enable-synergy"); enableSynergy {
-		builder.SetSynergyEnabled(true)
-		if synergyWeight := cmd.Float64("synergy-weight"); synergyWeight > 0 {
-			builder.SetSynergyWeight(synergyWeight)
-		}
-	}
-
-	return builder
+	return builder, nil
 }
 
 // buildCardExclusionMap creates a map of cards to exclude (case-insensitive)
