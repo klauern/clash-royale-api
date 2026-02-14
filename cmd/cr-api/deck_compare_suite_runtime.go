@@ -116,10 +116,10 @@ type suiteEvalResult struct {
 	Name      string                      `json:"name"`
 	Strategy  string                      `json:"strategy"`
 	Deck      []string                    `json:"deck"`
-	Result    evaluation.EvaluationResult `json:"Result"`
-	FilePath  string                      `json:"FilePath"`
-	Evaluated string                      `json:"Evaluated"`
-	Duration  int64                       `json:"Duration"`
+	Result    evaluation.EvaluationResult `json:"result"`
+	FilePath  string                      `json:"file_path"`
+	Evaluated string                      `json:"evaluated"`
+	Duration  int64                       `json:"duration"`
 }
 
 // loadSuitePlayerData loads player data for suite commands (online or offline)

@@ -117,8 +117,6 @@ func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDi
 	}
 
 	var builtDecks []suiteDeckInfo
-	_ = minElixir // Reserved for future use in validation
-	_ = maxElixir // Reserved for future use in validation
 	successCount := 0
 	failCount := 0
 	buildStart := time.Now()
@@ -142,6 +140,13 @@ func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDi
 			if err != nil {
 				printf("  ✗ Failed to build %s variation %d: %v\n", strategy, v, err)
 				failCount++
+				continue
+			}
+			if deckRec.AvgElixir < minElixir || deckRec.AvgElixir > maxElixir {
+				if verbose {
+					printf("  - Skipped %s variation %d (avg elixir %.2f outside range %.2f-%.2f)\n",
+						strategy, v, deckRec.AvgElixir, minElixir, maxElixir)
+				}
 				continue
 			}
 
@@ -455,35 +460,6 @@ func runPhase3CompareTopPerformers(results []suiteEvalResult, topN int, outputDi
 	printf("✓ Generated comparison report for top %d decks\n", compareCount)
 	printf("  Report: %s\n", reportFilePath)
 	fmt.Println()
-
-	// ========================================================================
-	// SUMMARY
-	// ========================================================================
-	fmt.Println("╔═══════════════════════════════════════════════════════════════════╗")
-	fmt.Println("║                      ANALYSIS SUITE COMPLETE                       ║")
-	fmt.Println("╚═══════════════════════════════════════════════════════════════════╝")
-	fmt.Println()
-	printf("Player: %s (%s)\n", playerData.PlayerName, playerData.PlayerTag)
-	printf("Decks built: %d\n", successCount)
-	printf("Decks evaluated: %d\n", len(results))
-	printf("Top performers compared: %d\n", compareCount)
-	fmt.Println()
-	fmt.Println("📂 Output files:")
-	printf("  • Suite summary:  %s\n", suiteSummaryPath)
-	printf("  • Evaluations:    %s\n", evalFilePath)
-	printf("  • Final report:   %s\n", reportFilePath)
-	fmt.Println()
-
-	if len(results) > 0 {
-		fmt.Println("🥇 Top 3 decks:")
-		for i := 0; i < 3 && i < len(results); i++ {
-			medal := []string{"🥇", "🥈", "🥉"}[i]
-			res := results[i]
-			printf("  %s %s: %.2f (%.2f avg elixir, %s archetype)\n",
-				medal, res.Name, res.Result.OverallScore, res.Result.AvgElixir,
-				res.Result.DetectedArchetype)
-		}
-	}
 
 	return reportFilePath, nil
 }

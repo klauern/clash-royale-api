@@ -82,6 +82,58 @@ func TestNewStorage(t *testing.T) {
 	}
 }
 
+func TestNewStorage_InvalidPlayerTag(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "leaderboard_test_*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	_, err = NewStorage("../bad/tag")
+	if err == nil {
+		t.Fatal("expected error for invalid player tag")
+	}
+}
+
+func TestQuery_InvalidSortByFallsBackSafely(t *testing.T) {
+	storage, cleanup := createTestStorage(t)
+	defer cleanup()
+
+	entry1 := createTestDeckEntry(
+		[]string{"Giant", "Wizard", "Mini P.E.K.K.A", "Musketeer", "Arrows", "Fireball", "Goblin Gang", "Ice Spirit"},
+		9.0,
+	)
+	entry2 := createTestDeckEntry(
+		[]string{"Hog Rider", "Musketeer", "Ice Golem", "Cannon", "Fireball", "Log", "Skeletons", "Ice Spirit"},
+		7.0,
+	)
+
+	if _, _, err := storage.InsertDeck(entry1); err != nil {
+		t.Fatalf("failed to insert deck 1: %v", err)
+	}
+	if _, _, err := storage.InsertDeck(entry2); err != nil {
+		t.Fatalf("failed to insert deck 2: %v", err)
+	}
+
+	results, err := storage.Query(QueryOptions{
+		SortBy:    "overall_score; DROP TABLE decks; --",
+		SortOrder: "desc",
+	})
+	if err != nil {
+		t.Fatalf("query failed: %v", err)
+	}
+	if len(results) != 2 {
+		t.Fatalf("expected 2 results, got %d", len(results))
+	}
+	if results[0].OverallScore < results[1].OverallScore {
+		t.Fatalf("expected fallback sort by overall_score desc")
+	}
+}
+
 func TestInsertDeck_NewDeck(t *testing.T) {
 	storage, cleanup := createTestStorage(t)
 	defer cleanup()

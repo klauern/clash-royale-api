@@ -8,6 +8,7 @@ import (
 	"os"
 	"sort"
 	"strings"
+	"sync"
 	"text/tabwriter"
 	"time"
 
@@ -18,6 +19,11 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/urfave/cli/v3"
+)
+
+var (
+	combatStatsOnce     sync.Once
+	combatStatsRegistry *clashroyale.CardStatsRegistry
 )
 
 func validateEvaluateFlags(deckString, fromAnalysis, playerTag, apiToken string, showUpgradeImpact bool) error {
@@ -296,24 +302,7 @@ func performDeckUpgradeImpactAnalysis(deckCardNames []string, playerTag string, 
 		return fmt.Errorf("failed to analyze card collection: %w", err)
 	}
 
-	// Convert analysis.CardAnalysis to deck.CardAnalysis
-	deckCardAnalysis := deck.CardAnalysis{
-		CardLevels:   make(map[string]deck.CardLevelData),
-		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
-		PlayerName:   player.Name,
-		PlayerTag:    player.Tag,
-	}
-
-	for cardName, cardInfo := range cardAnalysis.CardLevels {
-		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
-			Level:             cardInfo.Level,
-			MaxLevel:          cardInfo.MaxLevel,
-			Rarity:            cardInfo.Rarity,
-			Elixir:            cardInfo.Elixir,
-			EvolutionLevel:    cardInfo.EvolutionLevel,
-			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
-		}
-	}
+	deckCardAnalysis := convertToDeckCardAnalysis(cardAnalysis, player)
 
 	// Create a deck builder to build the current deck
 	builder := deck.NewBuilder(dataDir)
@@ -658,16 +647,36 @@ func inferRole(name string) *deck.CardRole {
 	return &role
 }
 
-// inferStats infers basic combat stats from card name
+// inferStats returns combat stats for a card, preferring static card stats data.
 func inferStats(name string) *clashroyale.CombatStats {
-	// For evaluation purposes, we use simplified stats
-	// In a full implementation, this would come from the API
+	combatStatsOnce.Do(func() {
+		paths := []string{
+			"data/static/cards_stats.json",
+			"../data/static/cards_stats.json",
+			"../../data/static/cards_stats.json",
+		}
+		for _, p := range paths {
+			registry, err := clashroyale.LoadStats(p)
+			if err == nil {
+				combatStatsRegistry = registry
+				return
+			}
+		}
+	})
+
+	if combatStatsRegistry != nil {
+		if stats := combatStatsRegistry.GetStats(name); stats != nil {
+			return stats
+		}
+	}
+
+	// Fallback defaults when static stats are unavailable.
 	return &clashroyale.CombatStats{
-		Targets:         "Air & Ground", // Default to versatile
-		DamagePerSecond: 100,            // Default DPS
-		Hitpoints:       1000,           // Default HP
-		HitSpeed:        1.5,            // Default hit speed
-		Range:           5.0,            // Default range
+		Targets:         "Air & Ground",
+		DamagePerSecond: 100,
+		Hitpoints:       1000,
+		HitSpeed:        1.5,
+		Range:           5.0,
 	}
 }
 

@@ -71,7 +71,7 @@ jobs:
           args: --timeout=10m --output.json.path=lint-report.json --output.html.path=lint-report.html
 
       - name: Upload lint reports
-        if: steps.golangci.outcome == 'failure'
+        if: failure() && steps.golangci.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: golangci-lint-reports

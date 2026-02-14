@@ -249,7 +249,6 @@ func exportRecommendationsToCSV(dataDir string, result *recommend.Recommendation
 	defer closeFile(file)
 
 	writer := csv.NewWriter(file)
-	defer writer.Flush()
 
 	// Write header
 	header := []string{
@@ -282,6 +281,7 @@ func exportRecommendationsToCSV(dataDir string, result *recommend.Recommendation
 			return fmt.Errorf("failed to write row: %w", err)
 		}
 	}
+	writer.Flush()
 	if err := writer.Error(); err != nil {
 		return fmt.Errorf("failed to flush CSV data: %w", err)
 	}
@@ -291,7 +291,7 @@ func exportRecommendationsToCSV(dataDir string, result *recommend.Recommendation
 
 // getRecommendationsCSVPath returns the CSV file path for recommendations
 func getRecommendationsCSVPath(dataDir, playerTag string) string {
-	return filepath.Join(dataDir, "csv", fmt.Sprintf("recommendations_%s.csv", playerTag))
+	return filepath.Join(dataDir, "csv", fmt.Sprintf("recommendations_%s.csv", sanitizePathComponent(playerTag)))
 }
 
 func deckMulliganCommand(ctx context.Context, cmd *cli.Command) error {
@@ -384,7 +384,6 @@ func displayMulliganGuide(guide *mulligan.MulliganGuide) {
 
 	printf("🎮 Matchup-Specific Openings:\n\n")
 
-	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
 	for i, matchup := range guide.Matchups {
 		printf("%d. VS %s\n", i+1, matchup.OpponentType)
 		printf("   ▶ Opening Play: %s\n", matchup.OpeningPlay)
@@ -394,7 +393,6 @@ func displayMulliganGuide(guide *mulligan.MulliganGuide) {
 		printf("   ▶ Danger Level: %s\n", matchup.DangerLevel)
 		fmt.Println()
 	}
-	flushWriter(w)
 }
 
 // outputMulliganGuideJSON outputs the guide in JSON format

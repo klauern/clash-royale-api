@@ -154,7 +154,10 @@ func NewDiscoveryRunner(config DiscoveryConfig) (*DiscoveryRunner, error) {
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(config.PlayerTag, "#")
+	sanitizedTag, err := SanitizePlayerTag(config.PlayerTag)
+	if err != nil {
+		return nil, fmt.Errorf("invalid player tag: %w", err)
+	}
 	checkpointDir := filepath.Join(homeDir, ".cr-api", "discover")
 
 	runner := &DiscoveryRunner{
@@ -170,7 +173,7 @@ func NewDiscoveryRunner(config DiscoveryConfig) (*DiscoveryRunner, error) {
 		stats: DiscoveryStats{
 			StartTime: time.Now(),
 			Strategy:  config.GeneratorConfig.Strategy,
-			PlayerTag: config.PlayerTag,
+			PlayerTag: "#" + sanitizedTag,
 			TopScores: make([]float64, 0, 5),
 		},
 	}

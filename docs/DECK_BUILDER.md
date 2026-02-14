@@ -13,6 +13,8 @@ The deck builder analyzes player data to recommend balanced decks with proper ca
 - **Elixir Fit (25%)**: Elixir curve appropriate for the deck's strategy
 - **Combat Stats (20%)**: DPS, HP efficiency, and targeting coverage
 
+> Note: These are raw component weights. The scorer normalizes them at runtime before computing the final score.
+
 See [IMPROVED_SCORING_DESIGN.md](./IMPROVED_SCORING_DESIGN.md) for complete algorithm details.
 
 ## Card Roles
@@ -46,6 +48,13 @@ Each card is assigned a strategic role:
 # Build with counter coverage enabled
 ./bin/cr-api deck build --tag '#PLAYERTAG' --enable-counters
 ```
+
+### V2 Algorithm Options
+
+| Flag | Default | Range | Description |
+|------|---------|-------|-------------|
+| `--synergy-weight` | `0.20` | `0.0-1.0` | Weight for synergy scoring in V2 mode |
+| `--enable-counters` | `false` | n/a | Enables counter coverage analysis in V2 scoring |
 
 ## Deck Building Strategy
 
@@ -353,6 +362,33 @@ Constraint method tuning knobs:
 - Soft weights: `--weight-synergy`, `--weight-coverage`, `--weight-role-fit`, `--weight-elixir-fit`, `--weight-card-quality`
 
 All soft weights are normalized automatically. Invalid hard/soft values fail fast with explicit validation errors.
+
+### Configuration Parameters
+
+Hard constraints (integers, `>= 0`):
+- `--min-wincons` (default: `1`)
+- `--min-spells` (default: `2`)
+- `--min-air` (default: `2`)
+- `--min-tank-killers` (default: `1`)
+
+Soft weights (floats in `0.0-1.0`):
+- `--weight-synergy` (default: `0.20`)
+- `--weight-coverage` (default: `0.15`)
+- `--weight-role-fit` (default: `0.10`)
+- `--weight-elixir-fit` (default: `0.25`)
+- `--weight-card-quality` (default: `0.60`)
+
+Weight normalization:
+- Soft weights are scaled to sum to `1.0` before evaluation.
+- Example: if provided weights sum to `1.5`, each weight is divided by `1.5`.
+
+Validation behavior:
+- Negative hard constraints fail immediately.
+- Soft weights outside `0.0-1.0` fail immediately.
+
+Output artifacts:
+- `benchmark.json`: per-player, per-method metrics and outcomes.
+- `benchmark.md`: aggregate tables, violation summaries, and recommendations.
 
 ## Best Practices
 

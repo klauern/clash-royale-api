@@ -338,6 +338,10 @@ func TestDeckDiscoverCheckpointRoundTrip(t *testing.T) {
 	}
 
 	// Verify deck cards match
+	if len(loadedCheckpoint.Stats.BestDeck) != len(originalCheckpoint.Stats.BestDeck) {
+		t.Fatalf("BestDeck length mismatch: got %d, want %d",
+			len(loadedCheckpoint.Stats.BestDeck), len(originalCheckpoint.Stats.BestDeck))
+	}
 	for i, card := range loadedCheckpoint.Stats.BestDeck {
 		if card != originalCheckpoint.Stats.BestDeck[i] {
 			t.Errorf("BestDeck[%d] mismatch: got %s, want %s", i, card, originalCheckpoint.Stats.BestDeck[i])

@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -364,13 +363,16 @@ func addDiscoverCommands() *cli.Command {
 
 func deckDiscoverStatusCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return err
+	}
 
 	// Check for checkpoint
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
 
 	if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
@@ -429,6 +431,11 @@ type discoveryResources struct {
 
 // initializeDiscoveryResources sets up all required resources for discovery
 func initializeDiscoveryResources(ctx context.Context, playerTag string, verbose bool) (*discoveryResources, error) {
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return nil, err
+	}
+
 	// Get API token
 	apiToken := os.Getenv("CLASH_ROYALE_API_TOKEN")
 	if apiToken == "" {
@@ -437,11 +444,10 @@ func initializeDiscoveryResources(ctx context.Context, playerTag string, verbose
 
 	// Fetch player data
 	if verbose {
-		fprintf(os.Stderr, "Fetching player data for #%s...\n", playerTag)
+		fprintf(os.Stderr, "Fetching player data for #%s...\n", sanitizedTag)
 	}
 	client := clashroyale.NewClient(apiToken)
-	cleanTag := strings.TrimPrefix(playerTag, "#")
-	player, err := client.GetPlayer(cleanTag)
+	player, err := client.GetPlayer(sanitizedTag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch player: %w", err)
 	}
@@ -467,7 +473,7 @@ func initializeDiscoveryResources(ctx context.Context, playerTag string, verbose
 	synergyDB := deck.NewSynergyDatabase()
 
 	// Create leaderboard storage
-	storage, err := leaderboard.NewStorage(playerTag)
+	storage, err := leaderboard.NewStorage("#" + sanitizedTag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create storage: %w", err)
 	}
@@ -603,11 +609,15 @@ func attemptResume(runner *deck.DiscoveryRunner, resume, verbose bool) {
 
 // warnExistingCheckpoint checks for and warns about existing checkpoints when starting fresh
 func warnExistingCheckpoint(playerTag string) {
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return
+	}
+
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
 	if _, err := os.Stat(checkpointPath); err == nil {
 		fprintf(os.Stderr, "Warning: Existing checkpoint found. Use --resume or 'cr-api deck discover resume' to continue.\n")
@@ -619,7 +629,12 @@ func warnExistingCheckpoint(playerTag string) {
 //
 //nolint:gocyclo,funlen // Command setup/teardown has many required branches.
 func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
-	playerTag := cmd.String("tag")
+	rawPlayerTag := cmd.String("tag")
+	sanitizedTag, err := deck.SanitizePlayerTag(rawPlayerTag)
+	if err != nil {
+		return err
+	}
+	playerTag := "#" + sanitizedTag
 	strategy := deck.GeneratorStrategy(cmd.String("strategy"))
 	sampleSize := cmd.Int("sample-size")
 	limit := cmd.Int("limit")
@@ -723,12 +738,15 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (er
 // deckDiscoverStopCommand stops a running discovery session
 func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return err
+	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 
 	// Check for PID file
 	pidFile := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.pid", sanitizedTag))
@@ -777,13 +795,16 @@ func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
 	verbose := cmd.Bool("verbose")
 	background := cmd.Bool("background")
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return err
+	}
 
 	// Verify checkpoint exists
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
 
 	if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
@@ -818,12 +839,15 @@ func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 // deckDiscoverStatsCommand shows detailed session statistics
 func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return err
+	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 
 	// Check for checkpoint
 	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
@@ -902,12 +926,15 @@ func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 //nolint:funlen,gocognit,gocyclo // Process management and flag forwarding require explicit control flow.
 func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
 	playerTag := cmd.String("tag")
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return err
+	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 
 	// Check for already running process
 	pidFile := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.pid", sanitizedTag))
@@ -956,7 +983,7 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 		name  string
 		value string
 	}{
-		{"tag", cmd.String("tag")},
+		{"tag", "#" + sanitizedTag},
 		{"strategy", cmd.String("strategy")},
 		{"sample-size", fmt.Sprintf("%d", cmd.Int("sample-size"))},
 		{"generations", fmt.Sprintf("%d", cmd.Int("generations"))},

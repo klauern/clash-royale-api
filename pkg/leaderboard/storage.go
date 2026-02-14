@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -21,17 +22,22 @@ type Storage struct {
 	dbPath    string
 }
 
+var playerTagPattern = regexp.MustCompile(`^[A-Za-z0-9]+$`)
+
 // NewStorage creates a new Storage instance for the given player tag
 // The database file is stored at ~/.cr-api/leaderboards/<player_tag>.db
 func NewStorage(playerTag string) (*Storage, error) {
+	canonicalTag, sanitizedTag, err := normalizePlayerTag(playerTag)
+	if err != nil {
+		return nil, err
+	}
+
 	// Construct path: ~/.cr-api/leaderboards/<player_tag>.db
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	// Remove # prefix from player tag for filename safety
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 	leaderboardDir := filepath.Join(homeDir, ".cr-api", "leaderboards")
 	dbPath := filepath.Join(leaderboardDir, fmt.Sprintf("%s.db", sanitizedTag))
 
@@ -48,7 +54,7 @@ func NewStorage(playerTag string) (*Storage, error) {
 
 	storage := &Storage{
 		db:        db,
-		playerTag: playerTag,
+		playerTag: canonicalTag,
 		dbPath:    dbPath,
 	}
 
@@ -59,6 +65,18 @@ func NewStorage(playerTag string) (*Storage, error) {
 	}
 
 	return storage, nil
+}
+
+func normalizePlayerTag(playerTag string) (string, string, error) {
+	sanitizedTag := strings.TrimSpace(strings.TrimPrefix(playerTag, "#"))
+	if sanitizedTag == "" {
+		return "", "", fmt.Errorf("player tag is required")
+	}
+	if !playerTagPattern.MatchString(sanitizedTag) {
+		return "", "", fmt.Errorf("invalid player tag: must contain only letters and digits")
+	}
+	sanitizedTag = strings.ToUpper(sanitizedTag)
+	return "#" + sanitizedTag, sanitizedTag, nil
 }
 
 // Close closes the database connection
@@ -314,10 +332,7 @@ func applyExcludeCards(query string, args []interface{}, cards []string) (string
 
 // applySortingAndPagination adds ORDER BY, LIMIT, and OFFSET clauses
 func applySortingAndPagination(query string, args *[]interface{}, opts QueryOptions) string {
-	sortBy := opts.SortBy
-	if sortBy == "" {
-		sortBy = "overall_score"
-	}
+	sortBy := safeSortColumn(opts.SortBy)
 	sortOrder := strings.ToUpper(opts.SortOrder)
 	if sortOrder != "ASC" && sortOrder != "DESC" {
 		sortOrder = "DESC"
@@ -334,6 +349,37 @@ func applySortingAndPagination(query string, args *[]interface{}, opts QueryOpti
 	}
 
 	return query
+}
+
+func safeSortColumn(sortBy string) string {
+	switch strings.ToLower(strings.TrimSpace(sortBy)) {
+	case "", "overall_score":
+		return "overall_score"
+	case "attack_score":
+		return "attack_score"
+	case "defense_score":
+		return "defense_score"
+	case "synergy_score":
+		return "synergy_score"
+	case "versatility_score":
+		return "versatility_score"
+	case "f2p_score":
+		return "f2p_score"
+	case "playability_score":
+		return "playability_score"
+	case "avg_elixir":
+		return "avg_elixir"
+	case "archetype":
+		return "archetype"
+	case "strategy":
+		return "strategy"
+	case "evaluated_at":
+		return "evaluated_at"
+	case "id":
+		return "id"
+	default:
+		return "overall_score"
+	}
 }
 
 // scanDeckEntries scans database rows into DeckEntry structs

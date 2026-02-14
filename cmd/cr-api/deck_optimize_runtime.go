@@ -185,7 +185,8 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// CSV export if requested
 	if exportCSV {
-		csvPath := filepath.Join(dataDir, fmt.Sprintf("deck-optimize-%s-%d.csv", tag, time.Now().Unix()))
+		safeTag := sanitizePathComponent(tag)
+		csvPath := filepath.Join(dataDir, fmt.Sprintf("deck-optimize-%s-%d.csv", safeTag, time.Now().Unix()))
 		if err := exportOptimizationCSV(csvPath, tag, cardNames, currentResult, *alternatives); err != nil {
 			fprintf(os.Stderr, "Warning: Failed to export CSV: %v\n", err)
 		} else {
@@ -195,5 +196,3 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 
 	return nil
 }
-
-//nolint:funlen,gocognit,gocyclo // Command flow complexity scheduled for decomposition in clash-royale-api-1g1r.

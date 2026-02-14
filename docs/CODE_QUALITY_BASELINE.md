@@ -58,7 +58,7 @@ cmd-internal:
   files:
     - cmd/**
   deny:
-    - pkg: github.com/klauer/clash-royale-api/go/internal
+    - pkg: github.com/klauern/clash-royale-api/go/internal
       desc: cmd should not import internal packages
 ```
 
@@ -68,7 +68,7 @@ All linters are disabled for test files (`_test.go`) to allow flexibility in tes
 
 ### Issue Reporting
 
-- `new-from-rev: HEAD` - Only report new issues
+- `new-from-rev: origin/main` - Only report new issues
 - `max-issues-per-linter: 0` - Unlimited issues per linter
 - `max-same-issues: 0` - Unlimited duplicate issues
 

@@ -140,6 +140,9 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	deck, used = b.addIncludedCards(deck, candidates, used)
 	deck, used, notes := b.selectCardsByRole(deck, candidates, used)
 	deck = b.fillRemainingSlots(deck, candidates, used)
+	if len(deck) < 8 {
+		return nil, fmt.Errorf("insufficient eligible cards to build a full deck: need 8, found %d", len(deck))
+	}
 
 	evolutionSlots := b.selectEvolutionSlots(deck)
 	recommendation := b.buildRecommendationDetails(deck, analysis.AnalysisTime, evolutionSlots, notes)
@@ -287,8 +290,11 @@ func (b *Builder) fillRemainingSlots(deck, candidates []*CardCandidate, used map
 		remaining := b.getHighestScoreCards(candidates, used, 8-len(deck), deck)
 		deck = append(deck, remaining...)
 	}
-	// Ensure exactly 8 cards
-	return deck[:8]
+	// Ensure at most 8 cards.
+	if len(deck) > 8 {
+		return deck[:8]
+	}
+	return deck
 }
 
 // buildRecommendationDetails builds the DeckRecommendation struct and populates card details
@@ -704,7 +710,7 @@ func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[
 	var pool []*CardCandidate
 	for _, candidate := range candidates {
 		if !used[candidate.Name] && b.contains(roleCards, candidate.Name) {
-			pool = append(pool, candidate)
+			pool = append(pool, cloneCardCandidate(candidate))
 		}
 	}
 
@@ -732,7 +738,7 @@ func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[
 	var pool []*CardCandidate
 	for _, candidate := range candidates {
 		if !used[candidate.Name] && b.contains(roleCards, candidate.Name) {
-			pool = append(pool, candidate)
+			pool = append(pool, cloneCardCandidate(candidate))
 		}
 	}
 
@@ -754,7 +760,7 @@ func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[str
 	var pool []*CardCandidate
 	for _, candidate := range candidates {
 		if !used[candidate.Name] {
-			pool = append(pool, candidate)
+			pool = append(pool, cloneCardCandidate(candidate))
 		}
 	}
 
@@ -806,6 +812,14 @@ func (b *Builder) applyContextualScoring(pool, currentDeck []*CardCandidate) {
 			candidate.Score += penalty
 		}
 	}
+}
+
+func cloneCardCandidate(candidate *CardCandidate) *CardCandidate {
+	if candidate == nil {
+		return nil
+	}
+	clone := *candidate
+	return &clone
 }
 
 func (b *Builder) calculateAvgElixir(deck []*CardCandidate) float64 {

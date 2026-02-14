@@ -90,7 +90,7 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Convert analysis.CardAnalysis to deck.CardAnalysis
-	deckCardAnalysis := convertToDecKCardAnalysis(cardAnalysis, player)
+	deckCardAnalysis := convertToDeckCardAnalysis(cardAnalysis, player)
 
 	// Find optimal decks
 	result, err := finder.FindOptimalDecks(deckCardAnalysis, player.Tag, player.Name)
