@@ -1,11 +1,26 @@
 package evaluation
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
+
+type deckshopParityFixture struct {
+	Name            string   `json:"name"`
+	Deck            []string `json:"deck"`
+	ExpectedSignals struct {
+		DefenseWarningContains []string           `json:"defense_warning_contains"`
+		F2PAssessmentContains  string             `json:"f2p_assessment_contains"`
+		F2PMaxScore            float64            `json:"f2p_max_score"`
+		MinCategoryScores      map[string]float64 `json:"min_category_scores"`
+	} `json:"expected_signals"`
+}
 
 // TestEvaluateWithRealDecks performs end-to-end integration testing with real Clash Royale decks
 // This test validates:
@@ -394,6 +409,69 @@ func TestEvaluateEdgeCases(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestDeckshopParityFixtureR8QGUQRCV(t *testing.T) {
+	fixturePath := filepath.Join("..", "..", "..", "test", "fixtures", "decks", "deckshop_parity_r8qguqrcv.json")
+	fixtureBytes, err := os.ReadFile(fixturePath)
+	if err != nil {
+		t.Fatalf("failed to read parity fixture %q: %v", fixturePath, err)
+	}
+
+	var fixture deckshopParityFixture
+	if err := json.Unmarshal(fixtureBytes, &fixture); err != nil {
+		t.Fatalf("failed to parse parity fixture: %v", err)
+	}
+	if len(fixture.Deck) == 0 {
+		t.Fatal("fixture deck is empty")
+	}
+
+	deckCards := make([]deck.CardCandidate, 0, len(fixture.Deck))
+	for _, cardName := range fixture.Deck {
+		deckCards = append(deckCards, createTestCardCandidate(cardName))
+	}
+
+	result := Evaluate(deckCards, deck.NewSynergyDatabase(), nil)
+
+	defenseDetails := strings.Join(result.DefenseAnalysis.Details, " ")
+	for _, required := range fixture.ExpectedSignals.DefenseWarningContains {
+		if !strings.Contains(defenseDetails, required) {
+			t.Fatalf("expected defense detail to contain %q, got: %v", required, result.DefenseAnalysis.Details)
+		}
+	}
+
+	if fixture.ExpectedSignals.F2PAssessmentContains != "" &&
+		!strings.Contains(result.F2PFriendly.Assessment, fixture.ExpectedSignals.F2PAssessmentContains) {
+		t.Fatalf("expected F2P assessment to contain %q, got %q",
+			fixture.ExpectedSignals.F2PAssessmentContains, result.F2PFriendly.Assessment)
+	}
+
+	if fixture.ExpectedSignals.F2PMaxScore > 0 && result.F2PFriendly.Score > fixture.ExpectedSignals.F2PMaxScore {
+		t.Fatalf("expected F2P score <= %.2f, got %.2f",
+			fixture.ExpectedSignals.F2PMaxScore, result.F2PFriendly.Score)
+	}
+
+	for category, minScore := range fixture.ExpectedSignals.MinCategoryScores {
+		var actual float64
+		switch category {
+		case "attack":
+			actual = result.Attack.Score
+		case "defense":
+			actual = result.Defense.Score
+		case "synergy":
+			actual = result.Synergy.Score
+		case "versatility":
+			actual = result.Versatility.Score
+		case "f2p":
+			actual = result.F2PFriendly.Score
+		default:
+			t.Fatalf("unsupported category %q in fixture", category)
+		}
+
+		if actual < minScore {
+			t.Fatalf("expected %s score >= %.2f, got %.2f", category, minScore, actual)
+		}
 	}
 }
 

@@ -20,6 +20,16 @@ cd go && go test ./pkg/deck/... -v  # Test specific package with verbose output
 cd go && go test -tags=integration ./...  # Full integration tests (requires API token)
 ```
 
+### Deckshop Parity Regression
+
+Run the parity regression fixture for player `R8QGUQRCV` signal checks:
+
+```bash
+go test ./pkg/deck/evaluation -run TestDeckshopParityFixtureR8QGUQRCV -count=1
+```
+
+This test validates qualitative parity signals (for example, reset/retarget warnings and F2P assessment direction) using `test/fixtures/decks/deckshop_parity_r8qguqrcv.json`.
+
 ## Test Types
 
 ### Unit Tests

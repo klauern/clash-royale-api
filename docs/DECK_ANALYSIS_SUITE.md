@@ -332,7 +332,7 @@ All deck evaluations produce scores across six categories, each scored 0-10:
 | Category | Description | What It Measures |
 |----------|-------------|------------------|
 | **Attack** | Offensive capability | Win condition viability, damage potential, push strength |
-| **Defense** | Defensive capability | Survivability, counter potential, building defenses |
+| **Defense** | Defensive capability | Survivability, counter potential, building defenses, reset/retarget coverage |
 | **Synergy** | Card interactions | Combo potential, card pair synergies, archetype coherence |
 | **Versatility** | Adaptability | Performance across different matchups and metas |
 | **F2P Friendly** | Accessibility | Card rarity distribution, upgrade requirements |

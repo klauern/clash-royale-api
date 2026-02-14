@@ -210,6 +210,22 @@ func calculateDeckAvgElixir(cards []deck.CardCandidate) float64 {
 	return float64(total) / float64(len(cards))
 }
 
+func extractNonEmptyCardNames(cards []deck.CardCandidate) []string {
+	names := make([]string, 0, len(cards))
+	for _, card := range cards {
+		if card.Name == "" {
+			continue
+		}
+		names = append(names, card.Name)
+	}
+	return names
+}
+
+func getResetRetargetCoverage(cards []deck.CardCandidate) []string {
+	matrix := deck.NewCounterMatrixWithDefaults()
+	return matrix.GetDeckCardsWithCapability(extractNonEmptyCardNames(cards), deck.CounterResetRetarget)
+}
+
 // ============================================================================
 // Phase 2: Simple Analysis Builders (Defense & Attack)
 // ============================================================================
@@ -223,6 +239,7 @@ func BuildDefenseAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 	airTargeters := filterByAirTargeting(deckCards)
 	buildings := filterByRole(deckCards, deck.RoleBuilding)
 	tankKillers := filterByDPS(deckCards, 150.0)
+	resetRetargetCards := getResetRetargetCoverage(deckCards)
 
 	// Investment cards (high elixir win conditions)
 	investments := []deck.CardCandidate{}
@@ -256,6 +273,14 @@ func BuildDefenseAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 		details = append(details, fmt.Sprintf("Tank killers: %s provides strong ground defense", tankKillers[0].Name))
 	}
 
+	// Reset/retarget coverage
+	if len(resetRetargetCards) > 0 {
+		details = append(details, fmt.Sprintf("Reset/retarget tools: %s",
+			strings.Join(resetRetargetCards, ", ")))
+	} else {
+		details = append(details, "⚠️  No reset/retarget tools - vulnerable to Inferno Tower/Dragon, Sparky, and charging units")
+	}
+
 	// Investment protection
 	if len(investments) > 0 {
 		details = append(details, fmt.Sprintf("⚠️  %s (%d elixir) needs defensive support",
@@ -272,6 +297,8 @@ func BuildDefenseAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 		summary = "No anti-air coverage - vulnerable to aerial threats"
 	case airCount < 2:
 		summary = "Weak anti-air coverage"
+	case len(resetRetargetCards) == 0:
+		summary = "Solid base defense but lacks reset/retarget protection"
 	case buildingCount == 0:
 		summary = "Good anti-air but lacks defensive buildings"
 	case airCount >= 3 && buildingCount >= 1:

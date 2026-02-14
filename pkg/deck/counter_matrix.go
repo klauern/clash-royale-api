@@ -20,6 +20,7 @@ const (
 	CounterAirDefense       CounterCategory = "air_defense"       // Targets air
 	CounterSwarmClear       CounterCategory = "swarm_clear"       // Clears swarms
 	CounterBuildings        CounterCategory = "buildings"         // Defensive buildings
+	CounterResetRetarget    CounterCategory = "reset_retarget"    // Reset/retarget tools for charge/ramp threats
 
 	defaultDataDir = "data"
 )
@@ -166,6 +167,10 @@ func NewCounterMatrixWithDefaults() *CounterMatrix {
 	matrix.counterCategories[CounterTankKillers] = []string{"Inferno Tower", "P.E.K.K.A", "Mini P.E.K.K.A"}
 	matrix.counterCategories[CounterSwarmClear] = []string{"The Log", "Zap", "Arrows", "Valkyrie"}
 	matrix.counterCategories[CounterBuildings] = []string{"Cannon", "Tesla", "Inferno Tower", "Bomb Tower"}
+	matrix.counterCategories[CounterResetRetarget] = []string{
+		"Zap", "Electro Spirit", "Electro Wizard", "Zappies", "Electro Dragon", "Lightning",
+		"Tornado", "Fisherman",
+	}
 
 	// Build cardCapabilities from categories (required for HasCapability to work)
 	for category, cards := range matrix.counterCategories {
@@ -245,6 +250,18 @@ func (cm *CounterMatrix) CountCardsWithCapability(cardNames []string, category C
 		}
 	}
 	return count
+}
+
+// GetDeckCardsWithCapability returns the cards from a deck that match the capability.
+func (cm *CounterMatrix) GetDeckCardsWithCapability(cardNames []string, category CounterCategory) []string {
+	matched := make([]string, 0, len(cardNames))
+	for _, card := range cardNames {
+		if cm.HasCapability(card, category) {
+			matched = append(matched, card)
+		}
+	}
+
+	return matched
 }
 
 // AnalyzeThreatCoverage analyzes how well a deck can counter a specific threat

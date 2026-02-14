@@ -116,6 +116,24 @@ func TestCountCardsWithCapability(t *testing.T) {
 	}
 }
 
+func TestResetRetargetCapability(t *testing.T) {
+	matrix := NewCounterMatrixWithDefaults()
+
+	deck := []string{"Hog Rider", "Musketeer", "Zap", "Electro Wizard", "Cannon"}
+	count := matrix.CountCardsWithCapability(deck, CounterResetRetarget)
+	if count != 2 {
+		t.Fatalf("expected 2 reset/retarget cards, got %d", count)
+	}
+
+	matched := matrix.GetDeckCardsWithCapability(deck, CounterResetRetarget)
+	if len(matched) != 2 {
+		t.Fatalf("expected 2 matched reset/retarget cards, got %d", len(matched))
+	}
+	if matched[0] != "Zap" || matched[1] != "Electro Wizard" {
+		t.Fatalf("unexpected matched cards: %v", matched)
+	}
+}
+
 func TestAnalyzeThreatCoverage(t *testing.T) {
 	matrix := NewCounterMatrixWithDefaults()
 
