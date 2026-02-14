@@ -172,6 +172,8 @@ func addDeckCompareAlgorithmsCommand() *cli.Command {
 }
 
 // addDeckResearchEvalCommand adds the deck research-eval command.
+//
+//nolint:funlen // Flag list is intentionally explicit for discoverability.
 func addDeckResearchEvalCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "research-eval",
@@ -205,6 +207,51 @@ func addDeckResearchEvalCommand() *cli.Command {
 				Name:  "data-dir",
 				Value: "data",
 				Usage: "Directory containing card metadata (cards_stats.json)",
+			},
+			&cli.IntFlag{
+				Name:  "min-wincons",
+				Value: 1,
+				Usage: "Minimum win conditions required by hard constraints",
+			},
+			&cli.IntFlag{
+				Name:  "min-spells",
+				Value: 1,
+				Usage: "Minimum spells required by hard constraints",
+			},
+			&cli.IntFlag{
+				Name:  "min-air",
+				Value: 2,
+				Usage: "Minimum air-defense cards required by hard constraints",
+			},
+			&cli.IntFlag{
+				Name:  "min-tank-killers",
+				Value: 1,
+				Usage: "Minimum tank-killers required by hard constraints",
+			},
+			&cli.Float64Flag{
+				Name:  "weight-synergy",
+				Value: 0.30,
+				Usage: "Soft-objective weight for synergy score",
+			},
+			&cli.Float64Flag{
+				Name:  "weight-coverage",
+				Value: 0.25,
+				Usage: "Soft-objective weight for coverage score",
+			},
+			&cli.Float64Flag{
+				Name:  "weight-role-fit",
+				Value: 0.20,
+				Usage: "Soft-objective weight for role-fit score",
+			},
+			&cli.Float64Flag{
+				Name:  "weight-elixir-fit",
+				Value: 0.15,
+				Usage: "Soft-objective weight for elixir-fit score",
+			},
+			&cli.Float64Flag{
+				Name:  "weight-card-quality",
+				Value: 0.10,
+				Usage: "Soft-objective weight for card-quality score",
 			},
 			&cli.StringFlag{
 				Name:    "api-token",

@@ -18,8 +18,10 @@ func (r ConstraintReport) IsValid() bool {
 // ValidateConstraints enforces the phase-1 hard constraints.
 //
 //nolint:gocyclo // Explicit rule checks keep constraints auditable.
-func ValidateConstraints(cards []deck.CardCandidate) ConstraintReport {
+func ValidateConstraints(cards []deck.CardCandidate, cfg ConstraintConfig) ConstraintReport {
 	violations := make([]string, 0)
+	hard := cfg.Hard
+
 	if len(cards) != 8 {
 		violations = append(violations, fmt.Sprintf("deck size must be 8, got %d", len(cards)))
 	}
@@ -50,17 +52,17 @@ func ValidateConstraints(cards []deck.CardCandidate) ConstraintReport {
 		}
 	}
 
-	if winCons < 1 {
-		violations = append(violations, "must include at least 1 win condition")
+	if winCons < hard.MinWinConditions {
+		violations = append(violations, fmt.Sprintf("must include at least %d win condition(s)", hard.MinWinConditions))
 	}
-	if spells < 1 {
-		violations = append(violations, "must include at least 1 spell")
+	if spells < hard.MinSpells {
+		violations = append(violations, fmt.Sprintf("must include at least %d spell(s)", hard.MinSpells))
 	}
-	if airDefense < 2 {
-		violations = append(violations, "must include at least 2 air-defense cards")
+	if airDefense < hard.MinAirDefense {
+		violations = append(violations, fmt.Sprintf("must include at least %d air-defense card(s)", hard.MinAirDefense))
 	}
-	if tankKillers < 1 {
-		violations = append(violations, "must include at least 1 tank-killer")
+	if tankKillers < hard.MinTankKillers {
+		violations = append(violations, fmt.Sprintf("must include at least %d tank-killer(s)", hard.MinTankKillers))
 	}
 
 	return ConstraintReport{Violations: violations}

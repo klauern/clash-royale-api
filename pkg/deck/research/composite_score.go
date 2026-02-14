@@ -6,14 +6,6 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
-const (
-	weightSynergy     = 0.30
-	weightCoverage    = 0.25
-	weightRoleFit     = 0.20
-	weightElixirFit   = 0.15
-	weightCardQuality = 0.10
-)
-
 func clamp01(v float64) float64 {
 	if v < 0 {
 		return 0
@@ -164,19 +156,20 @@ func synergyScore(cards []deck.CardCandidate, synergyDB *deck.SynergyDatabase) f
 }
 
 // ScoreDeckComposite returns the archetype-free metric breakdown.
-func ScoreDeckComposite(cards []deck.CardCandidate, synergyDB *deck.SynergyDatabase) DeckMetrics {
+func ScoreDeckComposite(cards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, cfg ConstraintConfig) DeckMetrics {
 	synergy := synergyScore(cards, synergyDB)
 	coverage := coverageScore(cards)
 	roleFit := roleFitScore(cards)
 	elixirFit := elixirFitScore(cards)
 	quality := cardQualityScore(cards)
-	composite := (weightSynergy * synergy) +
-		(weightCoverage * coverage) +
-		(weightRoleFit * roleFit) +
-		(weightElixirFit * elixirFit) +
-		(weightCardQuality * quality)
+	weights := cfg.normalizedSoftWeights()
+	composite := (weights.Synergy * synergy) +
+		(weights.Coverage * coverage) +
+		(weights.RoleFit * roleFit) +
+		(weights.ElixirFit * elixirFit) +
+		(weights.CardQuality * quality)
 
-	report := ValidateConstraints(cards)
+	report := ValidateConstraints(cards, cfg)
 
 	return DeckMetrics{
 		Composite:            clamp01(composite),

@@ -73,6 +73,24 @@ func deckResearchEvalCommand(_ context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	constraints := research.ConstraintConfig{
+		Hard: research.HardConstraints{
+			MinWinConditions: cmd.Int("min-wincons"),
+			MinSpells:        cmd.Int("min-spells"),
+			MinAirDefense:    cmd.Int("min-air"),
+			MinTankKillers:   cmd.Int("min-tank-killers"),
+		},
+		Soft: research.SoftWeights{
+			Synergy:     cmd.Float64("weight-synergy"),
+			Coverage:    cmd.Float64("weight-coverage"),
+			RoleFit:     cmd.Float64("weight-role-fit"),
+			ElixirFit:   cmd.Float64("weight-elixir-fit"),
+			CardQuality: cmd.Float64("weight-card-quality"),
+		},
+	}
+	if err := constraints.Validate(); err != nil {
+		return fmt.Errorf("invalid constraint config: %w", err)
+	}
 
 	apiToken := cmd.String("api-token")
 	if apiToken == "" {
@@ -110,12 +128,13 @@ func deckResearchEvalCommand(_ context.Context, cmd *cli.Command) error {
 	builder := deck.NewBuilder(dataDir)
 	runner := research.BenchmarkRunner{Builder: builder}
 	report, runErr := runner.Run(research.BenchmarkConfig{
-		Tags:      tags,
-		Seed:      int64(cmd.Int("seed")),
-		TopN:      cmd.Int("top"),
-		Methods:   methods,
-		OutputDir: cmd.String("output-dir"),
-		DataDir:   dataDir,
+		Tags:        tags,
+		Seed:        int64(cmd.Int("seed")),
+		TopN:        cmd.Int("top"),
+		Methods:     methods,
+		OutputDir:   cmd.String("output-dir"),
+		DataDir:     dataDir,
+		Constraints: &constraints,
 	}, players)
 	if runErr != nil {
 		return runErr

@@ -338,6 +338,22 @@ Set default fuzz weight via environment:
 FUZZ_SCORING_WEIGHT=0.15
 ```
 
+## Research Evaluation (Constraint Methodology)
+
+Use `deck research-eval` to benchmark archetype-free methods (`baseline`, `genetic`, `constraint`, `role-first`) and export reproducible artifacts:
+
+```bash
+./bin/cr-api deck research-eval --seed 42 --output-dir reports/research-eval/live
+```
+
+The exported `benchmark.json` contains per-player, per-method outcomes and metric breakdowns; `benchmark.md` adds aggregate tables, per-tag outcomes, violation summaries, and next-step recommendations.
+
+Constraint method tuning knobs:
+- Hard constraints: `--min-wincons`, `--min-spells`, `--min-air`, `--min-tank-killers`
+- Soft weights: `--weight-synergy`, `--weight-coverage`, `--weight-role-fit`, `--weight-elixir-fit`, `--weight-card-quality`
+
+All soft weights are normalized automatically. Invalid hard/soft values fail fast with explicit validation errors.
+
 ## Best Practices
 
 1. Rebuild decks regularly as card levels change
