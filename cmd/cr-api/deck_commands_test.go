@@ -68,3 +68,36 @@ func TestLoadDeckCandidatesFromFile_UsesDeckDetail(t *testing.T) {
 		t.Fatalf("Ice Golem elixir = %d, want 2", iceGolemElixir)
 	}
 }
+
+func TestConvertToCardCandidates_UsesRarityLookup(t *testing.T) {
+	candidates := convertToCardCandidates([]string{
+		"Witch",
+		"The Log",
+		"Mini P.E.K.K.A",
+		"Archer Queen",
+		"Skeletons",
+	})
+
+	rarityByName := make(map[string]string, len(candidates))
+	for _, candidate := range candidates {
+		rarityByName[candidate.Name] = candidate.Rarity
+	}
+
+	tests := []struct {
+		name string
+		want string
+	}{
+		{name: "Witch", want: "Epic"},
+		{name: "The Log", want: "Legendary"},
+		{name: "Mini P.E.K.K.A", want: "Rare"},
+		{name: "Archer Queen", want: "Champion"},
+		{name: "Skeletons", want: "Common"},
+	}
+
+	for _, tt := range tests {
+		got := rarityByName[tt.name]
+		if got != tt.want {
+			t.Fatalf("%s rarity = %q, want %q", tt.name, got, tt.want)
+		}
+	}
+}

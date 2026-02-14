@@ -5,6 +5,7 @@ package config
 
 import (
 	"strings"
+	"unicode"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
@@ -59,6 +60,72 @@ var startingLevels = map[string]int{
 	"Epic":      6,
 	"Legendary": 9,
 	"Champion":  11,
+}
+
+// cardRarityByNormalizedName stores high-impact card rarity overrides by normalized name.
+// Unknown cards intentionally fall back to Common in callers that need a safe default.
+var cardRarityByNormalizedName = map[string]string{
+	// Champions
+	"archerqueen":  "Champion",
+	"goldenknight": "Champion",
+	"skeletonking": "Champion",
+	"mightyminer":  "Champion",
+	"monk":         "Champion",
+	"littleprince": "Champion",
+
+	// Legendaries
+	"princess":      "Legendary",
+	"log":           "Legendary",
+	"thelog":        "Legendary",
+	"miner":         "Legendary",
+	"icewizard":     "Legendary",
+	"lumberjack":    "Legendary",
+	"infernodragon": "Legendary",
+	"electrowizard": "Legendary",
+	"nightwitch":    "Legendary",
+	"bandit":        "Legendary",
+	"royalghost":    "Legendary",
+	"ramrider":      "Legendary",
+	"magicarcher":   "Legendary",
+	"fisherman":     "Legendary",
+	"motherwitch":   "Legendary",
+	"phoenix":       "Legendary",
+	"sparky":        "Legendary",
+	"lavahound":     "Legendary",
+	"megaknight":    "Legendary",
+
+	// Epics
+	"pekka":           "Epic",
+	"minipekka":       "Rare",
+	"golem":           "Epic",
+	"balloon":         "Epic",
+	"babydragon":      "Epic",
+	"prince":          "Epic",
+	"darkprince":      "Epic",
+	"witch":           "Epic",
+	"bowler":          "Epic",
+	"executioner":     "Epic",
+	"goblindrill":     "Epic",
+	"goblinbarrel":    "Epic",
+	"guards":          "Epic",
+	"skeletonarmy":    "Epic",
+	"rage":            "Epic",
+	"clone":           "Epic",
+	"mirror":          "Epic",
+	"freeze":          "Epic",
+	"poison":          "Epic",
+	"tornado":         "Epic",
+	"lightning":       "Epic",
+	"xbow":            "Epic",
+	"wallbreakers":    "Epic",
+	"electrodragon":   "Epic",
+	"cannoncart":      "Epic",
+	"goblingiant":     "Epic",
+	"giantskeleton":   "Epic",
+	"hunter":          "Epic",
+	"electrogiant":    "Epic",
+	"elixirgolem":     "Epic",
+	"threemusketeers": "Epic",
 }
 
 // NormalizeRarity ensures rarity strings are in TitleCase for consistent map lookups.
@@ -177,4 +244,33 @@ func GetStartingLevel(rarity string) int {
 // Useful for iteration or validation purposes.
 func GetAllRarities() []string {
 	return []string{"Common", "Rare", "Epic", "Legendary", "Champion"}
+}
+
+// LookupCardRarity resolves a card's rarity from its name.
+// Returns (rarity, true) when known and ("", false) when unknown.
+func LookupCardRarity(cardName string) (string, bool) {
+	normalizedName := normalizeCardNameForLookup(cardName)
+	if normalizedName == "" {
+		return "", false
+	}
+
+	rarity, ok := cardRarityByNormalizedName[normalizedName]
+	return rarity, ok
+}
+
+func normalizeCardNameForLookup(cardName string) string {
+	trimmed := strings.TrimSpace(cardName)
+	if trimmed == "" {
+		return ""
+	}
+
+	var b strings.Builder
+	b.Grow(len(trimmed))
+	for _, r := range strings.ToLower(trimmed) {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			b.WriteRune(r)
+		}
+	}
+
+	return b.String()
 }

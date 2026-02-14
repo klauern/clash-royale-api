@@ -583,8 +583,11 @@ func convertToCardCandidates(cardNames []string) []deck.CardCandidate {
 
 // inferRarity infers card rarity from card name
 func inferRarity(name string) string {
-	// This is a simplified version - in reality, you'd look this up from a database
-	// For now, we'll use common as default
+	if rarity, ok := config.LookupCardRarity(name); ok {
+		return rarity
+	}
+
+	// Unknown cards default to Common to keep scoring resilient for new/reworked cards.
 	return rarityCommon
 }
 

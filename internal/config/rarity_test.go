@@ -337,3 +337,31 @@ func TestAllRaritiesHaveCompleteData(t *testing.T) {
 		}
 	}
 }
+
+func TestLookupCardRarity(t *testing.T) {
+	tests := []struct {
+		name       string
+		cardName   string
+		wantRarity string
+		wantFound  bool
+	}{
+		{name: "Legendary canonical", cardName: "The Log", wantRarity: "Legendary", wantFound: true},
+		{name: "Legendary alias", cardName: "Log", wantRarity: "Legendary", wantFound: true},
+		{name: "Champion", cardName: "Little Prince", wantRarity: "Champion", wantFound: true},
+		{name: "Epic punctuation variant", cardName: "P.E.K.K.A", wantRarity: "Epic", wantFound: true},
+		{name: "Rare punctuation variant", cardName: "Mini P.E.K.K.A", wantRarity: "Rare", wantFound: true},
+		{name: "Unknown card", cardName: "Unknown Card", wantRarity: "", wantFound: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotRarity, gotFound := LookupCardRarity(tt.cardName)
+			if gotFound != tt.wantFound {
+				t.Fatalf("LookupCardRarity(%q) found = %v, want %v", tt.cardName, gotFound, tt.wantFound)
+			}
+			if gotRarity != tt.wantRarity {
+				t.Fatalf("LookupCardRarity(%q) rarity = %q, want %q", tt.cardName, gotRarity, tt.wantRarity)
+			}
+		})
+	}
+}
