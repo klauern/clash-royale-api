@@ -250,13 +250,13 @@ func formatAndOutputComparison(result *comparison.AlgorithmComparisonResult, for
 // formatComparisonOutput formats the comparison result based on the specified format
 func formatComparisonOutput(result *comparison.AlgorithmComparisonResult, format string) (string, error) {
 	switch strings.ToLower(format) {
-	case "json":
+	case compareFormatJSON:
 		output, err := result.ExportJSON()
 		if err != nil {
 			return "", fmt.Errorf("failed to export JSON: %w", err)
 		}
 		return output, nil
-	case "markdown", "md":
+	case compareFormatMarkdown, compareFormatMD:
 		return result.ExportMarkdown(), nil
 	default:
 		return "", fmt.Errorf("unknown format: %s (supported: json, markdown)", format)
