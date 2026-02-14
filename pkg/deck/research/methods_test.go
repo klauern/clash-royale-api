@@ -67,3 +67,29 @@ func TestConstraintMethodDeterministicWithSeed(t *testing.T) {
 		}
 	}
 }
+
+func TestConstraintMethodHonorsConfiguredHardMinimums(t *testing.T) {
+	method := ConstraintMethod{}
+	cfg := MethodConfig{
+		Seed: 17,
+		TopN: 1,
+		Constraints: &ConstraintConfig{
+			Hard: HardConstraints{
+				MinWinConditions: 1,
+				MinSpells:        2,
+				MinAirDefense:    2,
+				MinTankKillers:   1,
+			},
+			Soft: defaultSoftWeights(),
+		},
+	}
+	res, err := method.Build(testPool(), cfg)
+	if err != nil {
+		t.Fatalf("build failed: %v", err)
+	}
+	deckCards := namesToCandidates(res.Deck, testPool())
+	report := ValidateConstraints(deckCards, *cfg.Constraints)
+	if !report.IsValid() {
+		t.Fatalf("deck violates configured hard constraints: %v", report.Violations)
+	}
+}

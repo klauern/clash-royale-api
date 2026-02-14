@@ -24,7 +24,8 @@ func testDeck() []deck.CardCandidate {
 
 func TestScoreDeckCompositeBounds(t *testing.T) {
 	cards := testDeck()
-	metrics := ScoreDeckComposite(cards, deck.NewSynergyDatabase())
+	cfg := DefaultConstraintConfig()
+	metrics := ScoreDeckComposite(cards, deck.NewSynergyDatabase(), cfg)
 
 	if metrics.Composite < 0 || metrics.Composite > 1 {
 		t.Fatalf("composite out of range: %f", metrics.Composite)
@@ -39,7 +40,8 @@ func TestScoreDeckCompositeBounds(t *testing.T) {
 
 func TestScoreDeckCompositeHasNoConstraintViolationsForValidDeck(t *testing.T) {
 	cards := testDeck()
-	metrics := ScoreDeckComposite(cards, deck.NewSynergyDatabase())
+	cfg := DefaultConstraintConfig()
+	metrics := ScoreDeckComposite(cards, deck.NewSynergyDatabase(), cfg)
 	if len(metrics.ConstraintViolations) != 0 {
 		t.Fatalf("expected no violations, got %v", metrics.ConstraintViolations)
 	}

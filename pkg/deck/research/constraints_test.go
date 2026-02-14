@@ -7,7 +7,7 @@ import (
 func TestValidateConstraintsRejectsDuplicateAndMissingWincon(t *testing.T) {
 	cards := testDeck()
 	cards[0] = cards[1]
-	report := ValidateConstraints(cards)
+	report := ValidateConstraints(cards, DefaultConstraintConfig())
 	if report.IsValid() {
 		t.Fatalf("expected invalid deck")
 	}
@@ -17,8 +17,17 @@ func TestValidateConstraintsRejectsDuplicateAndMissingWincon(t *testing.T) {
 }
 
 func TestValidateConstraintsAcceptsValidDeck(t *testing.T) {
-	report := ValidateConstraints(testDeck())
+	report := ValidateConstraints(testDeck(), DefaultConstraintConfig())
 	if !report.IsValid() {
 		t.Fatalf("expected valid deck, got: %v", report.Violations)
+	}
+}
+
+func TestValidateConstraintsUsesCustomHardMinimums(t *testing.T) {
+	cfg := DefaultConstraintConfig()
+	cfg.Hard.MinSpells = 3
+	report := ValidateConstraints(testDeck(), cfg)
+	if report.IsValid() {
+		t.Fatalf("expected invalid deck with min_spells=3")
 	}
 }

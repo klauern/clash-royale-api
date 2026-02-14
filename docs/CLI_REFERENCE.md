@@ -684,6 +684,56 @@ Calculate realistic deck combination possibilities from your card collection:
 - `--verbose` - Show detailed breakdown by role/archetype
 - `--output <file>` - Save output to file
 
+#### Deck Research Eval
+
+Benchmark archetype-free deck-building methods and export `benchmark.json` + `benchmark.md`:
+
+```bash
+# Run defaults (baseline, genetic, constraint, role-first) on default phase-1 tags
+./bin/cr-api deck research-eval
+
+# Benchmark specific players and methods with deterministic seed
+./bin/cr-api deck research-eval \
+  --tags R8QGUQRCV --tags 2P0GYQJ \
+  --methods baseline,constraint,role-first \
+  --seed 42 \
+  --output-dir reports/research-eval/live
+
+# Tune hard constraints and soft weights
+./bin/cr-api deck research-eval \
+  --min-wincons 1 \
+  --min-spells 2 \
+  --min-air 2 \
+  --min-tank-killers 1 \
+  --weight-synergy 0.30 \
+  --weight-coverage 0.25 \
+  --weight-role-fit 0.20 \
+  --weight-elixir-fit 0.15 \
+  --weight-card-quality 0.10
+```
+
+**Research Eval Flags:**
+- `--tags <TAG>` - Player tags (repeatable, without `#`; defaults to phase-1 benchmark set)
+- `--methods <list>` - Methods: `baseline`, `genetic`, `constraint`, `role-first`
+- `--seed <n>` - Deterministic seed
+- `--top <n>` - Method-specific top-N setting
+- `--output-dir <dir>` - Output directory for `benchmark.json` and `benchmark.md`
+- `--data-dir <dir>` - Data directory containing `cards_stats.json`
+- `--min-wincons`, `--min-spells`, `--min-air`, `--min-tank-killers` - Hard constraints
+- `--weight-synergy`, `--weight-coverage`, `--weight-role-fit`, `--weight-elixir-fit`, `--weight-card-quality` - Soft-objective weights (auto-normalized)
+- `--api-token` - Clash Royale API token (or set `CLASH_ROYALE_API_TOKEN`)
+
+**Metric Definitions:**
+- `composite` - Weighted combination of synergy, coverage, role fit, elixir fit, and card quality
+- `constraint_violations` - Hard-constraint failures for a produced deck
+- `mean/median composite` - Aggregate method quality across player runs
+- `mean runtime (ms)` - Average wall-clock runtime per method run
+
+**Troubleshooting:**
+- Invalid tag: `failed to fetch player <tag>` indicates bad tag format, missing player, or API access issue
+- Invalid `data-dir`: warning about `cards_stats.json` means combat stats fallback is used; verify `<data-dir>/cards_stats.json`
+- Invalid constraint config: errors like `hard.min_air_defense must be in [0,8]` or `soft weights must sum to > 0` require flag correction
+
 ### Archetype Analysis
 
 #### Dynamic Archetype Detection
