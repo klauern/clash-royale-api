@@ -17,6 +17,7 @@ func writeJSON(path string, v any) error {
 	return os.WriteFile(path, data, 0o644)
 }
 
+//nolint:gocyclo,funlen // Report sections are intentionally explicit for stable output.
 func buildMarkdown(report *BenchmarkReport) string {
 	var b bytes.Buffer
 	b.WriteString("# Archetype-Free Deck Builder Benchmark\n\n")
@@ -36,6 +37,21 @@ func buildMarkdown(report *BenchmarkReport) string {
 	b.WriteString("## Per-Tag Winners\n\n")
 	for _, p := range report.PlayerRuns {
 		fmt.Fprintf(&b, "- `%s` (%s): %s (%.3f)\n", p.PlayerTag, p.PlayerName, p.Winner, p.WinnerScore)
+	}
+	b.WriteString("\n")
+
+	b.WriteString("## Per-Tag Outcomes\n\n")
+	b.WriteString("| Tag | Method | Composite | Runtime (ms) | Violations |\n")
+	b.WriteString("|---|---|---:|---:|---:|\n")
+	for _, p := range report.PlayerRuns {
+		for _, m := range p.MethodRuns {
+			fmt.Fprintf(&b, "| %s | %s | %.3f | %d | %d |\n",
+				p.PlayerTag,
+				m.Method,
+				m.Metrics.Composite,
+				m.Metrics.RuntimeMs,
+				len(m.Metrics.ConstraintViolations))
+		}
 	}
 	b.WriteString("\n")
 

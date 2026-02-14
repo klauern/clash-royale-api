@@ -21,19 +21,21 @@ type Method interface {
 
 // MethodConfig controls per-method behavior.
 type MethodConfig struct {
-	Seed    int64
-	TopN    int
-	DataDir string
+	Seed        int64
+	TopN        int
+	DataDir     string
+	Constraints *ConstraintConfig
 }
 
 // BenchmarkConfig controls benchmark execution.
 type BenchmarkConfig struct {
-	Tags      []string
-	Seed      int64
-	TopN      int
-	Methods   []string
-	OutputDir string
-	DataDir   string
+	Tags        []string
+	Seed        int64
+	TopN        int
+	Methods     []string
+	OutputDir   string
+	DataDir     string
+	Constraints *ConstraintConfig
 }
 
 // DeckMetrics is the archetype-free score breakdown.

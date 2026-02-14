@@ -42,8 +42,8 @@ func toDeckResult(method string, selected []deck.CardCandidate, m DeckMetrics) D
 	}
 }
 
-func runWithTiming(method string, selected []deck.CardCandidate, synergyDB *deck.SynergyDatabase, started time.Time) DeckResult {
-	metrics := ScoreDeckComposite(selected, synergyDB)
+func runWithTiming(method string, selected []deck.CardCandidate, synergyDB *deck.SynergyDatabase, constraints ConstraintConfig, started time.Time) DeckResult {
+	metrics := ScoreDeckComposite(selected, synergyDB, constraints)
 	metrics.RuntimeMs = time.Since(started).Milliseconds()
 	return toDeckResult(method, selected, metrics)
 }
@@ -55,7 +55,7 @@ type BaselineMethod struct {
 
 func (m BaselineMethod) Name() string { return MethodBaseline }
 
-func (m BaselineMethod) Build(cards []deck.CardCandidate, _ MethodConfig) (DeckResult, error) {
+func (m BaselineMethod) Build(cards []deck.CardCandidate, cfg MethodConfig) (DeckResult, error) {
 	if m.Builder == nil {
 		return DeckResult{}, fmt.Errorf("baseline builder is nil")
 	}
@@ -72,13 +72,17 @@ func (m BaselineMethod) Build(cards []deck.CardCandidate, _ MethodConfig) (DeckR
 	}
 
 	started := time.Now()
+	constraints, cfgErr := resolveConstraintConfig(cfg.Constraints)
+	if cfgErr != nil {
+		return DeckResult{}, fmt.Errorf("invalid constraints: %w", cfgErr)
+	}
 	rec, err := m.Builder.BuildDeckFromAnalysis(analysis)
 	if err != nil {
 		return DeckResult{}, err
 	}
 	selected := namesToCandidates(rec.Deck, cards)
 	synergyDB := deck.NewSynergyDatabase()
-	return runWithTiming(m.Name(), selected, synergyDB, started), nil
+	return runWithTiming(m.Name(), selected, synergyDB, constraints, started), nil
 }
 
 // GeneticMethod runs archetype-free genetic optimization.
@@ -88,6 +92,10 @@ func (m GeneticMethod) Name() string { return MethodGenetic }
 
 func (m GeneticMethod) Build(cards []deck.CardCandidate, cfg MethodConfig) (DeckResult, error) {
 	started := time.Now()
+	constraints, err := resolveConstraintConfig(cfg.Constraints)
+	if err != nil {
+		return DeckResult{}, fmt.Errorf("invalid constraints: %w", err)
+	}
 	synergyDB := deck.NewSynergyDatabase()
 	candidates := make([]*deck.CardCandidate, 0, len(cards))
 	for i := range cards {
@@ -106,7 +114,7 @@ func (m GeneticMethod) Build(cards []deck.CardCandidate, cfg MethodConfig) (Deck
 		return DeckResult{}, err
 	}
 	opt.FitnessFunc = func(deckCards []deck.CardCandidate) (float64, error) {
-		return ScoreDeckComposite(deckCards, synergyDB).Composite, nil
+		return ScoreDeckComposite(deckCards, synergyDB, constraints).Composite, nil
 	}
 	if cfg.Seed != 0 {
 		opt.RNG = rand.New(rand.NewSource(cfg.Seed))
@@ -120,7 +128,7 @@ func (m GeneticMethod) Build(cards []deck.CardCandidate, cfg MethodConfig) (Deck
 		return DeckResult{}, fmt.Errorf("genetic optimization produced no hall-of-fame deck")
 	}
 	selected := namesToCandidates(result.HallOfFame[0].Cards, cards)
-	return runWithTiming(m.Name(), selected, synergyDB, started), nil
+	return runWithTiming(m.Name(), selected, synergyDB, constraints, started), nil
 }
 
 // ConstraintMethod uses constructive search + local improvement.
@@ -131,6 +139,10 @@ func (m ConstraintMethod) Name() string { return MethodConstraint }
 func (m ConstraintMethod) Build(cards []deck.CardCandidate, cfg MethodConfig) (DeckResult, error) {
 	if len(cards) < 8 {
 		return DeckResult{}, fmt.Errorf("need at least 8 cards, got %d", len(cards))
+	}
+	constraints, err := resolveConstraintConfig(cfg.Constraints)
+	if err != nil {
+		return DeckResult{}, fmt.Errorf("invalid constraints: %w", err)
 	}
 	started := time.Now()
 	synergyDB := deck.NewSynergyDatabase()
@@ -144,13 +156,15 @@ func (m ConstraintMethod) Build(cards []deck.CardCandidate, cfg MethodConfig) (D
 		iterations += cfg.TopN * 40
 	}
 
+	failures := 0
 	for i := 0; i < iterations; i++ {
-		candidate, err := constructConstraintDeck(cards, rng)
-		if err != nil {
+		candidate, buildErr := constructConstraintDeck(cards, constraints, rng)
+		if buildErr != nil {
+			failures++
 			continue
 		}
-		candidate = improveDeckLocally(candidate, cards, synergyDB, rng, 80)
-		score := ScoreDeckComposite(candidate, synergyDB)
+		candidate = improveDeckLocally(candidate, cards, synergyDB, constraints, rng, 80)
+		score := ScoreDeckComposite(candidate, synergyDB, constraints)
 		if score.Composite > bestScore {
 			bestScore = score.Composite
 			best = candidate
@@ -158,15 +172,16 @@ func (m ConstraintMethod) Build(cards []deck.CardCandidate, cfg MethodConfig) (D
 	}
 
 	if len(best) == 0 {
-		return DeckResult{}, fmt.Errorf("constraint search could not generate valid deck")
+		return DeckResult{}, fmt.Errorf("constraint search could not generate valid deck after %d attempts (%d failed constructions); relax hard minima or increase candidate pool", iterations, failures)
 	}
-	return runWithTiming(m.Name(), best, synergyDB, started), nil
+	return runWithTiming(m.Name(), best, synergyDB, constraints, started), nil
 }
 
 //nolint:gocognit,gocyclo // Constraint construction keeps hard-requirement steps explicit.
-func constructConstraintDeck(pool []deck.CardCandidate, rng *rand.Rand) ([]deck.CardCandidate, error) {
+func constructConstraintDeck(pool []deck.CardCandidate, constraints ConstraintConfig, rng *rand.Rand) ([]deck.CardCandidate, error) {
 	used := make(map[string]bool)
 	selected := make([]deck.CardCandidate, 0, 8)
+	hard := constraints.Hard
 
 	pickAny := func(filter func(deck.CardCandidate) bool, min int) {
 		for j := 0; j < min; j++ {
@@ -188,12 +203,12 @@ func constructConstraintDeck(pool []deck.CardCandidate, rng *rand.Rand) ([]deck.
 		}
 	}
 
-	pickAny(func(c deck.CardCandidate) bool { return c.Role != nil && *c.Role == deck.RoleWinCondition }, 1)
+	pickAny(func(c deck.CardCandidate) bool { return c.Role != nil && *c.Role == deck.RoleWinCondition }, hard.MinWinConditions)
 	pickAny(func(c deck.CardCandidate) bool {
 		return c.Role != nil && (*c.Role == deck.RoleSpellBig || *c.Role == deck.RoleSpellSmall)
-	}, 1)
-	pickAny(canTargetAir, 2)
-	pickAny(isTankKiller, 1)
+	}, hard.MinSpells)
+	pickAny(canTargetAir, hard.MinAirDefense)
+	pickAny(isTankKiller, hard.MinTankKillers)
 
 	for len(selected) < 8 {
 		idx := rng.Intn(len(pool))
@@ -204,16 +219,17 @@ func constructConstraintDeck(pool []deck.CardCandidate, rng *rand.Rand) ([]deck.
 		selected = append(selected, pool[idx])
 	}
 
-	if !ValidateConstraints(selected).IsValid() {
+	report := ValidateConstraints(selected, constraints)
+	if !report.IsValid() {
 		return nil, fmt.Errorf("generated deck failed constraints")
 	}
 	return selected, nil
 }
 
-func improveDeckLocally(deckIn, pool []deck.CardCandidate, synergyDB *deck.SynergyDatabase, rng *rand.Rand, steps int) []deck.CardCandidate {
+func improveDeckLocally(deckIn, pool []deck.CardCandidate, synergyDB *deck.SynergyDatabase, constraints ConstraintConfig, rng *rand.Rand, steps int) []deck.CardCandidate {
 	best := make([]deck.CardCandidate, len(deckIn))
 	copy(best, deckIn)
-	bestScore := ScoreDeckComposite(best, synergyDB).Composite
+	bestScore := ScoreDeckComposite(best, synergyDB, constraints).Composite
 
 	for i := 0; i < steps; i++ {
 		mut := make([]deck.CardCandidate, len(best))
@@ -231,10 +247,10 @@ func improveDeckLocally(deckIn, pool []deck.CardCandidate, synergyDB *deck.Syner
 			continue
 		}
 		mut[replaceIdx] = candidate
-		if !ValidateConstraints(mut).IsValid() {
+		if !ValidateConstraints(mut, constraints).IsValid() {
 			continue
 		}
-		s := ScoreDeckComposite(mut, synergyDB).Composite
+		s := ScoreDeckComposite(mut, synergyDB, constraints).Composite
 		if s > bestScore {
 			bestScore = s
 			best = mut
@@ -251,6 +267,10 @@ func (m RoleFirstMethod) Name() string { return MethodRoleFirst }
 func (m RoleFirstMethod) Build(cards []deck.CardCandidate, cfg MethodConfig) (DeckResult, error) {
 	if len(cards) < 8 {
 		return DeckResult{}, fmt.Errorf("need at least 8 cards, got %d", len(cards))
+	}
+	constraints, err := resolveConstraintConfig(cfg.Constraints)
+	if err != nil {
+		return DeckResult{}, fmt.Errorf("invalid constraints: %w", err)
 	}
 	started := time.Now()
 	synergyDB := deck.NewSynergyDatabase()
@@ -271,7 +291,7 @@ func (m RoleFirstMethod) Build(cards []deck.CardCandidate, cfg MethodConfig) (De
 	}
 
 	for _, slotFilter := range slots {
-		best, ok := pickBestForSlot(cards, selected, used, slotFilter, synergyDB, rng)
+		best, ok := pickBestForSlot(cards, selected, used, slotFilter, synergyDB, constraints, rng)
 		if !ok {
 			return DeckResult{}, fmt.Errorf("unable to fill role-first slot")
 		}
@@ -279,11 +299,11 @@ func (m RoleFirstMethod) Build(cards []deck.CardCandidate, cfg MethodConfig) (De
 		used[best.Name] = true
 	}
 
-	return runWithTiming(m.Name(), selected, synergyDB, started), nil
+	return runWithTiming(m.Name(), selected, synergyDB, constraints, started), nil
 }
 
 //nolint:gocognit,gocyclo // Slot scoring combines multiple weighted factors intentionally.
-func pickBestForSlot(pool, selected []deck.CardCandidate, used map[string]bool, filter func(deck.CardCandidate) bool, synergyDB *deck.SynergyDatabase, rng *rand.Rand) (deck.CardCandidate, bool) {
+func pickBestForSlot(pool, selected []deck.CardCandidate, used map[string]bool, filter func(deck.CardCandidate) bool, synergyDB *deck.SynergyDatabase, constraints ConstraintConfig, rng *rand.Rand) (deck.CardCandidate, bool) {
 	type scored struct {
 		card  deck.CardCandidate
 		score float64
@@ -300,7 +320,7 @@ func pickBestForSlot(pool, selected []deck.CardCandidate, used map[string]bool, 
 		testDeck = append(testDeck, selected...)
 		testDeck = append(testDeck, c)
 
-		incSynergy := ScoreDeckComposite(testDeck, synergyDB).Synergy
+		incSynergy := ScoreDeckComposite(testDeck, synergyDB, constraints).Synergy
 		coverageGain := coverageScore(testDeck)
 		baseQuality := c.LevelRatio()
 		elixirPenalty := 0.0
@@ -322,7 +342,7 @@ func pickBestForSlot(pool, selected []deck.CardCandidate, used map[string]bool, 
 	}
 
 	if len(candidates) == 0 && filter != nil {
-		return pickBestForSlot(pool, selected, used, nil, synergyDB, rng)
+		return pickBestForSlot(pool, selected, used, nil, synergyDB, constraints, rng)
 	}
 	if len(candidates) == 0 {
 		return deck.CardCandidate{}, false

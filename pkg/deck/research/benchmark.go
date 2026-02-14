@@ -46,6 +46,10 @@ func (r *BenchmarkRunner) Run(config BenchmarkConfig, players []PlayerInput) (*B
 		Methods:    config.Methods,
 		PlayerRuns: make([]PlayerResult, 0, len(players)),
 	}
+	constraints, err := resolveConstraintConfig(config.Constraints)
+	if err != nil {
+		return nil, fmt.Errorf("invalid benchmark constraints: %w", err)
+	}
 
 	aggScores := make(map[string][]float64)
 	aggRuntime := make(map[string][]float64)
@@ -63,9 +67,10 @@ func (r *BenchmarkRunner) Run(config BenchmarkConfig, players []PlayerInput) (*B
 				return nil, err
 			}
 			res, err := method.Build(p.Candidates, MethodConfig{
-				Seed:    config.Seed + int64(idx),
-				TopN:    config.TopN,
-				DataDir: config.DataDir,
+				Seed:        config.Seed + int64(idx),
+				TopN:        config.TopN,
+				DataDir:     config.DataDir,
+				Constraints: &constraints,
 			})
 			if err != nil {
 				return nil, fmt.Errorf("%s failed for %s: %w", methodName, p.Tag, err)
