@@ -51,6 +51,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Needed by .golangci.yml `issues.new-from-rev: origin/main`
+          # so lint checks only new violations introduced by the PR.
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
