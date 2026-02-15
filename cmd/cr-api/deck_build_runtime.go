@@ -14,6 +14,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+//nolint:funlen // Command orchestration intentionally keeps full workflow in one place.
 func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	// Parse flags
 	tag := cmd.String("tag")
@@ -22,6 +23,7 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	maxElixir := cmd.Float64("max-elixir")
 	dataDir := cmd.String("data-dir")
 	excludeCards := cmd.StringSlice("exclude-cards")
+	boostedCardLevels := cmd.StringSlice("boosted-card-level")
 
 	// Upgrade recommendations flags
 	noSuggestUpgrades := cmd.Bool("no-suggest-upgrades")
@@ -49,6 +51,11 @@ func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	overrides, err := parseBoostedCardLevels(boostedCardLevels)
+	if err != nil {
+		return err
+	}
+	applyBoostedLevelsToCardAnalysis(&playerData.CardAnalysis, overrides)
 
 	// Step 5: Apply exclude filter
 	applyExcludeFilter(&playerData.CardAnalysis, excludeCards)
@@ -134,6 +141,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	minElixir := cmd.Float64("min-elixir")
 	maxElixir := cmd.Float64("max-elixir")
 	excludeCards := cmd.StringSlice("exclude-cards")
+	boostedCardLevels := cmd.StringSlice("boosted-card-level")
 
 	// Determine output directory
 	if outputDir == "" {
@@ -167,6 +175,11 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
+	overrides, err := parseBoostedCardLevels(boostedCardLevels)
+	if err != nil {
+		return err
+	}
+	applyBoostedLevelsToCardAnalysis(&playerData.CardAnalysis, overrides)
 
 	// Apply exclude filter
 	applyExcludeFilter(&playerData.CardAnalysis, excludeCards)
@@ -302,14 +315,14 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		summaryPath := filepath.Join(outputDir, summaryFilename)
 
 		// Build summary structure
-		summary := map[string]interface{}{
+		summary := map[string]any{
 			"version":   "1.0.0",
 			"timestamp": time.Now().UTC().Format(time.RFC3339),
 			"player": map[string]string{
 				"name": playerData.PlayerName,
 				"tag":  playerData.PlayerTag,
 			},
-			"build_info": map[string]interface{}{
+			"build_info": map[string]any{
 				"total_decks":     len(results),
 				"successful":      successful,
 				"failed":          failed,
@@ -317,14 +330,14 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 				"variations":      variations,
 				"generation_time": totalTime.String(),
 			},
-			"decks": []map[string]interface{}{},
+			"decks": []map[string]any{},
 		}
 
 		// Add individual deck summaries
-		decks := []map[string]interface{}{}
+		decks := []map[string]any{}
 		for _, r := range results {
 			if r.Deck != nil {
-				deckSummary := map[string]interface{}{
+				deckSummary := map[string]any{
 					"strategy":   r.Strategy,
 					"variation":  r.Variation,
 					"cards":      r.Deck.Deck,

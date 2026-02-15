@@ -4,6 +4,7 @@ package evaluation
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
@@ -368,30 +369,31 @@ func FormatMissingCardsReport(analysis *MissingCardsAnalysis) string {
 		return "✓ All cards in this deck are available in your collection!\n"
 	}
 
-	report := fmt.Sprintf("Missing Cards Analysis\n")
-	report += fmt.Sprintf("═══════════════════════\n\n")
-	report += fmt.Sprintf("Deck Status: %d/%d cards available\n\n", analysis.AvailableCount, len(analysis.Deck))
+	var report strings.Builder
+	report.WriteString("Missing Cards Analysis\n")
+	report.WriteString("═══════════════════════\n\n")
+	report.WriteString(fmt.Sprintf("Deck Status: %d/%d cards available\n\n", analysis.AvailableCount, len(analysis.Deck)))
 
 	for i, missing := range analysis.MissingCards {
-		report += fmt.Sprintf("%d. %s (%s)\n", i+1, missing.Name, missing.Rarity)
-		report += fmt.Sprintf("   Unlocks: %s (Arena %d)\n", missing.UnlockArenaName, missing.UnlockArena)
+		report.WriteString(fmt.Sprintf("%d. %s (%s)\n", i+1, missing.Name, missing.Rarity))
+		report.WriteString(fmt.Sprintf("   Unlocks: %s (Arena %d)\n", missing.UnlockArenaName, missing.UnlockArena))
 
 		if missing.IsLocked {
-			report += fmt.Sprintf("   Status: 🔒 LOCKED - Progress to Arena %d to unlock\n", missing.UnlockArena)
+			report.WriteString(fmt.Sprintf("   Status: 🔒 LOCKED - Progress to Arena %d to unlock\n", missing.UnlockArena))
 		} else {
-			report += fmt.Sprintf("   Status: ✓ Unlocked - Available in chests and shop\n")
+			report.WriteString("   Status: ✓ Unlocked - Available in chests and shop\n")
 		}
 
 		if len(missing.AlternativeCards) > 0 {
-			report += fmt.Sprintf("   Alternatives: %s\n", joinCardNames(missing.AlternativeCards))
+			report.WriteString(fmt.Sprintf("   Alternatives: %s\n", joinCardNames(missing.AlternativeCards)))
 		} else {
-			report += fmt.Sprintf("   Alternatives: None found in your collection\n")
+			report.WriteString("   Alternatives: None found in your collection\n")
 		}
 
-		report += "\n"
+		report.WriteString("\n")
 	}
 
-	return report
+	return report.String()
 }
 
 // extractCardNames extracts card names from a slice of CardCandidates
@@ -415,13 +417,13 @@ func joinCardNames(cards []string) string {
 		return cards[0] + ", " + cards[1]
 	}
 
-	result := ""
+	var result strings.Builder
 	for i, card := range cards {
 		if i == len(cards)-1 {
-			result += card
+			result.WriteString(card)
 		} else {
-			result += card + ", "
+			result.WriteString(card + ", ")
 		}
 	}
-	return result
+	return result.String()
 }

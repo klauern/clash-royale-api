@@ -63,8 +63,10 @@ func playerHeaders() []string {
 	}
 }
 
-// playerExport exports player data to CSV
-func playerExport(dataDir string, data interface{}) error {
+// playerExport exports player data to CSV.
+//
+//nolint:gocognit,gocyclo,funlen // Field-by-field CSV mapping is intentionally explicit.
+func playerExport(dataDir string, data any) error {
 	player, ok := data.(*clashroyale.Player)
 	if !ok {
 		return fmt.Errorf("expected Player type, got %T", data)
@@ -223,7 +225,7 @@ func playerCardsHeaders() []string {
 }
 
 // playerCardsExport exports detailed player card information to CSV
-func playerCardsExport(dataDir string, data interface{}) error {
+func playerCardsExport(dataDir string, data any) error {
 	player, ok := data.(*clashroyale.Player)
 	if !ok {
 		return fmt.Errorf("expected Player type, got %T", data)

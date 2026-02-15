@@ -39,8 +39,10 @@ func battleLogHeaders() []string {
 	}
 }
 
-// battleLogExport exports battle log data to CSV
-func battleLogExport(dataDir string, data interface{}) error {
+// battleLogExport exports battle log data to CSV.
+//
+//nolint:funlen // Export mapping is explicit to keep CSV schema readable.
+func battleLogExport(dataDir string, data any) error {
 	battles, ok := data.([]clashroyale.Battle)
 	if !ok {
 		return fmt.Errorf("expected []Battle type, got %T", data)
@@ -151,8 +153,10 @@ func battleSummaryHeaders() []string {
 	}
 }
 
-// battleSummaryExport exports battle summary statistics to CSV
-func battleSummaryExport(dataDir string, data interface{}) error {
+// battleSummaryExport exports battle summary statistics to CSV.
+//
+//nolint:gocognit,gocyclo,funlen // Aggregation logic is straightforward but branch-heavy.
+func battleSummaryExport(dataDir string, data any) error {
 	battles, ok := data.([]clashroyale.Battle)
 	if !ok {
 		return fmt.Errorf("expected []Battle type, got %T", data)

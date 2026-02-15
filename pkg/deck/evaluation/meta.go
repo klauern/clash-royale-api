@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/events"
 )
@@ -530,77 +531,78 @@ func FormatMetaAnalysis(analysis *DeckMetaAnalysis) string {
 		return ""
 	}
 
-	output := fmt.Sprintf("\n╔════════════════════════════════════════════════════════════════════╗\n")
-	output += fmt.Sprintf("║                       META ANALYSIS                                 ║\n")
-	output += fmt.Sprintf("╚════════════════════════════════════════════════════════════════════╝\n\n")
+	var output strings.Builder
+	output.WriteString("\n╔════════════════════════════════════════════════════════════════════╗\n")
+	output.WriteString("║                       META ANALYSIS                                 ║\n")
+	output.WriteString("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
 	// Score adjustment
 	adj := analysis.MetaAdjustment
-	output += fmt.Sprintf("Score Adjustment:\n")
-	output += fmt.Sprintf("──────────────────\n")
-	output += fmt.Sprintf("Base Score:  %.2f\n", adj.BaseScore)
-	output += fmt.Sprintf("Meta Score:  %.2f (%+.2f)\n", adj.MetaScore, adj.Adjustment)
-	output += fmt.Sprintf("Meta Tier:   %s\n", adj.MetaTier)
-	output += fmt.Sprintf("Confidence: %.0f%%\n\n", adj.Confidence*100)
+	output.WriteString("Score Adjustment:\n")
+	output.WriteString("──────────────────\n")
+	output.WriteString(fmt.Sprintf("Base Score:  %.2f\n", adj.BaseScore))
+	output.WriteString(fmt.Sprintf("Meta Score:  %.2f (%+.2f)\n", adj.MetaScore, adj.Adjustment))
+	output.WriteString(fmt.Sprintf("Meta Tier:   %s\n", adj.MetaTier))
+	output.WriteString(fmt.Sprintf("Confidence: %.0f%%\n\n", adj.Confidence*100))
 
 	if len(adj.Factors) > 0 {
-		output += fmt.Sprintf("Factors:\n")
+		output.WriteString("Factors:\n")
 		for _, factor := range adj.Factors {
-			output += fmt.Sprintf("  • %s\n", factor)
+			output.WriteString(fmt.Sprintf("  • %s\n", factor))
 		}
-		output += "\n"
+		output.WriteString("\n")
 	}
 
 	// Card meta information
 	if len(analysis.CardMetaInfo) > 0 {
-		output += fmt.Sprintf("Card Meta Data:\n")
-		output += fmt.Sprintf("───────────────\n")
+		output.WriteString("Card Meta Data:\n")
+		output.WriteString("───────────────\n")
 		for _, meta := range analysis.CardMetaInfo {
 			trendIcon := "•"
 			if meta.IsTrending {
 				trendIcon = "📈"
 			}
-			output += fmt.Sprintf("  %s %s: Tier %s (%.1f%% WR, %.0f%% popularity)\n",
-				trendIcon, meta.CardName, meta.MetaTier, meta.WinRate*100, meta.Popularity)
+			output.WriteString(fmt.Sprintf("  %s %s: Tier %s (%.1f%% WR, %.0f%% popularity)\n",
+				trendIcon, meta.CardName, meta.MetaTier, meta.WinRate*100, meta.Popularity))
 		}
-		output += "\n"
+		output.WriteString("\n")
 	}
 
 	// Archetype
-	output += fmt.Sprintf("Archetype: %s (%.1f%% WR)\n", analysis.ArchetypeMatch, analysis.ArchetypeWinRate*100)
-	output += fmt.Sprintf("Trending Cards: %d/8\n\n", analysis.TrendingCards)
+	output.WriteString(fmt.Sprintf("Archetype: %s (%.1f%% WR)\n", analysis.ArchetypeMatch, analysis.ArchetypeWinRate*100))
+	output.WriteString(fmt.Sprintf("Trending Cards: %d/8\n\n", analysis.TrendingCards))
 
 	// Matchups
 	if len(analysis.WeakMatchups) > 0 {
-		output += fmt.Sprintf("Weak Matchups:\n")
-		output += fmt.Sprintf("──────────────\n")
+		output.WriteString("Weak Matchups:\n")
+		output.WriteString("──────────────\n")
 		for _, matchup := range analysis.WeakMatchups {
-			output += fmt.Sprintf("  ⚠ %s: %.1f%% WR\n", matchup.OpponentDeck, matchup.WinRate*100)
+			output.WriteString(fmt.Sprintf("  ⚠ %s: %.1f%% WR\n", matchup.OpponentDeck, matchup.WinRate*100))
 		}
-		output += "\n"
+		output.WriteString("\n")
 	}
 
 	if len(analysis.StrongMatchups) > 0 {
-		output += fmt.Sprintf("Strong Matchups:\n")
-		output += fmt.Sprintf("────────────────\n")
+		output.WriteString("Strong Matchups:\n")
+		output.WriteString("────────────────\n")
 		for _, matchup := range analysis.StrongMatchups {
-			output += fmt.Sprintf("  ✓ %s: %.1f%% WR\n", matchup.OpponentDeck, matchup.WinRate*100)
+			output.WriteString(fmt.Sprintf("  ✓ %s: %.1f%% WR\n", matchup.OpponentDeck, matchup.WinRate*100))
 		}
-		output += "\n"
+		output.WriteString("\n")
 	}
 
 	// Recommendations
 	if len(analysis.MetaRecommendations) > 0 {
-		output += fmt.Sprintf("Meta-Aware Recommendations:\n")
-		output += fmt.Sprintf("─────────────────────────\n")
+		output.WriteString("Meta-Aware Recommendations:\n")
+		output.WriteString("─────────────────────────\n")
 		for i, rec := range analysis.MetaRecommendations {
-			output += fmt.Sprintf("%d. %s %s", i+1, rec.Type, rec.CardName)
+			output.WriteString(fmt.Sprintf("%d. %s %s", i+1, rec.Type, rec.CardName))
 			if rec.AlternativeCard != "" {
-				output += fmt.Sprintf(" → %s", rec.AlternativeCard)
+				output.WriteString(fmt.Sprintf(" → %s", rec.AlternativeCard))
 			}
-			output += fmt.Sprintf("\n   Reason: %s (+%.1f expected)\n", rec.Reason, rec.ExpectedImpact)
+			output.WriteString(fmt.Sprintf("\n   Reason: %s (+%.1f expected)\n", rec.Reason, rec.ExpectedImpact))
 		}
 	}
 
-	return output
+	return output.String()
 }
