@@ -84,7 +84,7 @@ The `.env` file contains sensitive credentials and is **gitignored** by design. 
 
 **Binary Releases** (Recommended): Download from [Releases page](https://github.com/klauern/clash-royale-api/releases).
 
-**Build from Source** (Go 1.22+):
+**Build from Source** (Go 1.26+):
 ```bash
 git clone https://github.com/klauern/clash-royale-api.git
 cd clash-royale-api && task build
