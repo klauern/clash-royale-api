@@ -35,6 +35,15 @@ const (
 	EventProgressForfeited  EventProgress = "forfeited"
 )
 
+const (
+	// BattleResultWin indicates the player won the battle.
+	BattleResultWin = "win"
+	// BattleResultLoss indicates the player lost the battle.
+	BattleResultLoss = "loss"
+	// BattleResultDraw indicates the battle ended in a draw.
+	BattleResultDraw = "draw"
+)
+
 // CardInDeck represents a single card within a deck, including its level and properties
 type CardInDeck struct {
 	Name              string `json:"name"`
@@ -77,24 +86,30 @@ func (d *Deck) Validate() error {
 
 // BattleRecord represents a single battle outcome within an event
 type BattleRecord struct {
-	Timestamp      time.Time `json:"timestamp"`
-	OpponentTag    string    `json:"opponent_tag"`
-	OpponentName   string    `json:"opponent_name,omitempty"`
-	Result         string    `json:"result"` // "win" or "loss"
-	Crowns         int       `json:"crowns"`
-	OpponentCrowns int       `json:"opponent_crowns"`
-	TrophyChange   *int      `json:"trophy_change,omitempty"`
-	BattleMode     string    `json:"battle_mode,omitempty"`
+	Timestamp             time.Time `json:"timestamp"`
+	OpponentTag           string    `json:"opponent_tag"`
+	OpponentName          string    `json:"opponent_name,omitempty"`
+	Result                string    `json:"result"` // "win", "loss", or "draw"
+	Crowns                int       `json:"crowns"`
+	OpponentCrowns        int       `json:"opponent_crowns"`
+	TrophyChange          *int      `json:"trophy_change,omitempty"`
+	BattleMode            string    `json:"battle_mode,omitempty"`
+	PlayerDeck            []string  `json:"player_deck,omitempty"`
+	OpponentDeck          []string  `json:"opponent_deck,omitempty"`
+	PlayerDeckHash        string    `json:"player_deck_hash,omitempty"`
+	OpponentDeckHash      string    `json:"opponent_deck_hash,omitempty"`
+	PlayerDeckArchetype   string    `json:"player_deck_archetype,omitempty"`
+	OpponentDeckArchetype string    `json:"opponent_deck_archetype,omitempty"`
 }
 
 // IsWin returns true if this battle was a win
 func (br *BattleRecord) IsWin() bool {
-	return br.Result == "win"
+	return br.Result == BattleResultWin
 }
 
 // IsLoss returns true if this battle was a loss
 func (br *BattleRecord) IsLoss() bool {
-	return br.Result == "loss"
+	return br.Result == BattleResultLoss
 }
 
 // EventPerformance tracks performance metrics for an event deck

@@ -744,6 +744,51 @@ func displayComprehensiveAnalysis(analysis *events.EventAnalysis, includeDecks b
 		}
 	}
 
+	if analysis.MatchupAnalysis.TotalTrackedBattles > 0 {
+		printf("🧩 Deck Matchups:\n")
+		printf("=================\n")
+		printf("Tracked Battles with Deck Context: %d\n", analysis.MatchupAnalysis.TotalTrackedBattles)
+		printf("Unique Deck Matchups: %d\n\n", analysis.MatchupAnalysis.UniqueDeckMatchups)
+
+		if len(analysis.MatchupAnalysis.TopWinningMatchups) > 0 {
+			printf("Top Winning Matchups:\n")
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fprintf(w, "Player Deck Hash\tOpponent Deck Hash\tRecord\tWin Rate\n")
+			fprintf(w, "----------------\t------------------\t------\t--------\n")
+			for _, matchup := range analysis.MatchupAnalysis.TopWinningMatchups {
+				fprintf(w, "%s\t%s\t%dW-%dL-%dD\t%.1f%%\n",
+					matchup.PlayerDeckHash,
+					matchup.OpponentDeckHash,
+					matchup.Wins,
+					matchup.Losses,
+					matchup.Draws,
+					matchup.WinRate*100,
+				)
+			}
+			flushWriter(w)
+			fmt.Println()
+		}
+
+		if len(analysis.MatchupAnalysis.ArchetypeMatchups) > 0 {
+			printf("Archetype Matchups:\n")
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fprintf(w, "Player Archetype\tOpponent Archetype\tRecord\tWin Rate\n")
+			fprintf(w, "----------------\t------------------\t------\t--------\n")
+			for _, matchup := range analysis.MatchupAnalysis.ArchetypeMatchups {
+				fprintf(w, "%s\t%s\t%dW-%dL-%dD\t%.1f%%\n",
+					matchup.PlayerArchetype,
+					matchup.OpponentArchetype,
+					matchup.Wins,
+					matchup.Losses,
+					matchup.Draws,
+					matchup.WinRate*100,
+				)
+			}
+			flushWriter(w)
+			fmt.Println()
+		}
+	}
+
 	if includeDecks && analysis.TotalDecks > 0 {
 		printf("📋 Individual Deck Details:\n")
 		printf("=============================\n")
@@ -822,6 +867,42 @@ func exportAnalysisToCSV(dataDir string, analysis *events.EventAnalysis) error {
 			fprintf(file, "%d,%s,%s,%.2f,%s,%.1f,%s\n",
 				i+1, deck.EventName, deck.EventType, deck.WinRate,
 				deck.Record, deck.AvgElixir, deckStr)
+		}
+	}
+
+	if len(analysis.MatchupAnalysis.TopWinningMatchups) > 0 {
+		fprintf(file, "\nTop Winning Deck Matchups\n")
+		fprintf(file, "Player Deck Hash,Opponent Deck Hash,Battles,Wins,Losses,Draws,Win Rate,Player Deck,Opponent Deck\n")
+		for _, matchup := range analysis.MatchupAnalysis.TopWinningMatchups {
+			playerDeck := strings.Join(matchup.PlayerDeck, "|")
+			opponentDeck := strings.Join(matchup.OpponentDeck, "|")
+			fprintf(file, "%s,%s,%d,%d,%d,%d,%.2f,%s,%s\n",
+				matchup.PlayerDeckHash,
+				matchup.OpponentDeckHash,
+				matchup.Battles,
+				matchup.Wins,
+				matchup.Losses,
+				matchup.Draws,
+				matchup.WinRate,
+				playerDeck,
+				opponentDeck,
+			)
+		}
+	}
+
+	if len(analysis.MatchupAnalysis.ArchetypeMatchups) > 0 {
+		fprintf(file, "\nArchetype Matchups\n")
+		fprintf(file, "Player Archetype,Opponent Archetype,Battles,Wins,Losses,Draws,Win Rate\n")
+		for _, matchup := range analysis.MatchupAnalysis.ArchetypeMatchups {
+			fprintf(file, "%s,%s,%d,%d,%d,%d,%.2f\n",
+				matchup.PlayerArchetype,
+				matchup.OpponentArchetype,
+				matchup.Battles,
+				matchup.Wins,
+				matchup.Losses,
+				matchup.Draws,
+				matchup.WinRate,
+			)
 		}
 	}
 

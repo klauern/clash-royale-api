@@ -8,6 +8,7 @@ The event tracking system provides:
 
 - Automatic detection of event battles from player battle logs
 - Performance tracking (wins, losses, win rates, streaks)
+- Deck-vs-deck matchup tracking (player deck vs opponent deck outcomes)
 - Event deck storage and retrieval
 - Support for challenges, tournaments, and special events
 
@@ -48,7 +49,7 @@ Each event deck includes:
 - Event metadata (name, type, timestamps)
 - Deck composition (8 cards with levels)
 - Performance metrics (wins, losses, win rate, streaks)
-- Individual battle records
+- Individual battle records, including player/opponent deck context and deck hashes
 - Event-specific rules
 
 ## Usage
@@ -59,6 +60,9 @@ Each event deck includes:
 
 # Show event performance summary
 ./bin/cr-api events summary --tag '#PLAYERTAG' --days 30
+
+# Analyze matchup performance by event type
+./bin/cr-api events analyze --tag '#PLAYERTAG' --event-type challenge --min-battles 3
 
 # Export event data to CSV
 ./bin/cr-api events export --tag '#PLAYERTAG' --format csv
@@ -81,6 +85,8 @@ Tracked metrics include:
 - **Crown Differential**: Crowns Earned - Crowns Lost
 - **Streak Analysis**: Current and best win streaks
 - **Event Progress**: In progress, completed, or eliminated
+- **Deck Matchups**: Win/loss records for player deck hash vs opponent deck hash
+- **Archetype Matchups**: Aggregated matchup records for inferred archetypes (when detectable)
 
 ## Best Practices
 

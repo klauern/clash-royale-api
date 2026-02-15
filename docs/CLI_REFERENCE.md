@@ -815,8 +815,15 @@ Get personalized evolution upgrade recommendations:
 
 ```bash
 ./bin/cr-api events scan --tag <TAG>
-./bin/cr-api playstyle --tag <TAG> [--recommend-decks] [--save]
+./bin/cr-api events list --tag <TAG> --min-battles 1
+./bin/cr-api events analyze --tag <TAG> --event-type challenge --min-battles 3
 ```
+
+`events analyze` now includes matchup sections:
+- Top winning deck-vs-deck matchups (player deck hash vs opponent deck hash)
+- Most played matchups
+- Archetype matchup rollups (when archetypes can be inferred)
+- CSV export rows for matchup breakdown via `--export-csv`
 
 ### What-If Analysis
 

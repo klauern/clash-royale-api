@@ -42,7 +42,7 @@ func eventDeckHeaders() []string {
 }
 
 // eventDeckExport exports event deck data to CSV
-func eventDeckExport(dataDir string, data interface{}) error {
+func eventDeckExport(dataDir string, data any) error {
 	collection, ok := data.(*events.EventDeckCollection)
 	if !ok {
 		return fmt.Errorf("expected EventDeckCollection type, got %T", data)
@@ -126,11 +126,15 @@ func eventBattlesHeaders() []string {
 		"Opponent Crowns",
 		"Trophy Change",
 		"Battle Mode",
+		"Player Deck Hash",
+		"Opponent Deck Hash",
+		"Player Deck",
+		"Opponent Deck",
 	}
 }
 
 // eventBattlesExport exports event battle data to CSV
-func eventBattlesExport(dataDir string, data interface{}) error {
+func eventBattlesExport(dataDir string, data any) error {
 	collection, ok := data.(*events.EventDeckCollection)
 	if !ok {
 		return fmt.Errorf("expected EventDeckCollection type, got %T", data)
@@ -158,6 +162,10 @@ func eventBattlesExport(dataDir string, data interface{}) error {
 				fmt.Sprintf("%d", battle.OpponentCrowns),
 				trophyChange,
 				battle.BattleMode,
+				battle.PlayerDeckHash,
+				battle.OpponentDeckHash,
+				fmt.Sprintf("%v", battle.PlayerDeck),
+				fmt.Sprintf("%v", battle.OpponentDeck),
 			}
 			rows = append(rows, row)
 		}

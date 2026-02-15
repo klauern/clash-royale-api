@@ -128,7 +128,7 @@ func TestSuggestCardConstraints_ThresholdFiltering(t *testing.T) {
 func TestSuggestCardConstraints_PercentageCalculation(t *testing.T) {
 	// Create 10 decks where "Skeleton Dragons" appears in 6 (60%)
 	decks := make([]EventDeck, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		var cards []string
 		if i < 6 {
 			// First 6 decks contain Skeleton Dragons
@@ -237,5 +237,113 @@ func TestSuggestCardConstraints_NoSharedCards(t *testing.T) {
 
 	if len(suggestions) != 0 {
 		t.Errorf("Expected 0 suggestions when decks share no cards with threshold 50%%, got %d", len(suggestions))
+	}
+}
+
+func TestAnalyzeEventDecks_DeckMatchups(t *testing.T) {
+	playerDeck := []string{
+		"Hog Rider", "Earthquake", "The Log", "Firecracker",
+		"Cannon", "Skeletons", "Ice Spirit", "Knight",
+	}
+	opponentDeckA := []string{
+		"Golem", "Night Witch", "Baby Dragon", "Lightning",
+		"Tornado", "Barbarian Barrel", "Electro Dragon", "Lumberjack",
+	}
+	opponentDeckB := []string{
+		"Royal Giant", "Fisherman", "Hunter", "Lightning",
+		"The Log", "Skeleton King", "Phoenix", "Electro Spirit",
+	}
+
+	deck := createTestEventDeck(playerDeck, 2, 1)
+	deck.Battles = []BattleRecord{
+		{
+			Timestamp:        time.Now(),
+			Result:           "win",
+			PlayerDeck:       playerDeck,
+			OpponentDeck:     opponentDeckA,
+			PlayerDeckHash:   "player-hash",
+			OpponentDeckHash: "opp-a",
+		},
+		{
+			Timestamp:        time.Now(),
+			Result:           "win",
+			PlayerDeck:       playerDeck,
+			OpponentDeck:     opponentDeckA,
+			PlayerDeckHash:   "player-hash",
+			OpponentDeckHash: "opp-a",
+		},
+		{
+			Timestamp:        time.Now(),
+			Result:           "loss",
+			PlayerDeck:       playerDeck,
+			OpponentDeck:     opponentDeckB,
+			PlayerDeckHash:   "player-hash",
+			OpponentDeckHash: "opp-b",
+		},
+	}
+
+	options := DefaultAnalysisOptions()
+	options.MinBattlesForMatchups = 1
+	options.LimitTopMatchups = 5
+
+	analysis := AnalyzeEventDecks([]EventDeck{deck}, options)
+
+	if analysis.MatchupAnalysis.TotalTrackedBattles != 3 {
+		t.Fatalf("TotalTrackedBattles = %d, want 3", analysis.MatchupAnalysis.TotalTrackedBattles)
+	}
+	if analysis.MatchupAnalysis.UniqueDeckMatchups != 2 {
+		t.Fatalf("UniqueDeckMatchups = %d, want 2", analysis.MatchupAnalysis.UniqueDeckMatchups)
+	}
+	if len(analysis.MatchupAnalysis.TopWinningMatchups) == 0 {
+		t.Fatal("expected at least one top winning matchup")
+	}
+
+	top := analysis.MatchupAnalysis.TopWinningMatchups[0]
+	if top.OpponentDeckHash != "opp-a" {
+		t.Errorf("top winning OpponentDeckHash = %s, want opp-a", top.OpponentDeckHash)
+	}
+	if top.Battles != 2 || top.Wins != 2 || top.Losses != 0 {
+		t.Errorf("top winning record = %dW-%dL (%d battles), want 2W-0L (2 battles)", top.Wins, top.Losses, top.Battles)
+	}
+}
+
+func TestAnalyzeEventDecks_DeckMatchups_BackfillPlayerDeckHash(t *testing.T) {
+	playerDeck := []string{
+		"Hog Rider", "Earthquake", "The Log", "Firecracker",
+		"Cannon", "Skeletons", "Ice Spirit", "Knight",
+	}
+	opponentDeck := []string{
+		"Golem", "Night Witch", "Baby Dragon", "Lightning",
+		"Tornado", "Barbarian Barrel", "Electro Dragon", "Lumberjack",
+	}
+
+	deck := createTestEventDeck(playerDeck, 1, 0)
+	deck.Battles = []BattleRecord{
+		{
+			Timestamp:        time.Now(),
+			Result:           "win",
+			OpponentDeck:     opponentDeck,
+			OpponentDeckHash: "opp-a",
+		},
+	}
+
+	options := DefaultAnalysisOptions()
+	options.MinBattlesForMatchups = 1
+
+	analysis := AnalyzeEventDecks([]EventDeck{deck}, options)
+
+	if analysis.MatchupAnalysis.TotalTrackedBattles != 1 {
+		t.Fatalf("TotalTrackedBattles = %d, want 1", analysis.MatchupAnalysis.TotalTrackedBattles)
+	}
+	if len(analysis.MatchupAnalysis.TopWinningMatchups) != 1 {
+		t.Fatalf("TopWinningMatchups length = %d, want 1", len(analysis.MatchupAnalysis.TopWinningMatchups))
+	}
+
+	top := analysis.MatchupAnalysis.TopWinningMatchups[0]
+	if top.PlayerDeckHash == "" {
+		t.Fatal("expected player deck hash to be backfilled from event deck")
+	}
+	if len(top.PlayerDeck) != len(playerDeck) {
+		t.Errorf("PlayerDeck length = %d, want %d", len(top.PlayerDeck), len(playerDeck))
 	}
 }
