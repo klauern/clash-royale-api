@@ -237,7 +237,7 @@ func BenchmarkEvaluateBatch(b *testing.B) {
 
 	// Create 100 test decks (variations of the benchmark deck)
 	testDecks := make([][]deck.CardCandidate, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		testDecks[i] = getBenchmarkDeck()
 	}
 

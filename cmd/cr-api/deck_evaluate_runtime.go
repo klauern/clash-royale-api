@@ -370,10 +370,7 @@ func calculateDeckCardUpgrades(deckCardNames []string, cardAnalysis deck.CardAna
 		}
 
 		// Calculate potential upgrade (typically +1 level)
-		targetLevel := cardData.Level + 1
-		if targetLevel > cardData.MaxLevel {
-			targetLevel = cardData.MaxLevel
-		}
+		targetLevel := min(cardData.Level+1, cardData.MaxLevel)
 
 		// Calculate gold cost and cards needed for this upgrade
 		goldCost := calculateUpgradeGoldCost(cardData.Rarity, cardData.Level, targetLevel)
@@ -529,10 +526,7 @@ func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCard
 	}
 
 	// Limit to top N
-	displayCount := topN
-	if displayCount > len(impacts) {
-		displayCount = len(impacts)
-	}
+	displayCount := min(topN, len(impacts))
 
 	// Calculate total costs
 	totalGold := 0
@@ -691,7 +685,7 @@ func loadDeckFromAnalysis(filePath string) ([]string, error) {
 	}
 
 	// Parse JSON to extract deck cards
-	var analysisData map[string]interface{}
+	var analysisData map[string]any
 	if err := json.Unmarshal(data, &analysisData); err != nil {
 		return nil, fmt.Errorf("failed to parse analysis JSON: %w", err)
 	}
@@ -707,7 +701,7 @@ func loadDeckFromAnalysis(filePath string) ([]string, error) {
 	}
 
 	// Convert to string array
-	deckArray, ok := deckField.([]interface{})
+	deckArray, ok := deckField.([]any)
 	if !ok {
 		return nil, fmt.Errorf("deck field is not an array")
 	}
@@ -786,13 +780,13 @@ func formatStars(stars int) string {
 	const filledStar = "★"
 	const emptyStar = "☆"
 
-	result := ""
-	for i := 0; i < 3; i++ {
+	var result strings.Builder
+	for i := range 3 {
 		if i < stars {
-			result += filledStar
+			result.WriteString(filledStar)
 		} else {
-			result += emptyStar
+			result.WriteString(emptyStar)
 		}
 	}
-	return result
+	return result.String()
 }

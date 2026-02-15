@@ -4,7 +4,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"sort"
+	"slices"
 	"testing"
 	"time"
 )
@@ -301,7 +301,7 @@ func TestLevelCurve_ConfigCaching(t *testing.T) {
 	}
 
 	// Access same card multiple times
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		multiplier := lc.GetLevelMultiplier("Knight", 9)
 		expectedMin := 2.0
 		expectedMax := 2.2
@@ -753,7 +753,7 @@ func TestLevelCurve_PerformanceBenchmark(t *testing.T) {
 	}
 
 	// Benchmark calculations
-	for i := 0; i < iterations; i++ {
+	for range iterations {
 		start := time.Now()
 
 		for _, tc := range testCards {
@@ -775,9 +775,7 @@ func TestLevelCurve_PerformanceBenchmark(t *testing.T) {
 	}
 
 	// Sort timings for percentile calculation
-	sort.Slice(timings, func(i, j int) bool {
-		return timings[i] < timings[j]
-	})
+	slices.Sort(timings)
 
 	p50 := timings[len(timings)/2]
 	p95 := timings[int(float64(len(timings))*0.95)]
@@ -926,10 +924,10 @@ func TestLevelCurve_ConfigCoverage(t *testing.T) {
 
 // Helper functions for deck building impact tests
 
-func setupTestAnalysisData() map[string]interface{} {
+func setupTestAnalysisData() map[string]any {
 	// Return mock analysis data for testing
-	return map[string]interface{}{
-		"cards": []map[string]interface{}{
+	return map[string]any{
+		"cards": []map[string]any{
 			{"name": "Knight", "level": 12, "maxLevel": 14, "rarity": "Common", "count": 500},
 			{"name": "Archers", "level": 13, "maxLevel": 14, "rarity": "Common", "count": 450},
 			{"name": "Giant", "level": 11, "maxLevel": 14, "rarity": "Rare", "count": 300},
@@ -942,7 +940,7 @@ func setupTestAnalysisData() map[string]interface{} {
 	}
 }
 
-func generateDeckWithLinearScoring(analysisData map[string]interface{}) []string {
+func generateDeckWithLinearScoring(analysisData map[string]any) []string {
 	// Simulate old linear scoring system
 	// This is a simplified version for testing
 	return []string{
@@ -951,7 +949,7 @@ func generateDeckWithLinearScoring(analysisData map[string]interface{}) []string
 	}
 }
 
-func generateDeckWithCurveScoring(analysisData map[string]interface{}, lc *LevelCurve) []string {
+func generateDeckWithCurveScoring(analysisData map[string]any, lc *LevelCurve) []string {
 	// Simulate new curve-based scoring system
 	// This would integrate with actual deck builder in production
 	return []string{

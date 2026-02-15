@@ -288,40 +288,41 @@ type QueryOptions struct {
 
 // Query retrieves deck entries based on the provided options
 func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
-	query := `
+	var query strings.Builder
+	query.WriteString(`
 		SELECT id, deck_hash, cards, overall_score, attack_score, defense_score,
 		       synergy_score, versatility_score, avg_elixir, archetype, archetype_conf, evaluated_at, run_id
 		FROM top_decks
 		WHERE 1=1
-	`
+	`)
 	args := []any{}
 
 	// Apply filters
 	if opts.MinScore > 0 {
-		query += " AND overall_score >= ?"
+		query.WriteString(" AND overall_score >= ?")
 		args = append(args, opts.MinScore)
 	}
 	if opts.MaxScore > 0 {
-		query += " AND overall_score <= ?"
+		query.WriteString(" AND overall_score <= ?")
 		args = append(args, opts.MaxScore)
 	}
 	if opts.Archetype != "" {
-		query += " AND archetype = ?"
+		query.WriteString(" AND archetype = ?")
 		args = append(args, opts.Archetype)
 	}
 	if opts.MinAvgElixir > 0 {
-		query += " AND avg_elixir >= ?"
+		query.WriteString(" AND avg_elixir >= ?")
 		args = append(args, opts.MinAvgElixir)
 	}
 	if opts.MaxAvgElixir > 0 {
-		query += " AND avg_elixir <= ?"
+		query.WriteString(" AND avg_elixir <= ?")
 		args = append(args, opts.MaxAvgElixir)
 	}
 
 	// Card filters
 	if len(opts.RequireAllCards) > 0 {
 		for _, card := range opts.RequireAllCards {
-			query += " AND cards LIKE ?"
+			query.WriteString(" AND cards LIKE ?")
 			args = append(args, "%"+card+"%")
 		}
 	}
@@ -336,28 +337,28 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 			args = append(args, "%"+card+"%")
 		}
 		subQuery.WriteString(")")
-		query += subQuery.String()
+		query.WriteString(subQuery.String())
 	}
 	if len(opts.ExcludeCards) > 0 {
 		for _, card := range opts.ExcludeCards {
-			query += " AND cards NOT LIKE ?"
+			query.WriteString(" AND cards NOT LIKE ?")
 			args = append(args, "%"+card+"%")
 		}
 	}
 
-	query += " ORDER BY overall_score DESC"
+	query.WriteString(" ORDER BY overall_score DESC")
 
 	// Apply limit and offset
 	if opts.Limit > 0 {
-		query += " LIMIT ?"
+		query.WriteString(" LIMIT ?")
 		args = append(args, opts.Limit)
 	}
 	if opts.Offset > 0 {
-		query += " OFFSET ?"
+		query.WriteString(" OFFSET ?")
 		args = append(args, opts.Offset)
 	}
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.Query(query.String(), args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
@@ -371,37 +372,38 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 //
 //nolint:funlen,gocognit,gocyclo // Query assembly contains explicit filter combinations.
 func (s *Storage) ArchetypeHistogram(opts QueryOptions) (map[string]int, error) {
-	query := `
+	var query strings.Builder
+	query.WriteString(`
 		SELECT archetype, COUNT(*) AS deck_count
 		FROM top_decks
 		WHERE 1=1
-	`
+	`)
 	args := []any{}
 
 	if opts.MinScore > 0 {
-		query += " AND overall_score >= ?"
+		query.WriteString(" AND overall_score >= ?")
 		args = append(args, opts.MinScore)
 	}
 	if opts.MaxScore > 0 {
-		query += " AND overall_score <= ?"
+		query.WriteString(" AND overall_score <= ?")
 		args = append(args, opts.MaxScore)
 	}
 	if opts.Archetype != "" {
-		query += " AND archetype = ?"
+		query.WriteString(" AND archetype = ?")
 		args = append(args, opts.Archetype)
 	}
 	if opts.MinAvgElixir > 0 {
-		query += " AND avg_elixir >= ?"
+		query.WriteString(" AND avg_elixir >= ?")
 		args = append(args, opts.MinAvgElixir)
 	}
 	if opts.MaxAvgElixir > 0 {
-		query += " AND avg_elixir <= ?"
+		query.WriteString(" AND avg_elixir <= ?")
 		args = append(args, opts.MaxAvgElixir)
 	}
 
 	if len(opts.RequireAllCards) > 0 {
 		for _, card := range opts.RequireAllCards {
-			query += " AND cards LIKE ?"
+			query.WriteString(" AND cards LIKE ?")
 			args = append(args, "%"+card+"%")
 		}
 	}
@@ -416,18 +418,18 @@ func (s *Storage) ArchetypeHistogram(opts QueryOptions) (map[string]int, error) 
 			args = append(args, "%"+card+"%")
 		}
 		subQuery.WriteString(")")
-		query += subQuery.String()
+		query.WriteString(subQuery.String())
 	}
 	if len(opts.ExcludeCards) > 0 {
 		for _, card := range opts.ExcludeCards {
-			query += " AND cards NOT LIKE ?"
+			query.WriteString(" AND cards NOT LIKE ?")
 			args = append(args, "%"+card+"%")
 		}
 	}
 
-	query += " GROUP BY archetype ORDER BY deck_count DESC, archetype ASC"
+	query.WriteString(" GROUP BY archetype ORDER BY deck_count DESC, archetype ASC")
 
-	rows, err := s.db.Query(query, args...)
+	rows, err := s.db.Query(query.String(), args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query archetype histogram: %w", err)
 	}

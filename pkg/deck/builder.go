@@ -7,6 +7,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -49,7 +50,7 @@ func NewBuilder(dataDir string) *Builder {
 	// Parse UNLOCKED_EVOLUTIONS environment variable
 	unlockedEvos := make(map[string]bool)
 	if envEvos := os.Getenv("UNLOCKED_EVOLUTIONS"); envEvos != "" {
-		for _, card := range strings.Split(envEvos, ",") {
+		for card := range strings.SplitSeq(envEvos, ",") {
 			cardName := strings.TrimSpace(card)
 			if cardName != "" {
 				unlockedEvos[cardName] = true
@@ -232,7 +233,7 @@ func (b *Builder) getOverrideCount(role CardRole, defaultCount int) int {
 func (b *Builder) selectCardsForRole(role CardRole, count int, deck, candidates []*CardCandidate, used map[string]bool, trackMissing bool) ([]*CardCandidate, map[string]bool, []string) {
 	notes := make([]string, 0)
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		if card := b.pickBest(role, candidates, used, deck); card != nil {
 			deck = append(deck, card)
 			used[card.Name] = true
@@ -858,12 +859,7 @@ func (b *Builder) addStrategicNotes(recommendation *DeckRecommendation) {
 // Utility functions
 
 func (b *Builder) contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, item)
 }
 
 func roundToTwo(value float64) float64 {
@@ -1062,10 +1058,7 @@ func (b *Builder) getUpgradeCandidates(deck *DeckRecommendation, cardLevels map[
 			b.levelCurve,
 		)
 
-		targetLevel := card.Level + 1
-		if targetLevel > card.MaxLevel {
-			targetLevel = card.MaxLevel
-		}
+		targetLevel := min(card.Level+1, card.MaxLevel)
 
 		upgradedScore := ScoreCardWithStrategy(
 			&CardCandidate{
@@ -1200,12 +1193,4 @@ func (b *Builder) generateUpgradeReason(card CardDetail, scoreDelta float64, rol
 	} else {
 		return fmt.Sprintf("Minor improvement (+%.3f) for this %s", scoreDelta, roleStr)
 	}
-}
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

@@ -37,6 +37,7 @@ func addDeckBuildCommand() *cli.Command {
 			&cli.BoolFlag{Name: "no-suggest-upgrades", Usage: "Disable upgrade recommendations for the built deck (recommendations are shown by default)"},
 			&cli.IntFlag{Name: "upgrade-count", Value: 5, Usage: "Number of upgrade recommendations to show (default 5)"},
 			&cli.BoolFlag{Name: "ideal-deck", Usage: "Show ideal deck composition after applying recommended upgrades"},
+			&cli.StringSliceFlag{Name: "boosted-card-level", Usage: "Temporarily override card level for scoring/building (format: CardName:Level, repeatable)"},
 			&cli.StringFlag{Name: "fuzz-storage", Usage: "Path to fuzz storage database for data-driven card scoring (default: ~/.cr-api/fuzz_top_decks.db)"},
 			&cli.Float64Flag{Name: "fuzz-weight", Value: 0.10, Usage: "Weight for fuzz-based card scoring (0.0-1.0, default 0.10 = 10%)"},
 			&cli.IntFlag{Name: "fuzz-deck-limit", Value: 100, Usage: "Number of top fuzz decks to analyze for card stats (default 100)"},
@@ -106,6 +107,7 @@ func addDeckBuildSuiteCommand() *cli.Command {
 			&cli.StringFlag{Name: "fuzz-storage", Usage: "Path to fuzz storage database for data-driven card scoring (default: ~/.cr-api/fuzz_top_decks.db)"},
 			&cli.Float64Flag{Name: "fuzz-weight", Value: 0.10, Usage: "Weight for fuzz-based card scoring (0.0-1.0, default 0.10 = 10%)"},
 			&cli.IntFlag{Name: "fuzz-deck-limit", Value: 100, Usage: "Number of top fuzz decks to analyze for card stats (default 100)"},
+			&cli.StringSliceFlag{Name: "boosted-card-level", Usage: "Temporarily override card level for scoring/building (format: CardName:Level, repeatable)"},
 			&cli.BoolFlag{
 				Name:  "save",
 				Value: true,
@@ -144,6 +146,7 @@ func addDeckAnalyzeSuiteCommand() *cli.Command {
 			&cli.StringFlag{Name: "fuzz-storage", Usage: "Path to fuzz storage database for data-driven card scoring (default: ~/.cr-api/fuzz_top_decks.db)"},
 			&cli.Float64Flag{Name: "fuzz-weight", Value: 0.10, Usage: "Weight for fuzz-based card scoring (0.0-1.0, default 0.10 = 10%)"},
 			&cli.IntFlag{Name: "fuzz-deck-limit", Value: 100, Usage: "Number of top fuzz decks to analyze for card stats (default 100)"},
+			&cli.StringSliceFlag{Name: "boosted-card-level", Usage: "Temporarily override card level for scoring/building (format: CardName:Level, repeatable)"},
 			&cli.BoolFlag{Name: "suggest-constraints", Usage: "analyze top N decks and suggest card constraints based on frequency", Value: false},
 			&cli.Float64Flag{Name: "constraint-threshold", Usage: "minimum percentage threshold for card suggestions (0-100)", Value: 50.0},
 		},

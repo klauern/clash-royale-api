@@ -11,6 +11,7 @@
 package deck
 
 import (
+	"maps"
 	"math"
 	"sort"
 	"sync"
@@ -185,9 +186,7 @@ func NewCardPopularity() *CardPopularity {
 	}
 
 	// Copy default values
-	for card, popularity := range DefaultCardPopularity {
-		cp.popularity[card] = popularity
-	}
+	maps.Copy(cp.popularity, DefaultCardPopularity)
 
 	return cp
 }

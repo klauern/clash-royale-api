@@ -12,6 +12,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -432,10 +433,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 					etaStr := "?"
 					if gens > 0 {
 						rate := float64(gens) / elapsed.Seconds()
-						remaining := totalGens - gens
-						if remaining < 0 {
-							remaining = 0
-						}
+						remaining := max(totalGens-gens, 0)
 						if rate > 0 {
 							etaStr = formatDurationFloor(float64(remaining) / rate)
 						}
@@ -603,9 +601,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		var generationDone sync.WaitGroup
 		stopProgress := make(chan struct{})
 		if verbose {
-			generationDone.Add(1)
-			go func() {
-				defer generationDone.Done()
+			generationDone.Go(func() {
 				ticker := time.NewTicker(500 * time.Millisecond)
 				defer ticker.Stop()
 
@@ -633,7 +629,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 						}
 					}
 				}
-			}()
+			})
 		}
 
 		generationCtx, cancelGeneration := context.WithCancel(ctx)
@@ -960,9 +956,7 @@ func evaluateDecksParallel(
 
 	// Start workers
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
 			// Each worker gets its own synergy database to avoid concurrent access
 			synergyDB := deck.NewSynergyDatabase()
@@ -984,7 +978,7 @@ func evaluateDecksParallel(
 					}
 				}
 			}
-		}()
+		})
 	}
 
 	// Send work
@@ -1394,7 +1388,7 @@ func ensureArchetypeCoverage(results []FuzzingResult, top int, verbose bool) []F
 		// Count how many archetypes are represented in the top N
 		topN := min(top, len(finalResults))
 		topArchetypes := make(map[string]int)
-		for i := 0; i < topN; i++ {
+		for i := range topN {
 			topArchetypes[finalResults[i].Archetype]++
 		}
 		fprintf(os.Stderr, "Top %d decks include %d different archetypes: ", topN, len(topArchetypes))
@@ -1489,7 +1483,7 @@ func ensureElixirBucketDistribution(results []FuzzingResult, top int, verbose bo
 			elixirBucketMedium: 0,
 			elixirBucketHigh:   0,
 		}
-		for i := 0; i < topN; i++ {
+		for i := range topN {
 			bucket := getElixirBucket(finalResults[i].AvgElixir)
 			topBuckets[bucket]++
 		}
@@ -2200,9 +2194,7 @@ func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, player *clashroyale.
 	}
 
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			synergyDB := deck.NewSynergyDatabase()
 
 			for work := range workChan {
@@ -2219,7 +2211,7 @@ func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, player *clashroyale.
 				updated.EvaluatedAt = result.EvaluatedAt
 				resultChan <- storedDeckResult{index: work.index, entry: updated}
 			}
-		}()
+		})
 	}
 
 	for i, entry := range entries {
@@ -2622,10 +2614,7 @@ func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, co
 	}
 
 	mutations := make([][]string, 0)
-	mutationsPerDeck := count / len(savedDecks)
-	if mutationsPerDeck < 1 {
-		mutationsPerDeck = 1
-	}
+	mutationsPerDeck := max(count/len(savedDecks), 1)
 
 	for _, deck := range savedDecks {
 		for i := 0; i < mutationsPerDeck; i++ {
@@ -2642,13 +2631,7 @@ func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, co
 				// Find a replacement card
 				for _, card := range player.Cards {
 					// Skip if card is already in deck
-					alreadyInDeck := false
-					for _, existing := range mutation {
-						if existing == card.Name {
-							alreadyInDeck = true
-							break
-						}
-					}
+					alreadyInDeck := slices.Contains(mutation, card.Name)
 					if !alreadyInDeck {
 						mutation[swapIdx] = card.Name
 						break
@@ -2750,7 +2733,7 @@ func generateVariations(baseDeck []string, player *clashroyale.Player, count, mu
 	variations := make([][]string, 0, count)
 
 	// Generate variations by swapping 1-3 cards
-	for i := 0; i < count; i++ {
+	for i := range count {
 		variation := make([]string, len(baseDeck))
 		copy(variation, baseDeck)
 
@@ -2758,7 +2741,7 @@ func generateVariations(baseDeck []string, player *clashroyale.Player, count, mu
 		numSwaps := 1 + (i % mutationIntensity)
 
 		// Swap random positions with available cards
-		for j := 0; j < numSwaps; j++ {
+		for j := range numSwaps {
 			// Pick a random position to swap
 			swapIdx := j % len(variation)
 

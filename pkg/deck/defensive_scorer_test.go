@@ -2,6 +2,7 @@
 package deck
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -85,13 +86,7 @@ func TestCalculateDefensiveCoverage_NoAirDefense(t *testing.T) {
 	}
 
 	// Should flag air defense as a gap
-	hasAirGap := false
-	for _, gap := range report2.CoverageGaps {
-		if gap == "Insufficient air defense" {
-			hasAirGap = true
-			break
-		}
-	}
+	hasAirGap := slices.Contains(report2.CoverageGaps, "Insufficient air defense")
 	if !hasAirGap {
 		t.Error("Expected air defense gap to be flagged")
 	}
@@ -115,13 +110,7 @@ func TestCalculateDefensiveCoverage_NoSplash(t *testing.T) {
 	}
 
 	// Should flag splash as a gap
-	hasSplashGap := false
-	for _, gap := range report.CoverageGaps {
-		if gap == "No splash damage" {
-			hasSplashGap = true
-			break
-		}
-	}
+	hasSplashGap := slices.Contains(report.CoverageGaps, "No splash damage")
 	if !hasSplashGap {
 		t.Error("Expected splash gap to be flagged")
 	}
@@ -139,13 +128,7 @@ func TestCalculateDefensiveCoverage_NoSwarmSpell(t *testing.T) {
 	report := scorer.CalculateDefensiveCoverage(noSwarmDeck)
 
 	// Should flag swarm spell as a gap (no Log, Zap, Arrows, or Valkyrie)
-	hasSwarmGap := false
-	for _, gap := range report.CoverageGaps {
-		if gap == "No swarm spell" {
-			hasSwarmGap = true
-			break
-		}
-	}
+	hasSwarmGap := slices.Contains(report.CoverageGaps, "No swarm spell")
 	if !hasSwarmGap {
 		t.Error("Expected swarm spell gap to be flagged")
 	}

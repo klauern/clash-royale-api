@@ -1,6 +1,8 @@
 package archetypes
 
 import (
+	"maps"
+
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 )
@@ -119,9 +121,7 @@ func cloneRequiredRoles(in map[deck.CardRole]int) map[deck.CardRole]int {
 		return nil
 	}
 	out := make(map[deck.CardRole]int, len(in))
-	for k, v := range in {
-		out[k] = v
-	}
+	maps.Copy(out, in)
 	return out
 }
 

@@ -74,11 +74,12 @@ func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, cons
 
 	// Generate example command with suggested constraints
 	fmt.Println("To apply these constraints, re-run with:")
-	cmdExample := fmt.Sprintf("  cr-api deck analyze-suite --tag %s", tag)
+	var cmdExample strings.Builder
+	cmdExample.WriteString(fmt.Sprintf("  cr-api deck analyze-suite --tag %s", tag))
 	for _, suggestion := range suggestions {
-		cmdExample += fmt.Sprintf(" --include-cards \"%s\"", suggestion.CardName)
+		cmdExample.WriteString(fmt.Sprintf(" --include-cards \"%s\"", suggestion.CardName))
 	}
-	fmt.Println(cmdExample)
+	fmt.Println(cmdExample.String())
 	fmt.Println()
 	return nil
 }
@@ -86,7 +87,7 @@ func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, cons
 // runPhase1BuildDeckVariations builds deck variations for the analysis suite
 //
 //nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
-func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
+func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string, boostedLevelOverrides map[string]int) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
 	decksDir := filepath.Join(outputDir, "decks")
 	if err := os.MkdirAll(decksDir, 0o755); err != nil {
 		return nil, nil, 0, 0, "", fmt.Errorf("failed to create decks directory: %w", err)
@@ -115,6 +116,7 @@ func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDi
 	if err != nil {
 		return nil, nil, 0, 0, "", err
 	}
+	applyBoostedLevelsToCardAnalysis(&playerData.CardAnalysis, boostedLevelOverrides)
 
 	var builtDecks []suiteDeckInfo
 	successCount := 0
@@ -154,7 +156,7 @@ func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDi
 			deckFileName := fmt.Sprintf("%s_deck_%s_var%d_%s.json", timestamp, strategy, v, strings.TrimPrefix(playerData.PlayerTag, "#"))
 			deckFilePath := filepath.Join(decksDir, deckFileName)
 
-			deckData := map[string]interface{}{
+			deckData := map[string]any{
 				"deck":           deckRec.Deck,
 				"avg_elixir":     deckRec.AvgElixir,
 				"recommendation": deckRec,
@@ -194,14 +196,14 @@ func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDi
 	suiteFileName := fmt.Sprintf("%s_deck_suite_summary_%s.json", timestamp, strings.TrimPrefix(playerData.PlayerTag, "#"))
 	suiteSummaryPath := filepath.Join(decksDir, suiteFileName)
 
-	suiteData := map[string]interface{}{
+	suiteData := map[string]any{
 		"version":   "1.0.0",
 		"timestamp": timestamp,
 		"player": map[string]string{
 			"name": playerData.PlayerName,
 			"tag":  playerData.PlayerTag,
 		},
-		"build_info": map[string]interface{}{
+		"build_info": map[string]any{
 			"total_decks":     len(strategies) * variations,
 			"successful":      successCount,
 			"failed":          failCount,
@@ -236,7 +238,7 @@ func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDi
 // runPhase2EvaluateAllDecks evaluates all built decks for the analysis suite
 //
 //nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
-func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlayerData, outputDir, tag, apiToken string, fromAnalysis, verbose bool, timestamp string) ([]suiteEvalResult, string, error) {
+func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlayerData, outputDir, tag, apiToken string, fromAnalysis, verbose bool, timestamp string, boostedLevelOverrides map[string]int) ([]suiteEvalResult, string, error) {
 	evaluationsDir := filepath.Join(outputDir, "evaluations")
 	if err := os.MkdirAll(evaluationsDir, 0o755); err != nil {
 		return nil, "", fmt.Errorf("failed to create evaluations directory: %w", err)
@@ -249,6 +251,7 @@ func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlay
 		player, err := client.GetPlayer(tag)
 		if err == nil {
 			playerContext = evaluation.NewPlayerContextFromPlayer(player)
+			applyBoostedLevelsToPlayerContext(playerContext, boostedLevelOverrides)
 		}
 	}
 
@@ -304,6 +307,7 @@ func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlay
 				})
 			}
 		}
+		applyBoostedLevelsToDeckCandidates(deckCards, boostedLevelOverrides)
 
 		// Evaluate
 		deckEvalResult := evaluation.Evaluate(deckCards, synergyDB, playerContext)
@@ -369,14 +373,14 @@ func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlay
 	evalFileName := fmt.Sprintf("%s_deck_evaluations_%s.json", timestamp, strings.TrimPrefix(playerData.PlayerTag, "#"))
 	evalFilePath := filepath.Join(evaluationsDir, evalFileName)
 
-	evalData := map[string]interface{}{
+	evalData := map[string]any{
 		"version":   "1.0.0",
 		"timestamp": timestamp,
 		"player": map[string]string{
 			"name": playerData.PlayerName,
 			"tag":  playerData.PlayerTag,
 		},
-		"evaluation_info": map[string]interface{}{
+		"evaluation_info": map[string]any{
 			"total_decks":     len(results),
 			"evaluated":       len(results),
 			"sort_by":         "overall",
@@ -407,10 +411,7 @@ func calculateCompareCount(resultCount, topN int) (int, error) {
 		return 0, fmt.Errorf("need at least 2 evaluated decks to compare, got %d", resultCount)
 	}
 
-	compareCount := topN
-	if compareCount > resultCount {
-		compareCount = resultCount
-	}
+	compareCount := min(topN, resultCount)
 	if compareCount < 2 {
 		compareCount = 2
 	}
@@ -486,6 +487,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	verbose := cmd.Bool("verbose")
 	suggestConstraints := cmd.Bool("suggest-constraints")
 	constraintThreshold := cmd.Float64("constraint-threshold")
+	boostedCardLevels := cmd.StringSlice("boosted-card-level")
 
 	// Get global flags
 	apiToken := cmd.String("api-token")
@@ -496,6 +498,10 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	if err := configureCombatStats(cmd); err != nil {
+		return err
+	}
+	boostedLevelOverrides, err := parseBoostedCardLevels(boostedCardLevels)
+	if err != nil {
 		return err
 	}
 
@@ -525,7 +531,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	builtDecks, playerData, successCount, _, suiteSummaryPath, err := runPhase1BuildDeckVariations(
 		cmd,
 		tag, strategiesStr, outputDir, variations, topN, includeCards, excludeCards, verbose,
-		apiToken, dataDir, fromAnalysis, minElixir, maxElixir, timestamp,
+		apiToken, dataDir, fromAnalysis, minElixir, maxElixir, timestamp, boostedLevelOverrides,
 	)
 	if err != nil {
 		return err
@@ -538,7 +544,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Println("─────────────────────────────────────────────────────────────────────")
 
 	results, evalFilePath, err := runPhase2EvaluateAllDecks(
-		builtDecks, playerData, outputDir, tag, apiToken, fromAnalysis, verbose, timestamp,
+		builtDecks, playerData, outputDir, tag, apiToken, fromAnalysis, verbose, timestamp, boostedLevelOverrides,
 	)
 	if err != nil {
 		return err

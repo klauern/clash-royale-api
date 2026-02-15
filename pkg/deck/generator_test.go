@@ -3,6 +3,7 @@ package deck
 import (
 	"context"
 	"fmt"
+	"slices"
 	"testing"
 	"time"
 )
@@ -215,7 +216,7 @@ func TestDeckIterator_Checkpoint(t *testing.T) {
 			ctx := context.Background()
 
 			// Generate a few decks
-			for i := 0; i < 3; i++ {
+			for range 3 {
 				_, err := iterator.Next(ctx)
 				if err != nil {
 					t.Fatalf("failed to generate deck: %v", err)
@@ -291,18 +292,18 @@ func TestDeckIterator_Reset(t *testing.T) {
 func TestSmartSampleIterator_WeightedSampling(t *testing.T) {
 	// Create candidates with varying scores
 	candidates := []*CardCandidate{
-		{Name: "HighScore", Score: 1.5, Elixir: 4, Role: ptrCardRole(RoleWinCondition)},
-		{Name: "MediumScore", Score: 1.0, Elixir: 3, Role: ptrCardRole(RoleSupport)},
-		{Name: "LowScore", Score: 0.5, Elixir: 2, Role: ptrCardRole(RoleCycle)},
+		{Name: "HighScore", Score: 1.5, Elixir: 4, Role: new(RoleWinCondition)},
+		{Name: "MediumScore", Score: 1.0, Elixir: 3, Role: new(RoleSupport)},
+		{Name: "LowScore", Score: 0.5, Elixir: 2, Role: new(RoleCycle)},
 	}
 
 	// Add more candidates to reach minimum
-	for i := 0; i < 15; i++ {
+	for i := range 15 {
 		candidates = append(candidates, &CardCandidate{
 			Name:   "Card" + string(rune('A'+i)),
 			Score:  0.8,
 			Elixir: 3,
-			Role:   ptrCardRole(RoleSupport),
+			Role:   new(RoleSupport),
 		})
 	}
 
@@ -325,11 +326,8 @@ func TestSmartSampleIterator_WeightedSampling(t *testing.T) {
 	// Count appearances of high-score card
 	highScoreCount := 0
 	for _, deck := range decks {
-		for _, card := range deck {
-			if card == "HighScore" {
-				highScoreCount++
-				break
-			}
+		if slices.Contains(deck, "HighScore") {
+			highScoreCount++
 		}
 	}
 
@@ -478,8 +476,9 @@ func createTestCandidates(count int) []*CardCandidate {
 	return candidates
 }
 
+//go:fix inline
 func ptrCardRole(role CardRole) *CardRole {
-	return &role
+	return new(role)
 }
 
 func TestGeneticIterator(t *testing.T) {

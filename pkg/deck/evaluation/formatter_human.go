@@ -137,10 +137,7 @@ func formatSynergyMatrix(result *EvaluationResult) string {
 		matrix.WriteString("🔥 Top Synergy Pairs:\n\n")
 
 		// Show top 5 pairs
-		maxPairs := 5
-		if len(result.SynergyMatrix.Pairs) < maxPairs {
-			maxPairs = len(result.SynergyMatrix.Pairs)
-		}
+		maxPairs := min(len(result.SynergyMatrix.Pairs), 5)
 
 		for i := 0; i < maxPairs; i++ {
 			pair := result.SynergyMatrix.Pairs[i]

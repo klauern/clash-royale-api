@@ -2,6 +2,7 @@ package evaluation
 
 import (
 	"math"
+	"slices"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
@@ -146,22 +147,16 @@ func scoreBeatdown(deckCards []deck.CardCandidate) float64 {
 	// Check for heavy tank win conditions (40% of score)
 	tankScore := 0.0
 	for _, card := range deckCards {
-		for _, tank := range heavyTanks {
-			if card.Name == tank {
-				tankScore = 10.0
-				break
-			}
+		if slices.Contains(heavyTanks, card.Name) {
+			tankScore = 10.0
 		}
 	}
 
 	// Check for support troops (30% of score)
 	supportCount := 0
 	for _, card := range deckCards {
-		for _, support := range supportTroops {
-			if card.Name == support {
-				supportCount++
-				break
-			}
+		if slices.Contains(supportTroops, card.Name) {
+			supportCount++
 		}
 	}
 	supportScore := float64(supportCount) * 2.5 // Max 10.0 with 4+ supports
@@ -195,11 +190,8 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 	// Check for control win conditions (35% of score)
 	winConScore := 0.0
 	for _, card := range deckCards {
-		for _, wc := range controlWinCons {
-			if card.Name == wc {
-				winConScore = 10.0
-				break
-			}
+		if slices.Contains(controlWinCons, card.Name) {
+			winConScore = 10.0
 		}
 	}
 
@@ -209,11 +201,8 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 		if card.Role != nil && *card.Role == deck.RoleBuilding {
 			buildingCount++
 		}
-		for _, building := range defensiveBuildings {
-			if card.Name == building {
-				buildingCount++
-				break
-			}
+		if slices.Contains(defensiveBuildings, card.Name) {
+			buildingCount++
 		}
 	}
 	buildingScore := float64(buildingCount) * 5.0 // Max 10.0 with 2+ buildings
@@ -224,11 +213,8 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 	// Count big spells (30% of score)
 	spellCount := 0
 	for _, card := range deckCards {
-		for _, spell := range bigSpells {
-			if card.Name == spell {
-				spellCount++
-				break
-			}
+		if slices.Contains(bigSpells, card.Name) {
+			spellCount++
 		}
 	}
 	spellScore := float64(spellCount) * 5.0 // Max 10.0 with 2+ spells
@@ -250,11 +236,8 @@ func scoreCycle(deckCards []deck.CardCandidate) float64 {
 	// Check for cycle win conditions (30% of score)
 	winConScore := 0.0
 	for _, card := range deckCards {
-		for _, wc := range cycleWinCons {
-			if card.Name == wc {
-				winConScore = 10.0
-				break
-			}
+		if slices.Contains(cycleWinCons, card.Name) {
+			winConScore = 10.0
 		}
 	}
 
@@ -264,11 +247,8 @@ func scoreCycle(deckCards []deck.CardCandidate) float64 {
 		if card.Elixir <= 2 {
 			cycleCount++
 		}
-		for _, cycle := range cycleCards {
-			if card.Name == cycle {
-				cycleCount++
-				break
-			}
+		if slices.Contains(cycleCards, card.Name) {
+			cycleCount++
 		}
 	}
 	cycleCardScore := float64(cycleCount) * 2.0 // Max 10.0 with 5+ cheap cards
@@ -301,22 +281,16 @@ func scoreBridgeSpam(deckCards []deck.CardCandidate) float64 {
 	// Check for bridge spam win conditions (40% of score)
 	winConScore := 0.0
 	for _, card := range deckCards {
-		for _, wc := range bridgeWinCons {
-			if card.Name == wc {
-				winConScore = 10.0
-				break
-			}
+		if slices.Contains(bridgeWinCons, card.Name) {
+			winConScore = 10.0
 		}
 	}
 
 	// Count spam cards (40% of score)
 	spamCount := 0
 	for _, card := range deckCards {
-		for _, spam := range spamCards {
-			if card.Name == spam {
-				spamCount++
-				break
-			}
+		if slices.Contains(spamCards, card.Name) {
+			spamCount++
 		}
 	}
 	spamScore := float64(spamCount) * 3.0 // Max 10.0 with 3+ spam cards
@@ -347,11 +321,8 @@ func scoreSiege(deckCards []deck.CardCandidate) float64 {
 	// Check for siege win conditions (60% of score) - critical for siege
 	winConScore := 0.0
 	for _, card := range deckCards {
-		for _, wc := range siegeWinCons {
-			if card.Name == wc {
-				winConScore = 10.0
-				break
-			}
+		if slices.Contains(siegeWinCons, card.Name) {
+			winConScore = 10.0
 		}
 	}
 
@@ -363,11 +334,8 @@ func scoreSiege(deckCards []deck.CardCandidate) float64 {
 	// Count defensive support (40% of score)
 	defenseCount := 0
 	for _, card := range deckCards {
-		for _, def := range defensiveCards {
-			if card.Name == def {
-				defenseCount++
-				break
-			}
+		if slices.Contains(defensiveCards, card.Name) {
+			defenseCount++
 		}
 	}
 	defenseScore := float64(defenseCount) * 2.5 // Max 10.0 with 4+ defensive cards
@@ -408,11 +376,8 @@ func scoreBait(deckCards []deck.CardCandidate) float64 {
 	// Count bait cards (50% of score)
 	baitCount := 0
 	for _, card := range deckCards {
-		for _, bait := range baitCards {
-			if card.Name == bait {
-				baitCount++
-				break
-			}
+		if slices.Contains(baitCards, card.Name) {
+			baitCount++
 		}
 	}
 	baitScore := float64(baitCount) * 2.5 // Max 10.0 with 4+ bait cards
@@ -449,11 +414,8 @@ func scoreGraveyard(deckCards []deck.CardCandidate) float64 {
 	// Count support cards (30% of score)
 	supportCount := 0
 	for _, card := range deckCards {
-		for _, support := range supportCards {
-			if card.Name == support {
-				supportCount++
-				break
-			}
+		if slices.Contains(supportCards, card.Name) {
+			supportCount++
 		}
 	}
 	supportScore := float64(supportCount) * 3.0 // Max 10.0 with 3+ supports
@@ -464,11 +426,8 @@ func scoreGraveyard(deckCards []deck.CardCandidate) float64 {
 	// Count synergy spells (20% of score)
 	synergyCount := 0
 	for _, card := range deckCards {
-		for _, syn := range synergies {
-			if card.Name == syn {
-				synergyCount++
-				break
-			}
+		if slices.Contains(synergies, card.Name) {
+			synergyCount++
 		}
 	}
 	synergyScore := float64(synergyCount) * 5.0 // Max 10.0 with 2+ synergies
@@ -504,11 +463,8 @@ func scoreMiner(deckCards []deck.CardCandidate) float64 {
 	// Count support cards (40% of score)
 	supportCount := 0
 	for _, card := range deckCards {
-		for _, support := range supportCards {
-			if card.Name == support {
-				supportCount++
-				break
-			}
+		if slices.Contains(supportCards, card.Name) {
+			supportCount++
 		}
 	}
 	supportScore := float64(supportCount) * 3.0 // Max 10.0 with 3+ supports

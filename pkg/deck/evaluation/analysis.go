@@ -188,7 +188,7 @@ func findShortestCycle(cards []deck.CardCandidate) (int, []string) {
 	// Get 4 cheapest cards
 	total := 0
 	names := []string{}
-	for i := 0; i < 4; i++ {
+	for i := range 4 {
 		total += sorted[i].Elixir
 		names = append(names, sorted[i].Name)
 	}

@@ -27,7 +27,7 @@ func TestScoreCard(t *testing.T) {
 			maxLevel:     14,
 			rarity:       "Common",
 			elixir:       3,
-			role:         rolePtr(RoleCycle),
+			role:         new(RoleCycle),
 			wantScoreMin: 1.14, // (11/14 * 1.2 * 1.0) + (1.0 * 0.15) + 0.05
 			wantScoreMax: 1.15,
 		},
@@ -47,7 +47,7 @@ func TestScoreCard(t *testing.T) {
 			maxLevel:     14,
 			rarity:       "Epic",
 			elixir:       7,
-			role:         rolePtr(RoleWinCondition),
+			role:         new(RoleWinCondition),
 			wantScoreMin: 0.69,
 			wantScoreMax: 0.70,
 		},
@@ -57,7 +57,7 @@ func TestScoreCard(t *testing.T) {
 			maxLevel:     14,
 			rarity:       "Champion",
 			elixir:       3,
-			role:         rolePtr(RoleWinCondition),
+			role:         new(RoleWinCondition),
 			wantScoreMin: 1.43,
 			wantScoreMax: 1.44,
 		},
@@ -67,7 +67,7 @@ func TestScoreCard(t *testing.T) {
 			maxLevel:     14,
 			rarity:       "Rare",
 			elixir:       3,
-			role:         rolePtr(RoleSupport),
+			role:         new(RoleSupport),
 			wantScoreMin: 0.92,
 			wantScoreMax: 0.94,
 		},
@@ -111,7 +111,7 @@ func TestScoreCardCandidate(t *testing.T) {
 		MaxLevel: 14,
 		Rarity:   "Common",
 		Elixir:   1,
-		Role:     rolePtr(RoleCycle),
+		Role:     new(RoleCycle),
 	}
 
 	score := ScoreCardCandidate(&candidate)
@@ -292,7 +292,7 @@ func TestExcludeCards(t *testing.T) {
 
 // BenchmarkScoreCard benchmarks the scoring algorithm
 func BenchmarkScoreCard(b *testing.B) {
-	role := rolePtr(RoleWinCondition)
+	role := new(RoleWinCondition)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -636,7 +636,7 @@ func TestScoreCardWithEvolution(t *testing.T) {
 			maxLevel:          14,
 			rarity:            "Common",
 			elixir:            3,
-			role:              rolePtr(RoleCycle),
+			role:              new(RoleCycle),
 			evolutionLevel:    0,
 			maxEvolutionLevel: 0,
 			wantScoreMin:      1.14, // Should match TestScoreCard result
@@ -648,7 +648,7 @@ func TestScoreCardWithEvolution(t *testing.T) {
 			maxLevel:          14,
 			rarity:            "Common",
 			elixir:            3,
-			role:              rolePtr(RoleCycle),
+			role:              new(RoleCycle),
 			evolutionLevel:    0,
 			maxEvolutionLevel: 3,
 			wantScoreMin:      1.14, // Same as without evolution
@@ -660,7 +660,7 @@ func TestScoreCardWithEvolution(t *testing.T) {
 			maxLevel:          14,
 			rarity:            "Common",
 			elixir:            3,
-			role:              rolePtr(RoleCycle),
+			role:              new(RoleCycle),
 			evolutionLevel:    3,
 			maxEvolutionLevel: 3,
 			wantScoreMin:      1.29, // 1.14 + 0.15 = 1.29
@@ -672,7 +672,7 @@ func TestScoreCardWithEvolution(t *testing.T) {
 			maxLevel:          14,
 			rarity:            "Common",
 			elixir:            3,
-			role:              rolePtr(RoleCycle),
+			role:              new(RoleCycle),
 			evolutionLevel:    1,
 			maxEvolutionLevel: 3,
 			wantScoreMin:      1.19, // 1.14 + 0.05 = 1.19
@@ -716,7 +716,7 @@ func TestScoreCardCandidateWithEvolution(t *testing.T) {
 		MaxLevel:          14,
 		Rarity:            "Common",
 		Elixir:            3,
-		Role:              rolePtr(RoleCycle),
+		Role:              new(RoleCycle),
 		EvolutionLevel:    0,
 		MaxEvolutionLevel: 0,
 	}
@@ -728,7 +728,7 @@ func TestScoreCardCandidateWithEvolution(t *testing.T) {
 		MaxLevel:          14,
 		Rarity:            "Common",
 		Elixir:            3,
-		Role:              rolePtr(RoleCycle),
+		Role:              new(RoleCycle),
 		EvolutionLevel:    3,
 		MaxEvolutionLevel: 3,
 	}
@@ -869,7 +869,7 @@ func TestEvolutionBonusClampedToMax(t *testing.T) {
 
 // BenchmarkScoreCardWithEvolution benchmarks the evolution-aware scoring
 func BenchmarkScoreCardWithEvolution(b *testing.B) {
-	role := rolePtr(RoleWinCondition)
+	role := new(RoleWinCondition)
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -893,12 +893,12 @@ func TestRoleToString(t *testing.T) {
 		expected string
 	}{
 		{"nil role", nil, ""},
-		{"Win Condition", rolePtr(RoleWinCondition), "wincondition"},
-		{"Building", rolePtr(RoleBuilding), "building"},
-		{"Support", rolePtr(RoleSupport), "support"},
-		{"Spell Big", rolePtr(RoleSpellBig), "spell"},
-		{"Spell Small", rolePtr(RoleSpellSmall), "spell"}, // Both map to "spell"
-		{"Cycle", rolePtr(RoleCycle), "cycle"},
+		{"Win Condition", new(RoleWinCondition), "wincondition"},
+		{"Building", new(RoleBuilding), "building"},
+		{"Support", new(RoleSupport), "support"},
+		{"Spell Big", new(RoleSpellBig), "spell"},
+		{"Spell Small", new(RoleSpellSmall), "spell"}, // Both map to "spell"
+		{"Cycle", new(RoleCycle), "cycle"},
 	}
 
 	for _, tt := range tests {

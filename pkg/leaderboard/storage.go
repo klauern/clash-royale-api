@@ -239,9 +239,9 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 }
 
 // buildDeckQuery constructs the SQL query and arguments from query options
-func buildDeckQuery(opts QueryOptions) (string, []interface{}) {
+func buildDeckQuery(opts QueryOptions) (string, []any) {
 	query := "SELECT id, deck_hash, cards, overall_score, attack_score, defense_score, synergy_score, versatility_score, f2p_score, playability_score, archetype, archetype_conf, strategy, avg_elixir, evaluated_at, player_tag, evaluation_version FROM decks WHERE 1=1"
-	args := []interface{}{}
+	args := []any{}
 
 	query, args = applyScoreFilters(query, args, opts)
 	query, args = applyMetadataFilters(query, args, opts)
@@ -252,7 +252,7 @@ func buildDeckQuery(opts QueryOptions) (string, []interface{}) {
 }
 
 // applyScoreFilters adds score-based filters to the query
-func applyScoreFilters(query string, args []interface{}, opts QueryOptions) (string, []interface{}) {
+func applyScoreFilters(query string, args []any, opts QueryOptions) (string, []any) {
 	if opts.MinScore > 0 {
 		query += " AND overall_score >= ?"
 		args = append(args, opts.MinScore)
@@ -265,7 +265,7 @@ func applyScoreFilters(query string, args []interface{}, opts QueryOptions) (str
 }
 
 // applyMetadataFilters adds archetype, strategy, and elixir filters
-func applyMetadataFilters(query string, args []interface{}, opts QueryOptions) (string, []interface{}) {
+func applyMetadataFilters(query string, args []any, opts QueryOptions) (string, []any) {
 	if opts.Archetype != "" {
 		query += " AND archetype = ?"
 		args = append(args, opts.Archetype)
@@ -286,7 +286,7 @@ func applyMetadataFilters(query string, args []interface{}, opts QueryOptions) (
 }
 
 // applyCardFilters adds card-based filters (require all, any, exclude)
-func applyCardFilters(query string, args []interface{}, opts QueryOptions) (string, []interface{}) {
+func applyCardFilters(query string, args []any, opts QueryOptions) (string, []any) {
 	query, args = applyRequireAllCards(query, args, opts.RequireAllCards)
 	query, args = applyRequireAnyCards(query, args, opts.RequireAnyCards)
 	query, args = applyExcludeCards(query, args, opts.ExcludeCards)
@@ -294,7 +294,7 @@ func applyCardFilters(query string, args []interface{}, opts QueryOptions) (stri
 }
 
 // applyRequireAllCards adds filters for cards that must all be present
-func applyRequireAllCards(query string, args []interface{}, cards []string) (string, []interface{}) {
+func applyRequireAllCards(query string, args []any, cards []string) (string, []any) {
 	for _, card := range cards {
 		query += " AND cards LIKE ?"
 		args = append(args, "%"+card+"%")
@@ -303,26 +303,27 @@ func applyRequireAllCards(query string, args []interface{}, cards []string) (str
 }
 
 // applyRequireAnyCards adds filters for cards where at least one must be present
-func applyRequireAnyCards(query string, args []interface{}, cards []string) (string, []interface{}) {
+func applyRequireAnyCards(query string, args []any, cards []string) (string, []any) {
 	if len(cards) == 0 {
 		return query, args
 	}
 
-	subQuery := " AND ("
+	var subQuery strings.Builder
+	subQuery.WriteString(" AND (")
 	for i, card := range cards {
 		if i > 0 {
-			subQuery += " OR "
+			subQuery.WriteString(" OR ")
 		}
-		subQuery += "cards LIKE ?"
+		subQuery.WriteString("cards LIKE ?")
 		args = append(args, "%"+card+"%")
 	}
-	subQuery += ")"
-	query += subQuery
+	subQuery.WriteString(")")
+	query += subQuery.String()
 	return query, args
 }
 
 // applyExcludeCards adds filters for cards that must not be present
-func applyExcludeCards(query string, args []interface{}, cards []string) (string, []interface{}) {
+func applyExcludeCards(query string, args []any, cards []string) (string, []any) {
 	for _, card := range cards {
 		query += " AND cards NOT LIKE ?"
 		args = append(args, "%"+card+"%")
@@ -331,7 +332,7 @@ func applyExcludeCards(query string, args []interface{}, cards []string) (string
 }
 
 // applySortingAndPagination adds ORDER BY, LIMIT, and OFFSET clauses
-func applySortingAndPagination(query string, args *[]interface{}, opts QueryOptions) string {
+func applySortingAndPagination(query string, args *[]any, opts QueryOptions) string {
 	sortBy := safeSortColumn(opts.SortBy)
 	sortOrder := strings.ToUpper(opts.SortOrder)
 	if sortOrder != "ASC" && sortOrder != "DESC" {

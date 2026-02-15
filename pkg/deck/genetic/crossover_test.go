@@ -3,6 +3,7 @@
 package genetic
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -101,7 +102,7 @@ func TestCrossoverStrategies(t *testing.T) {
 	parent2, _ := NewDeckGenomeFromCards(parent2Cards, candidates, strategy, &cfg)
 
 	// Run many crossovers to exercise all strategy paths
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		offspring, err := parent1.Crossover(parent2)
 		if err != nil {
 			t.Errorf("Crossover() iteration %d error = %v", i, err)
@@ -340,11 +341,8 @@ func TestRepairDeckWithParents(t *testing.T) {
 	// Should prioritize cards from broken deck and parents
 	hasOriginal := 0
 	for _, card := range brokenDeck {
-		for _, repairedCard := range repaired {
-			if card == repairedCard {
-				hasOriginal++
-				break
-			}
+		if slices.Contains(repaired, card) {
+			hasOriginal++
 		}
 	}
 
@@ -541,7 +539,7 @@ func TestCrossoverOffspringFromParents(t *testing.T) {
 	}
 
 	// Run multiple crossovers
-	for i := 0; i < 50; i++ {
+	for i := range 50 {
 		offspring, err := parent1.Crossover(parent2)
 		if err != nil {
 			t.Errorf("Crossover() iteration %d error = %v", i, err)

@@ -3,6 +3,7 @@ package deck
 import (
 	"fmt"
 	"sort"
+	"strings"
 )
 
 // EvolutionShardSource provides shard counts for cards.
@@ -195,28 +196,29 @@ func FormatRecommendations(recs []EvolutionRecommendation, showReasons bool) str
 		return "No evolution recommendations available."
 	}
 
-	output := fmt.Sprintf("Evolution Recommendations (Top %d):\n", len(recs))
-	output += "─────────────────────────────────────────────────────────────\n"
+	var output strings.Builder
+	output.WriteString(fmt.Sprintf("Evolution Recommendations (Top %d):\n", len(recs)))
+	output.WriteString("─────────────────────────────────────────────────────────────\n")
 
 	for i, rec := range recs {
-		output += fmt.Sprintf("\n%d. %s (Score: %.1f)\n", i+1, rec.CardName, rec.RecommendationScore)
-		output += fmt.Sprintf("   Progress: %d/%d shards (%.0f%%)\n",
-			rec.CurrentShards, rec.ShardsNeeded, rec.CompletionPercent)
-		output += fmt.Sprintf("   Card Level: %d/%d (%.0f%%)\n",
-			rec.CardLevel, rec.MaxLevel, rec.LevelRatio*100)
+		output.WriteString(fmt.Sprintf("\n%d. %s (Score: %.1f)\n", i+1, rec.CardName, rec.RecommendationScore))
+		output.WriteString(fmt.Sprintf("   Progress: %d/%d shards (%.0f%%)\n",
+			rec.CurrentShards, rec.ShardsNeeded, rec.CompletionPercent))
+		output.WriteString(fmt.Sprintf("   Card Level: %d/%d (%.0f%%)\n",
+			rec.CardLevel, rec.MaxLevel, rec.LevelRatio*100))
 		if rec.Role != "" {
-			output += fmt.Sprintf("   Role: %s\n", rec.Role)
+			output.WriteString(fmt.Sprintf("   Role: %s\n", rec.Role))
 		}
 		if rec.EvolutionMaxLevel > 1 {
-			output += fmt.Sprintf("   Evolution: %d levels available\n", rec.EvolutionMaxLevel)
+			output.WriteString(fmt.Sprintf("   Evolution: %d levels available\n", rec.EvolutionMaxLevel))
 		}
 		if showReasons && len(rec.Reasons) > 0 {
-			output += "   Reasons:\n"
+			output.WriteString("   Reasons:\n")
 			for _, reason := range rec.Reasons {
-				output += fmt.Sprintf("   • %s\n", reason)
+				output.WriteString(fmt.Sprintf("   • %s\n", reason))
 			}
 		}
 	}
 
-	return output
+	return output.String()
 }

@@ -158,11 +158,7 @@ func CalculateUpgradeInfo(cardName, rarity string, elixirCost, currentLevel, car
 		totalToMax = 0
 	}
 
-	cardsRemaining := cardsNeeded - cardsOwned
-
-	if cardsRemaining < 0 {
-		cardsRemaining = 0
-	}
+	cardsRemaining := max(cardsNeeded-cardsOwned, 0)
 
 	progress := CalculateUpgradeProgress(cardsOwned, cardsNeeded)
 

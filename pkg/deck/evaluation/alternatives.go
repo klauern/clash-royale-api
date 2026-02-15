@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"sort"
+	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
@@ -91,10 +92,7 @@ func GenerateAlternatives(
 	})
 
 	// Take top N suggestions
-	count := maxSuggestions
-	if count > len(alternatives) {
-		count = len(alternatives)
-	}
+	count := min(maxSuggestions, len(alternatives))
 
 	result.Suggestions = alternatives[:count]
 
@@ -291,17 +289,17 @@ func joinImprovements(improvements []string) string {
 	}
 
 	// For 3+ items, use commas
-	result := ""
+	var result strings.Builder
 	for i, imp := range improvements {
 		if i == len(improvements)-1 {
-			result += "and " + imp
+			result.WriteString("and " + imp)
 		} else if i > 0 {
-			result += ", " + imp
+			result.WriteString(", " + imp)
 		} else {
-			result += imp
+			result.WriteString(imp)
 		}
 	}
-	return result
+	return result.String()
 }
 
 // determineImpact determines the impact level based on score delta

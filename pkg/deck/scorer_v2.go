@@ -343,7 +343,7 @@ func calculateSynergyScore(cards []CardCandidate, synergyDB *SynergyDatabase, de
 	detectedPairs := 0
 	totalSynergyStrength := 0.0
 
-	for i := 0; i < len(cards); i++ {
+	for i := range cards {
 		for j := i + 1; j < len(cards); j++ {
 			synergyScore := synergyDB.GetSynergy(cards[i].Name, cards[j].Name)
 			if synergyScore > 0 {
@@ -833,14 +833,6 @@ func calculateCombatStatsScore(cards []CardCandidate) float64 {
 	return totalScore / float64(cardsWithStats)
 }
 
-// max returns the maximum of two integers.
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 // ScoreDeckV2Simple provides a simplified interface for V2 scoring.
 // Returns just the final score for quick comparisons.
 func ScoreDeckV2Simple(cards []CardCandidate, strategy Strategy, synergyDB *SynergyDatabase) float64 {
@@ -850,7 +842,7 @@ func ScoreDeckV2Simple(cards []CardCandidate, strategy Strategy, synergyDB *Syne
 
 // CompareScorers runs both V1 and V2 scoring and returns comparison metrics.
 // Useful for validation and migration testing.
-func CompareScorers(cards []CardCandidate, strategy Strategy, synergyDB *SynergyDatabase) map[string]interface{} {
+func CompareScorers(cards []CardCandidate, strategy Strategy, synergyDB *SynergyDatabase) map[string]any {
 	// Calculate V1 score (average of individual card scores)
 	v1Score := 0.0
 	for _, card := range cards {
@@ -863,7 +855,7 @@ func CompareScorers(cards []CardCandidate, strategy Strategy, synergyDB *Synergy
 	// Calculate V2 score
 	v2Result := ScoreDeckV2(cards, strategy, synergyDB)
 
-	return map[string]interface{}{
+	return map[string]any{
 		"v1_score":              v1Score,
 		"v2_score":              v2Result.FinalScore,
 		"difference":            v2Result.FinalScore - v1Score,
@@ -890,11 +882,11 @@ func CompareScorers(cards []CardCandidate, strategy Strategy, synergyDB *Synergy
 //   - counterMatrix: The counter matrix for threat-based analysis (can be nil for basic analysis)
 //
 // Returns the V2 result plus detailed defensive coverage information.
-func ScoreDeckV2WithCounterAnalysis(cards []CardCandidate, strategy Strategy, synergyDB *SynergyDatabase, counterMatrix *CounterMatrix) map[string]interface{} {
+func ScoreDeckV2WithCounterAnalysis(cards []CardCandidate, strategy Strategy, synergyDB *SynergyDatabase, counterMatrix *CounterMatrix) map[string]any {
 	// Get standard V2 result
 	v2Result := ScoreDeckV2(cards, strategy, synergyDB)
 
-	result := map[string]interface{}{
+	result := map[string]any{
 		"v2_score":            v2Result.FinalScore,
 		"v2_counter_coverage": v2Result.CounterCoverageScore,
 		"v2_details":          v2Result.Details,

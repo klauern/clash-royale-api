@@ -31,7 +31,7 @@ func cardsHeaders() []string {
 }
 
 // cardsExport exports card data to CSV
-func cardsExport(dataDir string, data interface{}) error {
+func cardsExport(dataDir string, data any) error {
 	cards, ok := data.([]clashroyale.Card)
 	if !ok {
 		return fmt.Errorf("expected []Card type, got %T", data)

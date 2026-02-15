@@ -524,7 +524,7 @@ func TestRecommendationSorting(t *testing.T) {
 // TestRecommendationLimit tests that limit is properly applied
 func TestRecommendationLimit(t *testing.T) {
 	recommendations := make([]*DeckRecommendation, 10)
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		recommendations[i] = &DeckRecommendation{
 			OverallScore: float64(100 - i*5),
 		}

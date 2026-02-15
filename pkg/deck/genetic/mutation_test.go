@@ -114,7 +114,7 @@ func TestDeckGenomeMutateIntensityLevels(t *testing.T) {
 			// Use more runs for better statistical accuracy
 			totalChanges := 0
 			runs := 50 // Increased from 10 to reduce flakiness
-			for i := 0; i < runs; i++ {
+			for range runs {
 				genome2, _ := NewDeckGenomeFromCards(cards, candidates, strategy, &cfg)
 				_ = genome2.Mutate()
 
@@ -154,7 +154,7 @@ func TestDeckGenomeMutateUniqueness(t *testing.T) {
 	}
 
 	// Run mutation multiple times
-	for i := 0; i < 20; i++ {
+	for i := range 20 {
 		err := genome.Mutate()
 		if err != nil {
 			t.Errorf("Mutate() iteration %d error = %v", i, err)
@@ -240,7 +240,7 @@ func TestMutationStrategiesExecution(t *testing.T) {
 	cards := []string{"Card0", "Card1", "Card2", "Card3", "Card4", "Card5", "Card6", "Card7"}
 
 	// Run many mutations to exercise all strategy paths
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		genome, err := NewDeckGenomeFromCards(cards, candidates, strategy, &cfg)
 		if err != nil {
 			t.Fatalf("NewDeckGenomeFromCards() failed: %v", err)

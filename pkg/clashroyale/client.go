@@ -66,7 +66,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	var err error
 
 	// Simple retry loop
-	for attempt := 0; attempt < 3; attempt++ {
+	for attempt := range 3 {
 		if attempt > 0 {
 			select {
 			case <-req.Context().Done():

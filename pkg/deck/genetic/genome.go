@@ -197,7 +197,7 @@ func (g *DeckGenome) Evaluate() (float64, error) {
 // Clone creates a deep copy of this genome.
 //
 // This method implements the eaopt.Genome interface requirement.
-func (g *DeckGenome) Clone() interface{} {
+func (g *DeckGenome) Clone() any {
 	cards := make([]string, 8)
 	copy(cards, g.Cards)
 

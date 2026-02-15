@@ -166,10 +166,7 @@ func (o *GeneticOptimizer) Optimize() (*GeneticResult, error) {
 
 func (o *GeneticOptimizer) populationConfig() (uint, uint) {
 	if o.Config.IslandModel && o.Config.IslandCount > 0 {
-		perPop := o.Config.PopulationSize / o.Config.IslandCount
-		if perPop < 1 {
-			perPop = 1
-		}
+		perPop := max(o.Config.PopulationSize/o.Config.IslandCount, 1)
 		return uint(perPop), uint(o.Config.IslandCount)
 	}
 	return uint(o.Config.PopulationSize), 1

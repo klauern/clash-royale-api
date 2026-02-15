@@ -169,7 +169,7 @@ func BenchmarkDeckIterator_Checkpoint(b *testing.B) {
 	ctx := context.Background()
 
 	// Generate some decks first
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		iterator.Next(ctx)
 	}
 
@@ -194,7 +194,7 @@ func BenchmarkDeckIterator_Resume(b *testing.B) {
 	ctx := context.Background()
 
 	// Generate some decks and create checkpoint
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		iterator1.Next(ctx)
 	}
 	checkpoint := iterator1.Checkpoint()

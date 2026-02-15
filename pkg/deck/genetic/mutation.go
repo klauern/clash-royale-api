@@ -21,10 +21,7 @@ func (g *DeckGenome) Mutate() error {
 		return fmt.Errorf("mutation requires config")
 	}
 
-	numToMutate := int(float64(8) * g.config.MutationIntensity)
-	if numToMutate < 1 {
-		numToMutate = 1
-	}
+	numToMutate := max(int(float64(8)*g.config.MutationIntensity), 1)
 
 	positions := g.pickMutationPositions(numToMutate)
 	used := g.currentCardSet()

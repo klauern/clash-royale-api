@@ -33,7 +33,7 @@ func TestFormatJSON(t *testing.T) {
 	}
 
 	// Verify it's valid JSON
-	var parsed map[string]interface{}
+	var parsed map[string]any
 	if err := json.Unmarshal([]byte(jsonOutput), &parsed); err != nil {
 		t.Errorf("FormatJSON() returned invalid JSON: %v", err)
 	}
@@ -47,7 +47,7 @@ func TestFormatJSON(t *testing.T) {
 	}
 
 	// Check evaluation structure
-	eval, ok := parsed["evaluation"].(map[string]interface{})
+	eval, ok := parsed["evaluation"].(map[string]any)
 	if !ok {
 		t.Fatal("FormatJSON() evaluation is not a map")
 	}
@@ -150,7 +150,7 @@ func TestSynergyMatrixToMap(t *testing.T) {
 	}
 
 	// Check pairs is array
-	pairs, ok := result["pairs"].([]map[string]interface{})
+	pairs, ok := result["pairs"].([]map[string]any)
 	if !ok {
 		t.Errorf("synergyMatrixToMap() pairs is not []map[string]interface{}")
 	} else if len(pairs) != 1 {
@@ -210,11 +210,4 @@ func TestFormatJSONErrorHandling(t *testing.T) {
 	if !strings.HasPrefix(jsonOutput, "{") {
 		t.Errorf("FormatJSON() output doesn't start with '{', got: %s", jsonOutput[:min(10, len(jsonOutput))])
 	}
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

@@ -1038,7 +1038,7 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	}
 
 	// Write PID file
-	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", process.Pid)), 0o644); err != nil {
+	if err := os.WriteFile(pidFile, fmt.Appendf(nil, "%d", process.Pid), 0o644); err != nil {
 		if killErr := process.Kill(); killErr != nil && !errors.Is(killErr, os.ErrProcessDone) {
 			fmt.Fprintf(os.Stderr, "warning: failed to kill process after PID write error: %v\n", killErr)
 		}

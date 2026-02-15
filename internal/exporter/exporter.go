@@ -8,7 +8,7 @@ import (
 // Exporter defines the interface for all data exporters
 type Exporter interface {
 	// Export exports the given data to the specified directory
-	Export(dataDir string, data interface{}) error
+	Export(dataDir string, data any) error
 
 	// Headers returns the column headers for the export format
 	Headers() []string
@@ -56,7 +56,7 @@ func (m *Manager) Get(format string) (Exporter, error) {
 }
 
 // Export exports data using the specified format
-func (m *Manager) Export(format, dataDir string, data interface{}) error {
+func (m *Manager) Export(format, dataDir string, data any) error {
 	exporter, err := m.Get(format)
 	if err != nil {
 		return err

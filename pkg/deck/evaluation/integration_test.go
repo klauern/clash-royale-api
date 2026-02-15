@@ -303,7 +303,7 @@ func TestEvaluatePerformanceWithBatch(t *testing.T) {
 
 	// Create 100 test decks
 	testDecks := make([][]deck.CardCandidate, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		testDecks[i] = []deck.CardCandidate{
 			{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition)},
 			{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport)},

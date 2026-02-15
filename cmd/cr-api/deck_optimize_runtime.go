@@ -171,10 +171,7 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Println()
 
 	// Display top suggestions
-	displayCount := len(alternatives.Suggestions)
-	if displayCount > 5 {
-		displayCount = 5
-	}
+	displayCount := min(len(alternatives.Suggestions), 5)
 
 	for i, alt := range alternatives.Suggestions[:displayCount] {
 		printf("Suggestion #%d: %s\n", i+1, alt.Impact)

@@ -144,7 +144,7 @@ func TestCardCountConfigConcurrent(t *testing.T) {
 	const numGoroutines = 100
 	var wg sync.WaitGroup
 
-	for i := 0; i < numGoroutines; i++ {
+	for i := range numGoroutines {
 		wg.Add(1)
 		go func(id int) {
 			defer wg.Done()

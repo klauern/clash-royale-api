@@ -271,7 +271,7 @@ func (g *DeckGenerator) Generate(ctx context.Context, count int) (decks [][]stri
 	}()
 
 	decks = make([][]string, 0, count)
-	for i := 0; i < count; i++ {
+	for i := range count {
 		select {
 		case <-ctx.Done():
 			return decks, ctx.Err()

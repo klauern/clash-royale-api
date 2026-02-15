@@ -1,6 +1,7 @@
 package evaluation
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
@@ -641,13 +642,7 @@ func TestPlayerContext_GetUnlockedEvolutionCards(t *testing.T) {
 			}
 			// Check that expected cards are present
 			for _, expected := range tt.expectedCards {
-				found := false
-				for _, card := range cards {
-					if card == expected {
-						found = true
-						break
-					}
-				}
+				found := slices.Contains(cards, expected)
 				if !found {
 					t.Errorf("GetUnlockedEvolutionCards() missing expected card %q", expected)
 				}

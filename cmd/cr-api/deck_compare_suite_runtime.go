@@ -74,9 +74,9 @@ func parseStrategies(strategiesStr string) ([]deck.Strategy, error) {
 	}
 
 	var strategies []deck.Strategy
-	strategyList := strings.Split(strategiesStr, ",")
+	strategyList := strings.SplitSeq(strategiesStr, ",")
 
-	for _, s := range strategyList {
+	for s := range strategyList {
 		s = strings.TrimSpace(s)
 		if s == "" {
 			continue

@@ -403,7 +403,7 @@ func findBestDeckIndex(results []evaluation.EvaluationResult, getScore func(eval
 
 // formatComparisonJSON formats deck comparison as JSON
 func formatComparisonJSON(names []string, results []evaluation.EvaluationResult) (string, error) {
-	comparison := map[string]interface{}{
+	comparison := map[string]any{
 		"decks":   names,
 		"results": results,
 	}
@@ -967,20 +967,4 @@ func calculateStars(score float64) int {
 		return 1
 	}
 	return 0
-}
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// max returns the maximum of two integers
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

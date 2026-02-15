@@ -184,7 +184,7 @@ func constructConstraintDeck(pool []deck.CardCandidate, constraints ConstraintCo
 	hard := constraints.Hard
 
 	pickAny := func(filter func(deck.CardCandidate) bool, min int) {
-		for j := 0; j < min; j++ {
+		for range min {
 			idxs := make([]int, 0)
 			for i, c := range pool {
 				if used[c.Name] {
@@ -231,7 +231,7 @@ func improveDeckLocally(deckIn, pool []deck.CardCandidate, synergyDB *deck.Syner
 	copy(best, deckIn)
 	bestScore := ScoreDeckComposite(best, synergyDB, constraints).Composite
 
-	for i := 0; i < steps; i++ {
+	for range steps {
 		mut := make([]deck.CardCandidate, len(best))
 		copy(mut, best)
 		replaceIdx := rng.Intn(len(mut))

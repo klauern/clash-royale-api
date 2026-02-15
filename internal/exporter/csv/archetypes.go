@@ -34,7 +34,7 @@ func archetypeHeaders() []string {
 }
 
 // archetypeExport exports archetype analysis to CSV
-func archetypeExport(dataDir string, data interface{}) error {
+func archetypeExport(dataDir string, data any) error {
 	result, ok := data.(*archetypes.ArchetypeAnalysisResult)
 	if !ok {
 		return fmt.Errorf("expected ArchetypeAnalysisResult, got %T", data)
@@ -90,7 +90,7 @@ func archetypeDetailsHeaders() []string {
 }
 
 // archetypeDetailsExport exports per-card upgrade details
-func archetypeDetailsExport(dataDir string, data interface{}) error {
+func archetypeDetailsExport(dataDir string, data any) error {
 	result, ok := data.(*archetypes.ArchetypeAnalysisResult)
 	if !ok {
 		return fmt.Errorf("expected ArchetypeAnalysisResult, got %T", data)

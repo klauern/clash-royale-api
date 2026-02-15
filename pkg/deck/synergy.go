@@ -282,7 +282,7 @@ func (db *SynergyDatabase) AnalyzeDeckSynergy(deck []string) *DeckSynergyAnalysi
 	cardSynergyCounts := make(map[string]int)
 
 	// Check all pairs
-	for i := 0; i < len(deck); i++ {
+	for i := range deck {
 		for j := i + 1; j < len(deck); j++ {
 			if pair := db.GetSynergyPair(deck[i], deck[j]); pair != nil {
 				topSynergies = append(topSynergies, *pair)

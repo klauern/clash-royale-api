@@ -135,10 +135,7 @@ func determineTargetLevels(deck []*CardCandidate, policy TargetLevelPolicy, cust
 	case PolicyBudget:
 		// Minimize cost: just one level up for each card
 		for _, card := range deck {
-			nextLevel := card.Level + 1
-			if nextLevel > card.MaxLevel {
-				nextLevel = card.MaxLevel
-			}
+			nextLevel := min(card.Level+1, card.MaxLevel)
 			targetLevels[card.Name] = nextLevel
 		}
 
@@ -234,10 +231,7 @@ func (p *DeckProjection) ScoreAtLevel(level int) float64 {
 	hypotheticalDeck := make([]*CardCandidate, len(p.Deck))
 	for i, card := range p.Deck {
 		hypothetical := *card // Copy
-		hypothetical.Level = level
-		if level > card.MaxLevel {
-			hypothetical.Level = card.MaxLevel
-		}
+		hypothetical.Level = min(level, card.MaxLevel)
 		hypotheticalDeck[i] = &hypothetical
 	}
 
@@ -255,10 +249,7 @@ func (p *DeckProjection) SimulateUpgrade(cardName string, newLevel int) *DeckPro
 	for i, card := range p.Deck {
 		simulated := *card // Copy
 		if card.Name == cardName {
-			simulated.Level = newLevel
-			if newLevel > card.MaxLevel {
-				simulated.Level = card.MaxLevel
-			}
+			simulated.Level = min(newLevel, card.MaxLevel)
 		}
 		simulatedDeck[i] = &simulated
 	}

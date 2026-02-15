@@ -4,6 +4,7 @@ package whatif
 
 import (
 	"fmt"
+	"maps"
 	"strconv"
 	"strings"
 
@@ -140,9 +141,7 @@ func (w *WhatIfAnalyzer) applyUpgradesToCardLevels(
 ) map[string]deck.CardLevelData {
 	// Create a deep copy
 	modified := make(map[string]deck.CardLevelData)
-	for name, data := range cardLevels {
-		modified[name] = data
-	}
+	maps.Copy(modified, cardLevels)
 
 	// Apply each upgrade (use index to modify slice in place)
 	for i := range upgrades {

@@ -152,10 +152,7 @@ func FormatSynergyMatrixText(matrix *SynergyMatrix, deckCards []string, synergyD
 		})
 
 		// Show top 5 synergies with narrative
-		displayCount := 5
-		if len(sortedPairs) < displayCount {
-			displayCount = len(sortedPairs)
-		}
+		displayCount := min(len(sortedPairs), 5)
 
 		for i := 0; i < displayCount; i++ {
 			pair := sortedPairs[i]
@@ -209,15 +206,15 @@ func FormatSynergyMatrixText(matrix *SynergyMatrix, deckCards []string, synergyD
 }
 
 // FormatSynergyMatrixJSON returns a JSON-compatible map representation
-func FormatSynergyMatrixJSON(matrix *SynergyMatrix) map[string]interface{} {
+func FormatSynergyMatrixJSON(matrix *SynergyMatrix) map[string]any {
 	if matrix == nil {
 		return nil
 	}
 
 	// Convert pairs to simple format
-	pairs := make([]map[string]interface{}, len(matrix.Pairs))
+	pairs := make([]map[string]any, len(matrix.Pairs))
 	for i, pair := range matrix.Pairs {
-		pairs[i] = map[string]interface{}{
+		pairs[i] = map[string]any{
 			"card1":       pair.Card1,
 			"card2":       pair.Card2,
 			"type":        string(pair.SynergyType),
@@ -226,7 +223,7 @@ func FormatSynergyMatrixJSON(matrix *SynergyMatrix) map[string]interface{} {
 		}
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"pairs":              pairs,
 		"total_score":        matrix.TotalScore,
 		"average_synergy":    matrix.AverageSynergy,
@@ -252,10 +249,7 @@ func GenerateTopSynergyNarrative(matrix *SynergyMatrix) []string {
 	})
 
 	// Generate narrative for top 3
-	topCount := 3
-	if len(sortedPairs) < topCount {
-		topCount = len(sortedPairs)
-	}
+	topCount := min(len(sortedPairs), 3)
 
 	for i := 0; i < topCount; i++ {
 		pair := sortedPairs[i]

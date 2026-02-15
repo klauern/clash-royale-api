@@ -10,30 +10,30 @@ import (
 // Includes all evaluation data with proper nesting and metadata
 func FormatJSON(result *EvaluationResult) (string, error) {
 	// Create output structure with metadata
-	output := map[string]interface{}{
+	output := map[string]any{
 		"version":   "1.0.0",
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
-		"evaluation": map[string]interface{}{
-			"deck": map[string]interface{}{
+		"evaluation": map[string]any{
+			"deck": map[string]any{
 				"cards":          result.Deck,
 				"average_elixir": result.AvgElixir,
 			},
-			"overall": map[string]interface{}{
+			"overall": map[string]any{
 				"score":  result.OverallScore,
 				"rating": result.OverallRating,
 			},
-			"archetype": map[string]interface{}{
+			"archetype": map[string]any{
 				"detected":   result.DetectedArchetype,
 				"confidence": result.ArchetypeConfidence,
 			},
-			"category_scores": map[string]interface{}{
+			"category_scores": map[string]any{
 				"attack":       categoryScoreToMap(result.Attack),
 				"defense":      categoryScoreToMap(result.Defense),
 				"synergy":      categoryScoreToMap(result.Synergy),
 				"versatility":  categoryScoreToMap(result.Versatility),
 				"f2p_friendly": categoryScoreToMap(result.F2PFriendly),
 			},
-			"detailed_analysis": map[string]interface{}{
+			"detailed_analysis": map[string]any{
 				"defense": analysisSectionToMap(result.DefenseAnalysis),
 				"attack":  analysisSectionToMap(result.AttackAnalysis),
 				"bait":    analysisSectionToMap(result.BaitAnalysis),
@@ -46,11 +46,11 @@ func FormatJSON(result *EvaluationResult) (string, error) {
 	}
 
 	if result.OverallBreakdown != nil {
-		evaluationMap, ok := output["evaluation"].(map[string]interface{})
+		evaluationMap, ok := output["evaluation"].(map[string]any)
 		if ok {
-			overallMap, ok := evaluationMap["overall"].(map[string]interface{})
+			overallMap, ok := evaluationMap["overall"].(map[string]any)
 			if ok {
-				overallMap["breakdown"] = map[string]interface{}{
+				overallMap["breakdown"] = map[string]any{
 					"base_score":           result.OverallBreakdown.BaseScore,
 					"contextual_score":     result.OverallBreakdown.ContextualScore,
 					"ladder_score":         result.OverallBreakdown.LadderScore,
@@ -73,8 +73,8 @@ func FormatJSON(result *EvaluationResult) (string, error) {
 }
 
 // categoryScoreToMap converts a CategoryScore to a map for JSON serialization
-func categoryScoreToMap(cs CategoryScore) map[string]interface{} {
-	return map[string]interface{}{
+func categoryScoreToMap(cs CategoryScore) map[string]any {
+	return map[string]any{
 		"score":      cs.Score,
 		"rating":     cs.Rating,
 		"assessment": cs.Assessment,
@@ -83,8 +83,8 @@ func categoryScoreToMap(cs CategoryScore) map[string]interface{} {
 }
 
 // analysisSectionToMap converts an AnalysisSection to a map for JSON serialization
-func analysisSectionToMap(as AnalysisSection) map[string]interface{} {
-	return map[string]interface{}{
+func analysisSectionToMap(as AnalysisSection) map[string]any {
+	return map[string]any{
 		"title":   as.Title,
 		"summary": as.Summary,
 		"details": as.Details,
@@ -94,11 +94,11 @@ func analysisSectionToMap(as AnalysisSection) map[string]interface{} {
 }
 
 // synergyMatrixToMap converts a SynergyMatrix to a map for JSON serialization
-func synergyMatrixToMap(sm SynergyMatrix) map[string]interface{} {
+func synergyMatrixToMap(sm SynergyMatrix) map[string]any {
 	// Convert pairs to array of maps
-	pairs := make([]map[string]interface{}, len(sm.Pairs))
+	pairs := make([]map[string]any, len(sm.Pairs))
 	for i, pair := range sm.Pairs {
-		pairs[i] = map[string]interface{}{
+		pairs[i] = map[string]any{
 			"card1":       pair.Card1,
 			"card2":       pair.Card2,
 			"score":       pair.Score,
@@ -106,7 +106,7 @@ func synergyMatrixToMap(sm SynergyMatrix) map[string]interface{} {
 		}
 	}
 
-	return map[string]interface{}{
+	return map[string]any{
 		"total_score":        sm.TotalScore,
 		"average_synergy":    sm.AverageSynergy,
 		"pair_count":         sm.PairCount,
@@ -117,12 +117,12 @@ func synergyMatrixToMap(sm SynergyMatrix) map[string]interface{} {
 }
 
 // generateRecommendationsJSON generates recommendations as structured JSON
-func generateRecommendationsJSON(result *EvaluationResult) []map[string]interface{} {
+func generateRecommendationsJSON(result *EvaluationResult) []map[string]any {
 	recs := generateRecommendations(result)
-	jsonRecs := make([]map[string]interface{}, len(recs))
+	jsonRecs := make([]map[string]any, len(recs))
 
 	for i, rec := range recs {
-		jsonRecs[i] = map[string]interface{}{
+		jsonRecs[i] = map[string]any{
 			"priority":    rec.Priority,
 			"title":       rec.Title,
 			"description": rec.Description,

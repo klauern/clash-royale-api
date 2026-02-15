@@ -7,7 +7,8 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
-func testRolePtr(r deck.CardRole) *deck.CardRole { return &r }
+//go:fix inline
+func testRolePtr(r deck.CardRole) *deck.CardRole { return new(r) }
 
 func testDeck() []deck.CardCandidate {
 	return []deck.CardCandidate{

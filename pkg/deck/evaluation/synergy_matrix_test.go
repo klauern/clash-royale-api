@@ -342,7 +342,7 @@ func TestSynergyMatrixPerformance(t *testing.T) {
 	iterations := 100
 	start := time.Now()
 
-	for i := 0; i < iterations; i++ {
+	for range iterations {
 		matrix := GenerateSynergyMatrix(deckCards, db)
 		if matrix == nil {
 			t.Fatal("GenerateSynergyMatrix() returned nil")

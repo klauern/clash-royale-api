@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"sync"
 )
 
@@ -233,12 +235,7 @@ func (cm *CounterMatrix) GetCardCapabilities(cardName string) []CounterCategory 
 // HasCapability returns true if a card has a specific counter capability
 func (cm *CounterMatrix) HasCapability(cardName string, category CounterCategory) bool {
 	capabilities := cm.GetCardCapabilities(cardName)
-	for _, cap := range capabilities {
-		if cap == category {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(capabilities, category)
 }
 
 // CountCardsWithCapability counts how many cards in the deck have a specific capability
@@ -284,11 +281,8 @@ func (cm *CounterMatrix) AnalyzeThreatCoverage(deckCards []string, threatName st
 
 	for _, counter := range counters {
 		// Check if this counter is in the deck
-		for _, deckCard := range deckCards {
-			if deckCard == counter.Card {
-				deckCounters = append(deckCounters, counter)
-				break
-			}
+		if slices.Contains(deckCards, counter.Card) {
+			deckCounters = append(deckCounters, counter)
 		}
 	}
 
@@ -371,9 +365,10 @@ func joinString(strs []string, sep string) string {
 	if len(strs) == 1 {
 		return strs[0]
 	}
-	result := strs[0]
+	var result strings.Builder
+	result.WriteString(strs[0])
 	for i := 1; i < len(strs); i++ {
-		result += sep + strs[i]
+		result.WriteString(sep + strs[i])
 	}
-	return result
+	return result.String()
 }

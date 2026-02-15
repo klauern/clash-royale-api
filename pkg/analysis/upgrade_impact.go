@@ -4,6 +4,7 @@
 package analysis
 
 import (
+	"slices"
 	"sort"
 	"time"
 )
@@ -175,10 +176,7 @@ func (a *UpgradeImpactAnalyzer) AnalyzeUpgradeImpact(cardAnalysis *CardAnalysis)
 	})
 
 	// Get top N impacts
-	topN := a.options.TopN
-	if topN > len(cardImpacts) {
-		topN = len(cardImpacts)
-	}
+	topN := min(a.options.TopN, len(cardImpacts))
 	topImpacts := make([]CardUpgradeImpact, topN)
 	copy(topImpacts, cardImpacts[:topN])
 
@@ -210,10 +208,7 @@ func (a *UpgradeImpactAnalyzer) calculateCardImpact(
 	cardAnalysis *CardAnalysis,
 ) CardUpgradeImpact {
 	// Calculate upgraded level (capped at max)
-	upgradedLevel := cardInfo.Level + 1
-	if upgradedLevel > cardInfo.MaxLevel {
-		upgradedLevel = cardInfo.MaxLevel
-	}
+	upgradedLevel := min(cardInfo.Level+1, cardInfo.MaxLevel)
 
 	// Calculate current and upgraded card scores (evolution-aware)
 	currentScore := a.scoreCard(cardName, cardInfo.Level, cardInfo.MaxLevel, cardInfo.Rarity, cardInfo.Elixir, cardInfo.EvolutionLevel, cardInfo.MaxEvolutionLevel)
@@ -371,11 +366,8 @@ func (a *UpgradeImpactAnalyzer) analyzeAffectedDecks(
 	for _, archetype := range a.archetypes {
 		// Check if this card is relevant to this archetype
 		isRelevant := cardName == archetype.WinCondition
-		for _, support := range archetype.SupportCards {
-			if cardName == support {
-				isRelevant = true
-				break
-			}
+		if slices.Contains(archetype.SupportCards, cardName) {
+			isRelevant = true
 		}
 
 		if !isRelevant {
@@ -498,11 +490,8 @@ func (a *UpgradeImpactAnalyzer) getUnlockedArchetypes(
 	for _, archetype := range a.archetypes {
 		// Only consider if this card is the win condition or a key support
 		isRelevant := cardName == archetype.WinCondition
-		for _, support := range archetype.SupportCards {
-			if cardName == support {
-				isRelevant = true
-				break
-			}
+		if slices.Contains(archetype.SupportCards, cardName) {
+			isRelevant = true
 		}
 
 		if !isRelevant {
@@ -674,34 +663,26 @@ func (a *UpgradeImpactAnalyzer) inferRole(cardName string) string {
 		"Miner", "Graveyard", "Three Musketeers", "Mega Knight",
 		"Royal Ghost", "Goblin Drill", "Skeleton King",
 	}
-	for _, wc := range winConditions {
-		if cardName == wc {
-			return "win_conditions"
-		}
+	if slices.Contains(winConditions, cardName) {
+		return "win_conditions"
 	}
 
 	buildings := []string{
 		"Cannon", "Goblin Cage", "Inferno Tower", "Bomb Tower", "Tombstone",
 		"Goblin Hut", "Barbarian Hut", "Tesla", "Furnace",
 	}
-	for _, b := range buildings {
-		if cardName == b {
-			return "buildings"
-		}
+	if slices.Contains(buildings, cardName) {
+		return "buildings"
 	}
 
 	bigSpells := []string{"Fireball", "Poison", "Lightning", "Rocket", "Earthquake"}
-	for _, s := range bigSpells {
-		if cardName == s {
-			return "spells_big"
-		}
+	if slices.Contains(bigSpells, cardName) {
+		return "spells_big"
 	}
 
 	smallSpells := []string{"Zap", "Arrows", "Giant Snowball", "Barbarian Barrel", "Freeze", "Log", "Tornado"}
-	for _, s := range smallSpells {
-		if cardName == s {
-			return "spells_small"
-		}
+	if slices.Contains(smallSpells, cardName) {
+		return "spells_small"
 	}
 
 	return "support"
@@ -724,21 +705,11 @@ func (a *UpgradeImpactAnalyzer) getRoleImportance(cardName string) float64 {
 }
 
 func (a *UpgradeImpactAnalyzer) containsCard(cards []string, cardName string) bool {
-	for _, c := range cards {
-		if c == cardName {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(cards, cardName)
 }
 
 func (a *UpgradeImpactAnalyzer) containsRarity(rarities []string, rarity string) bool {
-	for _, r := range rarities {
-		if r == rarity {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(rarities, rarity)
 }
 
 // getGoldForSingleUpgrade returns gold needed for a single level upgrade

@@ -378,10 +378,7 @@ func storageVacuumCommand(ctx context.Context, cmd *cli.Command) error {
 		afterSize = info.Size()
 	}
 
-	freed := beforeSize - afterSize
-	if freed < 0 {
-		freed = 0
-	}
+	freed := max(beforeSize-afterSize, 0)
 	printf("Vacuum complete. Size: %s -> %s (freed %s)\n", humanReadableBytes(beforeSize), humanReadableBytes(afterSize), humanReadableBytes(freed))
 	return nil
 }

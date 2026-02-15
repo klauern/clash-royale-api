@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -357,9 +358,7 @@ func displayIdealDeck(cmd *cli.Command, builder *deck.Builder, cardAnalysis deck
 	}
 
 	// Copy all card levels
-	for cardName, cardData := range cardAnalysis.CardLevels {
-		idealAnalysis.CardLevels[cardName] = cardData
-	}
+	maps.Copy(idealAnalysis.CardLevels, cardAnalysis.CardLevels)
 
 	// Apply upgrades
 	printf("Simulating upgrades:\n")

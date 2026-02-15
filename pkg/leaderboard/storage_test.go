@@ -454,7 +454,7 @@ func TestClear(t *testing.T) {
 	defer cleanup()
 
 	// Insert multiple decks
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		entry := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", string(rune('H' + i))}, 8.0)
 		if _, _, err := storage.InsertDeck(entry); err != nil {
 			t.Fatalf("failed to insert deck: %v", err)
@@ -552,7 +552,7 @@ func TestCount(t *testing.T) {
 	}
 
 	// Insert decks
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		entry := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", string(rune('H' + i))}, 8.0)
 		if _, _, err := storage.InsertDeck(entry); err != nil {
 			t.Fatalf("failed to insert deck: %v", err)
@@ -653,7 +653,7 @@ func TestQuery_Pagination(t *testing.T) {
 	defer cleanup()
 
 	// Insert 10 decks
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		entry := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", string(rune('H' + i))}, float64(10-i))
 		if _, _, err := storage.InsertDeck(entry); err != nil {
 			t.Fatalf("failed to insert deck: %v", err)
@@ -780,7 +780,7 @@ func TestExportImportJSON(t *testing.T) {
 	storage, cleanup := createTestStorage(t)
 	defer cleanup()
 
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		entry := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", string(rune('H' + i))}, 9.0-float64(i))
 		if _, _, err := storage.InsertDeck(entry); err != nil {
 			t.Fatalf("insert failed: %v", err)
@@ -821,7 +821,7 @@ func TestVacuum(t *testing.T) {
 	storage, cleanup := createTestStorage(t)
 	defer cleanup()
 
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		entry := createTestDeckEntry([]string{"A", "B", "C", "D", "E", "F", "G", string(rune('H' + i))}, 9.0-float64(i)/10.0)
 		if _, _, err := storage.InsertDeck(entry); err != nil {
 			t.Fatalf("insert failed: %v", err)

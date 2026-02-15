@@ -176,7 +176,7 @@ func (it *smartSampleIterator) Next(ctx context.Context) ([]string, error) {
 	// Try up to 100 times to generate a valid deck
 	maxAttempts := 100
 	var lastErr error
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for range maxAttempts {
 		// Generate using weighted sampling based on card scores
 		deck := make([]string, 0, 8)
 		used := make(map[string]bool)
@@ -352,7 +352,7 @@ func (it *randomSampleIterator) Next(ctx context.Context) ([]string, error) {
 	// Try up to 100 times to generate a valid deck
 	maxAttempts := 100
 	var lastErr error
-	for attempt := 0; attempt < maxAttempts; attempt++ {
+	for range maxAttempts {
 		// Generate random deck
 		deck := make([]string, 0, 8)
 		used := make(map[string]bool)

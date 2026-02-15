@@ -43,7 +43,7 @@ func TestEnsureElixirBucketDistribution_CoversTopBuckets(t *testing.T) {
 	}
 
 	topBuckets := map[string]bool{}
-	for i := 0; i < 3; i++ {
+	for i := range 3 {
 		topBuckets[getElixirBucket(reordered[i].AvgElixir)] = true
 	}
 

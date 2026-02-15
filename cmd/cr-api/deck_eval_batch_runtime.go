@@ -535,14 +535,14 @@ func formatEvalBatchResultsAsJSON(
 	sortBy string,
 	totalTime time.Duration,
 ) (string, error) {
-	jsonData := map[string]interface{}{
+	jsonData := map[string]any{
 		"version":   "1.0.0",
 		"timestamp": time.Now().UTC().Format(time.RFC3339),
 		"player": map[string]string{
 			"name": playerName,
 			"tag":  playerTag,
 		},
-		"evaluation_info": map[string]interface{}{
+		"evaluation_info": map[string]any{
 			"total_decks":     totalDecks,
 			"evaluated":       len(results),
 			"sort_by":         sortBy,

@@ -116,7 +116,7 @@ func testLevelAwareDeckCards() []deck.CardCandidate {
 			Level:    11,
 			MaxLevel: 15,
 			Rarity:   item.rarity,
-			Role:     ptrRole(item.role),
+			Role:     new(item.role),
 		})
 	}
 

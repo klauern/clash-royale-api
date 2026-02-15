@@ -130,10 +130,10 @@ type EvaluationResult struct {
 	BaitAnalysis      AnalysisSection `json:"bait_analysis"`
 	CycleAnalysis     AnalysisSection `json:"cycle_analysis"`
 	LadderAnalysis    AnalysisSection `json:"ladder_analysis"`
-	EvolutionAnalysis AnalysisSection `json:"evolution_analysis,omitempty"`
+	EvolutionAnalysis AnalysisSection `json:"evolution_analysis"`
 
 	// Synergy matrix
-	SynergyMatrix SynergyMatrix `json:"synergy_matrix,omitempty"`
+	SynergyMatrix SynergyMatrix `json:"synergy_matrix"`
 
 	// Optional features (Task 2.4)
 	DeckLink               *DeckLink               `json:"deck_link,omitempty"`

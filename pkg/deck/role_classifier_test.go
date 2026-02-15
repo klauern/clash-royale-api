@@ -5,8 +5,10 @@ import (
 )
 
 // Helper function to create pointer to CardRole
+//
+//go:fix inline
 func rolePtr(r CardRole) *CardRole {
-	return &r
+	return new(r)
 }
 
 // TestClassifyCard tests role classification for known cards
@@ -22,138 +24,138 @@ func TestClassifyCard(t *testing.T) {
 			name:       "Hog Rider is win condition",
 			cardName:   "Hog Rider",
 			elixirCost: 4,
-			wantRole:   rolePtr(RoleWinCondition),
+			wantRole:   new(RoleWinCondition),
 		},
 		{
 			name:       "Royal Giant is win condition",
 			cardName:   "Royal Giant",
 			elixirCost: 6,
-			wantRole:   rolePtr(RoleWinCondition),
+			wantRole:   new(RoleWinCondition),
 		},
 		{
 			name:       "Battle Ram is win condition",
 			cardName:   "Battle Ram",
 			elixirCost: 4,
-			wantRole:   rolePtr(RoleWinCondition),
+			wantRole:   new(RoleWinCondition),
 		},
 		{
 			name:       "Goblin Barrel is win condition",
 			cardName:   "Goblin Barrel",
 			elixirCost: 3,
-			wantRole:   rolePtr(RoleWinCondition),
+			wantRole:   new(RoleWinCondition),
 		},
 		// Buildings
 		{
 			name:       "Cannon is building",
 			cardName:   "Cannon",
 			elixirCost: 3,
-			wantRole:   rolePtr(RoleBuilding),
+			wantRole:   new(RoleBuilding),
 		},
 		{
 			name:       "Goblin Cage is building",
 			cardName:   "Goblin Cage",
 			elixirCost: 4,
-			wantRole:   rolePtr(RoleBuilding),
+			wantRole:   new(RoleBuilding),
 		},
 		{
 			name:       "Tesla is building",
 			cardName:   "Tesla",
 			elixirCost: 4,
-			wantRole:   rolePtr(RoleBuilding),
+			wantRole:   new(RoleBuilding),
 		},
 		// Big Spells
 		{
 			name:       "Fireball is big spell",
 			cardName:   "Fireball",
 			elixirCost: 4,
-			wantRole:   rolePtr(RoleSpellBig),
+			wantRole:   new(RoleSpellBig),
 		},
 		{
 			name:       "Poison is big spell",
 			cardName:   "Poison",
 			elixirCost: 4,
-			wantRole:   rolePtr(RoleSpellBig),
+			wantRole:   new(RoleSpellBig),
 		},
 		{
 			name:       "Lightning is big spell",
 			cardName:   "Lightning",
 			elixirCost: 6,
-			wantRole:   rolePtr(RoleSpellBig),
+			wantRole:   new(RoleSpellBig),
 		},
 		// Small Spells
 		{
 			name:       "Zap is small spell",
 			cardName:   "Zap",
 			elixirCost: 2,
-			wantRole:   rolePtr(RoleSpellSmall),
+			wantRole:   new(RoleSpellSmall),
 		},
 		{
 			name:       "Log is small spell",
 			cardName:   "Log",
 			elixirCost: 2,
-			wantRole:   rolePtr(RoleSpellSmall),
+			wantRole:   new(RoleSpellSmall),
 		},
 		{
 			name:       "Arrows is small spell",
 			cardName:   "Arrows",
 			elixirCost: 3,
-			wantRole:   rolePtr(RoleSpellSmall),
+			wantRole:   new(RoleSpellSmall),
 		},
 		// Cycle Cards
 		{
 			name:       "Skeletons is cycle",
 			cardName:   "Skeletons",
 			elixirCost: 1,
-			wantRole:   rolePtr(RoleCycle),
+			wantRole:   new(RoleCycle),
 		},
 		{
 			name:       "Fire Spirit is cycle",
 			cardName:   "Fire Spirit",
 			elixirCost: 1,
-			wantRole:   rolePtr(RoleCycle),
+			wantRole:   new(RoleCycle),
 		},
 		{
 			name:       "Ice Spirit is cycle",
 			cardName:   "Ice Spirit",
 			elixirCost: 1,
-			wantRole:   rolePtr(RoleCycle),
+			wantRole:   new(RoleCycle),
 		},
 		{
 			name:       "Bats is cycle",
 			cardName:   "Bats",
 			elixirCost: 2,
-			wantRole:   rolePtr(RoleCycle),
+			wantRole:   new(RoleCycle),
 		},
 		// Support Troops
 		{
 			name:       "Musketeer is support",
 			cardName:   "Musketeer",
 			elixirCost: 4,
-			wantRole:   rolePtr(RoleSupport),
+			wantRole:   new(RoleSupport),
 		},
 		{
 			name:       "Knight is support",
 			cardName:   "Knight",
 			elixirCost: 3,
-			wantRole:   rolePtr(RoleSupport),
+			wantRole:   new(RoleSupport),
 		},
 		{
 			name:       "Goblin Gang is support",
 			cardName:   "Goblin Gang",
 			elixirCost: 3,
-			wantRole:   rolePtr(RoleSupport),
+			wantRole:   new(RoleSupport),
 		},
 		{
 			name:       "Skeleton Dragons is support",
 			cardName:   "Skeleton Dragons",
 			elixirCost: 4,
-			wantRole:   rolePtr(RoleSupport),
+			wantRole:   new(RoleSupport),
 		},
 		{
 			name:       "Archers is support",
 			cardName:   "Archers",
 			elixirCost: 3,
-			wantRole:   rolePtr(RoleSupport),
+			wantRole:   new(RoleSupport),
 		},
 	}
 
@@ -534,14 +536,14 @@ func TestClassifyCardWithEvolution(t *testing.T) {
 			cardName:       "Valkyrie",
 			elixirCost:     4,
 			evolutionLevel: 0,
-			wantRole:       rolePtr(RoleSupport),
+			wantRole:       new(RoleSupport),
 		},
 		{
 			name:           "Valkyrie evolved is support (override)",
 			cardName:       "Valkyrie",
 			elixirCost:     4,
 			evolutionLevel: 1,
-			wantRole:       rolePtr(RoleSupport),
+			wantRole:       new(RoleSupport),
 		},
 		// Evolved Knight - base is support, evolved stays support
 		{
@@ -549,14 +551,14 @@ func TestClassifyCardWithEvolution(t *testing.T) {
 			cardName:       "Knight",
 			elixirCost:     3,
 			evolutionLevel: 0,
-			wantRole:       rolePtr(RoleSupport),
+			wantRole:       new(RoleSupport),
 		},
 		{
 			name:           "Knight evolved is support (override)",
 			cardName:       "Knight",
 			elixirCost:     3,
 			evolutionLevel: 1,
-			wantRole:       rolePtr(RoleSupport),
+			wantRole:       new(RoleSupport),
 		},
 		// Evolved Royal Giant - base is win condition, evolved stays win condition
 		{
@@ -564,14 +566,14 @@ func TestClassifyCardWithEvolution(t *testing.T) {
 			cardName:       "Royal Giant",
 			elixirCost:     6,
 			evolutionLevel: 0,
-			wantRole:       rolePtr(RoleWinCondition),
+			wantRole:       new(RoleWinCondition),
 		},
 		{
 			name:           "Royal Giant evolved is win condition (override)",
 			cardName:       "Royal Giant",
 			elixirCost:     6,
 			evolutionLevel: 1,
-			wantRole:       rolePtr(RoleWinCondition),
+			wantRole:       new(RoleWinCondition),
 		},
 		// Evolved Golem - base is win condition, evolved stays win condition
 		{
@@ -579,14 +581,14 @@ func TestClassifyCardWithEvolution(t *testing.T) {
 			cardName:       "Golem",
 			elixirCost:     8,
 			evolutionLevel: 0,
-			wantRole:       rolePtr(RoleWinCondition),
+			wantRole:       new(RoleWinCondition),
 		},
 		{
 			name:           "Golem evolved is win condition (override)",
 			cardName:       "Golem",
 			elixirCost:     8,
 			evolutionLevel: 1,
-			wantRole:       rolePtr(RoleWinCondition),
+			wantRole:       new(RoleWinCondition),
 		},
 		// Card without evolution override - no change when evolved
 		{
@@ -594,14 +596,14 @@ func TestClassifyCardWithEvolution(t *testing.T) {
 			cardName:       "Hog Rider",
 			elixirCost:     4,
 			evolutionLevel: 0,
-			wantRole:       rolePtr(RoleWinCondition),
+			wantRole:       new(RoleWinCondition),
 		},
 		{
 			name:           "Hog Rider evolved is still win condition (no override)",
 			cardName:       "Hog Rider",
 			elixirCost:     4,
 			evolutionLevel: 1,
-			wantRole:       rolePtr(RoleWinCondition),
+			wantRole:       new(RoleWinCondition),
 		},
 		// Card without evolution capability
 		{
@@ -609,7 +611,7 @@ func TestClassifyCardWithEvolution(t *testing.T) {
 			cardName:       "Musketeer",
 			elixirCost:     4,
 			evolutionLevel: 0,
-			wantRole:       rolePtr(RoleSupport),
+			wantRole:       new(RoleSupport),
 		},
 	}
 
@@ -735,7 +737,7 @@ func TestGetEvolutionOverrideRole(t *testing.T) {
 			name:           "Valkyrie evolved returns support override",
 			cardName:       "Valkyrie",
 			evolutionLevel: 1,
-			wantRole:       rolePtr(RoleSupport),
+			wantRole:       new(RoleSupport),
 		},
 		{
 			name:           "Valkyrie unevolved returns nil",

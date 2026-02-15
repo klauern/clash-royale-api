@@ -98,7 +98,7 @@ func sortEvaluationResults[T any](results []T, sortBy string) {
 			}
 			if rv.IsValid() && rv.Kind() == reflect.Struct {
 				field := rv.FieldByName("Result")
-				if field.IsValid() && field.Type() == reflect.TypeOf(evaluation.EvaluationResult{}) {
+				if field.IsValid() && field.Type() == reflect.TypeFor[evaluation.EvaluationResult]() {
 					if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
 						return result
 					}
