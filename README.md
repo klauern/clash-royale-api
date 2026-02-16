@@ -1,26 +1,49 @@
-# Clash Royale API CLI
+# Clash Royale API Data Collector
 
-[![Go Version](https://img.shields.io/badge/Go-1.24+-00ADD8?style=flat&logo=go)](https://go.dev/)
+[![Go Version](https://img.shields.io/badge/Go-1.22+-00ADD8?style=flat&logo=go)](https://go.dev/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![GitHub Releases](https://img.shields.io/github/v/release/klauern/clash-royale-api)](https://github.com/klauern/clash-royale-api/releases)
 
-A Go CLI for collecting Clash Royale player/card data, building and evaluating decks, tracking events, and exporting results from the official Clash Royale API.
+A comprehensive Go tool for collecting, analyzing, and tracking Clash Royale card data, player statistics, event decks, and intelligent deck building using the official Clash Royale API.
+
+## Quickstart
+
+```bash
+# 1. Get your API token from https://developer.clashroyale.com/
+# 2. Download the latest release for your platform
+# 3. Configure
+cp .env.example .env
+# Edit .env and add your API token
+
+# 4. Run
+./cr-api analyze --tag YOUR_PLAYER_TAG
+```
 
 ## Features
 
-- Player profile, collection, and playstyle analysis
-- Deck building, evaluation, comparison, and batch suite workflows
-- Evolution-aware deck recommendations and upgrade impact analysis
-- Event deck tracking and CSV export support
-- Built-in API rate limiting and retry handling
+- 🎴 **Complete Card Database**: Access all Clash Royale cards with detailed statistics
+- 👤 **Player Profile Analysis**: Comprehensive player data including card collections
+- 🎯 **Player Context Awareness**: Arena-aware card validation, collection-based playability scoring, and level-based ladder analysis
+- 🏗️ **Intelligent Deck Building**: AI-powered deck recommendations based on your collection with evolution integration
+- 🔬 **Deck Analysis Suite**: Batch deck building, evaluation, comparison, and comprehensive reporting workflows
+- 📊 **Collection Analysis**: Detailed statistics on card levels, rarities, and upgrade priorities
+- 🎮 **Playstyle Analysis**: Analyze player's playstyle and get personalized deck recommendations
+- 🃏 **Event Deck Tracking**: Monitor and analyze performance in special events
+- 💾 **Data Persistence**: Save and track historical data over time
+- 📈 **CSV Export**: Export player data, card collections, and event statistics
+- 🔄 **Rate Limiting**: Built-in rate limiting to respect API limits
+- ⚡ **High Performance**: Go implementation provides superior performance and type safety
 
-## Quick Start (5 minutes)
+## Documentation
 
-### Prerequisites
+- **[Deck Building](docs/DECK_BUILDER.md)** - Algorithm details and Go API examples
+- **[Deck Analysis Suite](docs/DECK_ANALYSIS_SUITE.md)** - Batch deck building, evaluation, and comparison workflows
+- **[Evolution System](docs/EVOLUTION.md)** - Evolution mechanics and configuration
+- **[Event Tracking](docs/EVENT_TRACKING.md)** - Event deck analysis
+- **[CSV Exports](docs/CSV_EXPORTS.md)** - Export functionality
+- **[Deck Strategies](docs/DECK_STRATEGIES.md)** - Playstyle analysis and recommendations
 
-- Go 1.24+
-- [Task](https://taskfile.dev)
-- Clash Royale API token from [developer.clashroyale.com](https://developer.clashroyale.com/)
+## Project Structure
 
 ```
 clash-royale-api/
@@ -70,124 +93,124 @@ cd clash-royale-api && task build
 ## CLI Usage
 
 ```bash
-cp .env.example .env
-# Edit .env and set CLASH_ROYALE_API_TOKEN
+# Common commands (use --help for all options)
+./bin/cr-api player --tag PLAYER_TAG [--chests] [--save] [--export-csv]
+./bin/cr-api analyze --tag PLAYER_TAG [--save] [--export-csv]
+./bin/cr-api deck build --tag PLAYER_TAG [--strategy STRATEGY] [--verbose]
+./bin/cr-api events scan --tag PLAYER_TAG
+./bin/cr-api cards [--export-csv]
+
+# Deck building strategies: balanced (default), aggro, control, cycle, splash, spell
+./bin/cr-api deck build --tag PLAYER_TAG --strategy cycle --verbose
+
+# Deck Analysis Suite - systematic deck building and evaluation
+./bin/cr-api deck analyze-suite --tag PLAYER_TAG --strategies all --variations 2
+./bin/cr-api deck build-suite --tag PLAYER_TAG --strategies all --variations 3
+./bin/cr-api deck evaluate-batch --from-suite data/decks/suite_TAG.json --tag TAG
+./bin/cr-api deck compare --from-evaluations data/evaluations/evals_TAG.json --auto-select-top 5
+
+# Task runner (recommended)
+task                     # Show all tasks
+task run -- #PLAYER_TAG  # Analyze player
+task test                # Run tests
 ```
 
-### Build
+See feature-specific documentation for detailed command options:
+- [DECK_BUILDER.md](docs/DECK_BUILDER.md) - Deck building strategies and options
+- [DECK_ANALYSIS_SUITE.md](docs/DECK_ANALYSIS_SUITE.md) - Batch deck analysis workflows
+- [EVENT_TRACKING.md](docs/EVENT_TRACKING.md) - Event scanning and analysis
+- [CSV_EXPORTS.md](docs/CSV_EXPORTS.md) - Export formats and options
+- [EVOLUTION.md](docs/EVOLUTION.md) - Evolution shard management
 
-```bash
-task build
-```
+## Using as a Go Library
 
-### First run
+For complete Go API examples, integration patterns, and package documentation, see [DECK_BUILDER.md](docs/DECK_BUILDER.md).
 
-```bash
-./bin/cr-api analyze --tag <PLAYER_TAG>
-```
+## Data Structure
 
-Use player tags without `#` in CLI flags.
-
-## Common Workflows
-
-```bash
-# 1) Player profile
-./bin/cr-api player --tag <PLAYER_TAG> --chests
-
-# 2) Collection analysis
-./bin/cr-api analyze --tag <PLAYER_TAG> --save
-
-# 3) Build one deck
-./bin/cr-api deck build --tag <PLAYER_TAG> --strategy balanced
-
-# 4) Build/evaluate/compare a suite
-./bin/cr-api deck build-suite --tag <PLAYER_TAG> --strategies all --variations 2
-./bin/cr-api deck evaluate-batch --from-suite data/decks/<suite-file>.json --tag <PLAYER_TAG>
-./bin/cr-api compare --from-evaluations data/evaluations/<eval-file>.json --auto-select-top 5
-
-# 5) Scan events
-./bin/cr-api events scan --tag <PLAYER_TAG>
-```
-
-For full flags and command surface, see [docs/CLI_REFERENCE.md](docs/CLI_REFERENCE.md).
-
-## Taskfile Shortcuts
-
-```bash
-task setup
-task run -- '#TAG'
-task test
-task lint
-```
-
-Use `task --list` to see all available tasks.
+Card collections include name, level, rarity, count, and max_level. Analysis provides upgrade priorities, rarity breakdowns, and max-level card tracking. For evolution mechanics and configuration, see [EVOLUTION.md](docs/EVOLUTION.md).
 
 ## Configuration
 
-Required:
+**⚠️ Security**: Copy `.env.example` to `.env` and add your actual values. Never commit `.env` to version control.
 
-- `CLASH_ROYALE_API_TOKEN` - Clash Royale API token
+**Required**: `CLASH_ROYALE_API_TOKEN` (get from [developer.clashroyale.com](https://developer.clashroyale.com/))
 
-Common optional settings:
+**Optional**: `DEFAULT_PLAYER_TAG`, `DATA_DIR`, `REQUEST_DELAY`, and more. See `.env.example` for all options.
 
-- `DEFAULT_PLAYER_TAG`
-- `DATA_DIR`
-- `REQUEST_DELAY`
-- `MAX_RETRIES`
-- `UNLOCKED_EVOLUTIONS`
+**Priority**: CLI arguments override environment variables, which override defaults.
 
-Configuration precedence:
+## Rate Limiting
 
-1. CLI flags
-2. Environment variables
-3. Built-in defaults
+The client includes built-in rate limiting to respect the API's limits:
 
-See [`.env.example`](.env.example) for the full environment configuration.
+- Default: 1 second between requests
+- Automatic retry with exponential backoff
+- Configurable delay and retry limits
 
-## Data & Security
+## API Endpoints Used
 
-- Never commit `.env` or API tokens.
-- The CLI default data directory is `~/.cr-api` (from `--data-dir` default in code).
-- Task workflows commonly pass `--data-dir data`, so outputs are written to the repo-local `data/` directory during task-based usage.
+- `GET /cards` - All available cards
+- `GET /players/{tag}` - Player information
+- `GET /players/{tag}/upcomingchests` - Upcoming chests
+- `GET /players/{tag}/chestcycle` - Chest cycle
 
-## Testing & CI Reality
+## Error Handling
+
+The client includes comprehensive error handling:
+
+- Invalid API tokens
+- Rate limiting
+- Network issues
+- Invalid player tags
+- API downtime
+
+## Testing
 
 ```bash
-task test
-task test-integration
+task test              # Run unit tests with coverage
+task test-integration  # Run integration tests (requires API token)
 ```
 
-- CI runs unit tests.
-- Integration tests require live API access and are run manually because Clash Royale API keys require IP allowlisting.
+Unit tests run in CI. Integration tests connect to the live API and are excluded from CI due to IP restrictions (see CI/CD section below). See [AGENTS.md](AGENTS.md) for complete testing details.
 
-## Documentation Index
+## CI/CD Limitations
 
-- [CLI Reference](docs/CLI_REFERENCE.md)
-- [Deck Builder](docs/DECK_BUILDER.md)
-- [Deck Analysis Suite](docs/DECK_ANALYSIS_SUITE.md)
-- [Evolution System](docs/EVOLUTION.md)
-- [Event Tracking](docs/EVENT_TRACKING.md)
-- [CSV Exports](docs/CSV_EXPORTS.md)
-- [Testing](docs/TESTING.md)
-- [Release Process](docs/RELEASE_PROCESS.md)
+The Clash Royale API requires static IP whitelisting (max 5 IPs per key). GitHub Actions standard runners use dynamic IPs and cannot access the live API. CI runs unit tests only; integration tests require manual execution (`task test-integration`). Automation options: self-hosted runners or GitHub Enterprise larger runners with static IPs.
 
-## Troubleshooting
+## Releases
 
-- API auth errors: confirm `CLASH_ROYALE_API_TOKEN` and API key IP allowlist settings.
-- Tag errors: pass `--tag` without `#`.
-- Rate limiting/timeouts: increase `REQUEST_DELAY` in `.env`.
-- Build issues: run `go mod download` and `task build`.
+Releases are automated via GitHub Actions when pushing version tags (`vX.Y.Z`). Binaries are built for Linux, macOS, and Windows. See [Releases](https://github.com/klauern/clash-royale-api/releases) for downloads.
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md).
+1. Fork the repository
+2. Create a feature branch
+3. Add your improvements
+4. Submit a pull request
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+This project is for educational and personal use. Please respect Supercell's Terms of Service when using the Clash Royale API.
 
 ## Support
 
 - [Official API Documentation](https://developer.clashroyale.com/#/documentation)
 - [Clash Royale API Discord](https://discord.gg/clashroyale)
-- [GitHub Issues](https://github.com/klauern/clash-royale-api/issues)
+- Issues: Create an issue in this repository
+
+## Troubleshooting
+
+**API token errors**: Copy `.env.example` to `.env` and add your token. Verify your IP is allowlisted at [developer.clashroyale.com](https://developer.clashroyale.com/).
+
+**Rate limiting**: Increase `REQUEST_DELAY` in `.env` or reduce request frequency.
+
+**Build failures**: Run `go mod download && go mod tidy`
+
+**Permission denied**: Run `chmod +x bin/cr-api`
+
+## Changelog
+
+See [GitHub Releases](https://github.com/klauern/clash-royale-api/releases) for version history and release notes.

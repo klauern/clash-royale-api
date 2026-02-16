@@ -1526,7 +1526,7 @@ func deduplicateResults(results []FuzzingResult) []FuzzingResult {
 
 	for _, result := range results {
 		// Create a canonical key by sorting card names
-		deckKey := deck.CanonicalDeckKey(result.Deck)
+		deckKey := deckKeyForResult(result)
 		if !seen[deckKey] {
 			seen[deckKey] = true
 			deduped = append(deduped, result)
@@ -1534,6 +1534,14 @@ func deduplicateResults(results []FuzzingResult) []FuzzingResult {
 	}
 
 	return deduped
+}
+
+// deckKeyForResult creates a unique key for a deck based on sorted card names
+func deckKeyForResult(result FuzzingResult) string {
+	cards := make([]string, len(result.Deck))
+	copy(cards, result.Deck)
+	sort.Strings(cards)
+	return strings.Join(cards, "|")
 }
 
 // sortFuzzingResults sorts fuzzing results by the specified field
