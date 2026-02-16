@@ -22,7 +22,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.26.x'
           cache-dependency-path: go.sum
 
       - name: Download dependencies
@@ -59,14 +59,14 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.26.x'
           cache-dependency-path: go.sum
 
       - name: Run golangci-lint
         id: golangci
         uses: golangci/golangci-lint-action@v7
         with:
-          version: v2.6.2
+          version: latest
           working-directory: .
           args: --timeout=10m --output.json.path=lint-report.json --output.html.path=lint-report.html
 
@@ -94,7 +94,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: '1.22'
+          go-version: '1.26.x'
           cache-dependency-path: go.sum
 
       - name: Build binaries
