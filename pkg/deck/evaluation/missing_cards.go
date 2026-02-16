@@ -4,9 +4,146 @@ package evaluation
 import (
 	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
+
+// cardUnlockArenas is a package-level cache of card unlock data
+// to avoid rebuilding the map on every function call
+var cardUnlockArenas = map[string]int{
+	// Training Camp (Arena 0)
+	"Knight":         0,
+	"Archers":        0,
+	"Goblins":        0,
+	"Giant":          0,
+	"P.E.K.K.A":      0,
+	"Minions":        0,
+	"Balloon":        0,
+	"Witch":          0,
+	"Barbarians":     0,
+	"Golem":          0,
+	"Skeletons":      0,
+	"Valkyrie":       0,
+	"Skeleton Army":  0,
+	"Bomber":         0,
+	"Musketeer":      0,
+	"Baby Dragon":    0,
+	"Prince":         0,
+	"Wizard":         0,
+	"Mini P.E.K.K.A": 0,
+	"Fireball":       0,
+	"Arrows":         0,
+	"Zap":            0,
+	"Cannon":         0,
+	"Tesla":          0,
+
+	// Arena 1
+	"Spear Goblins":  1,
+	"Giant Skeleton": 1,
+	"Tombstone":      1,
+
+	// Arena 2
+	"Hog Rider":    2,
+	"Minion Horde": 2,
+	"Rage":         2,
+	"Goblin Hut":   2,
+
+	// Arena 3
+	"Ice Wizard":    3,
+	"Royal Giant":   3,
+	"Rocket":        3,
+	"Goblin Barrel": 3,
+
+	// Arena 4
+	"Guards":      4,
+	"Princess":    4,
+	"Dark Prince": 4,
+	"Freeze":      4,
+	"Mirror":      4,
+	"Lightning":   4,
+
+	// Arena 5
+	"Three Musketeers": 5,
+	"Lava Hound":       5,
+	"Poison":           5,
+	"Elixir Collector": 5,
+
+	// Arena 6
+	"Ice Spirit":  6,
+	"Fire Spirit": 6,
+	"Miner":       6,
+	"Sparky":      6,
+	"Graveyard":   6,
+	"The Log":     6,
+
+	// Arena 7
+	"Bowler":         7,
+	"Lumberjack":     7,
+	"Battle Ram":     7,
+	"Inferno Dragon": 7,
+	"Tornado":        7,
+	"Clone":          7,
+
+	// Arena 8
+	"Ice Golem":      8,
+	"Mega Minion":    8,
+	"Dart Goblin":    8,
+	"Goblin Gang":    8,
+	"Electro Wizard": 8,
+	"Earthquake":     8,
+
+	// Arena 9
+	"Elite Barbarians": 9,
+	"Hunter":           9,
+	"Executioner":      9,
+	"Bandit":           9,
+
+	// Arena 10
+	"Royal Recruits": 10,
+	"Night Witch":    10,
+	"Bats":           10,
+	"Royal Ghost":    10,
+
+	// Arena 11
+	"Ram Rider":        11,
+	"Zappies":          11,
+	"Rascals":          11,
+	"Cannon Cart":      11,
+	"Mega Knight":      11,
+	"Barbarian Barrel": 11,
+
+	// Arena 12
+	"Skeleton Barrel": 12,
+	"Flying Machine":  12,
+	"Wall Breakers":   12,
+	"Royal Hogs":      12,
+	"Goblin Giant":    12,
+	"Heal Spirit":     12,
+
+	// Arena 13+
+	"Fisherman":      13,
+	"Magic Archer":   13,
+	"Electro Dragon": 13,
+	"Firecracker":    13,
+	"Giant Snowball": 13,
+
+	// Arena 14+
+	"Mighty Miner":   14,
+	"Elixir Golem":   14,
+	"Battle Healer":  14,
+	"Royal Delivery": 14,
+
+	// Arena 15+ (Legendary Arena)
+	"Skeleton King":  15,
+	"Archer Queen":   15,
+	"Golden Knight":  15,
+	"Monk":           15,
+	"Mother Witch":   15,
+	"Electro Spirit": 15,
+	"Electro Giant":  15,
+	"Phoenix":        15,
+}
 
 // MissingCard represents a card that the player doesn't have
 type MissingCard struct {
@@ -191,145 +328,9 @@ func findOwnedAlternatives(
 
 // getCardUnlockArena returns the arena where a card unlocks
 func getCardUnlockArena(cardName string) int {
-	// Card unlock arenas (simplified - should be from database)
-	unlockArenas := map[string]int{
-		// Training Camp (Arena 0)
-		"Knight":         0,
-		"Archers":        0,
-		"Goblins":        0,
-		"Giant":          0,
-		"P.E.K.K.A":      0,
-		"Minions":        0,
-		"Balloon":        0,
-		"Witch":          0,
-		"Barbarians":     0,
-		"Golem":          0,
-		"Skeletons":      0,
-		"Valkyrie":       0,
-		"Skeleton Army":  0,
-		"Bomber":         0,
-		"Musketeer":      0,
-		"Baby Dragon":    0,
-		"Prince":         0,
-		"Wizard":         0,
-		"Mini P.E.K.K.A": 0,
-		"Fireball":       0,
-		"Arrows":         0,
-		"Zap":            0,
-		"Cannon":         0,
-		"Tesla":          0,
-
-		// Arena 1
-		"Spear Goblins":  1,
-		"Giant Skeleton": 1,
-		"Tombstone":      1,
-
-		// Arena 2
-		"Hog Rider":    2,
-		"Minion Horde": 2,
-		"Rage":         2,
-		"Goblin Hut":   2,
-
-		// Arena 3
-		"Ice Wizard":    3,
-		"Royal Giant":   3,
-		"Rocket":        3,
-		"Goblin Barrel": 3,
-
-		// Arena 4
-		"Guards":      4,
-		"Princess":    4,
-		"Dark Prince": 4,
-		"Freeze":      4,
-		"Mirror":      4,
-		"Lightning":   4,
-
-		// Arena 5
-		"Three Musketeers": 5,
-		"Lava Hound":       5,
-		"Poison":           5,
-		"Elixir Collector": 5,
-
-		// Arena 6
-		"Ice Spirit":  6,
-		"Fire Spirit": 6,
-		"Miner":       6,
-		"Sparky":      6,
-		"Graveyard":   6,
-		"The Log":     6,
-
-		// Arena 7
-		"Bowler":         7,
-		"Lumberjack":     7,
-		"Battle Ram":     7,
-		"Inferno Dragon": 7,
-		"Tornado":        7,
-		"Clone":          7,
-
-		// Arena 8
-		"Ice Golem":      8,
-		"Mega Minion":    8,
-		"Dart Goblin":    8,
-		"Goblin Gang":    8,
-		"Electro Wizard": 8,
-		"Earthquake":     8,
-
-		// Arena 9
-		"Elite Barbarians": 9,
-		"Hunter":           9,
-		"Executioner":      9,
-		"Bandit":           9,
-
-		// Arena 10
-		"Royal Recruits": 10,
-		"Night Witch":    10,
-		"Bats":           10,
-		"Royal Ghost":    10,
-
-		// Arena 11
-		"Ram Rider":        11,
-		"Zappies":          11,
-		"Rascals":          11,
-		"Cannon Cart":      11,
-		"Mega Knight":      11,
-		"Barbarian Barrel": 11,
-
-		// Arena 12
-		"Skeleton Barrel": 12,
-		"Flying Machine":  12,
-		"Wall Breakers":   12,
-		"Royal Hogs":      12,
-		"Goblin Giant":    12,
-		"Heal Spirit":     12,
-
-		// Arena 13+
-		"Fisherman":      13,
-		"Magic Archer":   13,
-		"Electro Dragon": 13,
-		"Firecracker":    13,
-		"Giant Snowball": 13,
-
-		// Arena 14+
-		"Mighty Miner":   14,
-		"Elixir Golem":   14,
-		"Battle Healer":  14,
-		"Royal Delivery": 14,
-
-		// Arena 15+ (Legendary Arena)
-		"Skeleton King":  15,
-		"Archer Queen":   15,
-		"Golden Knight":  15,
-		"Monk":           15,
-		"Mother Witch":   15,
-		"Electro Spirit": 15,
-		"Electro Giant":  15,
-		"Phoenix":        15,
-	}
-
-	if arena, exists := unlockArenas[cardName]; exists {
+	if arena, exists := cardUnlockArenas[cardName]; exists {
 		return arena
 	}
-
 	// Default to 0 (available from start)
 	return 0
 }
@@ -368,30 +369,31 @@ func FormatMissingCardsReport(analysis *MissingCardsAnalysis) string {
 		return "✓ All cards in this deck are available in your collection!\n"
 	}
 
-	report := fmt.Sprintf("Missing Cards Analysis\n")
-	report += fmt.Sprintf("═══════════════════════\n\n")
-	report += fmt.Sprintf("Deck Status: %d/%d cards available\n\n", analysis.AvailableCount, len(analysis.Deck))
+	var report strings.Builder
+	report.WriteString("Missing Cards Analysis\n")
+	report.WriteString("═══════════════════════\n\n")
+	report.WriteString(fmt.Sprintf("Deck Status: %d/%d cards available\n\n", analysis.AvailableCount, len(analysis.Deck)))
 
 	for i, missing := range analysis.MissingCards {
-		report += fmt.Sprintf("%d. %s (%s)\n", i+1, missing.Name, missing.Rarity)
-		report += fmt.Sprintf("   Unlocks: %s (Arena %d)\n", missing.UnlockArenaName, missing.UnlockArena)
+		report.WriteString(fmt.Sprintf("%d. %s (%s)\n", i+1, missing.Name, missing.Rarity))
+		report.WriteString(fmt.Sprintf("   Unlocks: %s (Arena %d)\n", missing.UnlockArenaName, missing.UnlockArena))
 
 		if missing.IsLocked {
-			report += fmt.Sprintf("   Status: 🔒 LOCKED - Progress to Arena %d to unlock\n", missing.UnlockArena)
+			report.WriteString(fmt.Sprintf("   Status: 🔒 LOCKED - Progress to Arena %d to unlock\n", missing.UnlockArena))
 		} else {
-			report += fmt.Sprintf("   Status: ✓ Unlocked - Available in chests and shop\n")
+			report.WriteString("   Status: ✓ Unlocked - Available in chests and shop\n")
 		}
 
 		if len(missing.AlternativeCards) > 0 {
-			report += fmt.Sprintf("   Alternatives: %s\n", joinCardNames(missing.AlternativeCards))
+			report.WriteString(fmt.Sprintf("   Alternatives: %s\n", joinCardNames(missing.AlternativeCards)))
 		} else {
-			report += fmt.Sprintf("   Alternatives: None found in your collection\n")
+			report.WriteString("   Alternatives: None found in your collection\n")
 		}
 
-		report += "\n"
+		report.WriteString("\n")
 	}
 
-	return report
+	return report.String()
 }
 
 // extractCardNames extracts card names from a slice of CardCandidates
@@ -415,13 +417,13 @@ func joinCardNames(cards []string) string {
 		return cards[0] + ", " + cards[1]
 	}
 
-	result := ""
+	var result strings.Builder
 	for i, card := range cards {
 		if i == len(cards)-1 {
-			result += card
+			result.WriteString(card)
 		} else {
-			result += card + ", "
+			result.WriteString(card + ", ")
 		}
 	}
-	return result
+	return result.String()
 }

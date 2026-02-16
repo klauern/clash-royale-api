@@ -155,13 +155,13 @@ task setup
 
 // outputUserJSONOnboard outputs structured JSON for programmatic use.
 func outputUserJSONOnboard() error {
-	data := map[string]interface{}{
-		"player_tag": map[string]interface{}{
+	data := map[string]any{
+		"player_tag": map[string]any{
 			"description": "Use with or without # prefix",
 			"examples":    []string{"cr-api player --tag ABC123", "cr-api player --tag #ABC123"},
 			"how_to_find": "In-game: Profile → Copy Tag",
 		},
-		"first_commands": []map[string]interface{}{
+		"first_commands": []map[string]any{
 			{
 				"order":       1,
 				"command":     "cr-api player --tag <TAG>",
@@ -178,7 +178,7 @@ func outputUserJSONOnboard() error {
 				"description": "Archetype preferences, win rates by deck type, playstyle patterns",
 			},
 		},
-		"next_steps": []map[string]interface{}{
+		"next_steps": []map[string]any{
 			{
 				"command":     "cr-api deck build --tag <TAG>",
 				"description": "Build optimized 1v1 ladder deck",
@@ -192,11 +192,11 @@ func outputUserJSONOnboard() error {
 				"description": "Evolution recommendations based on deck usage",
 			},
 		},
-		"prerequisites": map[string]interface{}{
+		"prerequisites": map[string]any{
 			"check": "cr-api player --help",
 			"setup": "task setup",
 		},
-		"more_commands": []map[string]interface{}{
+		"more_commands": []map[string]any{
 			{"command": "cr-api deck war --tag <TAG>", "description": "Build 4-deck war lineup"},
 			{"command": "cr-api archetypes --tag <TAG>", "description": "Analyze archetype variety"},
 			{"command": "cr-api what-if --tag <TAG> --card <CARD>", "description": "Simulate upgrade impact"},
@@ -299,7 +299,7 @@ This project uses [bd (beads)](https://github.com/steveyegge/beads) for issue tr
 - ` + "`what-if`" + ` - Simulate card upgrade impact
 
 ## Development
-- Go 1.22+ required
+- Go 1.26+ required
 - Framework: urfave/cli/v3
 - Tests: ` + "`task test`" + `
 - Lint: ` + "`task lint`" + `
@@ -311,20 +311,20 @@ This project uses [bd (beads)](https://github.com/steveyegge/beads) for issue tr
 
 // outputJSONOnboard outputs structured JSON for programmatic use.
 func outputJSONOnboard() error {
-	data := map[string]interface{}{
-		"project": map[string]interface{}{
+	data := map[string]any{
+		"project": map[string]any{
 			"name":        "clash-royale-api",
 			"description": "Go-only Clash Royale API client and analysis tool",
 			"language":    "Go",
 			"framework":   "urfave/cli/v3",
 		},
-		"quick_start": map[string]interface{}{
+		"quick_start": map[string]any{
 			"setup":   []string{"task setup", "task build"},
 			"analyze": "./bin/cr-api analyze --tag <TAG>",
 			"tasks":   "task",
 			"issues":  "bd ready --json",
 		},
-		"key_commands": []map[string]interface{}{
+		"key_commands": []map[string]any{
 			{"name": "player", "description": "Get player information"},
 			{"name": "analyze", "description": "Card collection analysis and upgrade priorities"},
 			{"name": "deck build", "description": "Build optimized decks"},
@@ -333,11 +333,11 @@ func outputJSONOnboard() error {
 			{"name": "archetypes", "description": "Analyze archetype variety across playstyles"},
 			{"name": "what-if", "description": "Simulate card upgrade impact"},
 		},
-		"task_runner": map[string]interface{}{
+		"task_runner": map[string]any{
 			"tool":    "Taskfile.dev",
 			"command": "task",
 		},
-		"development": map[string]interface{}{
+		"development": map[string]any{
 			"test":  "task test",
 			"lint":  "task lint",
 			"build": "task build",

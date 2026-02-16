@@ -323,3 +323,68 @@ func TestSynergyCategories(t *testing.T) {
 		}
 	}
 }
+
+func TestLoadSynergyDatabase(t *testing.T) {
+	// Test loading from the JSON data file
+	db := LoadSynergyDatabase("data", "synergy_pairs.json")
+
+	if db == nil {
+		t.Fatal("LoadSynergyDatabase returned nil")
+	}
+
+	if len(db.Pairs) == 0 {
+		t.Error("Expected loaded database to have pairs")
+	}
+
+	// Verify some known synergies exist
+	if score := db.GetSynergy("Giant", "Witch"); score != 0.9 {
+		t.Errorf("Expected Giant+Witch synergy 0.9, got %.2f", score)
+	}
+
+	if score := db.GetSynergy("Lava Hound", "Balloon"); score != 0.95 {
+		t.Errorf("Expected Lava Hound+Balloon synergy 0.95, got %.2f", score)
+	}
+}
+
+func TestLoadSynergyDatabaseFallback(t *testing.T) {
+	// Test fallback to hardcoded database when file doesn't exist
+	db := LoadSynergyDatabase("nonexistent", "nonexistent.json")
+
+	if db == nil {
+		t.Fatal("LoadSynergyDatabase should fallback to hardcoded database")
+	}
+
+	if len(db.Pairs) == 0 {
+		t.Error("Fallback database should have pairs")
+	}
+}
+
+func TestCalculateDeckSynergy(t *testing.T) {
+	db := NewSynergyDatabase()
+
+	// Test the CalculateDeckSynergy wrapper function
+	deck := []string{"Giant", "Witch", "Musketeer", "Fireball", "Zap", "Cannon", "Ice Spirit", "Skeletons"}
+
+	analysis := db.CalculateDeckSynergy(deck)
+
+	if analysis == nil {
+		t.Fatal("CalculateDeckSynergy returned nil")
+	}
+
+	// Should have synergies (Giant + Witch at minimum)
+	if len(analysis.TopSynergies) == 0 {
+		t.Error("Expected top synergies to be populated")
+	}
+
+	// Total score should be positive
+	if analysis.TotalScore <= 0 {
+		t.Errorf("Expected positive total score, got %f", analysis.TotalScore)
+	}
+
+	// Verify results match AnalyzeDeckSynergy
+	altAnalysis := db.AnalyzeDeckSynergy(deck)
+	if analysis.TotalScore != altAnalysis.TotalScore {
+		t.Errorf("CalculateDeckSynergy should match AnalyzeDeckSynergy: %f != %f",
+			analysis.TotalScore, altAnalysis.TotalScore)
+	}
+}

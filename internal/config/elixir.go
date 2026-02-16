@@ -2,6 +2,8 @@ package config
 
 // Elixir-related constants for deck building and scoring
 
+import "slices"
+
 const (
 	// ElixirOptimal is the optimal elixir cost for balanced deck composition
 	// Cards around this cost are generally most flexible and efficient
@@ -221,10 +223,8 @@ func GetCardRoleWithEvolution(cardName string, evolutionLevel int) CardRole {
 
 	// Check standard role groups
 	for role, cards := range roleGroups {
-		for _, card := range cards {
-			if card == cardName {
-				return role
-			}
+		if slices.Contains(cards, cardName) {
+			return role
 		}
 	}
 	return ""

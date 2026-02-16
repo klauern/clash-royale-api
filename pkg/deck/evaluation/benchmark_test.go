@@ -237,7 +237,7 @@ func BenchmarkEvaluateBatch(b *testing.B) {
 
 	// Create 100 test decks (variations of the benchmark deck)
 	testDecks := make([][]deck.CardCandidate, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		testDecks[i] = getBenchmarkDeck()
 	}
 
@@ -341,4 +341,250 @@ func BenchmarkFormatJSONAllocs(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		_, _ = FormatJSON(&result)
 	}
+}
+
+// ============================================================================
+// Algorithm Comparison Tests - Quality Metrics
+// ============================================================================
+
+// TestQualityComparison_MetaVsBad compares meta deck scores against bad deck scores
+// to verify the algorithm properly distinguishes quality
+func TestQualityComparison_MetaVsBad(t *testing.T) {
+	synergyDB := deck.NewSynergyDatabase()
+
+	// Meta decks - should score high
+	metaDecks := [][]string{
+		{"Hog Rider", "Musketeer", "Valkyrie", "Cannon", "Fireball", "The Log", "Ice Spirit", "Skeletons"},               // 2.6 Hog Cycle
+		{"Golem", "Night Witch", "Baby Dragon", "Tornado", "Lightning", "Mega Minion", "Elixir Collector", "Lumberjack"}, // Golem Beatdown
+		{"Lava Hound", "Balloon", "Miner", "Mega Minion", "Skeleton Dragons", "Tornado", "Log", "Arrows"},                // LavaLoon
+		{"Goblin Barrel", "Princess", "Goblin Gang", "Knight", "Inferno Tower", "Ice Spirit", "The Log", "Rocket"},       // Log Bait
+	}
+
+	// Bad decks - should score low
+	badDecks := [][]string{
+		{"Knight", "Archers", "Valkyrie", "Mini P.E.K.K.A", "Musketeer", "Ice Golem", "Mega Minion", "Skeleton Army"}, // No Win Condition
+		{"Fireball", "Lightning", "Rocket", "Poison", "Freeze", "Zap", "Log", "Arrows"},                               // All Spells
+		{"Hog Rider", "Knight", "Valkyrie", "Skeleton Army", "Goblin Gang", "Ice Spirit", "Log", "Cannon"},            // No Anti-Air
+	}
+
+	// Calculate scores
+	var metaTotal, badTotal float64
+	for _, deckCards := range metaDecks {
+		cards := createDeckFromComparison(deckCards)
+		result := Evaluate(cards, synergyDB, nil)
+		metaTotal += result.OverallScore
+	}
+	avgMeta := metaTotal / float64(len(metaDecks))
+
+	for _, deckCards := range badDecks {
+		cards := createDeckFromComparison(deckCards)
+		result := Evaluate(cards, synergyDB, nil)
+		badTotal += result.OverallScore
+	}
+	avgBad := badTotal / float64(len(badDecks))
+
+	// Meta decks should significantly outscore bad decks
+	scoreGap := avgMeta - avgBad
+
+	t.Logf("Meta Deck Average Score: %.2f/10.0", avgMeta)
+	t.Logf("Bad Deck Average Score: %.2f/10.0", avgBad)
+	t.Logf("Score Gap: %.2f points", scoreGap)
+
+	// Verify quality separation thresholds
+	if avgMeta < 7.0 {
+		t.Errorf("Meta deck average %.2f is below threshold 7.0", avgMeta)
+	}
+	if avgBad > 5.0 {
+		t.Errorf("Bad deck average %.2f is above threshold 5.0", avgBad)
+	}
+	if scoreGap < 2.5 {
+		t.Errorf("Score gap %.2f is too small - algorithm may not distinguish quality well", scoreGap)
+	}
+}
+
+// TestQualityComparison_CoherenceScores verifies that coherent archetypes
+// score better than incoherent mixed decks
+func TestQualityComparison_CoherenceScores(t *testing.T) {
+	synergyDB := deck.NewSynergyDatabase()
+
+	tests := []struct {
+		name      string
+		cards     []string
+		minScore  float64
+		archetype Archetype
+	}{
+		{
+			name:      "Coherent Cycle Deck",
+			cards:     []string{"Hog Rider", "Musketeer", "Valkyrie", "Cannon", "Fireball", "The Log", "Ice Spirit", "Skeletons"},
+			minScore:  6.8,
+			archetype: ArchetypeCycle,
+		},
+		{
+			name:      "Coherent Beatdown Deck",
+			cards:     []string{"Golem", "Night Witch", "Baby Dragon", "Tornado", "Lightning", "Mega Minion", "Elixir Collector", "Lumberjack"},
+			minScore:  7.0,
+			archetype: ArchetypeBeatdown,
+		},
+		{
+			name:      "Coherent Bait Deck",
+			cards:     []string{"Goblin Barrel", "Princess", "Goblin Gang", "Knight", "Inferno Tower", "Ice Spirit", "The Log", "Rocket"},
+			minScore:  6.8,
+			archetype: ArchetypeBait,
+		},
+		{
+			name:      "Incoherent Mixed Deck",
+			cards:     []string{"Hog Rider", "Golem", "P.E.K.K.A", "Musketeer", "Baby Dragon", "Valkyrie", "Fireball", "Zap"},
+			minScore:  3.0,
+			archetype: ArchetypeUnknown,
+		},
+	}
+
+	coherentTotal := 0.0
+	coherentCount := 0
+	incoherentScore := 0.0
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cards := createDeckFromComparison(tt.cards)
+			result := Evaluate(cards, synergyDB, nil)
+
+			if result.OverallScore < tt.minScore {
+				t.Errorf("OverallScore = %.2f, want >= %.2f", result.OverallScore, tt.minScore)
+			}
+
+			t.Logf("%s: %.2f/10.0 (%s), Archetype: %s (%.0f%% confidence)",
+				tt.name, result.OverallScore, result.OverallRating,
+				result.DetectedArchetype, result.ArchetypeConfidence*100)
+
+			if tt.archetype != ArchetypeUnknown {
+				coherentTotal += result.OverallScore
+				coherentCount++
+			} else {
+				incoherentScore = result.OverallScore
+			}
+		})
+	}
+
+	avgCoherent := coherentTotal / float64(coherentCount)
+	t.Logf("Coherent deck average: %.2f vs Incoherent deck: %.2f", avgCoherent, incoherentScore)
+
+	if avgCoherent < incoherentScore+0.5 {
+		t.Errorf("Coherent decks (%.2f) should significantly outscore incoherent (%.2f)",
+			avgCoherent, incoherentScore)
+	}
+}
+
+// TestQualityComparison_SynergyImpact measures the impact of synergy
+// on deck quality scores
+func TestQualityComparison_SynergyImpact(t *testing.T) {
+	synergyDB := deck.NewSynergyDatabase()
+
+	// High synergy deck
+	highSynergyCards := createDeckFromComparison([]string{
+		"Golem", "Night Witch", "Baby Dragon", "Tornado",
+		"Lightning", "Mega Minion", "Elixir Collector", "Lumberjack",
+	})
+
+	// Low synergy deck (random champions with poor synergy)
+	lowSynergyCards := createDeckFromComparison([]string{
+		"Archer Queen", "Golden Knight", "Skeleton King",
+		"Little Prince", "Berserker", "Goblin Demolisher",
+		"Royal Delivery", "Phoenix",
+	})
+
+	highResult := Evaluate(highSynergyCards, synergyDB, nil)
+	lowResult := Evaluate(lowSynergyCards, synergyDB, nil)
+
+	synergyGap := highResult.Synergy.Score - lowResult.Synergy.Score
+	overallGap := highResult.OverallScore - lowResult.OverallScore
+
+	t.Logf("High Synergy Deck:")
+	t.Logf("  Synergy: %.2f, Overall: %.2f", highResult.Synergy.Score, highResult.OverallScore)
+	t.Logf("Low Synergy Deck:")
+	t.Logf("  Synergy: %.2f, Overall: %.2f", lowResult.Synergy.Score, lowResult.OverallScore)
+	t.Logf("Synergy Gap: %.2f, Overall Gap: %.2f", synergyGap, overallGap)
+
+	if synergyGap < 3.0 {
+		t.Errorf("Synergy gap %.2f is too small - high synergy deck should score much higher", synergyGap)
+	}
+
+	if highResult.OverallScore < lowResult.OverallScore {
+		t.Errorf("High synergy deck (%.2f) should outscore low synergy deck (%.2f)",
+			highResult.OverallScore, lowResult.OverallScore)
+	}
+}
+
+// TestQualityComparison_PlayerAnalysis verifies that the evaluation
+// provides useful analysis for player improvement
+func TestQualityComparison_PlayerAnalysis(t *testing.T) {
+	synergyDB := deck.NewSynergyDatabase()
+
+	// Test deck with clear strengths and weaknesses
+	cards := createDeckFromComparison([]string{
+		"Hog Rider", "Musketeer", "Valkyrie", "Cannon",
+		"Fireball", "The Log", "Ice Spirit", "Skeletons",
+	})
+
+	result := Evaluate(cards, synergyDB, nil)
+
+	// Verify all category scores are present
+	if result.Attack.Score == 0 {
+		t.Error("Attack score should not be zero")
+	}
+	if result.Defense.Score == 0 {
+		t.Error("Defense score should not be zero")
+	}
+	if result.Synergy.Score == 0 {
+		t.Error("Synergy score should not be zero")
+	}
+	if result.Versatility.Score == 0 {
+		t.Error("Versatility score should not be zero")
+	}
+
+	// Verify analysis sections have content
+	if result.DefenseAnalysis.Summary == "" {
+		t.Error("Defense analysis should have a summary")
+	}
+	if result.AttackAnalysis.Summary == "" {
+		t.Error("Attack analysis should have a summary")
+	}
+
+	// Verify archetype was detected
+	if result.DetectedArchetype == ArchetypeUnknown {
+		t.Log("Warning: Archetype detection returned 'unknown'")
+	}
+
+	// Output detailed analysis for manual review
+	t.Logf("\n=== Deck Quality Analysis ===")
+	t.Logf("Overall Score: %.2f/10.0 (%s)", result.OverallScore, result.OverallRating)
+	t.Logf("Archetype: %s (%.0f%% confidence)", result.DetectedArchetype, result.ArchetypeConfidence*100)
+	t.Logf("\nCategory Scores:")
+	t.Logf("  Attack:      %.2f/10.0 (%s)", result.Attack.Score, result.Attack.Rating)
+	t.Logf("  Defense:     %.2f/10.0 (%s)", result.Defense.Score, result.Defense.Rating)
+	t.Logf("  Synergy:     %.2f/10.0 (%s)", result.Synergy.Score, result.Synergy.Rating)
+	t.Logf("  Versatility: %.2f/10.0 (%s)", result.Versatility.Score, result.Versatility.Rating)
+	t.Logf("  F2P:         %.2f/10.0 (%s)", result.F2PFriendly.Score, result.F2PFriendly.Rating)
+
+	// Verify synergy matrix has data
+	if result.SynergyMatrix.PairCount > 0 {
+		t.Logf("\nSynergy Matrix:")
+		t.Logf("  Pairs: %d", result.SynergyMatrix.PairCount)
+		t.Logf("  Average: %.2f", result.SynergyMatrix.AverageSynergy)
+		t.Logf("  Coverage: %.1f%%", result.SynergyMatrix.SynergyCoverage)
+	}
+}
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+// createDeckFromComparison creates a CardCandidate slice from card names
+func createDeckFromComparison(cardNames []string) []deck.CardCandidate {
+	result := make([]deck.CardCandidate, len(cardNames))
+
+	for i, name := range cardNames {
+		result[i] = createTestCardCandidate(name)
+	}
+
+	return result
 }

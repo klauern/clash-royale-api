@@ -11,7 +11,7 @@ import (
 
 // WriteJSON writes data to a JSON file with pretty formatting (2-space indentation)
 // Creates parent directories if they don't exist
-func WriteJSON(filePath string, data interface{}) error {
+func WriteJSON(filePath string, data any) error {
 	// Ensure parent directory exists
 	dir := filepath.Dir(filePath)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -33,7 +33,7 @@ func WriteJSON(filePath string, data interface{}) error {
 }
 
 // ReadJSON reads and unmarshals a JSON file into the provided data structure
-func ReadJSON(filePath string, data interface{}) error {
+func ReadJSON(filePath string, data any) error {
 	// Read file contents
 	fileData, err := os.ReadFile(filePath)
 	if err != nil {

@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"sync/atomic"
 	"syscall"
 	"time"
@@ -156,12 +155,51 @@ func addDiscoverCommands() *cli.Command {
 					&cli.StringFlag{
 						Name:  "strategy",
 						Value: string(deck.StrategySmartSample),
-						Usage: "Sampling strategy (exhaustive, smart, random, archetype)",
+						Usage: "Sampling strategy (exhaustive, smart, random, archetype, genetic)",
 					},
 					&cli.IntFlag{
 						Name:  "sample-size",
 						Value: 1000,
 						Usage: "Number of decks to generate (for sampling strategies)",
+					},
+					&cli.IntFlag{
+						Name:  "generations",
+						Value: 200,
+						Usage: "Number of generations for genetic strategy (default: 200)",
+					},
+					&cli.IntFlag{
+						Name:  "population",
+						Value: 100,
+						Usage: "Population size for genetic strategy (default: 100)",
+					},
+					&cli.Float64Flag{
+						Name:  "mutation-rate",
+						Value: 0.1,
+						Usage: "Mutation rate for genetic strategy (0.0-1.0, default: 0.1)",
+					},
+					&cli.Float64Flag{
+						Name:  "crossover-rate",
+						Value: 0.8,
+						Usage: "Crossover rate for genetic strategy (0.0-1.0, default: 0.8)",
+					},
+					&cli.BoolFlag{
+						Name:  "island-model",
+						Usage: "Enable island model with multiple populations (default: false)",
+					},
+					&cli.IntFlag{
+						Name:  "island-count",
+						Value: 4,
+						Usage: "Number of island populations when island-model is enabled (default: 4)",
+					},
+					&cli.IntFlag{
+						Name:  "migration-interval",
+						Value: 15,
+						Usage: "Generations between island migrations when island-model is enabled (default: 15)",
+					},
+					&cli.IntFlag{
+						Name:  "migration-size",
+						Value: 2,
+						Usage: "Number of individuals migrating between islands (default: 2)",
 					},
 					&cli.IntFlag{
 						Name:  "limit",
@@ -192,12 +230,51 @@ func addDiscoverCommands() *cli.Command {
 					&cli.StringFlag{
 						Name:  "strategy",
 						Value: string(deck.StrategySmartSample),
-						Usage: "Sampling strategy (exhaustive, smart, random, archetype)",
+						Usage: "Sampling strategy (exhaustive, smart, random, archetype, genetic)",
 					},
 					&cli.IntFlag{
 						Name:  "sample-size",
 						Value: 1000,
 						Usage: "Number of decks to generate (for sampling strategies)",
+					},
+					&cli.IntFlag{
+						Name:  "generations",
+						Value: 200,
+						Usage: "Number of generations for genetic strategy (default: 200)",
+					},
+					&cli.IntFlag{
+						Name:  "population",
+						Value: 100,
+						Usage: "Population size for genetic strategy (default: 100)",
+					},
+					&cli.Float64Flag{
+						Name:  "mutation-rate",
+						Value: 0.1,
+						Usage: "Mutation rate for genetic strategy (0.0-1.0, default: 0.1)",
+					},
+					&cli.Float64Flag{
+						Name:  "crossover-rate",
+						Value: 0.8,
+						Usage: "Crossover rate for genetic strategy (0.0-1.0, default: 0.8)",
+					},
+					&cli.BoolFlag{
+						Name:  "island-model",
+						Usage: "Enable island model with multiple populations (default: false)",
+					},
+					&cli.IntFlag{
+						Name:  "island-count",
+						Value: 4,
+						Usage: "Number of island populations when island-model is enabled (default: 4)",
+					},
+					&cli.IntFlag{
+						Name:  "migration-interval",
+						Value: 15,
+						Usage: "Generations between island migrations when island-model is enabled (default: 15)",
+					},
+					&cli.IntFlag{
+						Name:  "migration-size",
+						Value: 2,
+						Usage: "Number of individuals migrating between islands (default: 2)",
 					},
 					&cli.IntFlag{
 						Name:  "limit",
@@ -286,13 +363,16 @@ func addDiscoverCommands() *cli.Command {
 
 func deckDiscoverStatusCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return err
+	}
 
 	// Check for checkpoint
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
 
 	if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
@@ -339,46 +419,37 @@ func deckDiscoverRunCommand(ctx context.Context, cmd *cli.Command) error {
 	return runDiscoveryCommand(ctx, cmd, resume)
 }
 
-// runDiscoveryCommand is the shared implementation for start/run commands
-func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) error {
-	playerTag := cmd.String("tag")
-	strategy := deck.GeneratorStrategy(cmd.String("strategy"))
-	sampleSize := cmd.Int("sample-size")
-	limit := cmd.Int("limit")
-	verbose := cmd.Bool("verbose")
-	background := cmd.Bool("background")
+// discoveryResources holds all the initialized resources needed for discovery
+type discoveryResources struct {
+	player    *clashroyale.Player
+	cardStats *clashroyale.CardStatsRegistry
+	playerCtx *evaluation.PlayerContext
+	synergyDB *deck.SynergyDatabase
+	storage   *leaderboard.Storage
+	dataDir   string
+}
 
-	// Check for existing checkpoint when starting fresh (not resuming)
-	if !resume {
-		homeDir, _ := os.UserHomeDir()
-		sanitizedTag := strings.TrimPrefix(playerTag, "#")
-		checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
-		if _, err := os.Stat(checkpointPath); err == nil {
-			fprintf(os.Stderr, "Warning: Existing checkpoint found. Use --resume or 'cr-api deck discover resume' to continue.\n")
-			fprintf(os.Stderr, "Starting fresh will clear the existing checkpoint.\n")
-		}
-	}
-
-	// Handle background mode
-	if background {
-		return runDiscoveryInBackground(ctx, cmd, resume)
+// initializeDiscoveryResources sets up all required resources for discovery
+func initializeDiscoveryResources(ctx context.Context, playerTag string, verbose bool) (*discoveryResources, error) {
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return nil, err
 	}
 
 	// Get API token
 	apiToken := os.Getenv("CLASH_ROYALE_API_TOKEN")
 	if apiToken == "" {
-		return fmt.Errorf("CLASH_ROYALE_API_TOKEN environment variable required")
+		return nil, fmt.Errorf("CLASH_ROYALE_API_TOKEN environment variable required")
 	}
 
 	// Fetch player data
 	if verbose {
-		fprintf(os.Stderr, "Fetching player data for #%s...\n", playerTag)
+		fprintf(os.Stderr, "Fetching player data for #%s...\n", sanitizedTag)
 	}
 	client := clashroyale.NewClient(apiToken)
-	cleanTag := strings.TrimPrefix(playerTag, "#")
-	player, err := client.GetPlayer(cleanTag)
+	player, err := client.GetPlayerWithContext(ctx, sanitizedTag)
 	if err != nil {
-		return fmt.Errorf("failed to fetch player: %w", err)
+		return nil, fmt.Errorf("failed to fetch player: %w", err)
 	}
 
 	// Get data directory
@@ -392,7 +463,7 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) err
 	statsPath := filepath.Join(dataDir, "cards_stats.json")
 	statsRegistry, err := clashroyale.LoadStats(statsPath)
 	if err != nil {
-		return fmt.Errorf("failed to load card stats: %w", err)
+		return nil, fmt.Errorf("failed to load card stats: %w", err)
 	}
 
 	// Create player context
@@ -402,74 +473,52 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) err
 	synergyDB := deck.NewSynergyDatabase()
 
 	// Create leaderboard storage
-	storage, err := leaderboard.NewStorage(playerTag)
+	storage, err := leaderboard.NewStorage("#" + sanitizedTag)
 	if err != nil {
-		return fmt.Errorf("failed to create storage: %w", err)
-	}
-	defer storage.Close()
-
-	// Build candidates from player collection
-	candidates, err := buildGeneticCandidates(player, nil, nil)
-	if err != nil {
-		return fmt.Errorf("failed to build candidates: %w", err)
+		return nil, fmt.Errorf("failed to create storage: %w", err)
 	}
 
-	// Create generator config
-	genConfig := deck.GeneratorConfig{
-		Strategy:   strategy,
-		Candidates: candidates,
-		SampleSize: sampleSize,
-		Constraints: &deck.GeneratorConstraints{
-			MinAvgElixir:        2.0,
-			MaxAvgElixir:        5.0,
-			RequireWinCondition: true,
-		},
+	return &discoveryResources{
+		player:    player,
+		cardStats: statsRegistry,
+		playerCtx: playerCtx,
+		synergyDB: synergyDB,
+		storage:   storage,
+		dataDir:   dataDir,
+	}, nil
+}
+
+// buildGeneticConfigFromFlags extracts genetic algorithm parameters from CLI flags
+func buildGeneticConfigFromFlags(cmd *cli.Command, strategy deck.GeneratorStrategy) *deck.GeneticIteratorConfig {
+	if strategy != deck.StrategyGenetic {
+		return nil
 	}
 
-	// Create evaluator
-	evaluator := &simpleEvaluator{
-		synergyDB:    synergyDB,
-		cardRegistry: statsRegistry,
-		playerCtx:    playerCtx,
-		playerTag:    playerTag,
+	return &deck.GeneticIteratorConfig{
+		PopulationSize:         cmd.Int("population"),
+		Generations:            cmd.Int("generations"),
+		MutationRate:           cmd.Float64("mutation-rate"),
+		CrossoverRate:          cmd.Float64("crossover-rate"),
+		MutationIntensity:      0.3,
+		EliteCount:             2,
+		TournamentSize:         5,
+		ConvergenceGenerations: 30,
+		TargetFitness:          0,
+		IslandModel:            cmd.Bool("island-model"),
+		IslandCount:            cmd.Int("island-count"),
+		MigrationInterval:      cmd.Int("migration-interval"),
+		MigrationSize:          cmd.Int("migration-size"),
 	}
+}
 
-	// Create discovery runner
-	runner, err := deck.NewDiscoveryRunner(deck.DiscoveryConfig{
-		GeneratorConfig: genConfig,
-		Storage:         storage,
-		Evaluator:       evaluator,
-		PlayerTag:       playerTag,
-		OnProgress: func(stats deck.DiscoveryStats) {
-			if verbose {
-				fprintf(os.Stderr, "\r[%s] Evaluated: %d | Stored: %d | Best: %.2f | Avg: %.2f | Rate: %.1f/s",
-					stats.Strategy, stats.Evaluated, stats.Stored, stats.BestScore,
-					stats.AvgScore, stats.Rate)
-			}
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to create runner: %w", err)
-	}
-
-	// Resume if requested and checkpoint exists
-	if resume && runner.HasCheckpoint() {
-		if verbose {
-			fprintf(os.Stderr, "Resuming from checkpoint...\n")
-		}
-		if err := runner.Resume(); err != nil {
-			fprintf(os.Stderr, "Warning: failed to resume from checkpoint: %v\n", err)
-			fprintf(os.Stderr, "Starting fresh...\n")
-		}
-	}
-
+// setupExecutionContext creates a cancellable context with signal handling and optional limit enforcement
+func setupExecutionContext(ctx context.Context, runner *deck.DiscoveryRunner, limit int, verbose bool) (context.Context, func(), error) {
 	// Set up signal handling for graceful shutdown
 	var interrupted atomic.Bool
 	var canceler stageCanceler
 
 	interrupts := make(chan os.Signal, 2)
 	signal.Notify(interrupts, os.Interrupt, syscall.SIGTERM)
-	defer signal.Stop(interrupts)
 
 	go func() {
 		<-interrupts
@@ -485,17 +534,14 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) err
 	// Create context with cancellation
 	runCtx, cancelRun := context.WithCancel(ctx)
 	canceler.Set(cancelRun)
-	defer cancelRun()
 
-	// Run discovery
-	if verbose {
-		fprintf(os.Stderr, "Starting discovery with strategy: %s\n", strategy)
+	cleanup := func() {
+		signal.Stop(interrupts)
+		cancelRun()
 	}
 
 	// Apply limit if specified
 	if limit > 0 {
-		runCtx, cancelRun = context.WithCancel(runCtx)
-		defer cancelRun()
 		go func() {
 			stats := runner.GetStats()
 			for stats.Evaluated < limit {
@@ -506,10 +552,11 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) err
 		}()
 	}
 
-	err = runner.Run(runCtx)
-	canceler.Clear()
+	return runCtx, cleanup, nil
+}
 
-	// Handle result
+// handleDiscoveryResult processes the discovery outcome and displays appropriate messages
+func handleDiscoveryResult(err error, runner *deck.DiscoveryRunner, playerTag string, verbose bool) error {
 	if err != nil {
 		if errors.Is(err, context.Canceled) {
 			// Graceful shutdown - checkpoint already saved
@@ -539,21 +586,167 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) err
 	}
 	printf("\nView results with: cr-api deck leaderboard show --tag %s\n", playerTag)
 
-	// Clear checkpoint on successful completion
-	runner.ClearCheckpoint()
+	// Clear checkpoint on successful completion.
+	if err := runner.ClearCheckpoint(); err != nil && verbose {
+		fprintf(os.Stderr, "warning: failed to clear checkpoint: %v\n", err)
+	}
 
 	return nil
 }
 
-// deckDiscoverStopCommand stops a running discovery session
-func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
-	playerTag := cmd.String("tag")
+// attemptResume tries to resume from checkpoint if conditions are met
+func attemptResume(runner *deck.DiscoveryRunner, resume, verbose bool) {
+	if resume && runner.HasCheckpoint() {
+		if verbose {
+			fprintf(os.Stderr, "Resuming from checkpoint...\n")
+		}
+		if err := runner.Resume(); err != nil {
+			fprintf(os.Stderr, "Warning: failed to resume from checkpoint: %v\n", err)
+			fprintf(os.Stderr, "Starting fresh...\n")
+		}
+	}
+}
+
+// warnExistingCheckpoint checks for and warns about existing checkpoints when starting fresh
+func warnExistingCheckpoint(playerTag string) {
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return
+	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
+	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
+	if _, err := os.Stat(checkpointPath); err == nil {
+		fprintf(os.Stderr, "Warning: Existing checkpoint found. Use --resume or 'cr-api deck discover resume' to continue.\n")
+		fprintf(os.Stderr, "Starting fresh will clear the existing checkpoint.\n")
+	}
+}
+
+// runDiscoveryCommand is the shared implementation for start/run commands
+//
+//nolint:gocyclo,funlen // Command setup/teardown has many required branches.
+func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
+	rawPlayerTag := cmd.String("tag")
+	sanitizedTag, err := deck.SanitizePlayerTag(rawPlayerTag)
+	if err != nil {
+		return err
+	}
+	playerTag := "#" + sanitizedTag
+	strategy := deck.GeneratorStrategy(cmd.String("strategy"))
+	sampleSize := cmd.Int("sample-size")
+	limit := cmd.Int("limit")
+	verbose := cmd.Bool("verbose")
+	background := cmd.Bool("background")
+
+	// Check for existing checkpoint when starting fresh (not resuming)
+	if !resume {
+		warnExistingCheckpoint(playerTag)
+	}
+
+	// Handle background mode
+	if background {
+		return runDiscoveryInBackground(ctx, cmd, resume)
+	}
+
+	// Initialize all required resources
+	resources, err := initializeDiscoveryResources(ctx, playerTag, verbose)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if closeErr := resources.storage.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = fmt.Errorf("failed to close storage: %w", closeErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close storage: %v\n", closeErr)
+			}
+		}
+	}()
+
+	// Build candidates from player collection
+	candidates, err := buildGeneticCandidates(resources.player, nil, nil)
+	if err != nil {
+		return fmt.Errorf("failed to build candidates: %w", err)
+	}
+
+	// Build genetic config from CLI flags if strategy is genetic
+	geneticConfig := buildGeneticConfigFromFlags(cmd, strategy)
+
+	// Create generator config
+	genConfig := deck.GeneratorConfig{
+		Strategy:   strategy,
+		Candidates: candidates,
+		SampleSize: sampleSize,
+		Genetic:    geneticConfig,
+		Constraints: &deck.GeneratorConstraints{
+			MinAvgElixir:        2.0,
+			MaxAvgElixir:        5.0,
+			RequireWinCondition: true,
+		},
+	}
+
+	// Create evaluator
+	evaluator := &simpleEvaluator{
+		synergyDB:    resources.synergyDB,
+		cardRegistry: resources.cardStats,
+		playerCtx:    resources.playerCtx,
+		playerTag:    playerTag,
+	}
+
+	// Create discovery runner
+	runner, err := deck.NewDiscoveryRunner(deck.DiscoveryConfig{
+		GeneratorConfig: genConfig,
+		Storage:         resources.storage,
+		Evaluator:       evaluator,
+		PlayerTag:       playerTag,
+		OnProgress: func(stats deck.DiscoveryStats) {
+			if verbose {
+				fprintf(os.Stderr, "\r[%s] Evaluated: %d | Stored: %d | Best: %.2f | Avg: %.2f | Rate: %.1f/s",
+					stats.Strategy, stats.Evaluated, stats.Stored, stats.BestScore,
+					stats.AvgScore, stats.Rate)
+			}
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("failed to create runner: %w", err)
+	}
+
+	// Resume if requested and checkpoint exists
+	attemptResume(runner, resume, verbose)
+
+	// Set up execution context with signal handling and limit enforcement
+	if verbose {
+		fprintf(os.Stderr, "Starting discovery with strategy: %s\n", strategy)
+	}
+	runCtx, cleanup, err := setupExecutionContext(ctx, runner, limit, verbose)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	// Run discovery
+	err = runner.Run(runCtx)
+
+	// Handle result
+	return handleDiscoveryResult(err, runner, playerTag, verbose)
+}
+
+// deckDiscoverStopCommand stops a running discovery session
+func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
+	playerTag := cmd.String("tag")
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return err
+	}
+
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		homeDir = "."
+	}
 
 	// Check for PID file
 	pidFile := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.pid", sanitizedTag))
@@ -602,13 +795,16 @@ func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
 	verbose := cmd.Bool("verbose")
 	background := cmd.Bool("background")
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return err
+	}
 
 	// Verify checkpoint exists
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
 
 	if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
@@ -643,12 +839,15 @@ func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 // deckDiscoverStatsCommand shows detailed session statistics
 func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return err
+	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 
 	// Check for checkpoint
 	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
@@ -723,21 +922,31 @@ func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 }
 
 // runDiscoveryInBackground runs the discovery session as a background daemon
-func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool) error {
+//
+//nolint:funlen,gocognit,gocyclo // Process management and flag forwarding require explicit control flow.
+func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
 	playerTag := cmd.String("tag")
+	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	if err != nil {
+		return err
+	}
 
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 
 	// Check for already running process
 	pidFile := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.pid", sanitizedTag))
 	if _, err := os.Stat(pidFile); err == nil {
-		pidData, _ := os.ReadFile(pidFile)
+		pidData, readErr := os.ReadFile(pidFile)
+		if readErr != nil {
+			return fmt.Errorf("failed to read PID file: %w", readErr)
+		}
 		var pid int
-		fmt.Sscanf(string(pidData), "%d", &pid)
+		if _, scanErr := fmt.Sscanf(string(pidData), "%d", &pid); scanErr != nil {
+			return fmt.Errorf("failed to parse PID file: %w", scanErr)
+		}
 		process, err := os.FindProcess(pid)
 		if err == nil {
 			// Try to signal the process to check if it's alive
@@ -746,7 +955,9 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 			}
 		}
 		// Process is dead, clean up PID file
-		os.Remove(pidFile)
+		if removeErr := os.Remove(pidFile); removeErr != nil && !os.IsNotExist(removeErr) {
+			return fmt.Errorf("failed to remove stale PID file: %w", removeErr)
+		}
 	}
 
 	// Ensure PID directory exists
@@ -772,9 +983,16 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 		name  string
 		value string
 	}{
-		{"tag", cmd.String("tag")},
+		{"tag", "#" + sanitizedTag},
 		{"strategy", cmd.String("strategy")},
 		{"sample-size", fmt.Sprintf("%d", cmd.Int("sample-size"))},
+		{"generations", fmt.Sprintf("%d", cmd.Int("generations"))},
+		{"population", fmt.Sprintf("%d", cmd.Int("population"))},
+		{"mutation-rate", fmt.Sprintf("%.2f", cmd.Float64("mutation-rate"))},
+		{"crossover-rate", fmt.Sprintf("%.2f", cmd.Float64("crossover-rate"))},
+		{"island-count", fmt.Sprintf("%d", cmd.Int("island-count"))},
+		{"migration-interval", fmt.Sprintf("%d", cmd.Int("migration-interval"))},
+		{"migration-size", fmt.Sprintf("%d", cmd.Int("migration-size"))},
 	}
 
 	for _, flag := range flags {
@@ -787,13 +1005,26 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 		args = append(args, "--verbose")
 	}
 
+	if cmd.Bool("island-model") {
+		args = append(args, "--island-model")
+	}
+
 	// Redirect output to log file
 	logFile := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.log", sanitizedTag))
 	logHandle, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %w", err)
 	}
-	defer logHandle.Close()
+	defer func() {
+		if closeErr := logHandle.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = fmt.Errorf("failed to close log file: %w", closeErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close log file: %v\n", closeErr)
+			}
+		}
+	}()
 
 	// Set up attributes for background process
 	attr := &os.ProcAttr{
@@ -807,8 +1038,10 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	}
 
 	// Write PID file
-	if err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", process.Pid)), 0o644); err != nil {
-		process.Kill()
+	if err := os.WriteFile(pidFile, fmt.Appendf(nil, "%d", process.Pid), 0o644); err != nil {
+		if killErr := process.Kill(); killErr != nil && !errors.Is(killErr, os.ErrProcessDone) {
+			fmt.Fprintf(os.Stderr, "warning: failed to kill process after PID write error: %v\n", killErr)
+		}
 		return fmt.Errorf("failed to write PID file: %w", err)
 	}
 

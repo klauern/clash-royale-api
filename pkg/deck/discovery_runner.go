@@ -47,7 +47,7 @@ type DiscoveryStats struct {
 	ETA time.Duration
 
 	// Current best deck
-	BestDeck []string
+	BestDeck  []string
 	BestScore float64
 
 	// Start time of discovery session
@@ -154,7 +154,10 @@ func NewDiscoveryRunner(config DiscoveryConfig) (*DiscoveryRunner, error) {
 	if err != nil {
 		homeDir = "."
 	}
-	sanitizedTag := strings.TrimPrefix(config.PlayerTag, "#")
+	sanitizedTag, err := SanitizePlayerTag(config.PlayerTag)
+	if err != nil {
+		return nil, fmt.Errorf("invalid player tag: %w", err)
+	}
 	checkpointDir := filepath.Join(homeDir, ".cr-api", "discover")
 
 	runner := &DiscoveryRunner{
@@ -168,10 +171,10 @@ func NewDiscoveryRunner(config DiscoveryConfig) (*DiscoveryRunner, error) {
 		strategy:      config.GeneratorConfig.Strategy,
 		OnProgress:    config.OnProgress,
 		stats: DiscoveryStats{
-			StartTime:  time.Now(),
-			Strategy:   config.GeneratorConfig.Strategy,
-			PlayerTag:  config.PlayerTag,
-			TopScores:  make([]float64, 0, 5),
+			StartTime: time.Now(),
+			Strategy:  config.GeneratorConfig.Strategy,
+			PlayerTag: "#" + sanitizedTag,
+			TopScores: make([]float64, 0, 5),
 		},
 	}
 
@@ -184,8 +187,19 @@ func NewDiscoveryRunner(config DiscoveryConfig) (*DiscoveryRunner, error) {
 }
 
 // Run executes the discovery process
-func (r *DiscoveryRunner) Run(ctx context.Context) error {
-	defer r.iterator.Close()
+//
+//nolint:gocognit,gocyclo // Runner lifecycle intentionally keeps explicit checkpoint/error paths.
+func (r *DiscoveryRunner) Run(ctx context.Context) (err error) {
+	defer func() {
+		if closeErr := r.iterator.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = fmt.Errorf("failed to close iterator: %w", closeErr)
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close iterator: %v\n", closeErr)
+			}
+		}
+	}()
 
 	for {
 		select {

@@ -1,6 +1,7 @@
 package evaluation
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -432,13 +433,7 @@ func TestGetSimilarCards(t *testing.T) {
 				}
 
 				for _, expectedName := range tt.expectNames {
-					found := false
-					for _, name := range resultNames {
-						if name == expectedName {
-							found = true
-							break
-						}
-					}
+					found := slices.Contains(resultNames, expectedName)
 					if !found {
 						t.Errorf("getSimilarCards() missing expected card %q", expectedName)
 					}

@@ -130,15 +130,28 @@ type EvaluationResult struct {
 	BaitAnalysis      AnalysisSection `json:"bait_analysis"`
 	CycleAnalysis     AnalysisSection `json:"cycle_analysis"`
 	LadderAnalysis    AnalysisSection `json:"ladder_analysis"`
-	EvolutionAnalysis AnalysisSection `json:"evolution_analysis,omitempty"`
+	EvolutionAnalysis AnalysisSection `json:"evolution_analysis"`
 
 	// Synergy matrix
-	SynergyMatrix SynergyMatrix `json:"synergy_matrix,omitempty"`
+	SynergyMatrix SynergyMatrix `json:"synergy_matrix"`
 
 	// Optional features (Task 2.4)
 	DeckLink               *DeckLink               `json:"deck_link,omitempty"`
 	AlternativeSuggestions *AlternativeSuggestions `json:"alternative_suggestions,omitempty"`
 	MissingCardsAnalysis   *MissingCardsAnalysis   `json:"missing_cards_analysis,omitempty"`
+	OverallBreakdown       *OverallScoreBreakdown  `json:"overall_breakdown,omitempty"`
+}
+
+// OverallScoreBreakdown captures optional contextual scoring components.
+// Present when player context is available.
+type OverallScoreBreakdown struct {
+	BaseScore           float64 `json:"base_score"`
+	ContextualScore     float64 `json:"contextual_score"`
+	LadderScore         float64 `json:"ladder_score"`
+	NormalizedScore     float64 `json:"normalized_score"`
+	FinalScore          float64 `json:"final_score"`
+	DeckLevelRatio      float64 `json:"deck_level_ratio"`
+	NormalizationFactor float64 `json:"normalization_factor"`
 }
 
 // AnalysisSection represents detailed analysis for a specific aspect

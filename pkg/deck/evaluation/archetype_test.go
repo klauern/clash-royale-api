@@ -432,8 +432,10 @@ func TestHybridDetection(t *testing.T) {
 }
 
 // ptrRole returns a pointer to a CardRole
+//
+//go:fix inline
 func ptrRole(r deck.CardRole) *deck.CardRole {
-	return &r
+	return new(r)
 }
 
 // labeledDeck represents a deck with known archetype for accuracy testing

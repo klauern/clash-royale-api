@@ -68,112 +68,10 @@ func main() {
 			addWhatIfCommands(),
 			addOnboardCommand(),
 			addCompareCommands(),
-			addBatchCommands(),
-			{
-				Name:  "player",
-				Usage: "Get player information",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
-					&cli.BoolFlag{
-						Name:  "chests",
-						Usage: "Show upcoming chests",
-					},
-					&cli.BoolFlag{
-						Name:  "save",
-						Usage: "Save player data to file",
-					},
-					&cli.BoolFlag{
-						Name:  "export-csv",
-						Usage: "Export player data to CSV",
-					},
-				},
-				Action: playerCommand,
-			},
-			{
-				Name:  "cards",
-				Usage: "Get card database",
-				Flags: []cli.Flag{
-					&cli.BoolFlag{
-						Name:  "export-csv",
-						Usage: "Export card database to CSV",
-					},
-				},
-				Action: cardsCommand,
-			},
-			{
-				Name:  "analyze",
-				Usage: "Analyze player card collection and upgrade priorities",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
-					&cli.BoolFlag{
-						Name:  "include-max-level",
-						Usage: "Include max level cards in analysis",
-					},
-					&cli.Float64Flag{
-						Name:  "min-priority-score",
-						Value: 30.0,
-						Usage: "Minimum priority score for upgrade recommendations",
-					},
-					&cli.StringSliceFlag{
-						Name:  "focus-rarities",
-						Usage: "Focus on specific rarities (Common, Rare, Epic, Legendary, Champion)",
-					},
-					&cli.StringSliceFlag{
-						Name:  "exclude-cards",
-						Usage: "Exclude specific cards from recommendations",
-					},
-					&cli.BoolFlag{
-						Name:  "prioritize-win-cons",
-						Value: true,
-						Usage: "Boost priority for win condition cards",
-					},
-					&cli.IntFlag{
-						Name:  "top-n",
-						Value: 15,
-						Usage: "Show top N upgrade priorities",
-					},
-					&cli.BoolFlag{
-						Name:  "save",
-						Usage: "Save analysis to JSON file",
-					},
-					&cli.BoolFlag{
-						Name:  "export-csv",
-						Usage: "Export analysis to CSV",
-					},
-				},
-				Action: analyzeCommand,
-			},
-			{
-				Name:  "playstyle",
-				Usage: "Analyze player's playstyle and recommend decks",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
-					&cli.BoolFlag{
-						Name:  "recommend-decks",
-						Usage: "Include deck recommendations based on playstyle",
-					},
-					&cli.BoolFlag{
-						Name:  "save",
-						Usage: "Save analysis to JSON file",
-					},
-				},
-				Action: playstyleCommand,
-			},
+			addPlayerCommand(),
+			addCardsCommand(),
+			addAnalyzeCommand(),
+			addPlaystyleCommand(),
 		},
 	}
 
@@ -202,7 +100,7 @@ func playerCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Get player information
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get player: %w", err)
 	}
@@ -215,7 +113,7 @@ func playerCommand(ctx context.Context, cmd *cli.Command) error {
 		if verbose {
 			printf("\nFetching upcoming chests...\n")
 		}
-		chests, err := client.GetPlayerUpcomingChests(tag)
+		chests, err := client.GetPlayerUpcomingChestsWithContext(ctx, tag)
 		if err != nil {
 			printf("Warning: Failed to get chests: %v\n", err)
 		} else {
@@ -340,7 +238,7 @@ func cardsCommand(ctx context.Context, cmd *cli.Command) error {
 		printf("Fetching card database...\n")
 	}
 
-	cards, err := client.GetCards()
+	cards, err := client.GetCardsWithContext(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get cards: %w", err)
 	}
@@ -418,7 +316,7 @@ func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Get player information
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get player: %w", err)
 	}
@@ -608,7 +506,7 @@ func playstyleCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Get player information
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get player: %w", err)
 	}
@@ -802,4 +700,125 @@ func savePlaystyleData(dataDir string, p *analysis.PlaystyleAnalysis, r *analysi
 	}
 
 	return nil
+}
+
+// addPlayerCommand creates the player command
+func addPlayerCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "player",
+		Usage: "Get player information",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "tag",
+				Aliases:  []string{"p"},
+				Usage:    "Player tag (without #)",
+				Required: true,
+			},
+			&cli.BoolFlag{
+				Name:  "chests",
+				Usage: "Show upcoming chests",
+			},
+			&cli.BoolFlag{
+				Name:  "save",
+				Usage: "Save player data to file",
+			},
+			&cli.BoolFlag{
+				Name:  "export-csv",
+				Usage: "Export player data to CSV",
+			},
+		},
+		Action: playerCommand,
+	}
+}
+
+// addCardsCommand creates the cards command
+func addCardsCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "cards",
+		Usage: "Get card database",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{
+				Name:  "export-csv",
+				Usage: "Export card database to CSV",
+			},
+		},
+		Action: cardsCommand,
+	}
+}
+
+// addAnalyzeCommand creates the analyze command
+func addAnalyzeCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "analyze",
+		Usage: "Analyze player card collection and upgrade priorities",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "tag",
+				Aliases:  []string{"p"},
+				Usage:    "Player tag (without #)",
+				Required: true,
+			},
+			&cli.BoolFlag{
+				Name:  "include-max-level",
+				Usage: "Include max level cards in analysis",
+			},
+			&cli.Float64Flag{
+				Name:  "min-priority-score",
+				Value: 30.0,
+				Usage: "Minimum priority score for upgrade recommendations",
+			},
+			&cli.StringSliceFlag{
+				Name:  "focus-rarities",
+				Usage: "Focus on specific rarities (Common, Rare, Epic, Legendary, Champion)",
+			},
+			&cli.StringSliceFlag{
+				Name:  "exclude-cards",
+				Usage: "Exclude specific cards from recommendations",
+			},
+			&cli.BoolFlag{
+				Name:  "prioritize-win-cons",
+				Value: true,
+				Usage: "Boost priority for win condition cards",
+			},
+			&cli.IntFlag{
+				Name:  "top-n",
+				Value: 15,
+				Usage: "Show top N upgrade priorities",
+			},
+			&cli.BoolFlag{
+				Name:  "save",
+				Usage: "Save analysis to JSON file",
+			},
+			&cli.BoolFlag{
+				Name:  "export-csv",
+				Usage: "Export analysis to CSV",
+			},
+		},
+		Action: analyzeCommand,
+	}
+}
+
+// addPlaystyleCommand creates the playstyle command
+func addPlaystyleCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "playstyle",
+		Usage: "Analyze player's playstyle and recommend decks",
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:     "tag",
+				Aliases:  []string{"p"},
+				Usage:    "Player tag (without #)",
+				Required: true,
+			},
+			&cli.BoolFlag{
+				Name:  "recommend-decks",
+				Usage: "Include deck recommendations based on playstyle",
+			},
+			&cli.BoolFlag{
+				Name:  "save",
+				Usage: "Save analysis to JSON file",
+			},
+		},
+		Action: playstyleCommand,
+	}
 }

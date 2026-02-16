@@ -15,7 +15,7 @@ func TestWriteJSON(t *testing.T) {
 	tests := []struct {
 		name     string
 		filePath string
-		data     interface{}
+		data     any
 		wantErr  bool
 	}{
 		{
@@ -91,7 +91,7 @@ func TestWriteJSON(t *testing.T) {
 				}
 
 				// Check if it's valid JSON
-				var temp interface{}
+				var temp any
 				if err := json.Unmarshal(fileData, &temp); err != nil {
 					t.Errorf("WriteJSON() created invalid JSON: %v", err)
 				}
@@ -105,7 +105,7 @@ func TestWriteJSON(t *testing.T) {
 
 func TestWriteJSON_PrettyFormatting(t *testing.T) {
 	tempFile := filepath.Join(t.TempDir(), "pretty.json")
-	data := map[string]interface{}{
+	data := map[string]any{
 		"nested": map[string]string{
 			"key1": "value1",
 			"key2": "value2",
@@ -135,7 +135,7 @@ func TestReadJSON(t *testing.T) {
 	tests := []struct {
 		name     string
 		filePath string
-		data     interface{}
+		data     any
 		wantErr  bool
 	}{
 		{
@@ -609,8 +609,8 @@ func indexOf(s, substr string) int {
 
 // Benchmark tests
 func BenchmarkWriteJSON(b *testing.B) {
-	data := map[string]interface{}{
-		"players": make([]map[string]interface{}, 100),
+	data := map[string]any{
+		"players": make([]map[string]any, 100),
 		"metadata": map[string]string{
 			"version": "1.0",
 			"created": time.Now().Format(time.RFC3339),
@@ -618,8 +618,8 @@ func BenchmarkWriteJSON(b *testing.B) {
 	}
 
 	// Populate players
-	for i := 0; i < 100; i++ {
-		data["players"].([]map[string]interface{})[i] = map[string]interface{}{
+	for i := range 100 {
+		data["players"].([]map[string]any)[i] = map[string]any{
 			"id":    i,
 			"name":  fmt.Sprintf("Player%d", i),
 			"score": i * 100,
@@ -639,10 +639,10 @@ func BenchmarkWriteJSON(b *testing.B) {
 
 func BenchmarkReadJSON(b *testing.B) {
 	// Create a test file
-	data := map[string]interface{}{
+	data := map[string]any{
 		"numbers": make([]int, 1000),
 	}
-	for i := 0; i < 1000; i++ {
+	for i := range 1000 {
 		data["numbers"].([]int)[i] = i
 	}
 
@@ -652,7 +652,7 @@ func BenchmarkReadJSON(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		var result map[string]interface{}
+		var result map[string]any
 		err := ReadJSON(testFile, &result)
 		if err != nil {
 			b.Fatalf("ReadJSON failed: %v", err)

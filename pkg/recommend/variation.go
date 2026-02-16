@@ -2,6 +2,7 @@ package recommend
 
 import (
 	"fmt"
+	"slices"
 	"sort"
 
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes"
@@ -225,12 +226,7 @@ func (vg *VariationGenerator) calculateNewAvgElixir(
 
 // isPreferred checks if a card is in the preferred list
 func (vg *VariationGenerator) isPreferred(cardName string, preferredCards []string) bool {
-	for _, preferred := range preferredCards {
-		if cardName == preferred {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(preferredCards, cardName)
 }
 
 // createVariation creates a new deck recommendation with the card swap

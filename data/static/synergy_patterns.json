@@ -1,0 +1,376 @@
+{
+  "version": 1,
+  "description": "Meta deck archetype patterns and synergy templates for Clash Royale deck analysis",
+  "last_updated": "2026-02-01",
+  "research_task": "clash-royale-api-33f5",
+  "archetypes": [
+    {
+      "name": "Golem Beatdown",
+      "category": "beatdown",
+      "elixir_range": { "min": 3.8, "max": 4.5 },
+      "core_cards": ["Golem", "Night Witch", "Baby Dragon"],
+      "template": {
+        "win_condition": ["Golem"],
+        "support": ["Night Witch", "Baby Dragon", "Lumberjack", "Mini P.E.K.K.A"],
+        "building": ["Tombstone", "Cannon"],
+        "big_spell": ["Lightning", "Fireball", "Poison"],
+        "small_spell": ["Zap", "Barbarian Barrel"]
+      },
+      "key_synergies": [
+        { "cards": ["Golem", "Night Witch"], "score": 0.95, "type": "tank_support" },
+        { "cards": ["Golem", "Baby Dragon"], "score": 0.85, "type": "tank_support" },
+        { "cards": ["Golem", "Lightning"], "score": 0.85, "type": "spell_combo" },
+        { "cards": ["Lumberjack", "Night Witch"], "score": 0.80, "type": "support" }
+      ],
+      "required_defense": ["tank_killer", "splash"],
+      "play_pattern": "Build_elixir_advantage_in_back_drop_tank_support_with_troops_spell_defensive_buildings"
+    },
+    {
+      "name": "Giant Beatdown",
+      "category": "beatdown",
+      "elixir_range": { "min": 3.5, "max": 4.2 },
+      "core_cards": ["Giant", "Witch", "Musketeer"],
+      "template": {
+        "win_condition": ["Giant"],
+        "support": ["Witch", "Musketeer", "Dark Prince", "Mini P.E.K.K.A"],
+        "building": ["Tombstone", "Cannon", "Inferno Tower"],
+        "big_spell": ["Fireball", "Lightning"],
+        "small_spell": ["Zap", "Log"]
+      },
+      "key_synergies": [
+        { "cards": ["Giant", "Witch"], "score": 0.90, "type": "tank_support" },
+        { "cards": ["Giant", "Musketeer"], "score": 0.80, "type": "tank_support" },
+        { "cards": ["Giant", "Dark Prince"], "score": 0.80, "type": "tank_support" },
+        { "cards": ["Giant", "Sparky"], "score": 0.85, "type": "tank_support" }
+      ],
+      "required_defense": ["tank_killer", "air_defense"],
+      "play_pattern": "Build_push_behind_tank_support_with_splash_spell_counters"
+    },
+    {
+      "name": "Hog 2.6 Cycle",
+      "category": "cycle",
+      "elixir_range": { "min": 2.5, "max": 2.9 },
+      "core_cards": ["Hog Rider", "Musketeer", "Ice Golem", "Cannon"],
+      "template": {
+        "win_condition": ["Hog Rider"],
+        "support": ["Musketeer"],
+        "cycle": ["Skeletons", "Ice Spirit", "Ice Golem"],
+        "building": ["Cannon"],
+        "big_spell": ["Fireball"],
+        "small_spell": ["Log"]
+      },
+      "key_synergies": [
+        { "cards": ["Hog Rider", "Fireball"], "score": 0.80, "type": "win_condition" },
+        { "cards": ["Hog Rider", "Ice Golem"], "score": 0.80, "type": "win_condition" },
+        { "cards": ["Ice Spirit", "Skeletons"], "score": 0.85, "type": "cycle" },
+        { "cards": ["Cannon", "Ice Spirit"], "score": 0.80, "type": "defensive" }
+      ],
+      "required_defense": ["building", "air_defense", "tank_killer"],
+      "play_pattern": "Defend_efficiently_counter_push_with_hog_out_cycle_opponent_spells"
+    },
+    {
+      "name": "Log Bait",
+      "category": "bait",
+      "elixir_range": { "min": 3.0, "max": 3.5 },
+      "core_cards": ["Goblin Barrel", "Princess", "Goblin Gang", "Rocket"],
+      "template": {
+        "win_condition": ["Goblin Barrel"],
+        "bait": ["Princess", "Goblin Gang", "Dart Goblin", "Skeleton Army"],
+        "defense": ["Knight", "Inferno Tower", "Valkyrie"],
+        "big_spell": ["Rocket"],
+        "small_spell": ["Log", "Zap"]
+      },
+      "key_synergies": [
+        { "cards": ["Goblin Barrel", "Princess"], "score": 0.95, "type": "bait" },
+        { "cards": ["Goblin Barrel", "Goblin Gang"], "score": 0.90, "type": "bait" },
+        { "cards": ["Princess", "Goblin Gang"], "score": 0.85, "type": "bait" },
+        { "cards": ["Princess", "Dart Goblin"], "score": 0.85, "type": "bait" }
+      ],
+      "required_defense": ["building", "tank_killer", "splash"],
+      "play_pattern": "Force_log_with_bait_punish_with_barrel_rocket_cycle_overtime"
+    },
+    {
+      "name": "PEKKA Bridge Spam",
+      "category": "bridge_spam",
+      "elixir_range": { "min": 3.8, "max": 4.2 },
+      "core_cards": ["P.E.K.K.A", "Battle Ram", "Bandit", "Electro Wizard"],
+      "template": {
+        "win_condition": ["P.E.K.K.A", "Battle Ram", "Bandit"],
+        "support": ["Electro Wizard", "Dark Prince", "Royal Ghost"],
+        "big_spell": ["Poison"],
+        "small_spell": ["Zap"]
+      },
+      "key_synergies": [
+        { "cards": ["P.E.K.K.A", "Battle Ram"], "score": 0.85, "type": "bridge_spam" },
+        { "cards": ["P.E.K.K.A", "Bandit"], "score": 0.80, "type": "bridge_spam" },
+        { "cards": ["Battle Ram", "Bandit"], "score": 0.80, "type": "bridge_spam" },
+        { "cards": ["Bandit", "Royal Ghost"], "score": 0.75, "type": "bridge_spam" }
+      ],
+      "required_defense": ["splash", "reset"],
+      "play_pattern": "Defend_with_pekka_add_ram_bandit_to_counter_push_constant_bridge_pressure"
+    },
+    {
+      "name": "X-Bow Siege",
+      "category": "siege",
+      "elixir_range": { "min": 2.9, "max": 3.5 },
+      "core_cards": ["X-Bow", "Tesla", "Ice Golem", "Archers"],
+      "template": {
+        "win_condition": ["X-Bow"],
+        "building": ["Tesla", "Cannon"],
+        "support": ["Archers", "Ice Golem"],
+        "cycle": ["Skeletons", "Ice Spirit"],
+        "big_spell": ["Fireball", "Rocket"],
+        "small_spell": ["Log"]
+      },
+      "key_synergies": [
+        { "cards": ["X-Bow", "Tesla"], "score": 0.90, "type": "defensive" },
+        { "cards": ["X-Bow", "Archers"], "score": 0.80, "type": "defensive" },
+        { "cards": ["X-Bow", "Ice Golem"], "score": 0.80, "type": "defensive" },
+        { "cards": ["Tesla", "Tornado"], "score": 0.85, "type": "defensive" }
+      ],
+      "required_defense": ["building", "air_defense", "kite"],
+      "play_pattern": "Defend_efficiently_place_xbow_protect_xbow_at_all_costs_spell_cycle"
+    },
+    {
+      "name": "Mortar Siege",
+      "category": "siege",
+      "elixir_range": { "min": 3.0, "max": 3.5 },
+      "core_cards": ["Mortar", "Knight", "Archers", "Cannon"],
+      "template": {
+        "win_condition": ["Mortar"],
+        "building": ["Cannon", "Tesla"],
+        "support": ["Knight", "Archers"],
+        "cycle": ["Skeletons", "Ice Spirit", "Bats"],
+        "big_spell": ["Fireball", "Rocket"],
+        "small_spell": ["Log", "Zap"]
+      },
+      "key_synergies": [
+        { "cards": ["Mortar", "Cannon"], "score": 0.85, "type": "defensive" },
+        { "cards": ["Mortar", "Knight"], "score": 0.80, "type": "defensive" },
+        { "cards": ["Mortar", "Archers"], "score": 0.75, "type": "defensive" }
+      ],
+      "required_defense": ["building", "air_defense", "mini_tank"],
+      "play_pattern": "Defend_cheaply_mortar_at_bridge_defend_mortar_spell_cycle"
+    },
+    {
+      "name": "LavaLoon",
+      "category": "beatdown",
+      "elixir_range": { "min": 3.8, "max": 4.5 },
+      "core_cards": ["Lava Hound", "Balloon", "Mega Minion", "Tombstone"],
+      "template": {
+        "win_condition": ["Lava Hound", "Balloon"],
+        "support": ["Mega Minion", "Skeleton Dragons", "Minions"],
+        "building": ["Tombstone"],
+        "big_spell": ["Lightning", "Fireball"],
+        "small_spell": ["Arrows", "Zap"]
+      },
+      "key_synergies": [
+        { "cards": ["Lava Hound", "Balloon"], "score": 0.95, "type": "win_condition" },
+        { "cards": ["Lava Hound", "Mega Minion"], "score": 0.85, "type": "tank_support" },
+        { "cards": ["Balloon", "Freeze"], "score": 0.90, "type": "spell_combo" },
+        { "cards": ["Lumberjack", "Balloon"], "score": 0.95, "type": "win_condition" }
+      ],
+      "required_defense": ["building", "anti_air"],
+      "play_pattern": "Build_elixir_lava_hound_in_back_balloon_behind_support_with_air_lightning_buildings"
+    },
+    {
+      "name": "Giant Graveyard",
+      "category": "beatdown",
+      "elixir_range": { "min": 3.5, "max": 4.2 },
+      "core_cards": ["Giant", "Graveyard", "Baby Dragon", "Poison"],
+      "template": {
+        "win_condition": ["Graveyard"],
+        "tank": ["Giant", "Golem", "Knight"],
+        "support": ["Baby Dragon", "Dark Prince", "Musketeer"],
+        "building": ["Tombstone"],
+        "big_spell": ["Poison"],
+        "small_spell": ["Zap", "Freeze"]
+      },
+      "key_synergies": [
+        { "cards": ["Graveyard", "Poison"], "score": 0.85, "type": "spell_combo" },
+        { "cards": ["Graveyard", "Freeze"], "score": 0.90, "type": "spell_combo" },
+        { "cards": ["Giant", "Graveyard"], "score": 0.80, "type": "win_condition" },
+        { "cards": ["Baby Dragon", "Tornado"], "score": 0.80, "type": "defensive" }
+      ],
+      "required_defense": ["splash", "building", "air_defense"],
+      "play_pattern": "Build_push_with_tank_drop_graveyard_poison_defensive_troops_defend_counter_push"
+    },
+    {
+      "name": "Miner Control",
+      "category": "control",
+      "elixir_range": { "min": 3.0, "max": 3.5 },
+      "core_cards": ["Miner", "Poison", "Wall Breakers", "Tesla"],
+      "template": {
+        "win_condition": ["Miner", "Wall Breakers"],
+        "support": ["Electro Wizard", "Valkyrie"],
+        "building": ["Tesla", "Cannon"],
+        "big_spell": ["Poison"],
+        "small_spell": ["Log", "Zap"],
+        "cycle": ["Bats", "Ice Spirit"]
+      },
+      "key_synergies": [
+        { "cards": ["Miner", "Poison"], "score": 0.85, "type": "win_condition" },
+        { "cards": ["Miner", "Wall Breakers"], "score": 0.80, "type": "win_condition" },
+        { "cards": ["Miner", "Balloon"], "score": 0.90, "type": "win_condition" }
+      ],
+      "required_defense": ["building", "splash", "reset"],
+      "play_pattern": "Defend_efficiently_counter_push_with_miner_poison_miner_wall_breakers_for_pressure"
+    },
+    {
+      "name": "Royal Hogs Cycle",
+      "category": "cycle",
+      "elixir_range": { "min": 3.0, "max": 3.5 },
+      "core_cards": ["Royal Hogs", "Earthquake", "Fisherman", "Lightning"],
+      "template": {
+        "win_condition": ["Royal Hogs"],
+        "defense": ["Fisherman", "Valkyrie"],
+        "building": ["Cannon", "Tesla"],
+        "big_spell": ["Earthquake", "Lightning", "Fireball"],
+        "small_spell": ["Log", "Zap"],
+        "support": ["Flying Machine", "Magic Archer"]
+      },
+      "key_synergies": [
+        { "cards": ["Royal Hogs", "Earthquake"], "score": 0.85, "type": "win_condition" },
+        { "cards": ["Royal Hogs", "Fisherman"], "score": 0.75, "type": "win_condition" }
+      ],
+      "required_defense": ["building", "splash", "air_defense"],
+      "play_pattern": "Pressure_with_hogs_earthquake_buildings_defend_efficiently_lightning_for_value"
+    },
+    {
+      "name": "Electro Giant Control",
+      "category": "control",
+      "elixir_range": { "min": 3.5, "max": 4.2 },
+      "core_cards": ["Electro Giant", "Tornado", "Dark Prince", "Lightning"],
+      "template": {
+        "win_condition": ["Electro Giant"],
+        "support": ["Dark Prince", "Mother Witch", "Heal Spirit"],
+        "building": ["Tombstone"],
+        "big_spell": ["Lightning", "Fireball"],
+        "small_spell": ["Zap", "Tornado"]
+      },
+      "key_synergies": [
+        { "cards": ["Electro Giant", "Tornado"], "score": 0.90, "type": "tank_support" },
+        { "cards": ["Electro Giant", "Heal Spirit"], "score": 0.80, "type": "tank_support" },
+        { "cards": ["Electro Giant", "Mother Witch"], "score": 0.85, "type": "tank_support" },
+        { "cards": ["Tornado", "Dark Prince"], "score": 0.80, "type": "defensive" }
+      ],
+      "required_defense": ["building", "splash"],
+      "play_pattern": "E_giant_at_bridge_tornado_group_enemies_heal_spirit_sustain_lightning_value"
+    }
+  ],
+  "synergy_patterns": {
+    "tank_support": {
+      "description": "Tank absorbs damage while support troops deal damage from behind",
+      "effectiveness_factors": ["Tank HP", "Support DPS", "Splash coverage"],
+      "top_combinations": [
+        { "tank": "Golem", "support": "Night Witch", "score": 0.95 },
+        { "tank": "Lava Hound", "support": "Balloon", "score": 0.95 },
+        { "tank": "Giant", "support": "Witch", "score": 0.90 },
+        { "tank": "Giant", "support": "Sparky", "score": 0.90 },
+        { "tank": "P.E.K.K.A", "support": "Battle Ram", "score": 0.85 }
+      ]
+    },
+    "spell_bait": {
+      "description": "Force opponent to use spell on small threat, then punish with main threat",
+      "bait_cards": ["Princess", "Goblin Gang", "Dart Goblin", "Skeleton Army"],
+      "punish_cards": ["Goblin Barrel", "Wall Breakers", "Minion Horde"],
+      "effectiveness_matrix": {
+        "Princess": { "forces": "Log", "punish": "Goblin Barrel" },
+        "Goblin Gang": { "forces": "Log, Zap", "punish": "Goblin Barrel" },
+        "Dart Goblin": { "forces": "Log", "punish": "Goblin Barrel" },
+        "Skeleton Army": { "forces": "Zap, Log", "punish": "Inferno Tower" }
+      }
+    },
+    "spell_combo": {
+      "description": "Spells work together for greater effect",
+      "top_combinations": [
+        { "spells": ["Tornado", "Fireball"], "score": 0.85, "effect": "Group + damage" },
+        { "spells": ["Tornado", "Rocket"], "score": 0.80, "effect": "Pull to tower + finish" },
+        { "spells": ["Poison", "Miner"], "score": 0.85, "effect": "Chip damage combo" },
+        { "spells": ["Freeze", "Balloon"], "score": 0.90, "effect": "Guaranteed connection" },
+        { "spells": ["Rage", "Lumberjack"], "score": 0.85, "effect": "Double rage" }
+      ]
+    },
+    "bridge_spam": {
+      "description": "Multiple fast threats overwhelm defenses",
+      "core_characteristics": ["Charge/dash abilities", "Hard-to-stop mechanics", "Quick bridge deployment"],
+      "core_cards": ["Battle Ram", "Bandit", "Royal Ghost", "Dark Prince"]
+    },
+    "cycle": {
+      "description": "Cheap cards enable fast rotation to key cards",
+      "ultra_cheap_core": ["Skeletons", "Ice Spirit", "Fire Spirit", "Bats", "Goblins", "Spear Goblins"],
+      "cycle_effectiveness": {
+        "2.6_average": "Can out-cycle any deck",
+        "2.9_average": "Fast rotation",
+        "3.2_average": "Moderate cycle"
+      }
+    }
+  },
+  "win_condition_requirements": {
+    "Hog Rider": {
+      "category": "building_targeter",
+      "requirements": ["Building removal", "Mini tank", "Cycle cards"],
+      "support_cards": ["Ice Golem", "Knight", "Earthquake", "Fireball"]
+    },
+    "Goblin Barrel": {
+      "category": "direct_damage",
+      "requirements": ["Bait cards", "Rocket for spell cycle", "Defensive building"],
+      "support_cards": ["Princess", "Goblin Gang", "Rocket", "Inferno Tower"]
+    },
+    "Golem": {
+      "category": "building_targeter",
+      "requirements": ["Air splash", "High DPS support", "Lightning", "Tombstone"],
+      "support_cards": ["Baby Dragon", "Night Witch", "Lumberjack", "Lightning"]
+    },
+    "Balloon": {
+      "category": "building_targeter",
+      "requirements": ["Tank", "Arrows", "Freeze or Rage"],
+      "support_cards": ["Lava Hound", "Miner", "Arrows", "Freeze"]
+    },
+    "Graveyard": {
+      "category": "spawner",
+      "requirements": ["Tank", "Poison", "Splash defense"],
+      "support_cards": ["Giant", "Golem", "Poison", "Baby Dragon"]
+    },
+    "X-Bow": {
+      "category": "siege",
+      "requirements": ["Tesla/Cannon", "Ice Golem", "Archers", "Fireball/Rocket"],
+      "support_cards": ["Tesla", "Ice Golem", "Archers", "Fireball"]
+    },
+    "Miner": {
+      "category": "direct_damage",
+      "requirements": ["Poison", "Wall Breakers", "Defensive building"],
+      "support_cards": ["Poison", "Wall Breakers", "Tesla", "Electro Wizard"]
+    }
+  },
+  "defensive_requirements_by_archetype": {
+    "beatdown": {
+      "required": ["tank_killer", "splash"],
+      "recommended_cards": ["Inferno Tower", "Inferno Dragon", "Mini P.E.K.K.A", "Valkyrie"]
+    },
+    "hog_cycle": {
+      "required": ["building", "air_defense"],
+      "recommended_cards": ["Cannon", "Tesla", "Musketeer", "Skeletons"]
+    },
+    "log_bait": {
+      "required": ["building", "tank_killer"],
+      "recommended_cards": ["Inferno Tower", "Knight", "Goblin Gang", "Princess"]
+    },
+    "bridge_spam": {
+      "required": ["splash", "reset"],
+      "recommended_cards": ["Valkyrie", "Electro Wizard", "Dark Prince", "Poison"]
+    },
+    "siege": {
+      "required": ["building", "kite"],
+      "recommended_cards": ["Tesla", "Ice Golem", "Cannon", "Archers"]
+    },
+    "lavaloon": {
+      "required": ["building", "anti_air"],
+      "recommended_cards": ["Tombstone", "Mega Minion", "Tesla", "Musketeer"]
+    },
+    "graveyard": {
+      "required": ["splash", "building"],
+      "recommended_cards": ["Baby Dragon", "Valkyrie", "Tombstone", "Poison"]
+    }
+  }
+}

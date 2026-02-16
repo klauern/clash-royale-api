@@ -4,7 +4,7 @@ run:
   timeout: 5m
 
 issues:
-  new-from-rev: HEAD
+  new-from-rev: origin/main
   max-issues-per-linter: 0
   max-same-issues: 0
 
@@ -55,7 +55,7 @@ linters:
           files:
             - cmd/**
           deny:
-            - pkg: github.com/klauer/clash-royale-api/go/internal
+            - pkg: github.com/klauern/clash-royale-api/go/internal
               desc: cmd should not import internal packages
     interfacebloat:
       max: 10

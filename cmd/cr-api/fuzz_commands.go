@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -26,6 +28,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/genetic"
+	"github.com/klauer/clash-royale-api/go/pkg/deck/research"
 	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/schollz/progressbar/v3"
@@ -35,6 +38,24 @@ import (
 type stageCanceler struct {
 	mu     sync.Mutex
 	cancel context.CancelFunc
+}
+
+const (
+	gaFitnessModeLegacy        = "legacy-evaluation"
+	gaFitnessModeArchetypeFree = "archetype-free-composite"
+)
+
+func selectGAFitnessEvaluator(useArchetypes bool) (func([]deck.CardCandidate) (float64, error), string) {
+	if useArchetypes {
+		return nil, gaFitnessModeLegacy
+	}
+
+	constraints := research.DefaultConstraintConfig()
+	synergyDB := deck.NewSynergyDatabase()
+	return func(deckCards []deck.CardCandidate) (float64, error) {
+		metrics := research.ScoreDeckComposite(deckCards, synergyDB, constraints)
+		return metrics.Composite * 10.0, nil
+	}, gaFitnessModeArchetypeFree
 }
 
 func (sc *stageCanceler) Set(cancel context.CancelFunc) {
@@ -92,6 +113,10 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	evoWeight := cmd.Float64("evo-weight")
 	mutationIntensity := cmd.Int("mutation-intensity")
 	archetypes := cmd.StringSlice("archetypes")
+	refineRounds := cmd.Int("refine")
+	uniquenessWeight := cmd.Float64("uniqueness-weight")
+	ensureArchetypes := cmd.Bool("ensure-archetypes")
+	ensureElixirBuckets := cmd.Bool("ensure-elixir-buckets")
 	mode := strings.ToLower(cmd.String("mode"))
 	gaPopulation := cmd.Int("ga-population")
 	gaGenerations := cmd.Int("ga-generations")
@@ -223,7 +248,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		client := clashroyale.NewClient(apiToken)
 		cleanTag := strings.TrimPrefix(playerTag, "#")
 
-		player, err = client.GetPlayer(cleanTag)
+		player, err = client.GetPlayerWithContext(ctx, cleanTag)
 		if err != nil {
 			return fmt.Errorf("failed to fetch player: %w", err)
 		}
@@ -258,6 +283,8 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		EvoWeight:         evoWeight,
 		MutationIntensity: mutationIntensity,
 		ArchetypeFilter:   normalizedArchetypes,
+		UniquenessWeight:  uniquenessWeight,
+		EnsureArchetypes:  ensureArchetypes,
 	}
 
 	// Handle --include-from-saved: extract cards from saved top decks
@@ -308,75 +335,24 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	if mode == "genetic" {
 		if verbose {
 			fprintf(os.Stderr, "\nStarting deck fuzzing (genetic mode)...\n")
+			if refineRounds > 1 {
+				fprintf(os.Stderr, "Running %d refinement rounds\n", refineRounds)
+			}
 		}
 
 		candidates, err := buildGeneticCandidates(player, includeCards, excludeCards)
 		if err != nil {
 			return err
 		}
-
-		gaConfig := genetic.DefaultGeneticConfig()
-		gaConfig.PopulationSize = gaPopulation
-		gaConfig.Generations = gaGenerations
-		gaConfig.MutationRate = gaMutationRate
-		gaConfig.CrossoverRate = gaCrossoverRate
-		gaConfig.MutationIntensity = gaMutationIntensity
-		gaConfig.EliteCount = gaEliteCount
-		gaConfig.TournamentSize = gaTournamentSize
-		gaConfig.ParallelEvaluations = gaParallelEval
-		gaConfig.ConvergenceGenerations = gaConvergenceGenerations
-		gaConfig.TargetFitness = gaTargetFitness
-		gaConfig.IslandModel = gaIslandModel
-		gaConfig.IslandCount = gaIslandCount
-		gaConfig.MigrationInterval = gaMigrationInterval
-		gaConfig.MigrationSize = gaMigrationSize
-		gaConfig.UseArchetypes = gaUseArchetypes
-
-		if len(seedDecks) > 0 {
-			gaConfig.SeedPopulation = filterDecksByIncludeExclude(seedDecks, includeCards, excludeCards)
-		}
-
-		optimizer, err := genetic.NewGeneticOptimizer(candidates, deck.StrategyBalanced, &gaConfig)
-		if err != nil {
-			return fmt.Errorf("failed to create genetic optimizer: %w", err)
-		}
-		if seed != 0 {
-			optimizer.RNG = rand.New(rand.NewSource(int64(seed)))
-		}
+		fitnessEvaluator, gaFitnessMode := selectGAFitnessEvaluator(gaUseArchetypes)
 		if verbose {
-			startTime := time.Now()
-			totalGens := gaGenerations
-			totalPop := gaPopulation
-			optimizer.Progress = func(progress genetic.GeneticProgress) {
-				gens := int(progress.Generation)
-				elapsed := time.Since(startTime)
-				etaStr := "?"
-				if gens > 0 {
-					rate := float64(gens) / elapsed.Seconds()
-					remaining := totalGens - gens
-					if remaining < 0 {
-						remaining = 0
-					}
-					if rate > 0 {
-						etaStr = formatDurationFloor(float64(remaining) / rate)
-					}
-				}
-				evalsDone := int64(gens) * int64(totalPop)
-				fprintf(
-					os.Stderr,
-					"\rGA gen %d/%d | evals ~%d | best %.2f | avg %.2f | elapsed %s | eta %s",
-					progress.Generation,
-					totalGens,
-					evalsDone,
-					progress.BestFitness,
-					progress.AvgFitness,
-					formatDurationFloor(elapsed.Seconds()),
-					etaStr,
-				)
-			}
+			fprintf(os.Stderr, "GA objective: %s\n", gaFitnessMode)
 		}
 
-		// Use saved decks, mutations, and variations as seed population in genetic mode.
+		// Store initial seed decks for first round
+		initialSeedDecks := filterDecksByIncludeExclude(seedDecks, includeCards, excludeCards)
+
+		// Use saved decks, mutations, and variations as seed population for first round.
 		if fromSaved > 0 && !interrupted.Load() {
 			savedDecks, err := loadSavedDecksForSeeding(fromSaved, player, verbose)
 			if err != nil {
@@ -385,7 +361,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			if len(savedDecks) > 0 {
 				mutations := generateDeckMutations(savedDecks, player, count, fuzzerCfg.MutationIntensity, verbose)
 				mutations = filterDecksByIncludeExclude(mutations, includeCards, excludeCards)
-				gaConfig.SeedPopulation = append(gaConfig.SeedPopulation, mutations...)
+				initialSeedDecks = append(initialSeedDecks, mutations...)
 			}
 		}
 
@@ -397,31 +373,184 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			variations := generateVariations(baseDeck, player, count, fuzzerCfg.MutationIntensity, verbose)
 			if len(variations) > 0 {
 				variations = filterDecksByIncludeExclude(variations, includeCards, excludeCards)
-				gaConfig.SeedPopulation = append(gaConfig.SeedPopulation, variations...)
+				initialSeedDecks = append(initialSeedDecks, variations...)
 			}
 		}
 
-		startTime := time.Now()
-		result, err := optimizer.Optimize()
-		if verbose {
-			fprintln(os.Stderr)
-		}
-		if err != nil {
-			return fmt.Errorf("failed to optimize decks: %w", err)
-		}
-		generationTime = result.Duration
-		if generationTime == 0 {
-			generationTime = time.Since(startTime)
+		// Iterative refinement loop
+		currentSeedDecks := initialSeedDecks
+		var allRoundResults [][]*genetic.DeckGenome
+		var totalTime time.Duration
+
+		for round := 1; round <= refineRounds; round++ {
+			if interrupted.Load() {
+				break
+			}
+
+			if verbose && refineRounds > 1 {
+				fprintf(os.Stderr, "\n--- Refinement Round %d/%d ---\n", round, refineRounds)
+			}
+
+			gaConfig := genetic.DefaultGeneticConfig()
+			gaConfig.PopulationSize = gaPopulation
+			gaConfig.Generations = gaGenerations
+			gaConfig.CrossoverRate = gaCrossoverRate
+			gaConfig.TournamentSize = gaTournamentSize
+			gaConfig.ParallelEvaluations = gaParallelEval
+			gaConfig.ConvergenceGenerations = gaConvergenceGenerations
+			gaConfig.TargetFitness = gaTargetFitness
+			gaConfig.IslandModel = gaIslandModel
+			gaConfig.IslandCount = gaIslandCount
+			gaConfig.MigrationInterval = gaMigrationInterval
+			gaConfig.MigrationSize = gaMigrationSize
+			gaConfig.UseArchetypes = gaUseArchetypes
+
+			// Progressive refinement: adjust parameters each round
+			if round == 1 {
+				// First round: use user-specified parameters
+				gaConfig.MutationRate = gaMutationRate
+				gaConfig.MutationIntensity = gaMutationIntensity
+				gaConfig.EliteCount = gaEliteCount
+			} else {
+				// Subsequent rounds: reduce exploration, increase exploitation
+				// Gradually reduce mutation rate (min 0.02)
+				mutationRate := gaMutationRate * math.Pow(0.7, float64(round-1))
+				if mutationRate < 0.02 {
+					mutationRate = 0.02
+				}
+				gaConfig.MutationRate = mutationRate
+				// Gradually reduce mutation intensity (min 0.1)
+				mutationIntensity := gaMutationIntensity * math.Pow(0.7, float64(round-1))
+				if mutationIntensity < 0.1 {
+					mutationIntensity = 0.1
+				}
+				gaConfig.MutationIntensity = mutationIntensity
+				// Gradually increase elite count (max 20% of population)
+				eliteCount := gaEliteCount + round - 1
+				maxElite := gaPopulation / 5
+				if eliteCount > maxElite {
+					eliteCount = maxElite
+				}
+				gaConfig.EliteCount = eliteCount
+			}
+
+			// Use seed decks from previous round
+			if len(currentSeedDecks) > 0 {
+				gaConfig.SeedPopulation = currentSeedDecks
+			}
+
+			optimizer, err := genetic.NewGeneticOptimizer(candidates, deck.StrategyBalanced, &gaConfig)
+			if err != nil {
+				return fmt.Errorf("failed to create genetic optimizer: %w", err)
+			}
+			optimizer.FitnessFunc = fitnessEvaluator
+			if seed != 0 {
+				optimizer.RNG = rand.New(rand.NewSource(int64(seed) + int64(round)))
+			}
+			if verbose {
+				startTime := time.Now()
+				totalGens := gaGenerations
+				totalPop := gaPopulation
+				optimizer.Progress = func(progress genetic.GeneticProgress) {
+					gens := int(progress.Generation)
+					elapsed := time.Since(startTime)
+					etaStr := "?"
+					if gens > 0 {
+						rate := float64(gens) / elapsed.Seconds()
+						remaining := max(totalGens-gens, 0)
+						if rate > 0 {
+							etaStr = formatDurationFloor(float64(remaining) / rate)
+						}
+					}
+					evalsDone := int64(gens) * int64(totalPop)
+					if refineRounds > 1 {
+						fprintf(
+							os.Stderr,
+							"\rRound %d: GA gen %d/%d | evals ~%d | best %.2f | avg %.2f | elapsed %s | eta %s",
+							round,
+							progress.Generation,
+							totalGens,
+							evalsDone,
+							progress.BestFitness,
+							progress.AvgFitness,
+							formatDurationFloor(elapsed.Seconds()),
+							etaStr,
+						)
+					} else {
+						fprintf(
+							os.Stderr,
+							"\rGA gen %d/%d | evals ~%d | best %.2f | avg %.2f | elapsed %s | eta %s",
+							progress.Generation,
+							totalGens,
+							evalsDone,
+							progress.BestFitness,
+							progress.AvgFitness,
+							formatDurationFloor(elapsed.Seconds()),
+							etaStr,
+						)
+					}
+				}
+			}
+
+			startTime := time.Now()
+			result, err := optimizer.Optimize()
+			if verbose {
+				fprintln(os.Stderr)
+			}
+			if err != nil {
+				return fmt.Errorf("failed to optimize decks in round %d: %w", round, err)
+			}
+			roundTime := result.Duration
+			if roundTime == 0 {
+				roundTime = time.Since(startTime)
+			}
+			totalTime += roundTime
+
+			// Store results from this round
+			allRoundResults = append(allRoundResults, result.HallOfFame)
+
+			// Prepare seed decks for next round: use top decks from this round
+			if round < refineRounds {
+				topCount := min(gaPopulation/4, len(result.HallOfFame))
+				if topCount == 0 && len(result.HallOfFame) > 0 {
+					topCount = len(result.HallOfFame)
+				}
+				currentSeedDecks = make([][]string, 0, topCount)
+				for i := 0; i < topCount && i < len(result.HallOfFame); i++ {
+					if result.HallOfFame[i] == nil {
+						continue
+					}
+					clone := make([]string, len(result.HallOfFame[i].Cards))
+					copy(clone, result.HallOfFame[i].Cards)
+					currentSeedDecks = append(currentSeedDecks, clone)
+				}
+				if verbose && len(currentSeedDecks) > 0 {
+					fprintf(os.Stderr, "Round %d complete. Using top %d decks as seeds for next round\n", round, len(currentSeedDecks))
+				}
+			}
 		}
 
-		generatedDecks = make([][]string, 0, len(result.HallOfFame))
-		for _, genome := range result.HallOfFame {
-			if genome == nil {
-				continue
+		generationTime = totalTime
+
+		// Combine results from all rounds, preferring later rounds
+		generatedDecks = make([][]string, 0)
+		seenDecks := make(map[string]bool)
+
+		// Add decks from later rounds first (they're more refined)
+		for i := len(allRoundResults) - 1; i >= 0; i-- {
+			for _, genome := range allRoundResults[i] {
+				if genome == nil {
+					continue
+				}
+				deckKey := strings.Join(genome.Cards, ",")
+				if seenDecks[deckKey] {
+					continue
+				}
+				seenDecks[deckKey] = true
+				clone := make([]string, len(genome.Cards))
+				copy(clone, genome.Cards)
+				generatedDecks = append(generatedDecks, clone)
 			}
-			clone := make([]string, len(genome.Cards))
-			copy(clone, genome.Cards)
-			generatedDecks = append(generatedDecks, clone)
 		}
 
 		generatedDecks = filterDecksByIncludeExclude(generatedDecks, includeCards, excludeCards)
@@ -496,9 +625,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		var generationDone sync.WaitGroup
 		stopProgress := make(chan struct{})
 		if verbose {
-			generationDone.Add(1)
-			go func() {
-				defer generationDone.Done()
+			generationDone.Go(func() {
 				ticker := time.NewTicker(500 * time.Millisecond)
 				defer ticker.Stop()
 
@@ -526,7 +653,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 						}
 					}
 				}
-			}()
+			})
 		}
 
 		generationCtx, cancelGeneration := context.WithCancel(ctx)
@@ -671,6 +798,14 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	// Sort results
 	sortFuzzingResults(dedupedResults, sortBy)
 
+	// Ensure archetype coverage if requested
+	if ensureArchetypes && mode != "genetic" {
+		dedupedResults = ensureArchetypeCoverage(dedupedResults, top, verbose)
+	}
+	if ensureElixirBuckets {
+		dedupedResults = ensureElixirBucketDistribution(dedupedResults, top, verbose)
+	}
+
 	// Get top N results
 	topResults := getTopResults(dedupedResults, top)
 
@@ -703,6 +838,11 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 type FuzzingResult struct {
 	Deck                []string
 	OverallScore        float64
+	ContextualScore     float64
+	LadderScore         float64
+	NormalizedScore     float64
+	DeckLevelRatio      float64
+	NormalizationFactor float64
 	AttackScore         float64
 	DefenseScore        float64
 	SynergyScore        float64
@@ -840,9 +980,7 @@ func evaluateDecksParallel(
 
 	// Start workers
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 
 			// Each worker gets its own synergy database to avoid concurrent access
 			synergyDB := deck.NewSynergyDatabase()
@@ -864,7 +1002,7 @@ func evaluateDecksParallel(
 					}
 				}
 			}
-		}()
+		})
 	}
 
 	// Send work
@@ -925,9 +1063,27 @@ func evaluateSingleDeck(
 	// Run evaluation
 	evalResult := evaluation.Evaluate(candidates, synergyDB, playerContext)
 
+	contextualScore := evalResult.OverallScore
+	ladderScore := 0.0
+	normalizedScore := evalResult.OverallScore
+	deckLevelRatio := 1.0
+	normalizationFactor := 1.0
+	if evalResult.OverallBreakdown != nil {
+		contextualScore = evalResult.OverallBreakdown.ContextualScore
+		ladderScore = evalResult.OverallBreakdown.LadderScore
+		normalizedScore = evalResult.OverallBreakdown.NormalizedScore
+		deckLevelRatio = evalResult.OverallBreakdown.DeckLevelRatio
+		normalizationFactor = evalResult.OverallBreakdown.NormalizationFactor
+	}
+
 	return FuzzingResult{
 		Deck:                deckCards,
 		OverallScore:        evalResult.OverallScore,
+		ContextualScore:     contextualScore,
+		LadderScore:         ladderScore,
+		NormalizedScore:     normalizedScore,
+		DeckLevelRatio:      deckLevelRatio,
+		NormalizationFactor: normalizationFactor,
 		AttackScore:         evalResult.Attack.Score,
 		DefenseScore:        evalResult.Defense.Score,
 		SynergyScore:        evalResult.Synergy.Score,
@@ -1180,6 +1336,188 @@ func filterResultsByArchetype(results []FuzzingResult, archetypes []string, _ bo
 	return filtered
 }
 
+// ensureArchetypeCoverage ensures the top results include at least one deck from each archetype.
+// It reorders results to guarantee archetype diversity while preserving score-based ranking as much as possible.
+//
+//nolint:funlen,gocognit,gocyclo // Selection heuristics intentionally explicit for readability.
+func ensureArchetypeCoverage(results []FuzzingResult, top int, verbose bool) []FuzzingResult {
+	if len(results) == 0 {
+		return results
+	}
+
+	// Define all archetypes we want to cover
+	allArchetypes := []string{"beatdown", "control", "cycle", "bridge", "siege", "bait", "graveyard", "miner", "hybrid", "unknown"}
+
+	// Group results by archetype
+	archetypeGroups := make(map[string][]FuzzingResult)
+	for _, arch := range allArchetypes {
+		archetypeGroups[arch] = make([]FuzzingResult, 0)
+	}
+
+	for _, result := range results {
+		arch := result.Archetype
+		if _, exists := archetypeGroups[arch]; !exists {
+			arch = "unknown"
+		}
+		archetypeGroups[arch] = append(archetypeGroups[arch], result)
+	}
+
+	// Count how many archetypes have at least one deck
+	coveredArchetypes := 0
+	for _, arch := range allArchetypes {
+		if len(archetypeGroups[arch]) > 0 {
+			coveredArchetypes++
+		}
+	}
+
+	if verbose {
+		fprintf(os.Stderr, "Archetype coverage: %d/%d archetypes represented in results\n", coveredArchetypes, len(allArchetypes))
+	}
+
+	// Build the final result list with archetype diversity
+	// Strategy: Round-robin selection from each archetype group, taking the best deck from each
+	// archetype in turn, until we've filled the top N slots or exhausted all decks
+	finalResults := make([]FuzzingResult, 0, len(results))
+	usedDecks := make(map[string]bool) // Track used decks by their key
+
+	// First pass: ensure at least one from each archetype that has decks
+	for _, arch := range allArchetypes {
+		group := archetypeGroups[arch]
+		if len(group) == 0 {
+			continue
+		}
+
+		// Find the first unused deck from this archetype
+		for _, result := range group {
+			key := deckKeyForResult(result)
+			if !usedDecks[key] {
+				finalResults = append(finalResults, result)
+				usedDecks[key] = true
+				break
+			}
+		}
+	}
+
+	// Second pass: fill remaining slots with the best remaining decks from any archetype
+	for _, result := range results {
+		key := deckKeyForResult(result)
+		if usedDecks[key] {
+			continue
+		}
+		finalResults = append(finalResults, result)
+		usedDecks[key] = true
+	}
+
+	if verbose {
+		// Count how many archetypes are represented in the top N
+		topN := min(top, len(finalResults))
+		topArchetypes := make(map[string]int)
+		for i := range topN {
+			topArchetypes[finalResults[i].Archetype]++
+		}
+		fprintf(os.Stderr, "Top %d decks include %d different archetypes: ", topN, len(topArchetypes))
+		first := true
+		for arch, count := range topArchetypes {
+			if !first {
+				fprintf(os.Stderr, ", ")
+			}
+			fprintf(os.Stderr, "%s=%d", arch, count)
+			first = false
+		}
+		fprintln(os.Stderr)
+	}
+
+	return finalResults
+}
+
+const (
+	elixirBucketLow    = "low"
+	elixirBucketMedium = "medium"
+	elixirBucketHigh   = "high"
+)
+
+func getElixirBucket(avgElixir float64) string {
+	switch {
+	case avgElixir < 3.3:
+		return elixirBucketLow
+	case avgElixir <= 4.0:
+		return elixirBucketMedium
+	default:
+		return elixirBucketHigh
+	}
+}
+
+// ensureElixirBucketDistribution ensures top results include decks from low/medium/high elixir buckets.
+//
+//nolint:gocyclo,funlen // Bucket balancing logic is branch-heavy by design.
+func ensureElixirBucketDistribution(results []FuzzingResult, top int, verbose bool) []FuzzingResult {
+	if len(results) == 0 {
+		return results
+	}
+
+	bucketOrder := []string{elixirBucketLow, elixirBucketMedium, elixirBucketHigh}
+	bucketGroups := make(map[string][]FuzzingResult, len(bucketOrder))
+	for _, bucket := range bucketOrder {
+		bucketGroups[bucket] = make([]FuzzingResult, 0)
+	}
+
+	for _, result := range results {
+		bucket := getElixirBucket(result.AvgElixir)
+		bucketGroups[bucket] = append(bucketGroups[bucket], result)
+	}
+
+	if verbose {
+		fprintf(os.Stderr, "Elixir bucket distribution in candidates: low=%d, medium=%d, high=%d\n",
+			len(bucketGroups[elixirBucketLow]), len(bucketGroups[elixirBucketMedium]), len(bucketGroups[elixirBucketHigh]))
+	}
+
+	finalResults := make([]FuzzingResult, 0, len(results))
+	usedDecks := make(map[string]bool, len(results))
+
+	// First pass: ensure at least one from each bucket that has decks.
+	for _, bucket := range bucketOrder {
+		group := bucketGroups[bucket]
+		if len(group) == 0 {
+			continue
+		}
+		for _, result := range group {
+			key := deckKeyForResult(result)
+			if !usedDecks[key] {
+				finalResults = append(finalResults, result)
+				usedDecks[key] = true
+				break
+			}
+		}
+	}
+
+	// Second pass: fill remaining slots with best remaining decks.
+	for _, result := range results {
+		key := deckKeyForResult(result)
+		if usedDecks[key] {
+			continue
+		}
+		finalResults = append(finalResults, result)
+		usedDecks[key] = true
+	}
+
+	if verbose {
+		topN := min(top, len(finalResults))
+		topBuckets := map[string]int{
+			elixirBucketLow:    0,
+			elixirBucketMedium: 0,
+			elixirBucketHigh:   0,
+		}
+		for i := range topN {
+			bucket := getElixirBucket(finalResults[i].AvgElixir)
+			topBuckets[bucket]++
+		}
+		fprintf(os.Stderr, "Top %d decks elixir buckets: low=%d, medium=%d, high=%d\n",
+			topN, topBuckets[elixirBucketLow], topBuckets[elixirBucketMedium], topBuckets[elixirBucketHigh])
+	}
+
+	return finalResults
+}
+
 // deduplicateResults removes duplicate decks based on card composition
 // Keeps the first occurrence (highest score after sorting)
 func deduplicateResults(results []FuzzingResult) []FuzzingResult {
@@ -1300,7 +1638,7 @@ func formatResultsSummary(
 	// Print table header with multi-line deck display
 	w := new(tabwriter.Writer)
 	w.Init(os.Stdout, 0, 8, 2, ' ', 0)
-	fprintln(w, "Rank\tDeck\tOverall\tAttack\tDefense\tSynergy\tElixir")
+	fprintln(w, "Rank\tDeck\tOverall\tLadder\tNorm\tAttack\tDefense\tSynergy\tElixir")
 
 	// Print each deck with all 8 cards
 	for i, result := range results {
@@ -1311,10 +1649,12 @@ func formatResultsSummary(
 		if len(deckStr) > 50 {
 			// First line: Rank, first 4 cards, scores
 			firstLine := strings.Join(result.Deck[:4], ", ")
-			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
 				i+1,
 				firstLine+",",
 				result.OverallScore,
+				result.LadderScore,
+				result.NormalizedScore,
 				result.AttackScore,
 				result.DefenseScore,
 				result.SynergyScore,
@@ -1326,10 +1666,12 @@ func formatResultsSummary(
 			fprintf(w, "\t%s\n", secondLine)
 		} else {
 			// Single line format for shorter deck strings
-			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
+			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
 				i+1,
 				deckStr,
 				result.OverallScore,
+				result.LadderScore,
+				result.NormalizedScore,
 				result.AttackScore,
 				result.DefenseScore,
 				result.SynergyScore,
@@ -1387,7 +1729,7 @@ func formatResultsCSV(results []FuzzingResult) error {
 	w := csv.NewWriter(os.Stdout)
 
 	// Write header
-	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
+	header := []string{"Rank", "Deck", "Overall", "Contextual", "Ladder", "Normalized", "LevelRatio", "NormFactor", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -1399,6 +1741,11 @@ func formatResultsCSV(results []FuzzingResult) error {
 			strconv.Itoa(i + 1),
 			deckStr,
 			fmt.Sprintf("%.2f", result.OverallScore),
+			fmt.Sprintf("%.2f", result.ContextualScore),
+			fmt.Sprintf("%.2f", result.LadderScore),
+			fmt.Sprintf("%.2f", result.NormalizedScore),
+			fmt.Sprintf("%.3f", result.DeckLevelRatio),
+			fmt.Sprintf("%.3f", result.NormalizationFactor),
 			fmt.Sprintf("%.2f", result.AttackScore),
 			fmt.Sprintf("%.2f", result.DefenseScore),
 			fmt.Sprintf("%.2f", result.SynergyScore),
@@ -1433,6 +1780,10 @@ func formatResultsDetailed(
 		printf("Cards: %s\n", strings.Join(result.Deck, ", "))
 		printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
 			result.OverallScore, result.AttackScore, result.DefenseScore, result.SynergyScore, result.VersatilityScore)
+		printf("Contextual: %.2f | Ladder: %.2f | Normalized: %.2f\n",
+			result.ContextualScore, result.LadderScore, result.NormalizedScore)
+		printf("Level Ratio: %.3f | Normalization Factor: %.3f\n",
+			result.DeckLevelRatio, result.NormalizationFactor)
 		printf("Avg Elixir: %.2f | Archetype: %s (%.0f%% confidence)\n",
 			result.AvgElixir, result.Archetype, result.ArchetypeConfidence*100)
 		printf("Evaluated: %s\n\n", result.EvaluatedAt.Format(time.RFC3339))
@@ -1605,7 +1956,18 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	maxScore := cmd.Float64("max-score")
 	minElixir := cmd.Float64("min-elixir")
 	maxElixir := cmd.Float64("max-elixir")
+	maxSameArchetype := cmd.Int("max-same-archetype")
 	format := cmd.String("format")
+	playerTag := cmd.String("tag")
+	workers := cmd.Int("workers")
+	verbose := cmd.Bool("verbose")
+
+	if workers == 1 && playerTag != "" {
+		workers = runtime.NumCPU()
+		if verbose {
+			fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", runtime.NumCPU(), workers)
+		}
+	}
 
 	storage, err := fuzzstorage.NewStorage("")
 	if err != nil {
@@ -1639,6 +2001,50 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to query decks: %w", err)
 	}
+	histogram, err := storage.ArchetypeHistogram(queryOpts)
+	if err != nil {
+		return fmt.Errorf("failed to query archetype histogram: %w", err)
+	}
+
+	var theoreticalByID map[int]fuzzstorage.DeckEntry
+	if playerTag != "" && len(decks) > 0 {
+		apiToken := cmd.String("api-token")
+		if apiToken == "" {
+			apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
+		}
+		if apiToken == "" {
+			return fmt.Errorf("API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)")
+		}
+
+		client := clashroyale.NewClient(apiToken)
+		cleanTag := strings.TrimPrefix(playerTag, "#")
+		player, playerErr := client.GetPlayerWithContext(ctx, cleanTag)
+		if playerErr != nil {
+			return fmt.Errorf("failed to load player data for %s: %w", playerTag, playerErr)
+		}
+		playerContext := evaluation.NewPlayerContextFromPlayer(player)
+
+		theoreticalByID = make(map[int]fuzzstorage.DeckEntry, len(decks))
+		for _, deck := range decks {
+			theoreticalByID[deck.ID] = deck
+		}
+
+		decks = reevaluateStoredDecks(decks, player, player.Tag, playerContext, workers, verbose)
+		sort.Slice(decks, func(i, j int) bool {
+			return decks[i].OverallScore > decks[j].OverallScore
+		})
+
+		if maxSameArchetype > 0 {
+			decks = limitArchetypeRepetition(decks, maxSameArchetype)
+		}
+
+		if verbose {
+			printf("Loaded player context for %s (%s)\n", player.Name, player.Tag)
+		}
+	}
+	if maxSameArchetype > 0 {
+		decks = limitArchetypeRepetition(decks, maxSameArchetype)
+	}
 
 	total, _ := storage.Count()
 	dbPath := storage.GetDBPath()
@@ -1649,13 +2055,13 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	// Format output
 	switch format {
 	case "json":
-		return formatListResultsJSON(decks, dbPath, total)
+		return formatListResultsJSON(decks, dbPath, total, histogram, theoreticalByID)
 	case "csv":
-		return formatListResultsCSV(decks)
+		return formatListResultsCSV(decks, theoreticalByID)
 	case "detailed":
-		return formatListResultsDetailed(decks, dbPath, total)
+		return formatListResultsDetailed(decks, dbPath, total, histogram, theoreticalByID)
 	default:
-		return formatListResultsSummary(decks, dbPath, total)
+		return formatListResultsSummary(decks, dbPath, total, histogram, theoreticalByID)
 	}
 }
 
@@ -1724,7 +2130,7 @@ func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 		client := clashroyale.NewClient(apiToken)
 		var err error
-		player, err = client.GetPlayer(playerTag)
+		player, err = client.GetPlayerWithContext(ctx, playerTag)
 		if err != nil {
 			return fmt.Errorf("failed to load player data for %s: %w", playerTag, err)
 		}
@@ -1764,6 +2170,22 @@ type storedDeckResult struct {
 	entry fuzzstorage.DeckEntry
 }
 
+func formatScoreTransition(
+	theoreticalByID map[int]fuzzstorage.DeckEntry,
+	deckID int,
+	current float64,
+	extract func(fuzzstorage.DeckEntry) float64,
+) string {
+	if theoreticalByID == nil {
+		return fmt.Sprintf("%.2f", current)
+	}
+	theoretical, ok := theoreticalByID[deckID]
+	if !ok {
+		return fmt.Sprintf("%.2f", current)
+	}
+	return fmt.Sprintf("%.2f->%.2f", extract(theoretical), current)
+}
+
 func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, player *clashroyale.Player, playerTag string, playerContext *evaluation.PlayerContext, workers int, verbose bool) []fuzzstorage.DeckEntry {
 	if workers <= 1 {
 		return reevaluateStoredDecksSequential(entries, player, playerTag, playerContext, verbose)
@@ -1788,9 +2210,7 @@ func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, player *clashroyale.
 	}
 
 	for range workers {
-		wg.Add(1)
-		go func() {
-			defer wg.Done()
+		wg.Go(func() {
 			synergyDB := deck.NewSynergyDatabase()
 
 			for work := range workChan {
@@ -1807,7 +2227,7 @@ func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, player *clashroyale.
 				updated.EvaluatedAt = result.EvaluatedAt
 				resultChan <- storedDeckResult{index: work.index, entry: updated}
 			}
-		}()
+		})
 	}
 
 	for i, entry := range entries {
@@ -1873,7 +2293,13 @@ func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, player *cl
 }
 
 // formatListResultsSummary formats list results in summary format
-func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
+func formatListResultsSummary(
+	decks []fuzzstorage.DeckEntry,
+	dbPath string,
+	total int,
+	histogram map[string]int,
+	theoreticalByID map[int]fuzzstorage.DeckEntry,
+) error {
 	printf("Saved Top Decks\n")
 	printf("Database: %s\n", dbPath)
 	printf("Total decks: %d\n\n", total)
@@ -1884,31 +2310,71 @@ func formatListResultsSummary(decks []fuzzstorage.DeckEntry, dbPath string, tota
 
 	for i, deck := range decks {
 		deckStr := strings.Join(deck.Cards, ", ")
+		overall := formatScoreTransition(theoreticalByID, deck.ID, deck.OverallScore, func(entry fuzzstorage.DeckEntry) float64 { return entry.OverallScore })
+		attack := formatScoreTransition(theoreticalByID, deck.ID, deck.AttackScore, func(entry fuzzstorage.DeckEntry) float64 { return entry.AttackScore })
+		defense := formatScoreTransition(theoreticalByID, deck.ID, deck.DefenseScore, func(entry fuzzstorage.DeckEntry) float64 { return entry.DefenseScore })
+		synergy := formatScoreTransition(theoreticalByID, deck.ID, deck.SynergyScore, func(entry fuzzstorage.DeckEntry) float64 { return entry.SynergyScore })
 		if len(deckStr) > 50 {
 			firstLine := strings.Join(deck.Cards[:4], ", ")
-			fprintf(w, "%d\t%s,\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
-				i+1, firstLine, deck.OverallScore, deck.AttackScore, deck.DefenseScore,
-				deck.SynergyScore, deck.AvgElixir, deck.Archetype)
+			fprintf(w, "%d\t%s,\t%s\t%s\t%s\t%s\t%.2f\t%s\n",
+				i+1, firstLine, overall, attack, defense, synergy, deck.AvgElixir, deck.Archetype)
 			secondLine := strings.Join(deck.Cards[4:], ", ")
 			fprintf(w, "\t%s\n", secondLine)
 		} else {
-			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%s\n",
-				i+1, deckStr, deck.OverallScore, deck.AttackScore, deck.DefenseScore,
-				deck.SynergyScore, deck.AvgElixir, deck.Archetype)
+			fprintf(w, "%d\t%s\t%s\t%s\t%s\t%s\t%.2f\t%s\n",
+				i+1, deckStr, overall, attack, defense, synergy, deck.AvgElixir, deck.Archetype)
 		}
 	}
 
 	flushWriter(w)
+
+	if len(histogram) > 0 {
+		printf("\nArchetype Histogram (matching query):\n")
+		printArchetypeHistogram(histogram)
+	}
 	return nil
 }
 
 // formatListResultsJSON formats list results in JSON format
-func formatListResultsJSON(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
+func formatListResultsJSON(
+	decks []fuzzstorage.DeckEntry,
+	dbPath string,
+	total int,
+	histogram map[string]int,
+	theoreticalByID map[int]fuzzstorage.DeckEntry,
+) error {
+	results := make([]map[string]any, 0, len(decks))
+	for _, deck := range decks {
+		result := map[string]any{
+			"id":                deck.ID,
+			"cards":             deck.Cards,
+			"overall_score":     deck.OverallScore,
+			"attack_score":      deck.AttackScore,
+			"defense_score":     deck.DefenseScore,
+			"synergy_score":     deck.SynergyScore,
+			"versatility_score": deck.VersatilityScore,
+			"avg_elixir":        deck.AvgElixir,
+			"archetype":         deck.Archetype,
+			"archetype_conf":    deck.ArchetypeConf,
+			"evaluated_at":      deck.EvaluatedAt,
+		}
+		if theoreticalByID != nil {
+			if theoretical, ok := theoreticalByID[deck.ID]; ok {
+				result["stored_overall_score"] = theoretical.OverallScore
+				result["stored_attack_score"] = theoretical.AttackScore
+				result["stored_defense_score"] = theoretical.DefenseScore
+				result["stored_synergy_score"] = theoretical.SynergyScore
+			}
+		}
+		results = append(results, result)
+	}
+
 	output := map[string]any{
-		"database": dbPath,
-		"total":    total,
-		"returned": len(decks),
-		"results":  decks,
+		"database":            dbPath,
+		"total":               total,
+		"returned":            len(decks),
+		"results":             results,
+		"archetype_histogram": histogram,
 	}
 
 	encoder := json.NewEncoder(os.Stdout)
@@ -1917,10 +2383,20 @@ func formatListResultsJSON(decks []fuzzstorage.DeckEntry, dbPath string, total i
 }
 
 // formatListResultsCSV formats list results in CSV format
-func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
+func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int]fuzzstorage.DeckEntry) error {
 	w := csv.NewWriter(os.Stdout)
 
 	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
+	if theoreticalByID != nil {
+		header = []string{
+			"Rank", "Deck",
+			"StoredOverall", "PlayerOverall",
+			"StoredAttack", "PlayerAttack",
+			"StoredDefense", "PlayerDefense",
+			"StoredSynergy", "PlayerSynergy",
+			"Versatility", "AvgElixir", "Archetype",
+		}
+	}
 	if err := w.Write(header); err != nil {
 		return err
 	}
@@ -1930,13 +2406,32 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
 		row := []string{
 			strconv.Itoa(i + 1),
 			deckStr,
-			fmt.Sprintf("%.2f", deck.OverallScore),
-			fmt.Sprintf("%.2f", deck.AttackScore),
-			fmt.Sprintf("%.2f", deck.DefenseScore),
-			fmt.Sprintf("%.2f", deck.SynergyScore),
-			fmt.Sprintf("%.2f", deck.VersatilityScore),
-			fmt.Sprintf("%.2f", deck.AvgElixir),
-			deck.Archetype,
+		}
+		if theoreticalByID != nil {
+			theoretical := theoreticalByID[deck.ID]
+			row = append(row,
+				fmt.Sprintf("%.2f", theoretical.OverallScore),
+				fmt.Sprintf("%.2f", deck.OverallScore),
+				fmt.Sprintf("%.2f", theoretical.AttackScore),
+				fmt.Sprintf("%.2f", deck.AttackScore),
+				fmt.Sprintf("%.2f", theoretical.DefenseScore),
+				fmt.Sprintf("%.2f", deck.DefenseScore),
+				fmt.Sprintf("%.2f", theoretical.SynergyScore),
+				fmt.Sprintf("%.2f", deck.SynergyScore),
+				fmt.Sprintf("%.2f", deck.VersatilityScore),
+				fmt.Sprintf("%.2f", deck.AvgElixir),
+				deck.Archetype,
+			)
+		} else {
+			row = append(row,
+				fmt.Sprintf("%.2f", deck.OverallScore),
+				fmt.Sprintf("%.2f", deck.AttackScore),
+				fmt.Sprintf("%.2f", deck.DefenseScore),
+				fmt.Sprintf("%.2f", deck.SynergyScore),
+				fmt.Sprintf("%.2f", deck.VersatilityScore),
+				fmt.Sprintf("%.2f", deck.AvgElixir),
+				deck.Archetype,
+			)
 		}
 		if err := w.Write(row); err != nil {
 			return err
@@ -1952,7 +2447,13 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry) error {
 }
 
 // formatListResultsDetailed formats list results in detailed format
-func formatListResultsDetailed(decks []fuzzstorage.DeckEntry, dbPath string, total int) error {
+func formatListResultsDetailed(
+	decks []fuzzstorage.DeckEntry,
+	dbPath string,
+	total int,
+	histogram map[string]int,
+	theoreticalByID map[int]fuzzstorage.DeckEntry,
+) error {
 	printf("Saved Top Decks\n")
 	printf("Database: %s\n", dbPath)
 	printf("Total decks: %d\n\n", total)
@@ -1960,14 +2461,78 @@ func formatListResultsDetailed(decks []fuzzstorage.DeckEntry, dbPath string, tot
 	for i, deck := range decks {
 		printf("=== Deck %d ===\n", i+1)
 		printf("Cards: %s\n", strings.Join(deck.Cards, ", "))
-		printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
-			deck.OverallScore, deck.AttackScore, deck.DefenseScore, deck.SynergyScore, deck.VersatilityScore)
+		if theoreticalByID != nil {
+			if theoretical, ok := theoreticalByID[deck.ID]; ok {
+				printf("Overall: %.2f -> %.2f | Attack: %.2f -> %.2f | Defense: %.2f -> %.2f | Synergy: %.2f -> %.2f | Versatility: %.2f\n",
+					theoretical.OverallScore, deck.OverallScore,
+					theoretical.AttackScore, deck.AttackScore,
+					theoretical.DefenseScore, deck.DefenseScore,
+					theoretical.SynergyScore, deck.SynergyScore,
+					deck.VersatilityScore,
+				)
+			} else {
+				printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
+					deck.OverallScore, deck.AttackScore, deck.DefenseScore, deck.SynergyScore, deck.VersatilityScore)
+			}
+		} else {
+			printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
+				deck.OverallScore, deck.AttackScore, deck.DefenseScore, deck.SynergyScore, deck.VersatilityScore)
+		}
 		printf("Avg Elixir: %.2f | Archetype: %s (%.0f%% confidence)\n",
 			deck.AvgElixir, deck.Archetype, deck.ArchetypeConf*100)
 		printf("Evaluated: %s\n\n", deck.EvaluatedAt.Format(time.RFC3339))
 	}
 
+	if len(histogram) > 0 {
+		printf("Archetype Histogram (matching query):\n")
+		printArchetypeHistogram(histogram)
+	}
+
 	return nil
+}
+
+func printArchetypeHistogram(histogram map[string]int) {
+	type entry struct {
+		archetype string
+		count     int
+	}
+
+	entries := make([]entry, 0, len(histogram))
+	for archetype, count := range histogram {
+		entries = append(entries, entry{archetype: archetype, count: count})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].count == entries[j].count {
+			return entries[i].archetype < entries[j].archetype
+		}
+		return entries[i].count > entries[j].count
+	})
+
+	w := new(tabwriter.Writer)
+	w.Init(os.Stdout, 0, 8, 2, ' ', 0)
+	fprintln(w, "Archetype\tCount")
+	fprintln(w, "---------\t-----")
+	for _, e := range entries {
+		fprintf(w, "%s\t%d\n", e.archetype, e.count)
+	}
+	flushWriter(w)
+}
+
+func limitArchetypeRepetition(decks []fuzzstorage.DeckEntry, maxPerArchetype int) []fuzzstorage.DeckEntry {
+	if maxPerArchetype <= 0 {
+		return decks
+	}
+
+	counts := make(map[string]int, len(decks))
+	filtered := make([]fuzzstorage.DeckEntry, 0, len(decks))
+	for _, deck := range decks {
+		if counts[deck.Archetype] >= maxPerArchetype {
+			continue
+		}
+		counts[deck.Archetype]++
+		filtered = append(filtered, deck)
+	}
+	return filtered
 }
 
 // loadCardsFromSavedDecks loads unique cards from top N saved decks
@@ -2048,7 +2613,9 @@ func loadSavedDecksForSeeding(n int, _ *clashroyale.Player, verbose bool) ([][]s
 }
 
 // generateDeckMutations generates mutations of saved decks by swapping cards
-func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, count int, mutationIntensity int, verbose bool) [][]string {
+//
+//nolint:gocognit,gocyclo // Mutation pipeline uses explicit branching for reproducibility.
+func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, count, mutationIntensity int, verbose bool) [][]string {
 	if player == nil || len(player.Cards) == 0 {
 		if verbose {
 			fprintf(os.Stderr, "No player cards available for mutations\n")
@@ -2063,10 +2630,7 @@ func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, co
 	}
 
 	mutations := make([][]string, 0)
-	mutationsPerDeck := count / len(savedDecks)
-	if mutationsPerDeck < 1 {
-		mutationsPerDeck = 1
-	}
+	mutationsPerDeck := max(count/len(savedDecks), 1)
 
 	for _, deck := range savedDecks {
 		for i := 0; i < mutationsPerDeck; i++ {
@@ -2083,13 +2647,7 @@ func generateDeckMutations(savedDecks [][]string, player *clashroyale.Player, co
 				// Find a replacement card
 				for _, card := range player.Cards {
 					// Skip if card is already in deck
-					alreadyInDeck := false
-					for _, existing := range mutation {
-						if existing == card.Name {
-							alreadyInDeck = true
-							break
-						}
-					}
+					alreadyInDeck := slices.Contains(mutation, card.Name)
 					if !alreadyInDeck {
 						mutation[swapIdx] = card.Name
 						break
@@ -2158,7 +2716,9 @@ func loadDeckFromStorage(deckRef string, verbose bool) ([]string, error) {
 }
 
 // generateVariations generates variations of a base deck by swapping some cards
-func generateVariations(baseDeck []string, player *clashroyale.Player, count int, mutationIntensity int, verbose bool) [][]string {
+//
+//nolint:gocyclo // Variation generation includes multiple guarded mutation paths.
+func generateVariations(baseDeck []string, player *clashroyale.Player, count, mutationIntensity int, verbose bool) [][]string {
 	if player == nil || len(player.Cards) == 0 {
 		if verbose {
 			fprintf(os.Stderr, "No player cards available for variations\n")
@@ -2189,7 +2749,7 @@ func generateVariations(baseDeck []string, player *clashroyale.Player, count int
 	variations := make([][]string, 0, count)
 
 	// Generate variations by swapping 1-3 cards
-	for i := 0; i < count; i++ {
+	for i := range count {
 		variation := make([]string, len(baseDeck))
 		copy(variation, baseDeck)
 
@@ -2197,7 +2757,7 @@ func generateVariations(baseDeck []string, player *clashroyale.Player, count int
 		numSwaps := 1 + (i % mutationIntensity)
 
 		// Swap random positions with available cards
-		for j := 0; j < numSwaps; j++ {
+		for j := range numSwaps {
 			// Pick a random position to swap
 			swapIdx := j % len(variation)
 

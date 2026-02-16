@@ -155,7 +155,7 @@ func evolutionShardsSetCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("count must be 0 or greater")
 	}
 
-	cards, err := loadStaticCards(dataDir, apiToken, verbose)
+	cards, err := loadStaticCards(ctx, dataDir, apiToken, verbose)
 	if err != nil {
 		return err
 	}
@@ -218,7 +218,7 @@ func cacheStaticCards(dataDir string, cards *clashroyale.CardList) error {
 	return storage.WriteJSON(pathBuilder.GetStaticCardsPath(), cards)
 }
 
-func loadStaticCards(dataDir, apiToken string, verbose bool) ([]clashroyale.Card, error) {
+func loadStaticCards(ctx context.Context, dataDir, apiToken string, verbose bool) ([]clashroyale.Card, error) {
 	pathBuilder := storage.NewPathBuilder(dataDir)
 	cardsPath := pathBuilder.GetStaticCardsPath()
 
@@ -241,7 +241,7 @@ func loadStaticCards(dataDir, apiToken string, verbose bool) ([]clashroyale.Card
 	}
 
 	client := clashroyale.NewClient(apiToken)
-	cards, err := client.GetCards()
+	cards, err := client.GetCardsWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch card database: %w", err)
 	}
@@ -285,7 +285,7 @@ func evolutionRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 		printf("Fetching player data for %s...\n", playerTag)
 	}
 
-	player, err := client.GetPlayer(playerTag)
+	player, err := client.GetPlayerWithContext(ctx, playerTag)
 	if err != nil {
 		return fmt.Errorf("failed to fetch player: %w", err)
 	}
@@ -302,7 +302,7 @@ func evolutionRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Load static cards for max evolution levels
-	cards, err := loadStaticCards(dataDir, apiToken, verbose)
+	cards, err := loadStaticCards(ctx, dataDir, apiToken, verbose)
 	if err != nil {
 		return err
 	}

@@ -178,6 +178,44 @@ Missing: Skeleton Army (Arena 8), Ice Golem (Arena 6)
 4. Combine with `--format json` for programmatic analysis
 5. Check playability percentage before committing to a deck build
 
+### Deck Analyze, Optimize, and Recommend
+
+```bash
+# Analyze one deck (human or json output)
+./bin/cr-api deck analyze --deck "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log" --format human
+
+# Optimize one deck with focused suggestions
+./bin/cr-api deck optimize --deck "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log" --suggestions 5 --focus synergy
+
+# Collection-aware optimize (optional)
+./bin/cr-api deck optimize --deck "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log" --tag TAG --api-token "$CLASH_ROYALE_API_TOKEN"
+
+# Recommend decks from API-backed analysis
+./bin/cr-api deck recommend --tag TAG --count 5 --archetype cycle
+
+# Recommend decks from offline analysis
+./bin/cr-api deck recommend --tag TAG --from-analysis --analysis-dir data/analysis --count 5
+```
+
+**analyze Flags:**
+- `--deck <deck>` - Required deck string (`Card1-Card2-...-Card8`)
+- `--format <format>` - `human` or `json` (default: `human`)
+
+**optimize Flags:**
+- `--deck <deck>` - Required deck string (`Card1-Card2-...-Card8`)
+- `--suggestions <n>` - Number of suggestions to return (default: 3)
+- `--focus <mode>` - `balanced`, `attack`, `defense`, `synergy`
+- `--tag <TAG>` - Optional player tag for collection-aware suggestions
+- `--export-csv` - Export optimization output
+
+**recommend Flags:**
+- `--tag <TAG>` - Player tag
+- `--count <n>` - Number of recommendations
+- `--archetype <type>` - Optional archetype filter
+- `--include-unowned` - Include decks with cards outside your collection
+- `--from-analysis`, `--analysis-dir`, `--analysis-file` - Offline mode inputs
+- `--arena`, `--league` - Optional recommendation filters
+
 ### Batch Deck Building and Evaluation
 
 Build multiple deck variations systematically and evaluate them in batch:
@@ -684,6 +722,56 @@ Calculate realistic deck combination possibilities from your card collection:
 - `--verbose` - Show detailed breakdown by role/archetype
 - `--output <file>` - Save output to file
 
+#### Deck Research Eval
+
+Benchmark archetype-free deck-building methods and export `benchmark.json` + `benchmark.md`:
+
+```bash
+# Run defaults (baseline, genetic, constraint, role-first) on default phase-1 tags
+./bin/cr-api deck research-eval
+
+# Benchmark specific players and methods with deterministic seed
+./bin/cr-api deck research-eval \
+  --tags R8QGUQRCV --tags 2P0GYQJ \
+  --methods baseline,constraint,role-first \
+  --seed 42 \
+  --output-dir reports/research-eval/live
+
+# Tune hard constraints and soft weights
+./bin/cr-api deck research-eval \
+  --min-wincons 1 \
+  --min-spells 2 \
+  --min-air 2 \
+  --min-tank-killers 1 \
+  --weight-synergy 0.30 \
+  --weight-coverage 0.25 \
+  --weight-role-fit 0.20 \
+  --weight-elixir-fit 0.15 \
+  --weight-card-quality 0.10
+```
+
+**Research Eval Flags:**
+- `--tags <TAG>` - Player tags (repeatable, without `#`; defaults to phase-1 benchmark set)
+- `--methods <list>` - Methods: `baseline`, `genetic`, `constraint`, `role-first`
+- `--seed <n>` - Deterministic seed
+- `--top <n>` - Method-specific top-N setting
+- `--output-dir <dir>` - Output directory for `benchmark.json` and `benchmark.md`
+- `--data-dir <dir>` - Data directory containing `cards_stats.json`
+- `--min-wincons`, `--min-spells`, `--min-air`, `--min-tank-killers` - Hard constraints
+- `--weight-synergy`, `--weight-coverage`, `--weight-role-fit`, `--weight-elixir-fit`, `--weight-card-quality` - Soft-objective weights (auto-normalized)
+- `--api-token` - Clash Royale API token (or set `CLASH_ROYALE_API_TOKEN`)
+
+**Metric Definitions:**
+- `composite` - Weighted combination of synergy, coverage, role fit, elixir fit, and card quality
+- `constraint_violations` - Hard-constraint failures for a produced deck
+- `mean/median composite` - Aggregate method quality across player runs
+- `mean runtime (ms)` - Average wall-clock runtime per method run
+
+**Troubleshooting:**
+- Invalid tag: `failed to fetch player <tag>` indicates bad tag format, missing player, or API access issue
+- Invalid `data-dir`: warning about `cards_stats.json` means combat stats fallback is used; verify `<data-dir>/cards_stats.json`
+- Invalid constraint config: errors like `hard.min_air_defense must be in [0,8]` or `soft weights must sum to > 0` require flag correction
+
 ### Archetype Analysis
 
 #### Dynamic Archetype Detection
@@ -765,8 +853,15 @@ Get personalized evolution upgrade recommendations:
 
 ```bash
 ./bin/cr-api events scan --tag <TAG>
-./bin/cr-api playstyle --tag <TAG> [--recommend-decks] [--save]
+./bin/cr-api events list --tag <TAG> --min-battles 1
+./bin/cr-api events analyze --tag <TAG> --event-type challenge --min-battles 3
 ```
+
+`events analyze` now includes matchup sections:
+- Top winning deck-vs-deck matchups (player deck hash vs opponent deck hash)
+- Most played matchups
+- Archetype matchup rollups (when archetypes can be inferred)
+- CSV export rows for matchup breakdown via `--export-csv`
 
 ### What-If Analysis
 
@@ -956,6 +1051,25 @@ cr-api deck leaderboard filter --tag <TAG> --archetype cycle --min-elixir 2.5 --
 # View statistics
 cr-api deck leaderboard stats --tag <TAG> --archetypes
 
+# View storage statistics (DB size + archetype distribution)
+cr-api deck storage stats --tag <TAG>
+
+# Purge all stored decks (with confirmation prompt)
+cr-api deck storage purge --tag <TAG>
+
+# Remove low-score or stale decks
+cr-api deck storage cleanup --tag <TAG> --min-score 7.0 --older-than-days 30
+
+# Keep only top N decks per archetype
+cr-api deck storage prune --tag <TAG> --keep 50
+
+# Compact SQLite file after cleanup/purge
+cr-api deck storage vacuum --tag <TAG>
+
+# Backup/restore deck storage
+cr-api deck storage export --tag <TAG> --output leaderboard-backup.json
+cr-api deck storage import --tag <TAG> --input leaderboard-backup.json
+
 # Export leaderboard
 cr-api deck leaderboard export --tag <TAG> --format csv --output decks.csv
 ```
@@ -971,5 +1085,13 @@ cr-api deck leaderboard export --tag <TAG> --format csv --output decks.csv
 - `--require-all <cards>` - Decks must contain ALL cards
 - `--require-any <cards>` - Decks must contain ANY cards
 - `--exclude <cards>` - Exclude decks with ANY cards
+
+**Storage Flags:**
+- `storage purge`: `--confirm` to skip prompt
+- `storage cleanup`: `--min-score`, `--older-than-days`, `--archetype`, `--dry-run`, `--confirm`
+- `storage prune`: `--keep`, `--dry-run`, `--confirm`
+- `storage vacuum`: no extra flags
+- `storage export`: `--output`, `--format json`
+- `storage import`: `--input`, `--confirm`
 
 See [DECK_DISCOVERY.md](DECK_DISCOVERY.md) for complete documentation.

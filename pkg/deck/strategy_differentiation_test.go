@@ -1,6 +1,7 @@
 package deck
 
 import (
+	"slices"
 	"testing"
 )
 
@@ -51,13 +52,7 @@ func TestBuilder_StrategyArchetypeAffinity(t *testing.T) {
 		}
 
 		// Verify Hog Rider is selected (archetype affinity should help it overcome level difference)
-		hasHogRider := false
-		for _, card := range deck.Deck {
-			if card == "Hog Rider" {
-				hasHogRider = true
-				break
-			}
-		}
+		hasHogRider := slices.Contains(deck.Deck, "Hog Rider")
 
 		if !hasHogRider {
 			t.Errorf("Aggro deck should include Hog Rider (archetype card) despite being 2 levels lower than Goblin Barrel")
@@ -204,13 +199,7 @@ func TestBuilder_StrategyDifferentiation(t *testing.T) {
 		// Count differences
 		differences := 0
 		for _, card1 := range deck1 {
-			found := false
-			for _, card2 := range deck2 {
-				if card1 == card2 {
-					found = true
-					break
-				}
-			}
+			found := slices.Contains(deck2, card1)
 			if !found {
 				differences++
 			}

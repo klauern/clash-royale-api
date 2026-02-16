@@ -4,19 +4,21 @@ package events
 
 import (
 	"fmt"
+	"sort"
 	"time"
 )
 
 // EventAnalysis represents comprehensive analysis of event decks
 type EventAnalysis struct {
-	PlayerTag      string                `json:"player_tag"`
-	AnalysisTime   time.Time             `json:"analysis_time"`
-	TotalDecks     int                   `json:"total_decks"`
-	Summary        EventSummary          `json:"summary"`
-	CardAnalysis   EventCardAnalysis     `json:"card_analysis"`
-	ElixirAnalysis EventElixirAnalysis   `json:"elixir_analysis"`
-	EventBreakdown map[string]EventStats `json:"event_breakdown"`
-	TopDecks       []TopPerformingDeck   `json:"top_decks"`
+	PlayerTag       string                `json:"player_tag"`
+	AnalysisTime    time.Time             `json:"analysis_time"`
+	TotalDecks      int                   `json:"total_decks"`
+	Summary         EventSummary          `json:"summary"`
+	CardAnalysis    EventCardAnalysis     `json:"card_analysis"`
+	ElixirAnalysis  EventElixirAnalysis   `json:"elixir_analysis"`
+	EventBreakdown  map[string]EventStats `json:"event_breakdown"`
+	TopDecks        []TopPerformingDeck   `json:"top_decks"`
+	MatchupAnalysis EventMatchupAnalysis  `json:"matchup_analysis"`
 }
 
 // EventSummary provides high-level statistics about event deck performance
@@ -88,11 +90,47 @@ type TopPerformingDeck struct {
 	AvgElixir float64  `json:"avg_elixir"`
 }
 
+// EventMatchupAnalysis provides deck-vs-deck and archetype matchup performance.
+type EventMatchupAnalysis struct {
+	TotalTrackedBattles int                     `json:"total_tracked_battles"`
+	UniqueDeckMatchups  int                     `json:"unique_deck_matchups"`
+	TopWinningMatchups  []DeckMatchupStats      `json:"top_winning_matchups"`
+	TopLosingMatchups   []DeckMatchupStats      `json:"top_losing_matchups"`
+	MostPlayedMatchups  []DeckMatchupStats      `json:"most_played_matchups"`
+	ArchetypeMatchups   []ArchetypeMatchupStats `json:"archetype_matchups"`
+}
+
+// DeckMatchupStats tracks win/loss performance for a deck pair.
+type DeckMatchupStats struct {
+	PlayerDeckHash   string   `json:"player_deck_hash"`
+	OpponentDeckHash string   `json:"opponent_deck_hash"`
+	PlayerDeck       []string `json:"player_deck"`
+	OpponentDeck     []string `json:"opponent_deck"`
+	Battles          int      `json:"battles"`
+	Wins             int      `json:"wins"`
+	Losses           int      `json:"losses"`
+	Draws            int      `json:"draws"`
+	WinRate          float64  `json:"win_rate"`
+}
+
+// ArchetypeMatchupStats tracks win/loss performance for archetype pairs.
+type ArchetypeMatchupStats struct {
+	PlayerArchetype   string  `json:"player_archetype"`
+	OpponentArchetype string  `json:"opponent_archetype"`
+	Battles           int     `json:"battles"`
+	Wins              int     `json:"wins"`
+	Losses            int     `json:"losses"`
+	Draws             int     `json:"draws"`
+	WinRate           float64 `json:"win_rate"`
+}
+
 // AnalysisOptions configures event deck analysis behavior
 type AnalysisOptions struct {
 	MinBattlesForTopDecks int      `json:"min_battles_for_top_decks"` // Minimum battles to qualify for top decks
 	LimitTopDecks         int      `json:"limit_top_decks"`           // Maximum number of top decks to include
 	EventTypes            []string `json:"event_types"`               // Filter by event types (empty = all)
+	MinBattlesForMatchups int      `json:"min_battles_for_matchups"`  // Minimum battles for matchup reporting
+	LimitTopMatchups      int      `json:"limit_top_matchups"`        // Max number of matchup rows per category
 }
 
 // DefaultAnalysisOptions returns sensible defaults for event analysis
@@ -101,6 +139,8 @@ func DefaultAnalysisOptions() AnalysisOptions {
 		MinBattlesForTopDecks: 3,
 		LimitTopDecks:         5,
 		EventTypes:            []string{},
+		MinBattlesForMatchups: 2,
+		LimitTopMatchups:      10,
 	}
 }
 
@@ -118,6 +158,12 @@ func AnalyzeEventDecks(decks []EventDeck, options AnalysisOptions) *EventAnalysi
 			ElixirAnalysis: EventElixirAnalysis{},
 			EventBreakdown: map[string]EventStats{},
 			TopDecks:       []TopPerformingDeck{},
+			MatchupAnalysis: EventMatchupAnalysis{
+				TopWinningMatchups: []DeckMatchupStats{},
+				TopLosingMatchups:  []DeckMatchupStats{},
+				MostPlayedMatchups: []DeckMatchupStats{},
+				ArchetypeMatchups:  []ArchetypeMatchupStats{},
+			},
 		}
 	}
 
@@ -127,6 +173,7 @@ func AnalyzeEventDecks(decks []EventDeck, options AnalysisOptions) *EventAnalysi
 	elixirAnalysis := analyzeElixirPerformance(filteredDecks)
 	eventBreakdown := calculateEventBreakdown(filteredDecks)
 	topDecks := identifyTopPerformingDecks(filteredDecks, options)
+	matchupAnalysis := analyzeDeckMatchups(filteredDecks, options)
 
 	// Determine player tag from first deck (all decks should have same player)
 	playerTag := ""
@@ -135,14 +182,15 @@ func AnalyzeEventDecks(decks []EventDeck, options AnalysisOptions) *EventAnalysi
 	}
 
 	return &EventAnalysis{
-		PlayerTag:      playerTag,
-		AnalysisTime:   time.Now(),
-		TotalDecks:     len(filteredDecks),
-		Summary:        summary,
-		CardAnalysis:   cardAnalysis,
-		ElixirAnalysis: elixirAnalysis,
-		EventBreakdown: eventBreakdown,
-		TopDecks:       topDecks,
+		PlayerTag:       playerTag,
+		AnalysisTime:    time.Now(),
+		TotalDecks:      len(filteredDecks),
+		Summary:         summary,
+		CardAnalysis:    cardAnalysis,
+		ElixirAnalysis:  elixirAnalysis,
+		EventBreakdown:  eventBreakdown,
+		TopDecks:        topDecks,
+		MatchupAnalysis: matchupAnalysis,
 	}
 }
 
@@ -392,6 +440,202 @@ func identifyTopPerformingDecks(decks []EventDeck, options AnalysisOptions) []To
 	}
 
 	return topDecks
+}
+
+//nolint:gocyclo,funlen // Analysis flow is kept explicit for readability of ranking categories.
+func analyzeDeckMatchups(decks []EventDeck, options AnalysisOptions) EventMatchupAnalysis {
+	deckAgg := make(map[string]*DeckMatchupStats)
+	archetypeAgg := make(map[string]*ArchetypeMatchupStats)
+	totalTracked := 0
+
+	for _, eventDeck := range decks {
+		for _, battle := range eventDeck.Battles {
+			if updateMatchupAggregates(eventDeck, battle, deckAgg, archetypeAgg) {
+				totalTracked++
+			}
+		}
+	}
+
+	deckStats := make([]DeckMatchupStats, 0, len(deckAgg))
+	for _, stats := range deckAgg {
+		if stats.Battles < options.MinBattlesForMatchups {
+			continue
+		}
+		stats.WinRate = float64(stats.Wins) / float64(stats.Battles)
+		deckStats = append(deckStats, *stats)
+	}
+
+	archetypeStats := make([]ArchetypeMatchupStats, 0, len(archetypeAgg))
+	for _, stats := range archetypeAgg {
+		if stats.Battles < options.MinBattlesForMatchups {
+			continue
+		}
+		stats.WinRate = float64(stats.Wins) / float64(stats.Battles)
+		archetypeStats = append(archetypeStats, *stats)
+	}
+
+	topWinning := append([]DeckMatchupStats(nil), deckStats...)
+	sort.Slice(topWinning, func(i, j int) bool {
+		if topWinning[i].WinRate == topWinning[j].WinRate {
+			return topWinning[i].Battles > topWinning[j].Battles
+		}
+		return topWinning[i].WinRate > topWinning[j].WinRate
+	})
+
+	topLosing := append([]DeckMatchupStats(nil), deckStats...)
+	sort.Slice(topLosing, func(i, j int) bool {
+		if topLosing[i].WinRate == topLosing[j].WinRate {
+			return topLosing[i].Battles > topLosing[j].Battles
+		}
+		return topLosing[i].WinRate < topLosing[j].WinRate
+	})
+
+	mostPlayed := append([]DeckMatchupStats(nil), deckStats...)
+	sort.Slice(mostPlayed, func(i, j int) bool {
+		if mostPlayed[i].Battles == mostPlayed[j].Battles {
+			return mostPlayed[i].WinRate > mostPlayed[j].WinRate
+		}
+		return mostPlayed[i].Battles > mostPlayed[j].Battles
+	})
+
+	sort.Slice(archetypeStats, func(i, j int) bool {
+		if archetypeStats[i].Battles == archetypeStats[j].Battles {
+			return archetypeStats[i].WinRate > archetypeStats[j].WinRate
+		}
+		return archetypeStats[i].Battles > archetypeStats[j].Battles
+	})
+
+	return EventMatchupAnalysis{
+		TotalTrackedBattles: totalTracked,
+		UniqueDeckMatchups:  len(deckAgg),
+		TopWinningMatchups:  limitDeckMatchupStats(topWinning, options.LimitTopMatchups),
+		TopLosingMatchups:   limitDeckMatchupStats(topLosing, options.LimitTopMatchups),
+		MostPlayedMatchups:  limitDeckMatchupStats(mostPlayed, options.LimitTopMatchups),
+		ArchetypeMatchups:   limitArchetypeMatchupStats(archetypeStats, options.LimitTopMatchups),
+	}
+}
+
+//nolint:gocyclo // Matchup extraction handles fallback/deck-hash/archetype branching.
+func updateMatchupAggregates(
+	eventDeck EventDeck,
+	battle BattleRecord,
+	deckAgg map[string]*DeckMatchupStats,
+	archetypeAgg map[string]*ArchetypeMatchupStats,
+) bool {
+	playerDeck := battle.PlayerDeck
+	if len(playerDeck) == 0 {
+		playerDeck = deckNamesFromEventDeck(eventDeck)
+	}
+	if len(playerDeck) == 0 || len(battle.OpponentDeck) == 0 {
+		return false
+	}
+
+	playerHash := battle.PlayerDeckHash
+	if playerHash == "" {
+		playerHash = deckHash(playerDeck)
+	}
+	opponentHash := battle.OpponentDeckHash
+	if opponentHash == "" {
+		opponentHash = deckHash(battle.OpponentDeck)
+	}
+	if playerHash == "" || opponentHash == "" {
+		return false
+	}
+
+	deckStats := getOrCreateDeckMatchup(deckAgg, playerHash, opponentHash, playerDeck, battle.OpponentDeck)
+	deckStats.Battles++
+	incrementResultCounters(battle.Result, &deckStats.Wins, &deckStats.Losses, &deckStats.Draws)
+
+	playerArchetype := battle.PlayerDeckArchetype
+	if playerArchetype == "" {
+		playerArchetype = inferDeckArchetype(playerDeck)
+	}
+	opponentArchetype := battle.OpponentDeckArchetype
+	if opponentArchetype == "" {
+		opponentArchetype = inferDeckArchetype(battle.OpponentDeck)
+	}
+	if playerArchetype != "" && opponentArchetype != "" {
+		archetypeStats := getOrCreateArchetypeMatchup(archetypeAgg, playerArchetype, opponentArchetype)
+		archetypeStats.Battles++
+		incrementResultCounters(battle.Result, &archetypeStats.Wins, &archetypeStats.Losses, &archetypeStats.Draws)
+	}
+
+	return true
+}
+
+func getOrCreateDeckMatchup(
+	deckAgg map[string]*DeckMatchupStats,
+	playerHash, opponentHash string,
+	playerDeck, opponentDeck []string,
+) *DeckMatchupStats {
+	key := playerHash + "::" + opponentHash
+	stats, exists := deckAgg[key]
+	if exists {
+		return stats
+	}
+
+	stats = &DeckMatchupStats{
+		PlayerDeckHash:   playerHash,
+		OpponentDeckHash: opponentHash,
+		PlayerDeck:       append([]string(nil), playerDeck...),
+		OpponentDeck:     append([]string(nil), opponentDeck...),
+	}
+	deckAgg[key] = stats
+	return stats
+}
+
+func getOrCreateArchetypeMatchup(
+	archetypeAgg map[string]*ArchetypeMatchupStats,
+	playerArchetype, opponentArchetype string,
+) *ArchetypeMatchupStats {
+	key := playerArchetype + "::" + opponentArchetype
+	stats, exists := archetypeAgg[key]
+	if exists {
+		return stats
+	}
+
+	stats = &ArchetypeMatchupStats{
+		PlayerArchetype:   playerArchetype,
+		OpponentArchetype: opponentArchetype,
+	}
+	archetypeAgg[key] = stats
+	return stats
+}
+
+func incrementResultCounters(result string, wins, losses, draws *int) {
+	switch result {
+	case BattleResultWin:
+		(*wins)++
+	case BattleResultLoss:
+		(*losses)++
+	default:
+		(*draws)++
+	}
+}
+
+func deckNamesFromEventDeck(eventDeck EventDeck) []string {
+	names := make([]string, 0, len(eventDeck.Deck.Cards))
+	for _, card := range eventDeck.Deck.Cards {
+		if card.Name == "" {
+			continue
+		}
+		names = append(names, card.Name)
+	}
+	return names
+}
+
+func limitDeckMatchupStats(stats []DeckMatchupStats, limit int) []DeckMatchupStats {
+	if limit <= 0 || len(stats) <= limit {
+		return stats
+	}
+	return stats[:limit]
+}
+
+func limitArchetypeMatchupStats(stats []ArchetypeMatchupStats, limit int) []ArchetypeMatchupStats {
+	if limit <= 0 || len(stats) <= limit {
+		return stats
+	}
+	return stats[:limit]
 }
 
 // SuggestCardConstraints analyzes top decks and suggests cards that appear frequently

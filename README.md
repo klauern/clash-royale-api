@@ -22,7 +22,52 @@ A Go CLI for collecting Clash Royale player/card data, building and evaluating d
 - [Task](https://taskfile.dev)
 - Clash Royale API token from [developer.clashroyale.com](https://developer.clashroyale.com/)
 
-### Setup
+```
+clash-royale-api/
+├── .env.example               # Example configuration
+├── Taskfile.yml              # Task runner configuration
+├── cmd/                      # Command-line applications
+│   └── cr-api/              # Main CLI application
+├── pkg/                      # Go libraries
+│   ├── clashroyale/          # API client
+│   ├── analysis/             # Collection analysis & playstyle
+│   ├── deck/                 # Deck building algorithms
+│   └── events/               # Event deck tracking
+├── internal/                 # Internal packages
+│   ├── exporter/             # CSV export
+│   └── storage/              # Data persistence
+├── bin/                      # Built binaries
+├── data/                    # Data storage
+│   ├── evolution_shards.json # Evolution shard inventory
+│   ├── static/              # Static game data (cards.json cache)
+│   ├── players/             # Player profiles
+│   ├── analysis/            # Collection analysis
+│   ├── csv/                 # CSV exports
+│   └── event_decks/         # Event deck tracking
+├── scripts/                 # Utility scripts
+├── LICENSE                  # MIT License
+└── README.md                # This file
+```
+
+## Security Notice
+
+**⚠️ Important**: Never commit your `.env` file or API tokens to version control.
+
+The `.env` file contains sensitive credentials and is **gitignored** by design. This repository includes `.env.example` as a safe template with placeholder values.
+
+**Local-only data**: The `data/` directory stores cached API responses, analysis results, and local artifacts. It is excluded from version control to keep the repository clean and avoid committing large generated files.
+
+## Installation
+
+**Binary Releases** (Recommended): Download from [Releases page](https://github.com/klauern/clash-royale-api/releases).
+
+**Build from Source** (Go 1.26+):
+```bash
+git clone https://github.com/klauern/clash-royale-api.git
+cd clash-royale-api && task build
+```
+
+## CLI Usage
 
 ```bash
 cp .env.example .env

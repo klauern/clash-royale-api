@@ -1,0 +1,198 @@
+{
+  "version": 1,
+  "description": "Archetype requirements for deck coherence validation. Defines what cards and characteristics make a coherent archetype.",
+  "last_updated": "2026-02-01",
+  "archetypes": {
+    "beatdown": {
+      "name": "Beatdown",
+      "elixir_range": { "min": 3.5, "max": 4.5, "label": "Beatdown (3.5-4.5)" },
+      "required_win_conditions": ["Golem", "Lava Hound", "Giant", "Electro Giant", "P.E.K.K.A"],
+      "required_support_count": { "min": 2, "max": 4 },
+      "support_categories": ["splash", "high_dps", "spell_big"],
+      "max_cycle_cards": 2,
+      "min_big_spells": 1,
+      "preferred_card_roles": {
+        "win_condition": { "min": 1, "max": 2 },
+        "support": { "min": 2, "max": 4 },
+        "building": { "min": 0, "max": 1 },
+        "spell_big": { "min": 1, "max": 2 },
+        "spell_small": { "min": 0, "max": 2 },
+        "cycle": { "min": 0, "max": 2 }
+      }
+    },
+    "cycle": {
+      "name": "Cycle",
+      "elixir_range": { "min": 2.4, "max": 3.2, "label": "Cycle (2.4-3.2)" },
+      "required_win_conditions": ["Hog Rider", "Royal Giant", "Miner", "Royal Hogs", "Goblin Barrel"],
+      "required_support_count": { "min": 1, "max": 2 },
+      "support_categories": ["building", "mini_tank", "spell_big"],
+      "min_cycle_cards": 3,
+      "max_big_spells": 1,
+      "preferred_card_roles": {
+        "win_condition": { "min": 1, "max": 1 },
+        "support": { "min": 1, "max": 2 },
+        "building": { "min": 1, "max": 1 },
+        "spell_big": { "min": 0, "max": 1 },
+        "spell_small": { "min": 1, "max": 2 },
+        "cycle": { "min": 3, "max": 4 }
+      }
+    },
+    "bait": {
+      "name": "Bait",
+      "elixir_range": { "min": 2.8, "max": 3.6, "label": "Bait (2.8-3.6)" },
+      "required_win_conditions": ["Goblin Barrel", "Wall Breakers"],
+      "required_support_count": { "min": 2, "max": 3 },
+      "support_categories": ["bait", "spell_big", "building"],
+      "min_bait_cards": 3,
+      "max_buildings": 1,
+      "preferred_card_roles": {
+        "win_condition": { "min": 1, "max": 2 },
+        "support": { "min": 2, "max": 3 },
+        "building": { "min": 0, "max": 1 },
+        "spell_big": { "min": 1, "max": 1 },
+        "spell_small": { "min": 1, "max": 2 },
+        "bait": { "min": 3, "max": 4 }
+      }
+    },
+    "siege": {
+      "name": "Siege",
+      "elixir_range": { "min": 2.8, "max": 3.6, "label": "Siege (2.8-3.6)" },
+      "required_win_conditions": ["X-Bow", "Mortar"],
+      "required_support_count": { "min": 2, "max": 3 },
+      "support_categories": ["building", "cycle", "mini_tank"],
+      "min_buildings": 1,
+      "max_big_spells": 1,
+      "preferred_card_roles": {
+        "win_condition": { "min": 1, "max": 1 },
+        "support": { "min": 2, "max": 3 },
+        "building": { "min": 1, "max": 2 },
+        "spell_big": { "min": 0, "max": 1 },
+        "spell_small": { "min": 1, "max": 2 },
+        "cycle": { "min": 2, "max": 3 }
+      }
+    },
+    "control": {
+      "name": "Control",
+      "elixir_range": { "min": 3.0, "max": 4.0, "label": "Control (3.0-4.0)" },
+      "required_win_conditions": ["Graveyard", "Miner", "Electro Giant"],
+      "required_support_count": { "min": 2, "max": 3 },
+      "support_categories": ["splash", "building", "spell_big"],
+      "min_defensive_cards": 3,
+      "max_win_conditions": 2,
+      "preferred_card_roles": {
+        "win_condition": { "min": 1, "max": 2 },
+        "support": { "min": 2, "max": 3 },
+        "building": { "min": 1, "max": 2 },
+        "spell_big": { "min": 1, "max": 2 },
+        "spell_small": { "min": 1, "max": 2 },
+        "cycle": { "min": 0, "max": 2 }
+      }
+    },
+    "bridge_spam": {
+      "name": "Bridge Spam",
+      "elixir_range": { "min": 3.2, "max": 4.2, "label": "Bridge Spam (3.2-4.2)" },
+      "required_win_conditions": ["P.E.K.K.A", "Mega Knight", "Battle Ram", "Bandit", "Royal Ghost"],
+      "required_support_count": { "min": 2, "max": 3 },
+      "support_categories": ["splash", "spell_big", "reset"],
+      "min_fast_threats": 3,
+      "max_buildings": 1,
+      "preferred_card_roles": {
+        "win_condition": { "min": 2, "max": 3 },
+        "support": { "min": 2, "max": 3 },
+        "building": { "min": 0, "max": 1 },
+        "spell_big": { "min": 0, "max": 1 },
+        "spell_small": { "min": 1, "max": 2 },
+        "cycle": { "min": 0, "max": 2 }
+      }
+    }
+  },
+  "anti_synergy_rules": {
+    "conflicting_win_conditions": [
+      {
+        "name": "Beatdown vs Cycle",
+        "cards_a": ["Golem", "Lava Hound", "Giant", "Electro Giant"],
+        "cards_b": ["Hog Rider", "Royal Giant"],
+        "penalty": 0.30,
+        "reason": "Beatdown tanks conflict with cycle win conditions"
+      },
+      {
+        "name": "Siege vs Beatdown",
+        "cards_a": ["X-Bow", "Mortar"],
+        "cards_b": ["Golem", "Lava Hound", "Giant", "Electro Giant", "P.E.K.K.A"],
+        "penalty": 0.30,
+        "reason": "Siege and beatdown have incompatible play patterns"
+      },
+      {
+        "name": "Multiple Beatdown Tanks",
+        "cards_a": ["Golem", "Lava Hound", "Giant", "Electro Giant"],
+        "max_allowed": 1,
+        "penalty": 0.25,
+        "reason": "Multiple heavy tanks create inconsistent elixir timing"
+      }
+    ],
+    "composition_violations": [
+      {
+        "name": "Too Many Buildings",
+        "threshold": 3,
+        "penalty": 0.20,
+        "reason": "More than 2 buildings makes deck too passive"
+      },
+      {
+        "name": "Too Many Spells",
+        "threshold": 4,
+        "penalty": 0.20,
+        "reason": "Spell-heavy decks lack board presence"
+      },
+      {
+        "name": "No Win Condition",
+        "min_win_conditions": 1,
+        "penalty": 0.40,
+        "reason": "Deck needs a clear tower-damage win condition"
+      },
+      {
+        "name": "No Air Defense",
+        "min_air_defense": 2,
+        "penalty": 0.15,
+        "reason": "Cannot defend against air threats"
+      }
+    ]
+  },
+  "card_categories": {
+    "cycle_cards": [
+      "Skeletons", "Ice Spirit", "Fire Spirit", "Heal Spirit", "Bats",
+      "Spear Goblins", "Goblins", "Log", "Zap", "Barbarian Barrel"
+    ],
+    "bait_cards": [
+      "Princess", "Goblin Gang", "Dart Goblin", "Skeleton Army",
+      "Bats", "Minions", "Minion Horde", "Goblin Barrel"
+    ],
+    "splash_damage": [
+      "Baby Dragon", "Valkyrie", "Dark Prince", "Wizard", "Electro Wizard",
+      "Mega Knight", "Executioner", "Bomb Tower", "Fire Spirit"
+    ],
+    "high_dps": [
+      "Mini P.E.K.K.A", "P.E.K.K.A", "Inferno Dragon", "Inferno Tower",
+      "Hunter", "Mega Minion", "Minions", "Night Witch"
+    ],
+    "mini_tanks": [
+      "Knight", "Ice Golem", "Valkyrie", "Dark Prince", "Royal Ghost"
+    ],
+    "reset_cards": [
+      "Electro Wizard", "Zap", "Ice Spirit", "Electro Giant"
+    ],
+    "big_spells": [
+      "Fireball", "Lightning", "Poison", "Rocket", "Earthquake", "Tornado"
+    ],
+    "small_spells": [
+      "Zap", "Log", "Arrows", "Ice Spirit", "Barbarian Barrel", "Giant Snowball"
+    ],
+    "air_defense": [
+      "Musketeer", "Inferno Tower", "Inferno Dragon",
+      "Mega Minion", "Minions", "Electro Wizard", "Baby Dragon", "Archers"
+    ],
+    "fast_threats": [
+      "Hog Rider", "Battle Ram", "Bandit", "Royal Ghost", "Wall Breakers",
+      "Ram Rider", "Royal Hogs"
+    ]
+  }
+}

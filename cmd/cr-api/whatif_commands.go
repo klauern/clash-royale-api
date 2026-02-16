@@ -73,48 +73,81 @@ func whatIfCommand(ctx context.Context, cmd *cli.Command) error {
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
 
-	// Get card levels either from file or from API
-	var cardLevels map[string]deck.CardLevelData
-	var playerName string
-
-	if fromAnalysis != "" {
-		// Load from existing analysis file
-		if verbose {
-			printf("Loading analysis from: %s\n", fromAnalysis)
-		}
-		cardAnalysis, err := loadCardAnalysis(fromAnalysis)
-		if err != nil {
-			return fmt.Errorf("failed to load analysis file: %w", err)
-		}
-		cardLevels = convertCardAnalysisToCardLevels(cardAnalysis)
-		playerName = cardAnalysis.PlayerName
-	} else {
-		// Fetch from API
-		if apiToken == "" {
-			return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag, or provide --from-analysis")
-		}
-
-		client := clashroyale.NewClient(apiToken)
-
-		if verbose {
-			printf("Fetching player data for tag: %s\n", tag)
-		}
-
-		player, err := client.GetPlayer(tag)
-		if err != nil {
-			return fmt.Errorf("failed to get player: %w", err)
-		}
-
-		playerName = player.Name
-		cardLevels = convertPlayerToCardLevels(player)
+	// Load card levels and player info
+	cardLevels, playerName, err := loadCardLevelsForWhatIf(ctx, fromAnalysis, tag, apiToken, verbose)
+	if err != nil {
+		return err
 	}
 
 	// Parse upgrade specifications
+	upgrades, err := parseUpgradeSpecs(upgradesSpec, verbose)
+	if err != nil {
+		return err
+	}
+
+	// Run what-if analysis
+	scenario, err := runWhatIfAnalysis(cardLevels, upgrades, strategy, dataDir, playerName, tag)
+	if err != nil {
+		return err
+	}
+
+	// Output results
+	if err := outputWhatIfResults(scenario, jsonOutput, showDecks, saveData, dataDir, tag); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// loadCardLevelsForWhatIf loads card level data from file or API
+func loadCardLevelsForWhatIf(ctx context.Context, fromAnalysis, tag, apiToken string, verbose bool) (map[string]deck.CardLevelData, string, error) {
+	if fromAnalysis != "" {
+		return loadCardLevelsFromFile(fromAnalysis, verbose)
+	}
+	return loadCardLevelsFromAPI(ctx, tag, apiToken, verbose)
+}
+
+// loadCardLevelsFromFile loads card levels from an analysis file
+func loadCardLevelsFromFile(filePath string, verbose bool) (map[string]deck.CardLevelData, string, error) {
+	if verbose {
+		printf("Loading analysis from: %s\n", filePath)
+	}
+	cardAnalysis, err := loadCardAnalysis(filePath)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to load analysis file: %w", err)
+	}
+	cardLevels := convertCardAnalysisToCardLevels(cardAnalysis)
+	return cardLevels, cardAnalysis.PlayerName, nil
+}
+
+// loadCardLevelsFromAPI fetches card levels from the Clash Royale API
+func loadCardLevelsFromAPI(ctx context.Context, tag, apiToken string, verbose bool) (map[string]deck.CardLevelData, string, error) {
+	if apiToken == "" {
+		return nil, "", fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag, or provide --from-analysis")
+	}
+
+	client := clashroyale.NewClient(apiToken)
+
+	if verbose {
+		printf("Fetching player data for tag: %s\n", tag)
+	}
+
+	player, err := client.GetPlayerWithContext(ctx, tag)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get player: %w", err)
+	}
+
+	cardLevels := convertPlayerToCardLevels(player)
+	return cardLevels, player.Name, nil
+}
+
+// parseUpgradeSpecs parses upgrade specifications from command-line arguments
+func parseUpgradeSpecs(upgradesSpec []string, verbose bool) ([]whatif.CardUpgrade, error) {
 	upgrades := make([]whatif.CardUpgrade, 0, len(upgradesSpec))
 	for _, spec := range upgradesSpec {
 		upgrade, err := whatif.ParseCardUpgrade(spec)
 		if err != nil {
-			return fmt.Errorf("failed to parse upgrade spec '%s': %w", spec, err)
+			return nil, fmt.Errorf("failed to parse upgrade spec '%s': %w", spec, err)
 		}
 		upgrades = append(upgrades, upgrade)
 	}
@@ -126,34 +159,39 @@ func whatIfCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	// Create deck builder with configured strategy
+	return upgrades, nil
+}
+
+// runWhatIfAnalysis executes the what-if analysis with the given parameters
+func runWhatIfAnalysis(cardLevels map[string]deck.CardLevelData, upgrades []whatif.CardUpgrade, strategy, dataDir, playerName, tag string) (*whatif.WhatIfScenario, error) {
 	builder := deck.NewBuilder(dataDir)
 	if strategy != "" {
 		if err := builder.SetStrategy(deck.Strategy(strategy)); err != nil {
-			return fmt.Errorf("invalid strategy '%s': %w", strategy, err)
+			return nil, fmt.Errorf("invalid strategy '%s': %w", strategy, err)
 		}
 	}
 
-	// Create what-if analyzer and run analysis
 	analyzer := whatif.NewWhatIfAnalyzer(builder)
 	scenario, err := analyzer.AnalyzeUpgradePath(cardLevels, upgrades)
 	if err != nil {
-		return fmt.Errorf("failed to analyze upgrade path: %w", err)
+		return nil, fmt.Errorf("failed to analyze upgrade path: %w", err)
 	}
 
-	// Add player info to scenario
 	if playerName != "" {
 		scenario.Description = fmt.Sprintf("What-if analysis for %s (%s)", playerName, tag)
 	}
 
-	// Output results
+	return scenario, nil
+}
+
+// outputWhatIfResults handles output formatting and optional saving
+func outputWhatIfResults(scenario *whatif.WhatIfScenario, jsonOutput, showDecks, saveData bool, dataDir, tag string) error {
 	if jsonOutput {
 		return outputWhatIfJSON(scenario)
 	}
 
 	displayWhatIfScenario(scenario, showDecks)
 
-	// Save if requested
 	if saveData {
 		if err := saveWhatIfScenario(dataDir, scenario); err != nil {
 			printf("Warning: Failed to save scenario: %v\n", err)

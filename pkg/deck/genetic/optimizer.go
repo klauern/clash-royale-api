@@ -35,6 +35,8 @@ type GeneticOptimizer struct {
 	Strategy   deck.Strategy
 	Progress   func(GeneticProgress)
 	RNG        *rand.Rand
+	// FitnessFunc overrides default genome fitness evaluation when set.
+	FitnessFunc func([]deck.CardCandidate) (float64, error)
 }
 
 // NewGeneticOptimizer constructs a genetic optimizer with validation.
@@ -164,10 +166,7 @@ func (o *GeneticOptimizer) Optimize() (*GeneticResult, error) {
 
 func (o *GeneticOptimizer) populationConfig() (uint, uint) {
 	if o.Config.IslandModel && o.Config.IslandCount > 0 {
-		perPop := o.Config.PopulationSize / o.Config.IslandCount
-		if perPop < 1 {
-			perPop = 1
-		}
+		perPop := max(o.Config.PopulationSize/o.Config.IslandCount, 1)
 		return uint(perPop), uint(o.Config.IslandCount)
 	}
 	return uint(o.Config.PopulationSize), 1
@@ -181,6 +180,7 @@ func (o *GeneticOptimizer) genomeFactory() func(rng *rand.Rand) eaopt.Genome {
 			cards := seeds[seedIndex]
 			seedIndex++
 			if genome, err := NewDeckGenomeFromCards(cards, o.Candidates, o.Strategy, o.Config); err == nil {
+				genome.fitnessEvaluator = o.FitnessFunc
 				return &eaoptDeckGenome{genome: genome}
 			}
 		}
@@ -188,13 +188,15 @@ func (o *GeneticOptimizer) genomeFactory() func(rng *rand.Rand) eaopt.Genome {
 		genome, err := NewDeckGenome(o.Candidates, o.Strategy, o.Config)
 		if err != nil {
 			return &eaoptDeckGenome{genome: &DeckGenome{
-				Cards:      []string{},
-				Fitness:    0,
-				config:     o.Config,
-				candidates: o.Candidates,
-				strategy:   o.Strategy,
+				Cards:            []string{},
+				Fitness:          0,
+				config:           o.Config,
+				candidates:       o.Candidates,
+				strategy:         o.Strategy,
+				fitnessEvaluator: o.FitnessFunc,
 			}}
 		}
+		genome.fitnessEvaluator = o.FitnessFunc
 		return &eaoptDeckGenome{genome: genome}
 	}
 }
@@ -307,7 +309,8 @@ func (mod elitismModel) Validate() error {
 }
 
 func generateOffsprings(n uint, indis eaopt.Individuals, sel eaopt.Selector, crossRate float64,
-	rng *rand.Rand) (eaopt.Individuals, error) {
+	rng *rand.Rand,
+) (eaopt.Individuals, error) {
 	offsprings := make(eaopt.Individuals, n)
 	i := 0
 	for i < len(offsprings) {

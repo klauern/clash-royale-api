@@ -56,7 +56,7 @@ type DeckRecommendation struct {
 	Reasons []string `json:"reasons"`
 
 	// UpgradeCost summarizes resources needed to make this deck competitive
-	UpgradeCost UpgradeCost `json:"upgrade_cost,omitempty"`
+	UpgradeCost UpgradeCost `json:"upgrade_cost"`
 }
 
 // RecommendationResult contains all recommendations for a player

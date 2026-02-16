@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -20,17 +22,22 @@ type Storage struct {
 	dbPath    string
 }
 
+var playerTagPattern = regexp.MustCompile(`^[A-Za-z0-9]+$`)
+
 // NewStorage creates a new Storage instance for the given player tag
 // The database file is stored at ~/.cr-api/leaderboards/<player_tag>.db
 func NewStorage(playerTag string) (*Storage, error) {
+	canonicalTag, sanitizedTag, err := normalizePlayerTag(playerTag)
+	if err != nil {
+		return nil, err
+	}
+
 	// Construct path: ~/.cr-api/leaderboards/<player_tag>.db
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	// Remove # prefix from player tag for filename safety
-	sanitizedTag := strings.TrimPrefix(playerTag, "#")
 	leaderboardDir := filepath.Join(homeDir, ".cr-api", "leaderboards")
 	dbPath := filepath.Join(leaderboardDir, fmt.Sprintf("%s.db", sanitizedTag))
 
@@ -47,7 +54,7 @@ func NewStorage(playerTag string) (*Storage, error) {
 
 	storage := &Storage{
 		db:        db,
-		playerTag: playerTag,
+		playerTag: canonicalTag,
 		dbPath:    dbPath,
 	}
 
@@ -58,6 +65,18 @@ func NewStorage(playerTag string) (*Storage, error) {
 	}
 
 	return storage, nil
+}
+
+func normalizePlayerTag(playerTag string) (string, string, error) {
+	sanitizedTag := strings.TrimSpace(strings.TrimPrefix(playerTag, "#"))
+	if sanitizedTag == "" {
+		return "", "", fmt.Errorf("player tag is required")
+	}
+	if !playerTagPattern.MatchString(sanitizedTag) {
+		return "", "", fmt.Errorf("invalid player tag: must contain only letters and digits")
+	}
+	sanitizedTag = strings.ToUpper(sanitizedTag)
+	return "#" + sanitizedTag, sanitizedTag, nil
 }
 
 // Close closes the database connection
@@ -190,11 +209,37 @@ func (s *Storage) InsertDeck(entry *DeckEntry) (int, bool, error) {
 
 // Query retrieves deck entries based on the provided options
 func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
-	// Build SQL query dynamically based on filters
-	query := "SELECT id, deck_hash, cards, overall_score, attack_score, defense_score, synergy_score, versatility_score, f2p_score, playability_score, archetype, archetype_conf, strategy, avg_elixir, evaluated_at, player_tag, evaluation_version FROM decks WHERE 1=1"
-	args := []interface{}{}
+	query, args := buildDeckQuery(opts)
 
-	// Apply filters
+	rows, err := s.db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query decks: %w", err)
+	}
+	defer closeWithLog(rows, "deck rows")
+
+	entries, err := scanDeckEntries(rows)
+	if err != nil {
+		return nil, err
+	}
+
+	return entries, nil
+}
+
+// buildDeckQuery constructs the SQL query and arguments from query options
+func buildDeckQuery(opts QueryOptions) (string, []any) {
+	query := "SELECT id, deck_hash, cards, overall_score, attack_score, defense_score, synergy_score, versatility_score, f2p_score, playability_score, archetype, archetype_conf, strategy, avg_elixir, evaluated_at, player_tag, evaluation_version FROM decks WHERE 1=1"
+	args := []any{}
+
+	query, args = applyScoreFilters(query, args, opts)
+	query, args = applyMetadataFilters(query, args, opts)
+	query, args = applyCardFilters(query, args, opts)
+	query = applySortingAndPagination(query, &args, opts)
+
+	return query, args
+}
+
+// applyScoreFilters adds score-based filters to the query
+func applyScoreFilters(query string, args []any, opts QueryOptions) (string, []any) {
 	if opts.MinScore > 0 {
 		query += " AND overall_score >= ?"
 		args = append(args, opts.MinScore)
@@ -203,6 +248,11 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 		query += " AND overall_score <= ?"
 		args = append(args, opts.MaxScore)
 	}
+	return query, args
+}
+
+// applyMetadataFilters adds archetype, strategy, and elixir filters
+func applyMetadataFilters(query string, args []any, opts QueryOptions) (string, []any) {
 	if opts.Archetype != "" {
 		query += " AND archetype = ?"
 		args = append(args, opts.Archetype)
@@ -219,89 +269,112 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 		query += " AND avg_elixir <= ?"
 		args = append(args, opts.MaxAvgElixir)
 	}
+	return query, args
+}
 
-	// Card filters (require all, any, or exclude)
-	if len(opts.RequireAllCards) > 0 {
-		for _, card := range opts.RequireAllCards {
-			query += " AND cards LIKE ?"
-			args = append(args, "%"+card+"%")
-		}
+// applyCardFilters adds card-based filters (require all, any, exclude)
+func applyCardFilters(query string, args []any, opts QueryOptions) (string, []any) {
+	query, args = applyRequireAllCards(query, args, opts.RequireAllCards)
+	query, args = applyRequireAnyCards(query, args, opts.RequireAnyCards)
+	query, args = applyExcludeCards(query, args, opts.ExcludeCards)
+	return query, args
+}
+
+// applyRequireAllCards adds filters for cards that must all be present
+func applyRequireAllCards(query string, args []any, cards []string) (string, []any) {
+	for _, card := range cards {
+		query += " AND cards LIKE ?"
+		args = append(args, "%"+card+"%")
 	}
-	if len(opts.RequireAnyCards) > 0 {
-		subQuery := " AND ("
-		for i, card := range opts.RequireAnyCards {
-			if i > 0 {
-				subQuery += " OR "
-			}
-			subQuery += "cards LIKE ?"
-			args = append(args, "%"+card+"%")
-		}
-		subQuery += ")"
-		query += subQuery
-	}
-	if len(opts.ExcludeCards) > 0 {
-		for _, card := range opts.ExcludeCards {
-			query += " AND cards NOT LIKE ?"
-			args = append(args, "%"+card+"%")
-		}
+	return query, args
+}
+
+// applyRequireAnyCards adds filters for cards where at least one must be present
+func applyRequireAnyCards(query string, args []any, cards []string) (string, []any) {
+	if len(cards) == 0 {
+		return query, args
 	}
 
-	// Apply sorting
-	sortBy := opts.SortBy
-	if sortBy == "" {
-		sortBy = "overall_score"
+	var subQuery strings.Builder
+	subQuery.WriteString(" AND (")
+	for i, card := range cards {
+		if i > 0 {
+			subQuery.WriteString(" OR ")
+		}
+		subQuery.WriteString("cards LIKE ?")
+		args = append(args, "%"+card+"%")
 	}
+	subQuery.WriteString(")")
+	query += subQuery.String()
+	return query, args
+}
+
+// applyExcludeCards adds filters for cards that must not be present
+func applyExcludeCards(query string, args []any, cards []string) (string, []any) {
+	for _, card := range cards {
+		query += " AND cards NOT LIKE ?"
+		args = append(args, "%"+card+"%")
+	}
+	return query, args
+}
+
+// applySortingAndPagination adds ORDER BY, LIMIT, and OFFSET clauses
+func applySortingAndPagination(query string, args *[]any, opts QueryOptions) string {
+	sortBy := safeSortColumn(opts.SortBy)
 	sortOrder := strings.ToUpper(opts.SortOrder)
 	if sortOrder != "ASC" && sortOrder != "DESC" {
 		sortOrder = "DESC"
 	}
 	query += fmt.Sprintf(" ORDER BY %s %s", sortBy, sortOrder)
 
-	// Apply limit and offset
 	if opts.Limit > 0 {
 		query += " LIMIT ?"
-		args = append(args, opts.Limit)
+		*args = append(*args, opts.Limit)
 	}
 	if opts.Offset > 0 {
 		query += " OFFSET ?"
-		args = append(args, opts.Offset)
+		*args = append(*args, opts.Offset)
 	}
 
-	// Execute query
-	rows, err := s.db.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to query decks: %w", err)
-	}
-	defer closeWithLog(rows, "deck rows")
+	return query
+}
 
-	// Parse results
+const defaultSortColumn = "overall_score"
+
+var allowedSortColumns = map[string]struct{}{
+	defaultSortColumn:   {},
+	"attack_score":      {},
+	"defense_score":     {},
+	"synergy_score":     {},
+	"versatility_score": {},
+	"f2p_score":         {},
+	"playability_score": {},
+	"avg_elixir":        {},
+	"archetype":         {},
+	"strategy":          {},
+	"evaluated_at":      {},
+	"id":                {},
+}
+
+func safeSortColumn(sortBy string) string {
+	normalized := strings.ToLower(strings.TrimSpace(sortBy))
+	if normalized == "" {
+		return defaultSortColumn
+	}
+	if _, ok := allowedSortColumns[normalized]; ok {
+		return normalized
+	}
+	return defaultSortColumn
+}
+
+// scanDeckEntries scans database rows into DeckEntry structs
+func scanDeckEntries(rows *sql.Rows) ([]DeckEntry, error) {
 	entries := []DeckEntry{}
 	for rows.Next() {
-		var entry DeckEntry
-		var cardsJSON string
-		var strategyNull sql.NullString
-
-		err := rows.Scan(
-			&entry.ID, &entry.DeckHash, &cardsJSON, &entry.OverallScore,
-			&entry.AttackScore, &entry.DefenseScore, &entry.SynergyScore,
-			&entry.VersatilityScore, &entry.F2PScore, &entry.PlayabilityScore,
-			&entry.Archetype, &entry.ArchetypeConf, &strategyNull,
-			&entry.AvgElixir, &entry.EvaluatedAt, &entry.PlayerTag,
-			&entry.EvaluationVersion,
-		)
+		entry, err := scanSingleDeckEntry(rows)
 		if err != nil {
-			return nil, fmt.Errorf("failed to scan row: %w", err)
+			return nil, err
 		}
-
-		// Unmarshal cards JSON
-		if err := json.Unmarshal([]byte(cardsJSON), &entry.Cards); err != nil {
-			return nil, fmt.Errorf("failed to unmarshal cards: %w", err)
-		}
-
-		if strategyNull.Valid {
-			entry.Strategy = strategyNull.String
-		}
-
 		entries = append(entries, entry)
 	}
 
@@ -310,6 +383,35 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	}
 
 	return entries, nil
+}
+
+// scanSingleDeckEntry scans a single row into a DeckEntry
+func scanSingleDeckEntry(rows *sql.Rows) (DeckEntry, error) {
+	var entry DeckEntry
+	var cardsJSON string
+	var strategyNull sql.NullString
+
+	err := rows.Scan(
+		&entry.ID, &entry.DeckHash, &cardsJSON, &entry.OverallScore,
+		&entry.AttackScore, &entry.DefenseScore, &entry.SynergyScore,
+		&entry.VersatilityScore, &entry.F2PScore, &entry.PlayabilityScore,
+		&entry.Archetype, &entry.ArchetypeConf, &strategyNull,
+		&entry.AvgElixir, &entry.EvaluatedAt, &entry.PlayerTag,
+		&entry.EvaluationVersion,
+	)
+	if err != nil {
+		return DeckEntry{}, fmt.Errorf("failed to scan row: %w", err)
+	}
+
+	if err := json.Unmarshal([]byte(cardsJSON), &entry.Cards); err != nil {
+		return DeckEntry{}, fmt.Errorf("failed to unmarshal cards: %w", err)
+	}
+
+	if strategyNull.Valid {
+		entry.Strategy = strategyNull.String
+	}
+
+	return entry, nil
 }
 
 // GetTopN retrieves the top N decks by overall score
@@ -338,6 +440,159 @@ func (s *Storage) Clear() error {
 		return fmt.Errorf("failed to clear decks: %w", err)
 	}
 	return nil
+}
+
+// Vacuum compacts the SQLite database file.
+func (s *Storage) Vacuum() error {
+	if _, err := s.db.Exec("VACUUM"); err != nil {
+		return fmt.Errorf("failed to vacuum database: %w", err)
+	}
+	return nil
+}
+
+// CleanupOptions controls filtered deck deletion.
+type CleanupOptions struct {
+	MinScore  float64
+	OlderThan time.Time
+	Archetype string
+}
+
+// Cleanup deletes decks matching the provided filters and returns rows deleted.
+// At least one filter must be set.
+func (s *Storage) Cleanup(opts CleanupOptions) (int64, error) {
+	query := "DELETE FROM decks WHERE 1=1"
+	args := make([]any, 0, 3)
+	filters := 0
+
+	if opts.MinScore > 0 {
+		query += " AND overall_score < ?"
+		args = append(args, opts.MinScore)
+		filters++
+	}
+	if !opts.OlderThan.IsZero() {
+		query += " AND evaluated_at < ?"
+		args = append(args, opts.OlderThan)
+		filters++
+	}
+	if strings.TrimSpace(opts.Archetype) != "" {
+		query += " AND archetype = ?"
+		args = append(args, strings.TrimSpace(opts.Archetype))
+		filters++
+	}
+
+	if filters == 0 {
+		return 0, fmt.Errorf("at least one cleanup filter is required")
+	}
+
+	result, err := s.db.Exec(query, args...)
+	if err != nil {
+		return 0, fmt.Errorf("failed to cleanup decks: %w", err)
+	}
+
+	deleted, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to read cleanup row count: %w", err)
+	}
+	return deleted, nil
+}
+
+// PruneTopNPerArchetype keeps only the top N scored decks per archetype.
+// Returns the number of decks deleted.
+func (s *Storage) PruneTopNPerArchetype(n int) (int64, error) {
+	if n < 1 {
+		return 0, fmt.Errorf("n must be >= 1")
+	}
+
+	result, err := s.db.Exec(`
+		DELETE FROM decks
+		WHERE id IN (
+			SELECT id
+			FROM (
+				SELECT id,
+				       ROW_NUMBER() OVER (
+				           PARTITION BY archetype
+				           ORDER BY overall_score DESC, id ASC
+				       ) AS rank_in_archetype
+				FROM decks
+			)
+			WHERE rank_in_archetype > ?
+		)
+	`, n)
+	if err != nil {
+		return 0, fmt.Errorf("failed to prune decks: %w", err)
+	}
+
+	deleted, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("failed to read prune row count: %w", err)
+	}
+	return deleted, nil
+}
+
+// ExportJSON writes all stored decks as a JSON array to the given file path.
+// Returns the number of exported decks.
+func (s *Storage) ExportJSON(path string) (int, error) {
+	decks, err := s.Query(QueryOptions{
+		SortBy:    "overall_score",
+		SortOrder: "desc",
+	})
+	if err != nil {
+		return 0, fmt.Errorf("failed to load decks for export: %w", err)
+	}
+
+	data, err := json.MarshalIndent(decks, "", "  ")
+	if err != nil {
+		return 0, fmt.Errorf("failed to marshal export data: %w", err)
+	}
+
+	if err := os.WriteFile(path, data, 0o644); err != nil {
+		return 0, fmt.Errorf("failed to write export file: %w", err)
+	}
+
+	return len(decks), nil
+}
+
+// ImportJSON loads deck entries from a JSON array file.
+// Returns inserted and updated counts.
+func (s *Storage) ImportJSON(path string) (int, int, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return 0, 0, fmt.Errorf("failed to read import file: %w", err)
+	}
+
+	var decks []DeckEntry
+	if err := json.Unmarshal(data, &decks); err != nil {
+		return 0, 0, fmt.Errorf("failed to parse import file: %w", err)
+	}
+
+	inserted := 0
+	updated := 0
+	for i := range decks {
+		entry := decks[i]
+		entry.ID = 0
+		entry.DeckHash = ""
+		if entry.EvaluatedAt.IsZero() {
+			entry.EvaluatedAt = time.Now()
+		}
+		if entry.PlayerTag == "" {
+			entry.PlayerTag = s.playerTag
+		}
+		if entry.EvaluationVersion == "" {
+			entry.EvaluationVersion = "imported"
+		}
+
+		_, isNew, err := s.InsertDeck(&entry)
+		if err != nil {
+			return inserted, updated, fmt.Errorf("failed importing deck %d: %w", i+1, err)
+		}
+		if isNew {
+			inserted++
+		} else {
+			updated++
+		}
+	}
+
+	return inserted, updated, nil
 }
 
 // GetStats retrieves the current leaderboard statistics
@@ -430,4 +685,31 @@ func (s *Storage) Count() (int, error) {
 		return 0, fmt.Errorf("failed to count decks: %w", err)
 	}
 	return count, nil
+}
+
+// GetArchetypeCounts returns deck counts grouped by archetype, ordered by count descending.
+func (s *Storage) GetArchetypeCounts() ([]ArchetypeCount, error) {
+	rows, err := s.db.Query(`
+		SELECT archetype, COUNT(*) AS deck_count
+		FROM decks
+		GROUP BY archetype
+		ORDER BY deck_count DESC, archetype ASC
+	`)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query archetype counts: %w", err)
+	}
+	defer closeWithLog(rows, "archetype count rows")
+
+	counts := make([]ArchetypeCount, 0)
+	for rows.Next() {
+		var c ArchetypeCount
+		if err := rows.Scan(&c.Archetype, &c.Count); err != nil {
+			return nil, fmt.Errorf("failed to scan archetype count row: %w", err)
+		}
+		counts = append(counts, c)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("failed iterating archetype count rows: %w", err)
+	}
+	return counts, nil
 }

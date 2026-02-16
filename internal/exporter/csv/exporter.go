@@ -58,16 +58,16 @@ type CSVExporter struct {
 	BaseExporter
 	Headers    func() []string
 	Filename   func() string
-	ExportFunc func(string, interface{}) error
+	ExportFunc func(string, any) error
 }
 
 // Export implements the exporter.Exporter interface
-func (e *CSVExporter) Export(dataDir string, data interface{}) error {
+func (e *CSVExporter) Export(dataDir string, data any) error {
 	return e.ExportFunc(dataDir, data)
 }
 
 // NewCSVExporter creates a new CSV exporter with the given functions
-func NewCSVExporter(filename string, headers func() []string, exportFunc func(string, interface{}) error) *CSVExporter {
+func NewCSVExporter(filename string, headers func() []string, exportFunc func(string, any) error) *CSVExporter {
 	return &CSVExporter{
 		BaseExporter: BaseExporter{
 			FilenameBase: filename,

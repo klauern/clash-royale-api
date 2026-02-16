@@ -78,8 +78,8 @@ func TestDefaultMetaAnalysisOptions(t *testing.T) {
 
 	tests := []struct {
 		name     string
-		got      interface{}
-		expected interface{}
+		got      any
+		expected any
 	}{
 		{"EnableMetaScoring", opts.EnableMetaScoring, true},
 		{"MetaWeight", opts.MetaWeight, 0.15},

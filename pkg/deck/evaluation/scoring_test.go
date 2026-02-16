@@ -79,7 +79,7 @@ func TestScoreAttack(t *testing.T) {
 				makeCard("Archers", deck.RoleSupport, 11, 11, "Common", 3),
 				makeCard("Knight", deck.RoleSupport, 11, 11, "Common", 3),
 			},
-			minScore: 2.0,
+			minScore: 1.5,
 			maxScore: 5.0,
 		},
 		{

@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -27,6 +28,9 @@ const (
 
 	// StrategyArchetypeFocused explores specific archetype space
 	StrategyArchetypeFocused GeneratorStrategy = "archetype-focused"
+
+	// StrategyGenetic uses genetic algorithm for evolutionary deck optimization
+	StrategyGenetic GeneratorStrategy = "genetic"
 )
 
 // GeneratorConfig configures deck generation behavior
@@ -54,6 +58,9 @@ type GeneratorConfig struct {
 
 	// Archetype for archetype-focused strategy
 	Archetype string
+
+	// Genetic configuration for genetic strategy
+	Genetic *GeneticIteratorConfig
 
 	// Progress callback for long-running operations
 	Progress func(GeneratorProgress)
@@ -126,14 +133,14 @@ type DeckIterator interface {
 
 // DeckGenerator orchestrates deck generation with multiple strategies
 type DeckGenerator struct {
-	config      GeneratorConfig
-	candidates  []*CardCandidate
+	config           GeneratorConfig
+	candidates       []*CardCandidate
 	candidatesByRole map[CardRole][]*CardCandidate
-	includeMap  map[string]bool
-	excludeMap  map[string]bool
-	composition RoleComposition
-	rng         *rand.Rand
-	mu          sync.RWMutex
+	includeMap       map[string]bool
+	excludeMap       map[string]bool
+	composition      RoleComposition
+	rng              *rand.Rand
+	mu               sync.RWMutex
 }
 
 // NewDeckGenerator creates a new generator with the given configuration
@@ -163,11 +170,11 @@ func NewDeckGenerator(config GeneratorConfig) (*DeckGenerator, error) {
 	}
 
 	gen := &DeckGenerator{
-		config:      config,
-		composition: composition,
-		rng:         rand.New(rand.NewSource(seed)),
-		includeMap:  make(map[string]bool),
-		excludeMap:  make(map[string]bool),
+		config:           config,
+		composition:      composition,
+		rng:              rand.New(rand.NewSource(seed)),
+		includeMap:       make(map[string]bool),
+		excludeMap:       make(map[string]bool),
 		candidatesByRole: make(map[CardRole][]*CardCandidate),
 	}
 
@@ -219,32 +226,52 @@ func (g *DeckGenerator) Iterator() (DeckIterator, error) {
 		return newRandomSampleIterator(g), nil
 	case StrategyArchetypeFocused:
 		return newArchetypeIterator(g), nil
+	case StrategyGenetic:
+		return newGeneticIterator(g), nil
 	default:
 		return nil, fmt.Errorf("unsupported strategy: %s", g.config.Strategy)
 	}
 }
 
 // GenerateOne generates a single deck using the configured strategy
-func (g *DeckGenerator) GenerateOne(ctx context.Context) ([]string, error) {
+func (g *DeckGenerator) GenerateOne(ctx context.Context) (_ []string, err error) {
 	iterator, err := g.Iterator()
 	if err != nil {
 		return nil, err
 	}
-	defer iterator.Close()
+	defer func() {
+		if closeErr := iterator.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = closeErr
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close iterator: %v\n", closeErr)
+			}
+		}
+	}()
 
 	return iterator.Next(ctx)
 }
 
 // Generate generates multiple decks using the configured strategy
-func (g *DeckGenerator) Generate(ctx context.Context, count int) ([][]string, error) {
+func (g *DeckGenerator) Generate(ctx context.Context, count int) (decks [][]string, err error) {
 	iterator, err := g.Iterator()
 	if err != nil {
 		return nil, err
 	}
-	defer iterator.Close()
+	defer func() {
+		if closeErr := iterator.Close(); closeErr != nil {
+			// Log close error but prioritize any existing error
+			if err == nil {
+				err = closeErr
+			} else {
+				fmt.Fprintf(os.Stderr, "warning: failed to close iterator: %v\n", closeErr)
+			}
+		}
+	}()
 
-	decks := make([][]string, 0, count)
-	for i := 0; i < count; i++ {
+	decks = make([][]string, 0, count)
+	for i := range count {
 		select {
 		case <-ctx.Done():
 			return decks, ctx.Err()

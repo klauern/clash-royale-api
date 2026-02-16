@@ -92,7 +92,7 @@ func FormatScore(score float64, includeColor bool) string {
 	rating := ScoreToRating(score)
 	stars := ScoreToStars(score)
 	starsStr := ""
-	for i := 0; i < stars; i++ {
+	for range stars {
 		starsStr += "★"
 	}
 

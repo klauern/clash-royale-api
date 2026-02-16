@@ -1,7 +1,10 @@
 package deck
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"path/filepath"
 	"sort"
 )
 
@@ -48,6 +51,59 @@ type SynergyRecommendation struct {
 	SynergyScore float64       `json:"synergy_score"`
 	Synergies    []SynergyPair `json:"synergies"` // Synergies with current deck
 	Reason       string        `json:"reason"`
+}
+
+// synergyDataFile represents the JSON data structure for loading synergy pairs
+type synergyDataFile struct {
+	Version     int           `json:"version"`
+	Description string        `json:"description"`
+	LastUpdated string        `json:"last_updated"`
+	Pairs       []SynergyPair `json:"pairs"`
+}
+
+// LoadSynergyDatabase loads synergy pairs from a JSON file
+// If the file cannot be found or read, falls back to NewSynergyDatabase()
+func LoadSynergyDatabase(dataDir, filename string) *SynergyDatabase {
+	if dataDir == "" {
+		dataDir = "data"
+	}
+	if filename == "" {
+		filename = "synergy_pairs.json"
+	}
+
+	path := filepath.Join(dataDir, filename)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		// Fall back to hardcoded database if file not found
+		return NewSynergyDatabase()
+	}
+
+	var synergyData synergyDataFile
+	if err := json.Unmarshal(data, &synergyData); err != nil {
+		// Fall back to hardcoded database on parse error
+		return NewSynergyDatabase()
+	}
+
+	// Organize by category
+	categories := make(map[SynergyCategory][]SynergyPair)
+	for _, pair := range synergyData.Pairs {
+		categories[pair.SynergyType] = append(categories[pair.SynergyType], pair)
+	}
+
+	return buildSynergyDatabase(synergyData.Pairs)
+}
+
+// buildCategoryMap organizes synergy pairs by category type
+func buildSynergyDatabase(pairs []SynergyPair) *SynergyDatabase {
+	categories := make(map[SynergyCategory][]SynergyPair)
+	for _, pair := range pairs {
+		categories[pair.SynergyType] = append(categories[pair.SynergyType], pair)
+	}
+
+	return &SynergyDatabase{
+		Pairs:      pairs,
+		Categories: categories,
+	}
 }
 
 // NewSynergyDatabase creates a synergy database with known card combinations
@@ -187,16 +243,7 @@ func NewSynergyDatabase() *SynergyDatabase {
 		{Card1: "Three Musketeers", Card2: "Ice Golem", SynergyType: SynergyWinCondition, Score: 0.8, Description: "Ice Golem tanks for 3M split"},
 	}
 
-	// Organize by category
-	categories := make(map[SynergyCategory][]SynergyPair)
-	for _, pair := range pairs {
-		categories[pair.SynergyType] = append(categories[pair.SynergyType], pair)
-	}
-
-	return &SynergyDatabase{
-		Pairs:      pairs,
-		Categories: categories,
-	}
+	return buildSynergyDatabase(pairs)
 }
 
 // GetSynergy returns the synergy score between two cards (0.0 to 1.0)
@@ -235,7 +282,7 @@ func (db *SynergyDatabase) AnalyzeDeckSynergy(deck []string) *DeckSynergyAnalysi
 	cardSynergyCounts := make(map[string]int)
 
 	// Check all pairs
-	for i := 0; i < len(deck); i++ {
+	for i := range deck {
 		for j := i + 1; j < len(deck); j++ {
 			if pair := db.GetSynergyPair(deck[i], deck[j]); pair != nil {
 				topSynergies = append(topSynergies, *pair)
@@ -369,4 +416,11 @@ func GetCategoryDescription(category SynergyCategory) string {
 		return desc
 	}
 	return string(category)
+}
+
+// CalculateDeckSynergy calculates the synergy score for a deck.
+// This is a convenience wrapper for AnalyzeDeckSynergy that matches
+// the naming convention specified in the improved scoring design.
+func (db *SynergyDatabase) CalculateDeckSynergy(deck []string) *DeckSynergyAnalysis {
+	return db.AnalyzeDeckSynergy(deck)
 }

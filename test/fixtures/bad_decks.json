@@ -1,0 +1,77 @@
+{
+  "version": 1,
+  "description": "Intentionally bad decks expected to score below 5.0",
+  "last_updated": "2026-02-01",
+  "decks": [
+    {
+      "name": "No Win Condition",
+      "description": "Deck lacks any win condition - all support cards",
+      "cards": ["Knight", "Archers", "Valkyrie", "Mini P.E.K.K.A", "Musketeer", "Ice Golem", "Mega Minion", "Skeleton Army"],
+      "expected_max_score": 4.0,
+      "issue": "No dedicated win condition"
+    },
+    {
+      "name": "All Spells",
+      "description": "Deck with too many spells",
+      "cards": ["Fireball", "Lightning", "Rocket", "Poison", "Freeze", "Zap", "Log", "Arrows"],
+      "expected_max_score": 3.0,
+      "issue": "Too many spells, no win condition"
+    },
+    {
+      "name": "No Anti-Air",
+      "description": "Deck with zero anti-air capability",
+      "cards": ["Hog Rider", "Knight", "Valkyrie", "Skeleton Army", "Goblin Gang", "Ice Spirit", "Log", "Cannon"],
+      "expected_max_score": 4.5,
+      "issue": "No anti-air units"
+    },
+    {
+      "name": "All High Elixir",
+      "description": "Deck with average elixir over 5.0",
+      "cards": ["P.E.K.K.A", "Mega Knight", "Electro Wizard", "Hunter", "Baby Dragon", "Wizard", "Executioner", "Elixir Collector"],
+      "expected_max_score": 4.0,
+      "issue": "Very high elixir cost"
+    },
+    {
+      "name": "No Spells",
+      "description": "Deck with no spell utility",
+      "cards": ["Hog Rider", "Musketeer", "Valkyrie", "Knight", "Cannon", "Ice Spirit", "Skeletons", "Mega Minion"],
+      "expected_max_score": 5.0,
+      "issue": "No spell damage for clearing swarms"
+    },
+    {
+      "name": "Champion Heavy",
+      "description": "Deck with too many champions",
+      "cards": ["Archer Queen", "Golden Knight", "Skeleton King", "Little Prince", "Musketeer", "Knight", "Valkyrie", "Ice Spirit"],
+      "expected_max_score": 3.0,
+      "issue": "Too many champions (very expensive)"
+    },
+    {
+      "name": "Random Low Level",
+      "description": "Random cards with poor synergy",
+      "cards": ["Bomber", "Giant", "Witch", "Miner", "Hog Rider", "Golem", "P.E.K.K.A", "Royal Giant"],
+      "expected_max_score": 3.0,
+      "issue": "Confused strategy, multiple tanks"
+    },
+    {
+      "name": "All Buildings",
+      "description": "Deck with too many buildings",
+      "cards": ["X-Bow", "Tesla", "Inferno Tower", "Elixir Collector", "Furnace", "Goblin Hut", "Bomb Tower", "Cannon"],
+      "expected_max_score": 3.5,
+      "issue": "Too many buildings, weak pressure"
+    },
+    {
+      "name": "No Defensive Building",
+      "description": "Pure offense deck with no defensive structures",
+      "cards": ["Hog Rider", "Musketeer", "Mega Minion", "Valkyrie", "Knight", "Mini P.E.K.K.A", "Fireball", "Zap"],
+      "expected_max_score": 5.0,
+      "issue": "No defensive building for cheap defense"
+    },
+    {
+      "name": "Spell Bait Without Bait Card",
+      "description": "Has bait cards but no win condition to benefit",
+      "cards": ["Princess", "Goblin Gang", "Skeleton Army", "Bats", "Knight", "Ice Spirit", "Cannon", "Valkyrie"],
+      "expected_max_score": 4.0,
+      "issue": "Bait cards without dedicated win condition"
+    }
+  ]
+}

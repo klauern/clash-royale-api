@@ -11,37 +11,37 @@ func TestDefaultGeneticConfig(t *testing.T) {
 	config := DefaultGeneticConfig()
 
 	tests := []struct {
-		name      string
-		check     func(GeneticConfig) bool
-		want      bool
+		name  string
+		check func(GeneticConfig) bool
+		want  bool
 	}{
 		{
-			name: "positive population size",
+			name:  "positive population size",
 			check: func(c GeneticConfig) bool { return c.PopulationSize > 0 },
 			want:  true,
 		},
 		{
-			name: "positive generations",
+			name:  "positive generations",
 			check: func(c GeneticConfig) bool { return c.Generations > 0 },
 			want:  true,
 		},
 		{
-			name: "mutation rate in valid range",
+			name:  "mutation rate in valid range",
 			check: func(c GeneticConfig) bool { return c.MutationRate >= 0 && c.MutationRate <= 1 },
 			want:  true,
 		},
 		{
-			name: "crossover rate in valid range",
+			name:  "crossover rate in valid range",
 			check: func(c GeneticConfig) bool { return c.CrossoverRate >= 0 && c.CrossoverRate <= 1 },
 			want:  true,
 		},
 		{
-			name: "elite count less than population",
+			name:  "elite count less than population",
 			check: func(c GeneticConfig) bool { return c.EliteCount < c.PopulationSize },
 			want:  true,
 		},
 		{
-			name: "mutation intensity in valid range",
+			name:  "mutation intensity in valid range",
 			check: func(c GeneticConfig) bool { return c.MutationIntensity >= 0 && c.MutationIntensity <= 1 },
 			want:  true,
 		},
@@ -70,15 +70,15 @@ func TestGeneticConfigValidate(t *testing.T) {
 		{
 			name: "valid config",
 			config: GeneticConfig{
-				PopulationSize:      100,
-				Generations:         200,
-				MutationRate:        0.1,
-				CrossoverRate:       0.8,
-				MutationIntensity:   0.3,
-				EliteCount:          2,
-				TournamentSize:      5,
+				PopulationSize:         100,
+				Generations:            200,
+				MutationRate:           0.1,
+				CrossoverRate:          0.8,
+				MutationIntensity:      0.3,
+				EliteCount:             2,
+				TournamentSize:         5,
 				ConvergenceGenerations: 30,
-				TargetFitness:       0,
+				TargetFitness:          0,
 			},
 			wantErr: false,
 		},
@@ -218,11 +218,11 @@ func TestGeneticConfigValidate(t *testing.T) {
 		{
 			name: "island model with zero migration interval",
 			config: GeneticConfig{
-				PopulationSize:     100,
-				Generations:        100,
-				IslandModel:        true,
-				IslandCount:        4,
-				MigrationInterval:  0,
+				PopulationSize:    100,
+				Generations:       100,
+				IslandModel:       true,
+				IslandCount:       4,
+				MigrationInterval: 0,
 			},
 			wantErr: true,
 		},

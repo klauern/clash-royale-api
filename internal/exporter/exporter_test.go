@@ -9,11 +9,11 @@ type fakeExporter struct {
 	headers  []string
 	filename string
 	lastDir  string
-	lastData interface{}
+	lastData any
 	err      error
 }
 
-func (f *fakeExporter) Export(dataDir string, data interface{}) error {
+func (f *fakeExporter) Export(dataDir string, data any) error {
 	f.lastDir = dataDir
 	f.lastData = data
 	return f.err

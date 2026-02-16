@@ -1020,6 +1020,22 @@ tasks:
         fi
       - go vet ./...
 
+  lint-quality:
+    desc: Run quality linting (CI hard-fail for new violations)
+    summary: |
+      Run golangci-lint configured to fail CI on new violations only.
+      This checks for new lint issues relative to origin/main.
+      Use this to validate your changes won't break CI.
+    cmds:
+      - echo "Running quality lint (checks for new violations only)..."
+      - |
+        if command -v golangci-lint >/dev/null 2>&1; then
+          golangci-lint run --timeout=5m --new-from-rev=origin/main
+        else
+          echo "golangci-lint not found. Install with: task install-tools"
+          exit 1
+        fi
+
   format:
     desc: Format Go code with gofumpt
     summary: |

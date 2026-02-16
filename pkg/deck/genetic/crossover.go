@@ -18,7 +18,7 @@ const (
 // It randomly selects between multiple crossover operators and repairs the deck.
 //
 // This method implements the eaopt.Genome interface requirement.
-func (g *DeckGenome) Crossover(other interface{}) (interface{}, error) {
+func (g *DeckGenome) Crossover(other any) (any, error) {
 	otherDeck, ok := other.(*DeckGenome)
 	if !ok {
 		return nil, fmt.Errorf("crossover requires DeckGenome, got %T", other)
@@ -46,7 +46,7 @@ func (g *DeckGenome) Crossover(other interface{}) (interface{}, error) {
 
 func (g *DeckGenome) uniformCrossover(other *DeckGenome) []string {
 	offspring := make([]string, 0, 8)
-	for i := 0; i < 8; i++ {
+	for i := range 8 {
 		if randomInt(2) == 0 {
 			offspring = append(offspring, g.Cards[i])
 		} else {
@@ -225,7 +225,7 @@ func (g *DeckGenome) cardsByRole(cards []string, candidateMap map[string]*deck.C
 
 func (g *DeckGenome) findSynergyPairs(cards []string, db *deck.SynergyDatabase) []deck.SynergyPair {
 	var pairs []deck.SynergyPair
-	for i := 0; i < len(cards); i++ {
+	for i := range cards {
 		for j := i + 1; j < len(cards); j++ {
 			score := db.GetSynergy(cards[i], cards[j])
 			if score < synergyCrossoverThreshold {

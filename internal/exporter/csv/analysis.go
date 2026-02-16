@@ -3,6 +3,7 @@ package csv
 import (
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 )
@@ -32,7 +33,7 @@ func analysisHeaders() []string {
 }
 
 // analysisExport exports card analysis summary to CSV
-func analysisExport(dataDir string, data interface{}) error {
+func analysisExport(dataDir string, data any) error {
 	cardAnalysis, ok := data.(*analysis.CardAnalysis)
 	if !ok {
 		return fmt.Errorf("expected CardAnalysis type, got %T", data)
@@ -89,7 +90,7 @@ func cardLevelsHeaders() []string {
 }
 
 // cardLevelsExport exports detailed card levels to CSV
-func cardLevelsExport(dataDir string, data interface{}) error {
+func cardLevelsExport(dataDir string, data any) error {
 	cardAnalysis, ok := data.(*analysis.CardAnalysis)
 	if !ok {
 		return fmt.Errorf("expected CardAnalysis type, got %T", data)
@@ -157,7 +158,7 @@ func upgradePrioritiesHeaders() []string {
 }
 
 // upgradePrioritiesExport exports upgrade priorities to CSV
-func upgradePrioritiesExport(dataDir string, data interface{}) error {
+func upgradePrioritiesExport(dataDir string, data any) error {
 	cardAnalysis, ok := data.(*analysis.CardAnalysis)
 	if !ok {
 		return fmt.Errorf("expected CardAnalysis type, got %T", data)
@@ -168,12 +169,12 @@ func upgradePrioritiesExport(dataDir string, data interface{}) error {
 
 	for _, priority := range cardAnalysis.UpgradePriority {
 		// Combine reasons into a single string
-		reasons := ""
+		var reasons strings.Builder
 		for i, reason := range priority.Reasons {
 			if i > 0 {
-				reasons += "; "
+				reasons.WriteString("; ")
 			}
-			reasons += reason
+			reasons.WriteString(reason)
 		}
 
 		row := []string{
@@ -188,7 +189,7 @@ func upgradePrioritiesExport(dataDir string, data interface{}) error {
 			fmt.Sprintf("%.1f", priority.PriorityScore),
 			fmt.Sprintf("%t", priority.IsReadyToUpgrade()),
 			fmt.Sprintf("%.1f", priority.PercentageComplete()),
-			reasons,
+			reasons.String(),
 		}
 		rows = append(rows, row)
 	}
@@ -223,7 +224,7 @@ func rarityBreakdownHeaders() []string {
 }
 
 // rarityBreakdownExport exports rarity breakdown to CSV
-func rarityBreakdownExport(dataDir string, data interface{}) error {
+func rarityBreakdownExport(dataDir string, data any) error {
 	cardAnalysis, ok := data.(*analysis.CardAnalysis)
 	if !ok {
 		return fmt.Errorf("expected CardAnalysis type, got %T", data)

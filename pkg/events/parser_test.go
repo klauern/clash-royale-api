@@ -330,6 +330,26 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 	parser := NewParser()
 	battleTime := time.Now()
 	trophyChange := 10
+	playerCards := []clashroyale.Card{
+		{Name: "Hog Rider"},
+		{Name: "Earthquake"},
+		{Name: "The Log"},
+		{Name: "Firecracker"},
+		{Name: "Cannon"},
+		{Name: "Skeletons"},
+		{Name: "Ice Spirit"},
+		{Name: "Knight"},
+	}
+	opponentCards := []clashroyale.Card{
+		{Name: "Golem"},
+		{Name: "Night Witch"},
+		{Name: "Baby Dragon"},
+		{Name: "Lightning"},
+		{Name: "Tornado"},
+		{Name: "Barbarian Barrel"},
+		{Name: "Electro Dragon"},
+		{Name: "Lumberjack"},
+	}
 
 	tests := []struct {
 		name    string
@@ -347,6 +367,7 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 						Name:         "TestPlayer",
 						Crowns:       3,
 						TrophyChange: trophyChange,
+						Cards:        playerCards,
 					},
 				},
 				Opponent: []clashroyale.BattleTeam{
@@ -354,6 +375,7 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 						Tag:    "#OPPONENT",
 						Name:   "OpponentPlayer",
 						Crowns: 1,
+						Cards:  opponentCards,
 					},
 				},
 			},
@@ -369,6 +391,7 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 						Tag:    "#PLAYER",
 						Name:   "TestPlayer",
 						Crowns: 1,
+						Cards:  playerCards,
 					},
 				},
 				Opponent: []clashroyale.BattleTeam{
@@ -376,6 +399,7 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 						Tag:    "#OPPONENT",
 						Name:   "OpponentPlayer",
 						Crowns: 3,
+						Cards:  opponentCards,
 					},
 				},
 			},
@@ -428,6 +452,22 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 				if result.OpponentCrowns != tt.battle.Opponent[0].Crowns {
 					t.Errorf("OpponentCrowns = %v, want %v", result.OpponentCrowns, tt.battle.Opponent[0].Crowns)
 				}
+				if len(tt.battle.Team[0].Cards) > 0 {
+					if len(result.PlayerDeck) != len(tt.battle.Team[0].Cards) {
+						t.Errorf("PlayerDeck length = %d, want %d", len(result.PlayerDeck), len(tt.battle.Team[0].Cards))
+					}
+					if result.PlayerDeckHash == "" {
+						t.Error("PlayerDeckHash should not be empty when player cards are present")
+					}
+				}
+				if len(tt.battle.Opponent[0].Cards) > 0 {
+					if len(result.OpponentDeck) != len(tt.battle.Opponent[0].Cards) {
+						t.Errorf("OpponentDeck length = %d, want %d", len(result.OpponentDeck), len(tt.battle.Opponent[0].Cards))
+					}
+					if result.OpponentDeckHash == "" {
+						t.Error("OpponentDeckHash should not be empty when opponent cards are present")
+					}
+				}
 
 				// Check win/loss
 				expectedResult := "win"
@@ -441,6 +481,76 @@ func TestParser_CreateBattleRecord(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestParser_CreateBattleRecord_DeckHashNormalization(t *testing.T) {
+	parser := NewParser()
+	battleTime := time.Now()
+
+	battleA := clashroyale.Battle{
+		UTCDate:  battleTime,
+		GameMode: clashroyale.GameMode{Name: "Classic Challenge"},
+		Team: []clashroyale.BattleTeam{
+			{
+				Tag:    "#PLAYER",
+				Crowns: 1,
+				Cards: []clashroyale.Card{
+					{Name: "Knight"},
+					{Name: "Archers"},
+				},
+			},
+		},
+		Opponent: []clashroyale.BattleTeam{
+			{
+				Tag:    "#OPP",
+				Crowns: 0,
+				Cards: []clashroyale.Card{
+					{Name: "Zap"},
+					{Name: "Fireball"},
+				},
+			},
+		},
+	}
+
+	battleB := clashroyale.Battle{
+		UTCDate:  battleTime,
+		GameMode: clashroyale.GameMode{Name: "Classic Challenge"},
+		Team: []clashroyale.BattleTeam{
+			{
+				Tag:    "#PLAYER",
+				Crowns: 1,
+				Cards: []clashroyale.Card{
+					{Name: "Archers"},
+					{Name: "Knight"},
+				},
+			},
+		},
+		Opponent: []clashroyale.BattleTeam{
+			{
+				Tag:    "#OPP",
+				Crowns: 0,
+				Cards: []clashroyale.Card{
+					{Name: "Fireball"},
+					{Name: "Zap"},
+				},
+			},
+		},
+	}
+
+	recordA := parser.createBattleRecord(battleA, "#PLAYER")
+	recordB := parser.createBattleRecord(battleB, "#PLAYER")
+
+	if recordA == nil || recordB == nil {
+		t.Fatal("expected non-nil records")
+	}
+
+	if recordA.PlayerDeckHash != recordB.PlayerDeckHash {
+		t.Errorf("player deck hashes differ for same cards in different order: %s vs %s", recordA.PlayerDeckHash, recordB.PlayerDeckHash)
+	}
+
+	if recordA.OpponentDeckHash != recordB.OpponentDeckHash {
+		t.Errorf("opponent deck hashes differ for same cards in different order: %s vs %s", recordA.OpponentDeckHash, recordB.OpponentDeckHash)
 	}
 }
 

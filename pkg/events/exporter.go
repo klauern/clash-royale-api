@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"time"
 )
@@ -93,13 +94,7 @@ func (e *Exporter) applyFilters(collection *EventDeckCollection) *EventDeckColle
 	for _, deck := range collection.Decks {
 		// Filter by event type
 		if len(e.options.EventTypes) > 0 {
-			allowed := false
-			for _, allowedType := range e.options.EventTypes {
-				if deck.EventType == allowedType {
-					allowed = true
-					break
-				}
-			}
+			allowed := slices.Contains(e.options.EventTypes, deck.EventType)
 			if !allowed {
 				continue
 			}

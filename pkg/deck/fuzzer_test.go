@@ -191,7 +191,7 @@ func TestGenerateRandomDeckWithIncludeCards(t *testing.T) {
 	}
 
 	// Generate multiple decks to ensure include cards are always present
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		deck, err := fuzzer.GenerateRandomDeck()
 		if err != nil {
 			t.Fatalf("Failed to generate deck: %v", err)
@@ -255,7 +255,7 @@ func TestGenerateRandomDeckWithExcludeCards(t *testing.T) {
 
 	// Generate multiple decks - some may fail but most should succeed
 	successCount := 0
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		deck, err := fuzzer.GenerateRandomDeck()
 		if err != nil {
 			continue
@@ -314,7 +314,7 @@ func TestGenerateRandomDeckWithElixirConstraints(t *testing.T) {
 
 	// Generate multiple decks - some may fail due to elixir constraints
 	successCount := 0
-	for i := 0; i < 10; i++ {
+	for i := range 10 {
 		deck, err := fuzzer.GenerateRandomDeck()
 		if err != nil {
 			// Some decks may fail elixir constraints, that's OK
@@ -524,7 +524,7 @@ func TestGetStats(t *testing.T) {
 	}
 
 	// Generate a few decks
-	for i := 0; i < 5; i++ {
+	for range 5 {
 		fuzzer.GenerateRandomDeck()
 	}
 

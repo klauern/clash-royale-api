@@ -1,6 +1,7 @@
 package evaluation
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -595,13 +596,7 @@ func TestFindOwnedAlternatives(t *testing.T) {
 			// Check expected alternatives are present
 			if len(tt.expectedAlternatives) > 0 {
 				for _, expected := range tt.expectedAlternatives {
-					found := false
-					for _, alt := range result {
-						if alt == expected {
-							found = true
-							break
-						}
-					}
+					found := slices.Contains(result, expected)
 					if !found {
 						t.Errorf("findOwnedAlternatives() missing expected alternative %q", expected)
 					}

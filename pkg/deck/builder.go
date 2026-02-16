@@ -7,31 +7,38 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
+	"github.com/klauer/clash-royale-api/go/internal/util"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
 // Builder handles the construction of balanced Clash Royale decks
 // from player card analysis data.
 type Builder struct {
-	dataDir            string
-	unlockedEvolutions map[string]bool
-	evolutionSlotLimit int
-	statsRegistry      *clashroyale.CardStatsRegistry
-	strategy           Strategy
-	strategyConfig     StrategyConfig
-	levelCurve         *LevelCurve
-	synergyDB          *SynergyDatabase
-	synergyEnabled     bool
-	synergyWeight      float64
-	synergyCache       map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
-	includeCards       []string           // Cards to force into the deck
-	excludeCards       []string           // Cards to exclude from consideration
-	fuzzIntegration    *FuzzIntegration   // Fuzz stats integration for data-driven card scoring
+	dataDir                  string
+	unlockedEvolutions       map[string]bool
+	evolutionSlotLimit       int
+	statsRegistry            *clashroyale.CardStatsRegistry
+	strategy                 Strategy
+	strategyConfig           StrategyConfig
+	levelCurve               *LevelCurve
+	synergyDB                *SynergyDatabase
+	synergyEnabled           bool
+	synergyWeight            float64
+	synergyCache             map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
+	uniquenessEnabled        bool
+	uniquenessWeight         float64
+	uniquenessScorer         *UniquenessScorer
+	avoidArchetypes          []string                  // Archetypes to avoid when building decks
+	archetypeAvoidanceScorer *ArchetypeAvoidanceScorer // Scorer for archetype avoidance
+	includeCards             []string                  // Cards to force into the deck
+	excludeCards             []string                  // Cards to exclude from consideration
+	fuzzIntegration          *FuzzIntegration          // Fuzz stats integration for data-driven card scoring
 }
 
 // NewBuilder creates a new deck builder instance
@@ -43,7 +50,7 @@ func NewBuilder(dataDir string) *Builder {
 	// Parse UNLOCKED_EVOLUTIONS environment variable
 	unlockedEvos := make(map[string]bool)
 	if envEvos := os.Getenv("UNLOCKED_EVOLUTIONS"); envEvos != "" {
-		for _, card := range strings.Split(envEvos, ",") {
+		for card := range strings.SplitSeq(envEvos, ",") {
 			cardName := strings.TrimSpace(card)
 			if cardName != "" {
 				unlockedEvos[cardName] = true
@@ -85,6 +92,17 @@ func NewBuilder(dataDir string) *Builder {
 	builder.synergyEnabled = false // Disabled by default, enabled via CLI flag
 	builder.synergyWeight = 0.15   // Default: 15% of total score from synergy
 
+	// Initialize uniqueness scorer with default configuration
+	uniquenessConfig := UniquenessConfig{
+		Enabled:                false, // Disabled by default, enabled via CLI flag
+		Weight:                 0.2,   // Default: 20% weight when enabled
+		MinUniquenessThreshold: 0.3,   // Only bonus for cards below 30% popularity
+		UseGeometricMean:       false, // Use arithmetic mean for deck-level uniqueness
+	}
+	builder.uniquenessScorer = NewUniquenessScorer(uniquenessConfig)
+	builder.uniquenessEnabled = false // Disabled by default
+	builder.uniquenessWeight = 0.2    // Default: 20% of total score from uniqueness
+
 	return builder
 }
 
@@ -92,6 +110,8 @@ func NewBuilder(dataDir string) *Builder {
 type CardAnalysis struct {
 	CardLevels   map[string]CardLevelData `json:"card_levels"`
 	AnalysisTime string                   `json:"analysis_time,omitempty"`
+	PlayerName   string                   `json:"player_name,omitempty"`
+	PlayerTag    string                   `json:"player_tag,omitempty"`
 }
 
 // CardLevelData represents card level and metadata from analysis
@@ -121,6 +141,9 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	deck, used = b.addIncludedCards(deck, candidates, used)
 	deck, used, notes := b.selectCardsByRole(deck, candidates, used)
 	deck = b.fillRemainingSlots(deck, candidates, used)
+	if len(deck) < 8 {
+		return nil, fmt.Errorf("insufficient eligible cards to build a full deck: need 8, found %d", len(deck))
+	}
 
 	evolutionSlots := b.selectEvolutionSlots(deck)
 	recommendation := b.buildRecommendationDetails(deck, analysis.AnalysisTime, evolutionSlots, notes)
@@ -149,7 +172,7 @@ func (b *Builder) filterExcludedCards(candidates []*CardCandidate) []*CardCandid
 }
 
 // addIncludedCards adds force-included cards to deck and marks them as used
-func (b *Builder) addIncludedCards(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool) {
+func (b *Builder) addIncludedCards(deck, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool) {
 	if len(b.includeCards) == 0 {
 		return deck, used
 	}
@@ -168,96 +191,115 @@ func (b *Builder) addIncludedCards(deck []*CardCandidate, candidates []*CardCand
 }
 
 // selectCardsByRole selects cards for each role with composition override support
-// Returns notes for missing win conditions
-func (b *Builder) selectCardsByRole(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool, []string) {
-	notes := make([]string, 0)
-	override := b.strategyConfig.CompositionOverrides
-
-	// Core roles: win condition, building, two spells
-	// Use override counts if specified, otherwise use defaults
-	winConditionCount := 1
-	if override != nil && override.WinConditions != nil {
-		winConditionCount = *override.WinConditions
+// getOverrideCount returns the override count for a role, or the default if not overridden
+//
+//nolint:gocyclo // Role override matrix requires explicit precedence rules.
+func (b *Builder) getOverrideCount(role CardRole, defaultCount int) int {
+	if b.strategyConfig.CompositionOverrides == nil {
+		return defaultCount
 	}
-	for i := 0; i < winConditionCount; i++ {
-		if winCondition := b.pickBest(RoleWinCondition, candidates, used, deck); winCondition != nil {
-			deck = append(deck, winCondition)
-			used[winCondition.Name] = true
-		} else if i == 0 {
+
+	override := b.strategyConfig.CompositionOverrides
+	switch role {
+	case RoleWinCondition:
+		if override.WinConditions != nil {
+			return *override.WinConditions
+		}
+	case RoleBuilding:
+		if override.Buildings != nil {
+			return *override.Buildings
+		}
+	case RoleSpellBig:
+		if override.BigSpells != nil {
+			return *override.BigSpells
+		}
+	case RoleSpellSmall:
+		if override.SmallSpells != nil {
+			return *override.SmallSpells
+		}
+	case RoleSupport:
+		if override.Support != nil {
+			return *override.Support
+		}
+	case RoleCycle:
+		if override.Cycle != nil {
+			return *override.Cycle
+		}
+	}
+	return defaultCount
+}
+
+// selectCardsForRole selects cards of a specific role using pickBest and updates deck/used
+func (b *Builder) selectCardsForRole(role CardRole, count int, deck, candidates []*CardCandidate, used map[string]bool, trackMissing bool) ([]*CardCandidate, map[string]bool, []string) {
+	notes := make([]string, 0)
+
+	for i := range count {
+		if card := b.pickBest(role, candidates, used, deck); card != nil {
+			deck = append(deck, card)
+			used[card.Name] = true
+		} else if i == 0 && trackMissing {
 			notes = append(notes, "No win condition found; selected highest power cards instead.")
 		}
-	}
-
-	buildingCount := 1
-	if override != nil && override.Buildings != nil {
-		buildingCount = *override.Buildings
-	}
-	for i := 0; i < buildingCount; i++ {
-		if building := b.pickBest(RoleBuilding, candidates, used, deck); building != nil {
-			deck = append(deck, building)
-			used[building.Name] = true
-		}
-	}
-
-	bigSpellCount := 1
-	if override != nil && override.BigSpells != nil {
-		bigSpellCount = *override.BigSpells
-	}
-	for i := 0; i < bigSpellCount; i++ {
-		if bigSpell := b.pickBest(RoleSpellBig, candidates, used, deck); bigSpell != nil {
-			deck = append(deck, bigSpell)
-			used[bigSpell.Name] = true
-		}
-	}
-
-	smallSpellCount := 1
-	if override != nil && override.SmallSpells != nil {
-		smallSpellCount = *override.SmallSpells
-	}
-	for i := 0; i < smallSpellCount; i++ {
-		if smallSpell := b.pickBest(RoleSpellSmall, candidates, used, deck); smallSpell != nil {
-			deck = append(deck, smallSpell)
-			used[smallSpell.Name] = true
-		}
-	}
-
-	// Support backbone (2 cards, or override count if specified)
-	supportCount := 2
-	if override != nil && override.Support != nil {
-		supportCount = *override.Support
-	}
-	supportCards := b.pickMany(RoleSupport, candidates, used, supportCount, deck)
-	deck = append(deck, supportCards...)
-	for _, card := range supportCards {
-		used[card.Name] = true
-	}
-
-	// Cheap cycle fillers (2 cards, or override count if specified)
-	cycleCount := 2
-	if override != nil && override.Cycle != nil {
-		cycleCount = *override.Cycle
-	}
-	cycleCards := b.pickMany(RoleCycle, candidates, used, cycleCount, deck)
-	deck = append(deck, cycleCards...)
-	for _, card := range cycleCards {
-		used[card.Name] = true
 	}
 
 	return deck, used, notes
 }
 
+// selectMultipleCardsForRole selects multiple cards of a role using pickMany and updates deck/used
+func (b *Builder) selectMultipleCardsForRole(role CardRole, count int, deck, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool) {
+	cards := b.pickMany(role, candidates, used, count, deck)
+	deck = append(deck, cards...)
+	for _, card := range cards {
+		used[card.Name] = true
+	}
+	return deck, used
+}
+
+// Returns notes for missing win conditions
+func (b *Builder) selectCardsByRole(deck, candidates []*CardCandidate, used map[string]bool) ([]*CardCandidate, map[string]bool, []string) {
+	notes := make([]string, 0)
+
+	// Core roles: win condition, building, two spells
+	// Use override counts if specified, otherwise use defaults
+	winConditionCount := b.getOverrideCount(RoleWinCondition, 1)
+	deck, used, winConditionNotes := b.selectCardsForRole(RoleWinCondition, winConditionCount, deck, candidates, used, true)
+	notes = append(notes, winConditionNotes...)
+
+	buildingCount := b.getOverrideCount(RoleBuilding, 1)
+	deck, used, _ = b.selectCardsForRole(RoleBuilding, buildingCount, deck, candidates, used, false)
+
+	bigSpellCount := b.getOverrideCount(RoleSpellBig, 1)
+	deck, used, _ = b.selectCardsForRole(RoleSpellBig, bigSpellCount, deck, candidates, used, false)
+
+	smallSpellCount := b.getOverrideCount(RoleSpellSmall, 1)
+	deck, used, _ = b.selectCardsForRole(RoleSpellSmall, smallSpellCount, deck, candidates, used, false)
+
+	// Support backbone (2 cards, or override count if specified)
+	supportCount := b.getOverrideCount(RoleSupport, 2)
+	deck, used = b.selectMultipleCardsForRole(RoleSupport, supportCount, deck, candidates, used)
+
+	// Cheap cycle fillers (2 cards, or override count if specified)
+	cycleCount := b.getOverrideCount(RoleCycle, 2)
+	deck, used = b.selectMultipleCardsForRole(RoleCycle, cycleCount, deck, candidates, used)
+
+	return deck, used, notes
+}
+
 // fillRemainingSlots fills remaining deck slots (up to 8) with highest-scoring unused cards
-func (b *Builder) fillRemainingSlots(deck []*CardCandidate, candidates []*CardCandidate, used map[string]bool) []*CardCandidate {
+func (b *Builder) fillRemainingSlots(deck, candidates []*CardCandidate, used map[string]bool) []*CardCandidate {
 	if len(deck) < 8 {
-		remaining := b.getHighestScoreCards(candidates, used, 8-len(deck))
+		remaining := b.getHighestScoreCards(candidates, used, 8-len(deck), deck)
 		deck = append(deck, remaining...)
 	}
-	// Ensure exactly 8 cards
-	return deck[:8]
+	// Ensure at most 8 cards.
+	if len(deck) > 8 {
+		return deck[:8]
+	}
+	return deck
 }
 
 // buildRecommendationDetails builds the DeckRecommendation struct and populates card details
-func (b *Builder) buildRecommendationDetails(deck []*CardCandidate, analysisTime string, evolutionSlots []string, notes []string) *DeckRecommendation {
+func (b *Builder) buildRecommendationDetails(deck []*CardCandidate, analysisTime string, evolutionSlots, notes []string) *DeckRecommendation {
 	recommendation := &DeckRecommendation{
 		Deck:           make([]string, 8),
 		DeckDetail:     make([]CardDetail, 8),
@@ -669,7 +711,7 @@ func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[
 	var pool []*CardCandidate
 	for _, candidate := range candidates {
 		if !used[candidate.Name] && b.contains(roleCards, candidate.Name) {
-			pool = append(pool, candidate)
+			pool = append(pool, cloneCardCandidate(candidate))
 		}
 	}
 
@@ -677,13 +719,7 @@ func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[
 		return nil
 	}
 
-	// Apply synergy bonuses if enabled
-	if b.synergyEnabled && len(currentDeck) > 0 {
-		for _, candidate := range pool {
-			synergyBonus := b.calculateSynergyScore(candidate.Name, currentDeck)
-			candidate.Score += synergyBonus * b.synergyWeight
-		}
-	}
+	b.applyContextualScoring(pool, currentDeck)
 
 	// Return highest scoring card
 	sort.Slice(pool, func(i, j int) bool {
@@ -703,8 +739,49 @@ func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[
 	var pool []*CardCandidate
 	for _, candidate := range candidates {
 		if !used[candidate.Name] && b.contains(roleCards, candidate.Name) {
-			pool = append(pool, candidate)
+			pool = append(pool, cloneCardCandidate(candidate))
 		}
+	}
+
+	b.applyContextualScoring(pool, currentDeck)
+
+	sort.Slice(pool, func(i, j int) bool {
+		return pool[i].Score > pool[j].Score
+	})
+
+	if len(pool) < count {
+		return pool
+	}
+
+	return pool[:count]
+}
+
+//nolint:gocyclo // Selection logic intentionally branches on availability/constraints.
+func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[string]bool, count int, currentDeck []*CardCandidate) []*CardCandidate {
+	var pool []*CardCandidate
+	for _, candidate := range candidates {
+		if !used[candidate.Name] {
+			pool = append(pool, cloneCardCandidate(candidate))
+		}
+	}
+
+	b.applyContextualScoring(pool, currentDeck)
+
+	sort.Slice(pool, func(i, j int) bool {
+		return pool[i].Score > pool[j].Score
+	})
+
+	if len(pool) < count {
+		return pool
+	}
+
+	return pool[:count]
+}
+
+//nolint:gocyclo // Contextual scoring combines optional subsystems (synergy, uniqueness, archetype avoidance).
+func (b *Builder) applyContextualScoring(pool, currentDeck []*CardCandidate) {
+	if len(pool) == 0 {
+		return
 	}
 
 	// Apply synergy bonuses if enabled
@@ -715,47 +792,42 @@ func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[
 		}
 	}
 
-	sort.Slice(pool, func(i, j int) bool {
-		return pool[i].Score > pool[j].Score
-	})
-
-	if len(pool) < count {
-		return pool
-	}
-
-	return pool[:count]
-}
-
-func (b *Builder) getHighestScoreCards(candidates []*CardCandidate, used map[string]bool, count int) []*CardCandidate {
-	var pool []*CardCandidate
-	for _, candidate := range candidates {
-		if !used[candidate.Name] {
-			pool = append(pool, candidate)
+	// Apply uniqueness bonuses if enabled
+	if b.uniquenessEnabled && b.uniquenessScorer != nil {
+		baseDeckCardNames := make([]string, 0, len(currentDeck))
+		for _, card := range currentDeck {
+			baseDeckCardNames = append(baseDeckCardNames, card.Name)
+		}
+		for _, candidate := range pool {
+			deckCardNames := append([]string{}, baseDeckCardNames...)
+			deckCardNames = append(deckCardNames, candidate.Name)
+			uniquenessScore := b.uniquenessScorer.ScoreDeck(deckCardNames)
+			candidate.Score += uniquenessScore * b.uniquenessWeight
 		}
 	}
 
-	sort.Slice(pool, func(i, j int) bool {
-		return pool[i].Score > pool[j].Score
-	})
-
-	if len(pool) < count {
-		return pool
+	// Apply archetype avoidance penalties if configured
+	if b.archetypeAvoidanceScorer != nil && b.archetypeAvoidanceScorer.IsEnabled() {
+		for _, candidate := range pool {
+			penalty := b.archetypeAvoidanceScorer.ScoreCard(candidate.Name)
+			candidate.Score += penalty
+		}
 	}
+}
 
-	return pool[:count]
+func cloneCardCandidate(candidate *CardCandidate) *CardCandidate {
+	if candidate == nil {
+		return nil
+	}
+	clone := *candidate
+	return &clone
 }
 
 func (b *Builder) calculateAvgElixir(deck []*CardCandidate) float64 {
-	if len(deck) == 0 {
-		return 0
-	}
-
-	total := 0
-	for _, card := range deck {
-		total += card.Elixir
-	}
-
-	return roundToTwo(float64(total) / float64(len(deck)))
+	avg := util.CalcAvgElixir(deck, func(card *CardCandidate) int {
+		return card.Elixir
+	})
+	return roundToTwo(avg)
 }
 
 func (b *Builder) addStrategicNotes(recommendation *DeckRecommendation) {
@@ -787,12 +859,7 @@ func (b *Builder) addStrategicNotes(recommendation *DeckRecommendation) {
 // Utility functions
 
 func (b *Builder) contains(slice []string, item string) bool {
-	for _, s := range slice {
-		if s == item {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(slice, item)
 }
 
 func roundToTwo(value float64) float64 {
@@ -867,6 +934,24 @@ func (b *Builder) SetSynergyWeight(weight float64) {
 	b.synergyWeight = weight
 }
 
+// SetUniquenessEnabled enables or disables uniqueness/anti-meta scoring
+func (b *Builder) SetUniquenessEnabled(enabled bool) {
+	b.uniquenessEnabled = enabled
+}
+
+// SetUniquenessWeight sets the weight for uniqueness scoring (0.0 to 0.3)
+// Default is 0.2 (20% of total score from uniqueness)
+// Higher values give more preference to less common/anti-meta cards
+func (b *Builder) SetUniquenessWeight(weight float64) {
+	if weight < 0.0 {
+		weight = 0.0
+	}
+	if weight > 0.3 {
+		weight = 0.3 // Cap at 0.3 to prevent over-prioritizing uniqueness
+	}
+	b.uniquenessWeight = weight
+}
+
 // SetIncludeCards sets the cards that must be included in the deck
 // These cards will be forced into the deck if they're available in the collection
 func (b *Builder) SetIncludeCards(cards []string) {
@@ -877,6 +962,13 @@ func (b *Builder) SetIncludeCards(cards []string) {
 // These cards will never be selected for the deck
 func (b *Builder) SetExcludeCards(cards []string) {
 	b.excludeCards = cards
+}
+
+// SetAvoidArchetypes sets the archetypes to avoid when building decks
+// Cards strongly associated with these archetypes will receive score penalties
+func (b *Builder) SetAvoidArchetypes(archetypes []string) {
+	b.avoidArchetypes = archetypes
+	b.archetypeAvoidanceScorer = NewArchetypeAvoidanceScorer(archetypes)
 }
 
 // SetFuzzIntegration sets the fuzz integration instance for data-driven card scoring
@@ -966,10 +1058,7 @@ func (b *Builder) getUpgradeCandidates(deck *DeckRecommendation, cardLevels map[
 			b.levelCurve,
 		)
 
-		targetLevel := card.Level + 1
-		if targetLevel > card.MaxLevel {
-			targetLevel = card.MaxLevel
-		}
+		targetLevel := min(card.Level+1, card.MaxLevel)
 
 		upgradedScore := ScoreCardWithStrategy(
 			&CardCandidate{
@@ -1104,12 +1193,4 @@ func (b *Builder) generateUpgradeReason(card CardDetail, scoreDelta float64, rol
 	} else {
 		return fmt.Sprintf("Minor improvement (+%.3f) for this %s", scoreDelta, roleStr)
 	}
-}
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }

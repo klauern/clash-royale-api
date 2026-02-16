@@ -140,6 +140,9 @@ data/*
 !data/static/cards_stats.json
 !data/README.md
 
+# Generated research benchmark artifacts
+reports/research-eval/
+
 # AI planning documents (ephemeral)
 history/
 

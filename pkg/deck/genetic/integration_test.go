@@ -390,9 +390,9 @@ func TestGeneticAlgorithmPerformance(t *testing.T) {
 	candidates := createRealisticCandidates()
 
 	tests := []struct {
-		name       string
-		config     GeneticConfig
-		maxTime    time.Duration
+		name    string
+		config  GeneticConfig
+		maxTime time.Duration
 	}{
 		{
 			name: "quick optimization",

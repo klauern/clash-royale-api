@@ -1,0 +1,425 @@
+{
+  "version": 1,
+  "cards": {
+    "Hog Rider": {
+      "name": "Hog Rider",
+      "elixir": 4,
+      "type": "troop",
+      "role": "win_condition",
+      "opening_score": 0.8
+    },
+    "Battle Ram": {
+      "name": "Battle Ram",
+      "elixir": 4,
+      "type": "troop",
+      "role": "win_condition",
+      "opening_score": 0.6
+    },
+    "Goblin Barrel": {
+      "name": "Goblin Barrel",
+      "elixir": 3,
+      "type": "spell",
+      "role": "win_condition",
+      "opening_score": 0.2
+    },
+    "Mortar": {
+      "name": "Mortar",
+      "elixir": 4,
+      "type": "building",
+      "role": "win_condition",
+      "opening_score": 0.1
+    },
+    "X-Bow": {
+      "name": "X-Bow",
+      "elixir": 6,
+      "type": "building",
+      "role": "win_condition",
+      "opening_score": 0.1
+    },
+    "Rocket": {
+      "name": "Rocket",
+      "elixir": 6,
+      "type": "spell",
+      "role": "win_condition",
+      "opening_score": 0.1
+    },
+    "Lightning": {
+      "name": "Lightning",
+      "elixir": 6,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.2
+    },
+    "Fireball": {
+      "name": "Fireball",
+      "elixir": 4,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.3
+    },
+    "Poison": {
+      "name": "Poison",
+      "elixir": 4,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.3
+    },
+    "Golem": {
+      "name": "Golem",
+      "elixir": 8,
+      "type": "troop",
+      "role": "win_condition",
+      "opening_score": 0
+    },
+    "Giant": {
+      "name": "Giant",
+      "elixir": 5,
+      "type": "troop",
+      "role": "win_condition",
+      "opening_score": 0
+    },
+    "Lava Hound": {
+      "name": "Lava Hound",
+      "elixir": 7,
+      "type": "troop",
+      "role": "win_condition",
+      "opening_score": 0
+    },
+    "Royal Giant": {
+      "name": "Royal Giant",
+      "elixir": 6,
+      "type": "troop",
+      "role": "win_condition",
+      "opening_score": 0.1
+    },
+    "Baby Dragon": {
+      "name": "Baby Dragon",
+      "elixir": 4,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.6
+    },
+    "Skeleton Dragons": {
+      "name": "Skeleton Dragons",
+      "elixir": 4,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.7
+    },
+    "Cannon": {
+      "name": "Cannon",
+      "elixir": 3,
+      "type": "building",
+      "role": "defensive",
+      "opening_score": 0.4
+    },
+    "Tesla": {
+      "name": "Tesla",
+      "elixir": 4,
+      "type": "building",
+      "role": "defensive",
+      "opening_score": 0.4
+    },
+    "Inferno Tower": {
+      "name": "Inferno Tower",
+      "elixir": 5,
+      "type": "building",
+      "role": "defensive",
+      "opening_score": 0.3
+    },
+    "Bomb Tower": {
+      "name": "Bomb Tower",
+      "elixir": 4,
+      "type": "building",
+      "role": "defensive",
+      "opening_score": 0.4
+    },
+    "Furnace": {
+      "name": "Furnace",
+      "elixir": 4,
+      "type": "building",
+      "role": "defensive",
+      "opening_score": 0.5
+    },
+    "Goblin Cage": {
+      "name": "Goblin Cage",
+      "elixir": 3,
+      "type": "building",
+      "role": "defensive",
+      "opening_score": 0.6
+    },
+    "Tombstone": {
+      "name": "Tombstone",
+      "elixir": 3,
+      "type": "building",
+      "role": "defensive",
+      "opening_score": 0.6
+    },
+    "Goblin Hut": {
+      "name": "Goblin Hut",
+      "elixir": 5,
+      "type": "building",
+      "role": "defensive",
+      "opening_score": 0.5
+    },
+    "Barbarian Hut": {
+      "name": "Barbarian Hut",
+      "elixir": 7,
+      "type": "building",
+      "role": "defensive",
+      "opening_score": 0.3
+    },
+    "Elixir Collector": {
+      "name": "Elixir Collector",
+      "elixir": 6,
+      "type": "building",
+      "role": "support",
+      "opening_score": 0.7
+    },
+    "Skeletons": {
+      "name": "Skeletons",
+      "elixir": 1,
+      "type": "troop",
+      "role": "cycle",
+      "opening_score": 0.9
+    },
+    "Ice Spirit": {
+      "name": "Ice Spirit",
+      "elixir": 1,
+      "type": "troop",
+      "role": "cycle",
+      "opening_score": 0.9
+    },
+    "Fire Spirit": {
+      "name": "Fire Spirit",
+      "elixir": 1,
+      "type": "troop",
+      "role": "cycle",
+      "opening_score": 0.9
+    },
+    "Zap": {
+      "name": "Zap",
+      "elixir": 2,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.7
+    },
+    "The Log": {
+      "name": "The Log",
+      "elixir": 2,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.7
+    },
+    "Snowball": {
+      "name": "Snowball",
+      "elixir": 2,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.7
+    },
+    "Arrows": {
+      "name": "Arrows",
+      "elixir": 3,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.6
+    },
+    "Goblins": {
+      "name": "Goblins",
+      "elixir": 2,
+      "type": "troop",
+      "role": "cycle",
+      "opening_score": 0.8
+    },
+    "Bats": {
+      "name": "Bats",
+      "elixir": 2,
+      "type": "troop",
+      "role": "cycle",
+      "opening_score": 0.8
+    },
+    "Minions": {
+      "name": "Minions",
+      "elixir": 3,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.7
+    },
+    "Minion Horde": {
+      "name": "Minion Horde",
+      "elixir": 5,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.4
+    },
+    "Goblin Gang": {
+      "name": "Goblin Gang",
+      "elixir": 3,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.7
+    },
+    "Archers": {
+      "name": "Archers",
+      "elixir": 3,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.8
+    },
+    "Knight": {
+      "name": "Knight",
+      "elixir": 3,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.8
+    },
+    "Bandit": {
+      "name": "Bandit",
+      "elixir": 3,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.7
+    },
+    "Wall Breakers": {
+      "name": "Wall Breakers",
+      "elixir": 2,
+      "type": "troop",
+      "role": "cycle",
+      "opening_score": 0.6
+    },
+    "Valkyrie": {
+      "name": "Valkyrie",
+      "elixir": 4,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.6
+    },
+    "Hunter": {
+      "name": "Hunter",
+      "elixir": 4,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.6
+    },
+    "Musketeer": {
+      "name": "Musketeer",
+      "elixir": 4,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.5
+    },
+    "Electro Wizard": {
+      "name": "Electro Wizard",
+      "elixir": 4,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.6
+    },
+    "Dark Prince": {
+      "name": "Dark Prince",
+      "elixir": 4,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.6
+    },
+    "Princess": {
+      "name": "Princess",
+      "elixir": 3,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.5
+    },
+    "Barbarians": {
+      "name": "Barbarians",
+      "elixir": 5,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.4
+    },
+    "PEKKA": {
+      "name": "PEKKA",
+      "elixir": 7,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.2
+    },
+    "Bowler": {
+      "name": "Bowler",
+      "elixir": 5,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.4
+    },
+    "Executioner": {
+      "name": "Executioner",
+      "elixir": 5,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.4
+    },
+    "Witch": {
+      "name": "Witch",
+      "elixir": 5,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.4
+    },
+    "Lumberjack": {
+      "name": "Lumberjack",
+      "elixir": 4,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.6
+    },
+    "Rage": {
+      "name": "Rage",
+      "elixir": 2,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.3
+    },
+    "Freeze": {
+      "name": "Freeze",
+      "elixir": 4,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.3
+    },
+    "Giant Snowball": {
+      "name": "Giant Snowball",
+      "elixir": 2,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.6
+    },
+    "Barbarian Barrel": {
+      "name": "Barbarian Barrel",
+      "elixir": 2,
+      "type": "spell",
+      "role": "spell",
+      "opening_score": 0.6
+    },
+    "Phoenix": {
+      "name": "Phoenix",
+      "elixir": 7,
+      "type": "troop",
+      "role": "win_condition",
+      "opening_score": 0.2
+    },
+    "Monk": {
+      "name": "Monk",
+      "elixir": 5,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.4
+    },
+    "Architect": {
+      "name": "Architect",
+      "elixir": 4,
+      "type": "troop",
+      "role": "support",
+      "opening_score": 0.5
+    }
+  }
+}

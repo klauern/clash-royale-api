@@ -136,7 +136,7 @@ func TestBaseExporter_WriteCSV_DirectoryCreation(t *testing.T) {
 func TestNewCSVExporter(t *testing.T) {
 	filename := "test.csv"
 	headers := func() []string { return []string{"ID", "Name"} }
-	exportFunc := func(dataDir string, data interface{}) error { return nil }
+	exportFunc := func(dataDir string, data any) error { return nil }
 
 	exporter := NewCSVExporter(filename, headers, exportFunc)
 
@@ -158,9 +158,9 @@ func TestNewCSVExporter(t *testing.T) {
 func TestCSVExporter_Export(t *testing.T) {
 	called := false
 	var receivedDataDir string
-	var receivedData interface{}
+	var receivedData any
 
-	exportFunc := func(dataDir string, data interface{}) error {
+	exportFunc := func(dataDir string, data any) error {
 		called = true
 		receivedDataDir = dataDir
 		receivedData = data
@@ -189,7 +189,7 @@ func TestCSVExporter_Export(t *testing.T) {
 
 func TestCSVExporter_Export_Error(t *testing.T) {
 	expectedErr := fmt.Errorf("test error")
-	exportFunc := func(dataDir string, data interface{}) error {
+	exportFunc := func(dataDir string, data any) error {
 		return expectedErr
 	}
 
@@ -222,7 +222,7 @@ func BenchmarkWriteCSV(b *testing.B) {
 
 	// Create test data
 	rows := make([][]string, 100)
-	for i := 0; i < 100; i++ {
+	for i := range 100 {
 		rows[i] = []string{
 			fmt.Sprintf("%d", i),
 			fmt.Sprintf("Name%d", i),
@@ -244,7 +244,7 @@ func BenchmarkWriteCSV(b *testing.B) {
 
 func BenchmarkNewCSVExporter(b *testing.B) {
 	headers := func() []string { return []string{"ID", "Name"} }
-	exportFunc := func(dataDir string, data interface{}) error { return nil }
+	exportFunc := func(dataDir string, data any) error { return nil }
 
 	for i := 0; i < b.N; i++ {
 		_ = NewCSVExporter(fmt.Sprintf("test_%d.csv", i), headers, exportFunc)
@@ -302,7 +302,7 @@ func TestWriteCSV_LargeDataset(t *testing.T) {
 	// Create a large dataset
 	headers := []string{"ID", "Name", "Value"}
 	rows := make([][]string, 10000)
-	for i := 0; i < 10000; i++ {
+	for i := range 10000 {
 		rows[i] = []string{
 			fmt.Sprintf("%d", i),
 			fmt.Sprintf("Item%d", i),

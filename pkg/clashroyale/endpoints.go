@@ -8,14 +8,12 @@ import (
 	"net/url"
 )
 
-// GetPlayer retrieves player information for the given tag
-func (c *Client) GetPlayer(tag string) (*Player, error) {
-	normalizedTag := NormalizeTag(tag)
-	endpoint := fmt.Sprintf("/players/%s", url.PathEscape(normalizedTag))
-
-	req, err := c.NewRequest(context.Background(), "GET", endpoint)
+// makeAPIRequest is a generic helper to reduce duplication across API endpoints.
+// It handles the common pattern of: create request, execute, check status, decode JSON.
+func makeAPIRequest[T any](ctx context.Context, c *Client, endpoint, errorMsg string) (*T, error) {
+	req, err := c.NewRequest(ctx, "GET", endpoint)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create player request: %w", err)
+		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 
 	resp, err := c.Do(req)
@@ -27,136 +25,70 @@ func (c *Client) GetPlayer(tag string) (*Player, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, APIError{
 			StatusCode: resp.StatusCode,
-			Message:    fmt.Sprintf("Failed to get player %s", tag),
+			Message:    errorMsg,
 		}
 	}
 
-	var player Player
-	if err := json.NewDecoder(resp.Body).Decode(&player); err != nil {
-		return nil, fmt.Errorf("failed to decode player response: %w", err)
+	var result T
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	return &player, nil
+	return &result, nil
+}
+
+// GetPlayer retrieves player information for the given tag
+func (c *Client) GetPlayer(tag string) (*Player, error) {
+	return c.GetPlayerWithContext(context.Background(), tag)
+}
+
+// GetPlayerWithContext retrieves player information for the given tag with caller context.
+func (c *Client) GetPlayerWithContext(ctx context.Context, tag string) (*Player, error) {
+	normalizedTag := NormalizeTag(tag)
+	endpoint := fmt.Sprintf("/players/%s", url.PathEscape(normalizedTag))
+	return makeAPIRequest[Player](ctx, c, endpoint, fmt.Sprintf("Failed to get player %s", tag))
 }
 
 // GetPlayerUpcomingChests retrieves the upcoming chest cycle for a player
 func (c *Client) GetPlayerUpcomingChests(tag string) (*ChestCycle, error) {
+	return c.GetPlayerUpcomingChestsWithContext(context.Background(), tag)
+}
+
+// GetPlayerUpcomingChestsWithContext retrieves upcoming chest cycle with caller context.
+func (c *Client) GetPlayerUpcomingChestsWithContext(ctx context.Context, tag string) (*ChestCycle, error) {
 	normalizedTag := NormalizeTag(tag)
 	endpoint := fmt.Sprintf("/players/%s/upcomingchests", url.PathEscape(normalizedTag))
-
-	req, err := c.NewRequest(context.Background(), "GET", endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create upcoming chests request: %w", err)
-	}
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer closeWithLog(resp.Body, "response body")
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, APIError{
-			StatusCode: resp.StatusCode,
-			Message:    fmt.Sprintf("Failed to get upcoming chests for player %s", tag),
-		}
-	}
-
-	var chestCycle ChestCycle
-	if err := json.NewDecoder(resp.Body).Decode(&chestCycle); err != nil {
-		return nil, fmt.Errorf("failed to decode chest cycle response: %w", err)
-	}
-
-	return &chestCycle, nil
+	return makeAPIRequest[ChestCycle](ctx, c, endpoint, fmt.Sprintf("Failed to get upcoming chests for player %s", tag))
 }
 
 // GetPlayerBattleLog retrieves the battle log for a player
 func (c *Client) GetPlayerBattleLog(tag string) (*BattleLogResponse, error) {
+	return c.GetPlayerBattleLogWithContext(context.Background(), tag)
+}
+
+// GetPlayerBattleLogWithContext retrieves battle log with caller context.
+func (c *Client) GetPlayerBattleLogWithContext(ctx context.Context, tag string) (*BattleLogResponse, error) {
 	normalizedTag := NormalizeTag(tag)
 	endpoint := fmt.Sprintf("/players/%s/battlelog", url.PathEscape(normalizedTag))
-
-	req, err := c.NewRequest(context.Background(), "GET", endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create battle log request: %w", err)
-	}
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer closeWithLog(resp.Body, "response body")
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, APIError{
-			StatusCode: resp.StatusCode,
-			Message:    fmt.Sprintf("Failed to get battle log for player %s", tag),
-		}
-	}
-
-	var battleLog BattleLogResponse
-	if err := json.NewDecoder(resp.Body).Decode(&battleLog); err != nil {
-		return nil, fmt.Errorf("failed to decode battle log response: %w", err)
-	}
-
-	return &battleLog, nil
+	return makeAPIRequest[BattleLogResponse](ctx, c, endpoint, fmt.Sprintf("Failed to get battle log for player %s", tag))
 }
 
 // GetCards retrieves the full list of cards
 func (c *Client) GetCards() (*CardList, error) {
-	endpoint := "/cards"
+	return c.GetCardsWithContext(context.Background())
+}
 
-	req, err := c.NewRequest(context.Background(), "GET", endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create cards request: %w", err)
-	}
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer closeWithLog(resp.Body, "response body")
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, APIError{
-			StatusCode: resp.StatusCode,
-			Message:    "Failed to get cards",
-		}
-	}
-
-	var cards CardList
-	if err := json.NewDecoder(resp.Body).Decode(&cards); err != nil {
-		return nil, fmt.Errorf("failed to decode cards response: %w", err)
-	}
-
-	return &cards, nil
+// GetCardsWithContext retrieves the full list of cards with caller context.
+func (c *Client) GetCardsWithContext(ctx context.Context) (*CardList, error) {
+	return makeAPIRequest[CardList](ctx, c, "/cards", "Failed to get cards")
 }
 
 // GetLocations retrieves the list of locations
 func (c *Client) GetLocations() (*LocationList, error) {
-	endpoint := "/locations"
+	return c.GetLocationsWithContext(context.Background())
+}
 
-	req, err := c.NewRequest(context.Background(), "GET", endpoint)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create locations request: %w", err)
-	}
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer closeWithLog(resp.Body, "response body")
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, APIError{
-			StatusCode: resp.StatusCode,
-			Message:    "Failed to get locations",
-		}
-	}
-
-	var locations LocationList
-	if err := json.NewDecoder(resp.Body).Decode(&locations); err != nil {
-		return nil, fmt.Errorf("failed to decode locations response: %w", err)
-	}
-
-	return &locations, nil
+// GetLocationsWithContext retrieves the list of locations with caller context.
+func (c *Client) GetLocationsWithContext(ctx context.Context) (*LocationList, error) {
+	return makeAPIRequest[LocationList](ctx, c, "/locations", "Failed to get locations")
 }

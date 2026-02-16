@@ -380,11 +380,11 @@ func (p *Parser) createBattleRecord(battle clashroyale.Battle, playerTag string)
 	// Determine win/loss
 	teamCrowns := battle.Team[0].Crowns
 	opponentCrowns := battle.Opponent[0].Crowns
-	result := "win"
+	result := BattleResultWin
 	if teamCrowns < opponentCrowns {
-		result = "loss"
+		result = BattleResultLoss
 	} else if teamCrowns == opponentCrowns {
-		result = "draw"
+		result = BattleResultDraw
 	}
 
 	// Get trophy change
@@ -394,16 +394,36 @@ func (p *Parser) createBattleRecord(battle clashroyale.Battle, playerTag string)
 		trophyChange = &tc
 	}
 
+	playerDeck := extractCardNames(battle.Team[0].Cards)
+	opponentDeck := extractCardNames(battle.Opponent[0].Cards)
+
 	return &BattleRecord{
-		Timestamp:      battle.UTCDate,
-		OpponentTag:    battle.Opponent[0].Tag,
-		OpponentName:   battle.Opponent[0].Name,
-		Result:         result,
-		Crowns:         teamCrowns,
-		OpponentCrowns: opponentCrowns,
-		TrophyChange:   trophyChange,
-		BattleMode:     battle.GameMode.Name,
+		Timestamp:             battle.UTCDate,
+		OpponentTag:           battle.Opponent[0].Tag,
+		OpponentName:          battle.Opponent[0].Name,
+		Result:                result,
+		Crowns:                teamCrowns,
+		OpponentCrowns:        opponentCrowns,
+		TrophyChange:          trophyChange,
+		BattleMode:            battle.GameMode.Name,
+		PlayerDeck:            playerDeck,
+		OpponentDeck:          opponentDeck,
+		PlayerDeckHash:        deckHash(playerDeck),
+		OpponentDeckHash:      deckHash(opponentDeck),
+		PlayerDeckArchetype:   inferDeckArchetype(playerDeck),
+		OpponentDeckArchetype: inferDeckArchetype(opponentDeck),
 	}
+}
+
+func extractCardNames(cards []clashroyale.Card) []string {
+	names := make([]string, 0, len(cards))
+	for _, card := range cards {
+		if strings.TrimSpace(card.Name) == "" {
+			continue
+		}
+		names = append(names, card.Name)
+	}
+	return names
 }
 
 // generateEventID generates a unique event ID

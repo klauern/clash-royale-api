@@ -1,0 +1,24 @@
+{
+  "name": "deckshop_parity_r8qguqrcv",
+  "deck": [
+    "Witch",
+    "Royal Giant",
+    "Mini P.E.K.K.A",
+    "Fireball",
+    "Dart Goblin",
+    "Hunter",
+    "The Log",
+    "Executioner"
+  ],
+  "expected_signals": {
+    "defense_warning_contains": [
+      "No reset/retarget tools"
+    ],
+    "f2p_assessment_contains": "Moderate F2P friendliness",
+    "f2p_max_score": 6.0,
+    "min_category_scores": {
+      "attack": 4.0,
+      "defense": 4.0
+    }
+  }
+}

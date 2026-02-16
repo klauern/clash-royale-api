@@ -100,105 +100,28 @@ func deckCompareCommand(ctx context.Context, cmd *cli.Command) error {
 	verbose := cmd.Bool("verbose")
 	showWinRate := cmd.Bool("winrate")
 
-	// Validate input sources
-	if len(deckStrings) == 0 && len(evalFiles) == 0 {
-		return fmt.Errorf("must provide either --decks or --from-evaluations")
+	if err := validateComparisonInputs(deckStrings, evalFiles); err != nil {
+		return err
 	}
 
-	if len(deckStrings) > 0 && len(evalFiles) > 0 {
-		return fmt.Errorf("cannot use both --decks and --from-evaluations")
+	deckNames, results, err := loadDecksForComparison(evalFiles, deckStrings, names, autoSelectTop)
+	if err != nil {
+		return err
 	}
 
-	var deckCards [][]deck.CardCandidate
-	var deckNames []string
-	var results []evaluation.EvaluationResult
-
-	// Load decks from evaluation files
-	if len(evalFiles) > 0 {
-		var err error
-		deckNames, results, err = loadDecksFromEvaluations(evalFiles, autoSelectTop)
-		if err != nil {
-			return fmt.Errorf("failed to load evaluations: %w", err)
-		}
-	} else {
-		// Parse decks from command line (original behavior)
-		if len(deckStrings) < 2 {
-			return fmt.Errorf("at least 2 decks are required for comparison, got %d", len(deckStrings))
-		}
-
-		if len(deckStrings) > 5 {
-			return fmt.Errorf("maximum 5 decks can be compared at once, got %d", len(deckStrings))
-		}
-
-		// Parse all decks
-		deckCards = make([][]deck.CardCandidate, len(deckStrings))
-		deckNames = make([]string, len(deckStrings))
-
-		for i, deckStr := range deckStrings {
-			cardNames := parseDeckString(deckStr)
-			if len(cardNames) != 8 {
-				return fmt.Errorf("deck #%d must contain exactly 8 cards, got %d", i+1, len(cardNames))
-			}
-			deckCards[i] = convertToCardCandidates(cardNames)
-
-			// Assign name
-			if i < len(names) && names[i] != "" {
-				deckNames[i] = names[i]
-			} else {
-				deckNames[i] = fmt.Sprintf("Deck #%d", i+1)
-			}
-		}
-
-		// Create synergy database
-		synergyDB := deck.NewSynergyDatabase()
-
-		// Evaluate all decks
-		results = make([]evaluation.EvaluationResult, len(deckCards))
-		for i, cards := range deckCards {
-			result := evaluation.Evaluate(cards, synergyDB, nil)
-			results[i] = result
-		}
+	if err := validateLoadedDecks(results); err != nil {
+		return err
 	}
 
-	// Validation
-	if len(results) < 2 {
-		return fmt.Errorf("at least 2 decks are required for comparison, got %d", len(results))
+	formattedOutput, err := formatDeckComparisonOutput(format, deckNames, results, verbose, showWinRate)
+	if err != nil {
+		return err
 	}
 
-	if len(results) > 5 {
-		return fmt.Errorf("maximum 5 decks can be compared at once, got %d (use --auto-select-top to limit)", len(results))
+	if err := writeComparisonOutput(outputFile, formattedOutput); err != nil {
+		return err
 	}
 
-	// Format output based on requested format
-	var formattedOutput string
-	var err error
-	switch strings.ToLower(format) {
-	case compareFormatTable, compareFormatHuman:
-		formattedOutput = formatComparisonTable(deckNames, results, verbose, showWinRate)
-	case compareFormatJSON:
-		formattedOutput, err = formatComparisonJSON(deckNames, results)
-		if err != nil {
-			return fmt.Errorf("failed to format JSON: %w", err)
-		}
-	case compareFormatCSV:
-		formattedOutput = formatComparisonCSV(deckNames, results)
-	case compareFormatMarkdown, compareFormatMD:
-		formattedOutput = formatComparisonMarkdown(deckNames, results, verbose)
-	default:
-		return fmt.Errorf("unknown format: %s (supported: table, json, csv, markdown)", format)
-	}
-
-	// Output to file or stdout
-	if outputFile != "" {
-		if err := os.WriteFile(outputFile, []byte(formattedOutput), 0o644); err != nil {
-			return fmt.Errorf("failed to write output file: %w", err)
-		}
-		printf("Comparison saved to: %s\n", outputFile)
-	} else {
-		fmt.Print(formattedOutput)
-	}
-
-	// Generate comprehensive markdown report if requested
 	if reportOutput != "" {
 		report := generateComparisonReport(deckNames, results)
 		if err := os.WriteFile(reportOutput, []byte(report), 0o644); err != nil {
@@ -210,6 +133,110 @@ func deckCompareCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+// validateComparisonInputs validates input sources for comparison command
+func validateComparisonInputs(deckStrings, evalFiles []string) error {
+	if len(deckStrings) == 0 && len(evalFiles) == 0 {
+		return fmt.Errorf("must provide either --decks or --from-evaluations")
+	}
+
+	if len(deckStrings) > 0 && len(evalFiles) > 0 {
+		return fmt.Errorf("cannot use both --decks and --from-evaluations")
+	}
+
+	return nil
+}
+
+// loadDecksForComparison loads decks from either evaluation files or CLI strings
+func loadDecksForComparison(evalFiles, deckStrings, names []string, autoSelectTop int) ([]string, []evaluation.EvaluationResult, error) {
+	if len(evalFiles) > 0 {
+		deckNames, results, err := loadDecksFromEvaluations(evalFiles, autoSelectTop)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to load evaluations: %w", err)
+		}
+		return deckNames, results, nil
+	}
+
+	// Parse decks from command line
+	if len(deckStrings) < 2 {
+		return nil, nil, fmt.Errorf("at least 2 decks are required for comparison, got %d", len(deckStrings))
+	}
+
+	if len(deckStrings) > 5 {
+		return nil, nil, fmt.Errorf("maximum 5 decks can be compared at once, got %d", len(deckStrings))
+	}
+
+	deckCards := make([][]deck.CardCandidate, len(deckStrings))
+	deckNames := make([]string, len(deckStrings))
+
+	for i, deckStr := range deckStrings {
+		cardNames := parseDeckString(deckStr)
+		if len(cardNames) != 8 {
+			return nil, nil, fmt.Errorf("deck #%d must contain exactly 8 cards, got %d", i+1, len(cardNames))
+		}
+		deckCards[i] = convertToCardCandidates(cardNames)
+
+		if i < len(names) && names[i] != "" {
+			deckNames[i] = names[i]
+		} else {
+			deckNames[i] = fmt.Sprintf("Deck #%d", i+1)
+		}
+	}
+
+	synergyDB := deck.NewSynergyDatabase()
+	results := make([]evaluation.EvaluationResult, len(deckCards))
+	for i, cards := range deckCards {
+		results[i] = evaluation.Evaluate(cards, synergyDB, nil)
+	}
+
+	return deckNames, results, nil
+}
+
+// validateLoadedDecks validates the loaded deck count
+func validateLoadedDecks(results []evaluation.EvaluationResult) error {
+	if len(results) < 2 {
+		return fmt.Errorf("at least 2 decks are required for comparison, got %d", len(results))
+	}
+
+	if len(results) > 5 {
+		return fmt.Errorf("maximum 5 decks can be compared at once, got %d (use --auto-select-top to limit)", len(results))
+	}
+
+	return nil
+}
+
+// formatComparisonOutput formats comparison output based on format type
+func formatDeckComparisonOutput(format string, deckNames []string, results []evaluation.EvaluationResult, verbose, showWinRate bool) (string, error) {
+	switch strings.ToLower(format) {
+	case compareFormatTable, compareFormatHuman:
+		return formatComparisonTable(deckNames, results, verbose, showWinRate), nil
+	case compareFormatJSON:
+		output, err := formatComparisonJSON(deckNames, results)
+		if err != nil {
+			return "", fmt.Errorf("failed to format JSON: %w", err)
+		}
+		return output, nil
+	case compareFormatCSV:
+		return formatComparisonCSV(deckNames, results), nil
+	case compareFormatMarkdown, compareFormatMD:
+		return formatComparisonMarkdown(deckNames, results, verbose), nil
+	default:
+		return "", fmt.Errorf("unknown format: %s (supported: table, json, csv, markdown)", format)
+	}
+}
+
+// writeComparisonOutput writes output to file or stdout
+func writeComparisonOutput(outputFile, content string) error {
+	if outputFile != "" {
+		if err := os.WriteFile(outputFile, []byte(content), 0o644); err != nil {
+			return fmt.Errorf("failed to write output file: %w", err)
+		}
+		printf("Comparison saved to: %s\n", outputFile)
+	} else {
+		fmt.Print(content)
+	}
+	return nil
+}
+
 // formatComparisonTable formats deck comparison as a table
 func formatComparisonTable(names []string, results []evaluation.EvaluationResult, verbose, showWinRate bool) string {
 	var sb strings.Builder
@@ -218,7 +245,20 @@ func formatComparisonTable(names []string, results []evaluation.EvaluationResult
 	sb.WriteString("║                       DECK COMPARISON                                ║\n")
 	sb.WriteString("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
-	// Overview table
+	formatTableOverviewSection(&sb, names, results)
+	formatTableCategoryScoresSection(&sb, names, results)
+	formatTableBestInCategorySection(&sb, names, results)
+	formatTableDeckCompositionSection(&sb, names, results)
+
+	if verbose {
+		formatTableVerboseAnalysisSection(&sb, names, results)
+	}
+
+	return sb.String()
+}
+
+// formatTableOverviewSection formats the overview section of comparison table
+func formatTableOverviewSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("📊 OVERVIEW\n")
 	sb.WriteString("════════════\n\n")
 	sb.WriteString(fmt.Sprintf("%-15s", "Deck"))
@@ -231,15 +271,7 @@ func formatComparisonTable(names []string, results []evaluation.EvaluationResult
 	// Overall scores
 	sb.WriteString(fmt.Sprintf("%-15s", "Overall Score"))
 	for _, r := range results {
-		// Calculate stars based on overall score (0-3 scale)
-		stars := 0
-		if r.OverallScore >= 9 {
-			stars = 3
-		} else if r.OverallScore >= 7 {
-			stars = 2
-		} else if r.OverallScore >= 5 {
-			stars = 1
-		}
+		stars := calculateStars(r.OverallScore)
 		rating := formatStarsDisplay(stars)
 		sb.WriteString(fmt.Sprintf(" | %.2f %s %-13s", r.OverallScore, rating, r.OverallRating))
 	}
@@ -258,8 +290,10 @@ func formatComparisonTable(names []string, results []evaluation.EvaluationResult
 		sb.WriteString(fmt.Sprintf(" | %-20s", r.DetectedArchetype))
 	}
 	sb.WriteString("\n\n")
+}
 
-	// Category scores comparison
+// formatTableCategoryScoresSection formats category scores section
+func formatTableCategoryScoresSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("📈 CATEGORY SCORES\n")
 	sb.WriteString("══════════════════\n\n")
 	sb.WriteString(fmt.Sprintf("%-15s", "Category"))
@@ -269,45 +303,26 @@ func formatComparisonTable(names []string, results []evaluation.EvaluationResult
 	sb.WriteString("\n")
 	sb.WriteString(strings.Repeat("─", 15+23*len(names)) + "\n")
 
-	categories := []struct {
-		name  string
-		score evaluation.CategoryScore
-	}{
-		{"Attack", results[0].Attack},
-		{"Defense", results[0].Defense},
-		{"Synergy", results[0].Synergy},
-		{"Versatility", results[0].Versatility},
-		{"F2P Friendly", results[0].F2PFriendly},
-	}
+	categories := getEvaluationCategories()
 
 	for _, cat := range categories {
 		sb.WriteString(fmt.Sprintf("%-15s", cat.name))
 		for _, r := range results {
-			var score evaluation.CategoryScore
-			switch cat.name {
-			case "Attack":
-				score = r.Attack
-			case "Defense":
-				score = r.Defense
-			case "Synergy":
-				score = r.Synergy
-			case "Versatility":
-				score = r.Versatility
-			case "F2P Friendly":
-				score = r.F2PFriendly
-			}
+			score := cat.get(r)
 			rating := formatStarsDisplay(score.Stars)
 			sb.WriteString(fmt.Sprintf(" | %.1f %s %-14s", score.Score, rating, score.Rating))
 		}
 		sb.WriteString("\n")
 	}
 	sb.WriteString("\n")
+}
 
-	// Best deck per category
+// formatTableBestInCategorySection formats best in category section
+func formatTableBestInCategorySection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("🏆 BEST IN CATEGORY\n")
 	sb.WriteString("══════════════════\n\n")
 
-	bestCategories := []struct {
+	categories := []struct {
 		name string
 		get  func(evaluation.EvaluationResult) evaluation.CategoryScore
 	}{
@@ -320,21 +335,16 @@ func formatComparisonTable(names []string, results []evaluation.EvaluationResult
 		{"Versatility", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Versatility }},
 	}
 
-	for _, cat := range bestCategories {
-		bestIdx := 0
-		bestScore := -1.0
-		for i, r := range results {
-			score := cat.get(r).Score
-			if score > bestScore {
-				bestScore = score
-				bestIdx = i
-			}
-		}
+	for _, cat := range categories {
+		bestIdx := findBestDeckIndex(results, cat.get)
+		bestScore := cat.get(results[bestIdx]).Score
 		sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", cat.name, names[bestIdx], bestScore))
 	}
 	sb.WriteString("\n")
+}
 
-	// Deck lists
+// formatTableDeckCompositionSection formats deck composition section
+func formatTableDeckCompositionSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("🃏 DECK COMPOSITION\n")
 	sb.WriteString("══════════════════\n\n")
 	for i, r := range results {
@@ -347,44 +357,53 @@ func formatComparisonTable(names []string, results []evaluation.EvaluationResult
 		}
 		sb.WriteString("\n\n")
 	}
+}
 
-	// Verbose analysis
-	if verbose {
-		sb.WriteString("📋 DETAILED ANALYSIS\n")
-		sb.WriteString("════════════════════\n\n")
+// formatTableVerboseAnalysisSection formats verbose analysis section
+func formatTableVerboseAnalysisSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+	sb.WriteString("📋 DETAILED ANALYSIS\n")
+	sb.WriteString("════════════════════\n\n")
 
-		for i, r := range results {
-			sb.WriteString(fmt.Sprintf("═══ %s ═══\n\n", names[i]))
+	for i, r := range results {
+		fmt.Fprintf(sb, "═══ %s ═══\n\n", names[i])
 
-			// Defense analysis
-			sb.WriteString(fmt.Sprintf("Defense (%.1f/10.0): %s\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating))
-			for _, detail := range r.DefenseAnalysis.Details {
-				sb.WriteString(fmt.Sprintf("  • %s\n", detail))
-			}
+		fmt.Fprintf(sb, "Defense (%.1f/10.0): %s\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating)
+		for _, detail := range r.DefenseAnalysis.Details {
+			fmt.Fprintf(sb, "  • %s\n", detail)
+		}
+		sb.WriteString("\n")
+
+		fmt.Fprintf(sb, "Attack (%.1f/10.0): %s\n", r.AttackAnalysis.Score, r.AttackAnalysis.Rating)
+		for _, detail := range r.AttackAnalysis.Details {
+			fmt.Fprintf(sb, "  • %s\n", detail)
+		}
+		sb.WriteString("\n")
+
+		if r.SynergyMatrix.PairCount > 0 {
+			fmt.Fprintf(sb, "Synergy: %d pairs found (%.1f%% coverage)\n",
+				r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage)
 			sb.WriteString("\n")
-
-			// Attack analysis
-			sb.WriteString(fmt.Sprintf("Attack (%.1f/10.0): %s\n", r.AttackAnalysis.Score, r.AttackAnalysis.Rating))
-			for _, detail := range r.AttackAnalysis.Details {
-				sb.WriteString(fmt.Sprintf("  • %s\n", detail))
-			}
-			sb.WriteString("\n")
-
-			// Synergy matrix
-			if r.SynergyMatrix.PairCount > 0 {
-				sb.WriteString(fmt.Sprintf("Synergy: %d pairs found (%.1f%% coverage)\n",
-					r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage))
-				sb.WriteString("\n")
-			}
 		}
 	}
+}
 
-	return sb.String()
+// findBestDeckIndex finds the index of the best deck using a score getter function
+func findBestDeckIndex(results []evaluation.EvaluationResult, getScore func(evaluation.EvaluationResult) evaluation.CategoryScore) int {
+	bestIdx := 0
+	bestScore := -1.0
+	for i, r := range results {
+		score := getScore(r).Score
+		if score > bestScore {
+			bestScore = score
+			bestIdx = i
+		}
+	}
+	return bestIdx
 }
 
 // formatComparisonJSON formats deck comparison as JSON
 func formatComparisonJSON(names []string, results []evaluation.EvaluationResult) (string, error) {
-	comparison := map[string]interface{}{
+	comparison := map[string]any{
 		"decks":   names,
 		"results": results,
 	}
@@ -547,11 +566,23 @@ func loadDecksFromEvaluations(evalFiles []string, autoSelectTop int) ([]string, 
 func formatComparisonMarkdown(names []string, results []evaluation.EvaluationResult, verbose bool) string {
 	var sb strings.Builder
 
-	// Header
 	sb.WriteString("# Deck Comparison\n\n")
 	sb.WriteString(fmt.Sprintf("*Comparing %d decks*\n\n", len(names)))
 
-	// Overview table
+	formatMarkdownOverviewSection(&sb, names, results)
+	formatMarkdownCategoryScoresSection(&sb, names, results)
+	formatMarkdownBestInCategorySection(&sb, names, results)
+	formatMarkdownDeckCompositionsSection(&sb, names, results)
+
+	if verbose {
+		formatMarkdownVerboseAnalysisSection(&sb, names, results)
+	}
+
+	return sb.String()
+}
+
+// formatMarkdownOverviewSection formats overview table in markdown
+func formatMarkdownOverviewSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## Overview\n\n")
 	sb.WriteString("| Deck | Overall Score | Rating | Avg Elixir | Archetype |\n")
 	sb.WriteString("|------|--------------|--------|------------|------------|\n")
@@ -563,8 +594,10 @@ func formatComparisonMarkdown(names []string, results []evaluation.EvaluationRes
 			name, r.OverallScore, stars, r.OverallRating, r.AvgElixir, r.DetectedArchetype))
 	}
 	sb.WriteString("\n")
+}
 
-	// Category scores
+// formatMarkdownCategoryScoresSection formats category scores in markdown
+func formatMarkdownCategoryScoresSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## Category Scores\n\n")
 	sb.WriteString("| Category | ")
 	for _, name := range names {
@@ -576,16 +609,7 @@ func formatComparisonMarkdown(names []string, results []evaluation.EvaluationRes
 	}
 	sb.WriteString("\n")
 
-	categories := []struct {
-		name string
-		get  func(evaluation.EvaluationResult) evaluation.CategoryScore
-	}{
-		{"Attack", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Attack }},
-		{"Defense", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Defense }},
-		{"Synergy", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Synergy }},
-		{"Versatility", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Versatility }},
-		{"F2P Friendly", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.F2PFriendly }},
-	}
+	categories := getEvaluationCategories()
 
 	for _, cat := range categories {
 		sb.WriteString(fmt.Sprintf("| **%s** | ", cat.name))
@@ -597,24 +621,23 @@ func formatComparisonMarkdown(names []string, results []evaluation.EvaluationRes
 		sb.WriteString("\n")
 	}
 	sb.WriteString("\n")
+}
 
-	// Best in category
+// formatMarkdownBestInCategorySection formats best in category in markdown
+func formatMarkdownBestInCategorySection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## 🏆 Best in Category\n\n")
+	categories := getEvaluationCategories()
+
 	for _, cat := range categories {
-		bestIdx := 0
-		bestScore := -1.0
-		for i, r := range results {
-			score := cat.get(r).Score
-			if score > bestScore {
-				bestScore = score
-				bestIdx = i
-			}
-		}
+		bestIdx := findBestDeckIndex(results, cat.get)
+		bestScore := cat.get(results[bestIdx]).Score
 		sb.WriteString(fmt.Sprintf("- **%s**: %s (%.2f)\n", cat.name, names[bestIdx], bestScore))
 	}
 	sb.WriteString("\n")
+}
 
-	// Deck compositions
+// formatMarkdownDeckCompositionsSection formats deck compositions in markdown
+func formatMarkdownDeckCompositionsSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## Deck Compositions\n\n")
 	for i, name := range names {
 		sb.WriteString(fmt.Sprintf("### %s\n\n", name))
@@ -627,37 +650,49 @@ func formatComparisonMarkdown(names []string, results []evaluation.EvaluationRes
 		}
 		sb.WriteString("```\n\n")
 	}
+}
 
-	// Verbose analysis
-	if verbose {
-		sb.WriteString("## Detailed Analysis\n\n")
-		for i, name := range names {
-			r := results[i]
-			sb.WriteString(fmt.Sprintf("### %s\n\n", name))
+// formatMarkdownVerboseAnalysisSection formats verbose analysis in markdown
+func formatMarkdownVerboseAnalysisSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+	sb.WriteString("## Detailed Analysis\n\n")
+	for i, name := range names {
+		r := results[i]
+		fmt.Fprintf(sb, "### %s\n\n", name)
 
-			// Defense
-			sb.WriteString(fmt.Sprintf("**Defense** (%.1f/10.0): %s\n\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating))
-			for _, detail := range r.DefenseAnalysis.Details {
-				sb.WriteString(fmt.Sprintf("- %s\n", detail))
-			}
-			sb.WriteString("\n")
+		fmt.Fprintf(sb, "**Defense** (%.1f/10.0): %s\n\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating)
+		for _, detail := range r.DefenseAnalysis.Details {
+			fmt.Fprintf(sb, "- %s\n", detail)
+		}
+		sb.WriteString("\n")
 
-			// Attack
-			sb.WriteString(fmt.Sprintf("**Attack** (%.1f/10.0): %s\n\n", r.AttackAnalysis.Score, r.AttackAnalysis.Rating))
-			for _, detail := range r.AttackAnalysis.Details {
-				sb.WriteString(fmt.Sprintf("- %s\n", detail))
-			}
-			sb.WriteString("\n")
+		fmt.Fprintf(sb, "**Attack** (%.1f/10.0): %s\n\n", r.AttackAnalysis.Score, r.AttackAnalysis.Rating)
+		for _, detail := range r.AttackAnalysis.Details {
+			fmt.Fprintf(sb, "- %s\n", detail)
+		}
+		sb.WriteString("\n")
 
-			// Synergy
-			if r.SynergyMatrix.PairCount > 0 {
-				sb.WriteString(fmt.Sprintf("**Synergy**: %d pairs found (%.1f%% coverage)\n\n",
-					r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage))
-			}
+		if r.SynergyMatrix.PairCount > 0 {
+			fmt.Fprintf(sb, "**Synergy**: %d pairs found (%.1f%% coverage)\n\n",
+				r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage)
 		}
 	}
+}
 
-	return sb.String()
+// getEvaluationCategories returns the standard evaluation categories
+func getEvaluationCategories() []struct {
+	name string
+	get  func(evaluation.EvaluationResult) evaluation.CategoryScore
+} {
+	return []struct {
+		name string
+		get  func(evaluation.EvaluationResult) evaluation.CategoryScore
+	}{
+		{"Attack", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Attack }},
+		{"Defense", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Defense }},
+		{"Synergy", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Synergy }},
+		{"Versatility", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Versatility }},
+		{"F2P Friendly", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.F2PFriendly }},
+	}
 }
 
 // generateComparisonReport generates a comprehensive markdown report
@@ -670,10 +705,18 @@ func generateComparisonReport(names []string, results []evaluation.EvaluationRes
 	sb.WriteString(fmt.Sprintf("**Decks Compared**: %d\n\n", len(names)))
 	sb.WriteString("---\n\n")
 
-	// Executive summary
-	sb.WriteString("## Executive Summary\n\n")
+	bestIdx := findBestOverallDeck(results)
+	formatReportExecutiveSummary(&sb, names, results, bestIdx)
+	formatReportDetailedScoreComparison(&sb, names, results)
+	formatReportCategoryChampions(&sb, names, results)
+	formatReportDeckDetails(&sb, names, results)
+	formatReportRecommendations(&sb, names, results, bestIdx)
 
-	// Find best overall deck
+	return sb.String()
+}
+
+// findBestOverallDeck finds the index of the best overall deck
+func findBestOverallDeck(results []evaluation.EvaluationResult) int {
 	bestIdx := 0
 	bestScore := -1.0
 	for i, r := range results {
@@ -682,6 +725,12 @@ func generateComparisonReport(names []string, results []evaluation.EvaluationRes
 			bestIdx = i
 		}
 	}
+	return bestIdx
+}
+
+// formatReportExecutiveSummary formats the executive summary section
+func formatReportExecutiveSummary(sb *strings.Builder, names []string, results []evaluation.EvaluationResult, bestIdx int) {
+	sb.WriteString("## Executive Summary\n\n")
 
 	sb.WriteString(fmt.Sprintf("### 🏆 Recommended Deck: **%s**\n\n", names[bestIdx]))
 	sb.WriteString(fmt.Sprintf("- **Overall Score**: %.2f/10.0 (%s)\n",
@@ -689,24 +738,44 @@ func generateComparisonReport(names []string, results []evaluation.EvaluationRes
 	sb.WriteString(fmt.Sprintf("- **Archetype**: %s\n", results[bestIdx].DetectedArchetype))
 	sb.WriteString(fmt.Sprintf("- **Average Elixir**: %.2f\n\n", results[bestIdx].AvgElixir))
 
-	// Rankings
-	sb.WriteString("### Overall Rankings\n\n")
-	for i, name := range names {
-		rank := i + 1
-		emoji := "🥇"
-		if rank == 2 {
-			emoji = "🥈"
-		} else if rank == 3 {
-			emoji = "🥉"
-		} else if rank > 3 {
-			emoji = fmt.Sprintf("%d.", rank)
-		}
-		sb.WriteString(fmt.Sprintf("%s **%s** - %.2f/10.0 (%s)\n",
-			emoji, name, results[i].OverallScore, results[i].OverallRating))
-	}
+	formatReportRankings(sb, names, results)
 	sb.WriteString("\n---\n\n")
+}
 
-	// Detailed comparison table
+// formatReportRankings formats the rankings with medal emojis
+func formatReportRankings(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+	sb.WriteString("### Overall Rankings\n\n")
+	indices := make([]int, len(names))
+	for i := range indices {
+		indices[i] = i
+	}
+	sort.Slice(indices, func(i, j int) bool {
+		return results[indices[i]].OverallScore > results[indices[j]].OverallScore
+	})
+
+	for rank, idx := range indices {
+		emoji := getRankingEmoji(rank + 1)
+		sb.WriteString(fmt.Sprintf("%s **%s** - %.2f/10.0 (%s)\n",
+			emoji, names[idx], results[idx].OverallScore, results[idx].OverallRating))
+	}
+}
+
+// getRankingEmoji returns the appropriate emoji for a rank
+func getRankingEmoji(rank int) string {
+	switch rank {
+	case 1:
+		return "🥇"
+	case 2:
+		return "🥈"
+	case 3:
+		return "🥉"
+	default:
+		return fmt.Sprintf("%d.", rank)
+	}
+}
+
+// formatReportDetailedScoreComparison formats detailed score comparison table
+func formatReportDetailedScoreComparison(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## Detailed Score Comparison\n\n")
 	sb.WriteString("| Metric | ")
 	for _, name := range names {
@@ -725,17 +794,7 @@ func generateComparisonReport(names []string, results []evaluation.EvaluationRes
 	}
 	sb.WriteString("\n")
 
-	// Categories
-	categories := []struct {
-		name string
-		get  func(evaluation.EvaluationResult) evaluation.CategoryScore
-	}{
-		{"Attack", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Attack }},
-		{"Defense", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Defense }},
-		{"Synergy", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Synergy }},
-		{"Versatility", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Versatility }},
-		{"F2P Friendly", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.F2PFriendly }},
-	}
+	categories := getEvaluationCategories()
 
 	for _, cat := range categories {
 		sb.WriteString(fmt.Sprintf("| %s | ", cat.name))
@@ -758,28 +817,26 @@ func generateComparisonReport(names []string, results []evaluation.EvaluationRes
 		sb.WriteString(fmt.Sprintf("%s | ", r.DetectedArchetype))
 	}
 	sb.WriteString("\n\n---\n\n")
+}
 
-	// Category champions
+// formatReportCategoryChampions formats category champions section
+func formatReportCategoryChampions(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## Category Champions\n\n")
+	categories := getEvaluationCategories()
+
 	for _, cat := range categories {
-		bestIdx := 0
-		bestScore := -1.0
-		for i, r := range results {
-			score := cat.get(r).Score
-			if score > bestScore {
-				bestScore = score
-				bestIdx = i
-			}
-		}
+		bestIdx := findBestDeckIndex(results, cat.get)
 		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", cat.name, names[bestIdx]))
 		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n",
-			bestScore, cat.get(results[bestIdx]).Rating))
+			cat.get(results[bestIdx]).Score, cat.get(results[bestIdx]).Rating))
 		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", cat.get(results[bestIdx]).Assessment))
 	}
 
 	sb.WriteString("---\n\n")
+}
 
-	// Deck compositions and analysis
+// formatReportDeckDetails formats detailed deck information
+func formatReportDeckDetails(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## Deck Details\n\n")
 	for i, name := range names {
 		r := results[i]
@@ -801,69 +858,79 @@ func generateComparisonReport(names []string, results []evaluation.EvaluationRes
 		sb.WriteString(fmt.Sprintf("- Archetype: %s (%.0f%% confidence)\n", r.DetectedArchetype, r.ArchetypeConfidence*100))
 		sb.WriteString(fmt.Sprintf("- Average Elixir: %.2f\n\n", r.AvgElixir))
 
-		// Strengths and weaknesses
-		sb.WriteString("**Strengths**:\n")
-		strengths := []struct {
-			name  string
-			score evaluation.CategoryScore
-		}{
-			{"Attack", r.Attack},
-			{"Defense", r.Defense},
-			{"Synergy", r.Synergy},
-			{"Versatility", r.Versatility},
-			{"F2P Friendly", r.F2PFriendly},
-		}
-
-		// Sort by score descending
-		sort.Slice(strengths, func(i, j int) bool {
-			return strengths[i].score.Score > strengths[j].score.Score
-		})
-
-		for _, s := range strengths[:min(3, len(strengths))] {
-			if s.score.Score >= 7.0 {
-				sb.WriteString(fmt.Sprintf("- %s: %.1f/10.0 - %s\n", s.name, s.score.Score, s.score.Assessment))
-			}
-		}
-		sb.WriteString("\n")
-
-		sb.WriteString("**Areas for Improvement**:\n")
-		// Reverse for weaknesses
-		for i := len(strengths) - 1; i >= max(0, len(strengths)-3); i-- {
-			s := strengths[i]
-			if s.score.Score < 7.0 {
-				sb.WriteString(fmt.Sprintf("- %s: %.1f/10.0 - %s\n", s.name, s.score.Score, s.score.Assessment))
-			}
-		}
-		sb.WriteString("\n")
-
-		// Defense analysis
-		if len(r.DefenseAnalysis.Details) > 0 {
-			sb.WriteString(fmt.Sprintf("**Defense Analysis** (%.1f/10.0):\n", r.DefenseAnalysis.Score))
-			for _, detail := range r.DefenseAnalysis.Details {
-				sb.WriteString(fmt.Sprintf("- %s\n", detail))
-			}
-			sb.WriteString("\n")
-		}
-
-		// Attack analysis
-		if len(r.AttackAnalysis.Details) > 0 {
-			sb.WriteString(fmt.Sprintf("**Attack Analysis** (%.1f/10.0):\n", r.AttackAnalysis.Score))
-			for _, detail := range r.AttackAnalysis.Details {
-				sb.WriteString(fmt.Sprintf("- %s\n", detail))
-			}
-			sb.WriteString("\n")
-		}
-
-		// Synergy information
-		if r.SynergyMatrix.PairCount > 0 {
-			sb.WriteString(fmt.Sprintf("**Synergy**: %d card pairs found (%.1f%% coverage, avg synergy: %.2f)\n\n",
-				r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage, r.SynergyMatrix.AverageSynergy))
-		}
+		formatDeckStrengthsAndWeaknesses(sb, r)
+		formatDeckAnalysis(sb, r)
 
 		sb.WriteString("---\n\n")
 	}
+}
 
-	// Recommendations
+// formatDeckStrengthsAndWeaknesses formats strengths and weaknesses for a deck
+func formatDeckStrengthsAndWeaknesses(sb *strings.Builder, r evaluation.EvaluationResult) {
+	sb.WriteString("**Strengths**:\n")
+	strengths := []struct {
+		name  string
+		score evaluation.CategoryScore
+	}{
+		{"Attack", r.Attack},
+		{"Defense", r.Defense},
+		{"Synergy", r.Synergy},
+		{"Versatility", r.Versatility},
+		{"F2P Friendly", r.F2PFriendly},
+	}
+
+	// Sort by score descending
+	sort.Slice(strengths, func(i, j int) bool {
+		return strengths[i].score.Score > strengths[j].score.Score
+	})
+
+	for _, s := range strengths[:min(3, len(strengths))] {
+		if s.score.Score >= 7.0 {
+			fmt.Fprintf(sb, "- %s: %.1f/10.0 - %s\n", s.name, s.score.Score, s.score.Assessment)
+		}
+	}
+	sb.WriteString("\n")
+
+	sb.WriteString("**Areas for Improvement**:\n")
+	// Reverse for weaknesses
+	for i := len(strengths) - 1; i >= max(0, len(strengths)-3); i-- {
+		s := strengths[i]
+		if s.score.Score < 7.0 {
+			fmt.Fprintf(sb, "- %s: %.1f/10.0 - %s\n", s.name, s.score.Score, s.score.Assessment)
+		}
+	}
+	sb.WriteString("\n")
+}
+
+// formatDeckAnalysis formats defense, attack, and synergy analysis
+func formatDeckAnalysis(sb *strings.Builder, r evaluation.EvaluationResult) {
+	// Defense analysis
+	if len(r.DefenseAnalysis.Details) > 0 {
+		fmt.Fprintf(sb, "**Defense Analysis** (%.1f/10.0):\n", r.DefenseAnalysis.Score)
+		for _, detail := range r.DefenseAnalysis.Details {
+			fmt.Fprintf(sb, "- %s\n", detail)
+		}
+		sb.WriteString("\n")
+	}
+
+	// Attack analysis
+	if len(r.AttackAnalysis.Details) > 0 {
+		fmt.Fprintf(sb, "**Attack Analysis** (%.1f/10.0):\n", r.AttackAnalysis.Score)
+		for _, detail := range r.AttackAnalysis.Details {
+			fmt.Fprintf(sb, "- %s\n", detail)
+		}
+		sb.WriteString("\n")
+	}
+
+	// Synergy information
+	if r.SynergyMatrix.PairCount > 0 {
+		fmt.Fprintf(sb, "**Synergy**: %d card pairs found (%.1f%% coverage, avg synergy: %.2f)\n\n",
+			r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage, r.SynergyMatrix.AverageSynergy)
+	}
+}
+
+// formatReportRecommendations formats the recommendations section
+func formatReportRecommendations(sb *strings.Builder, names []string, results []evaluation.EvaluationResult, bestIdx int) {
 	sb.WriteString("## Recommendations\n\n")
 	sb.WriteString(fmt.Sprintf("Based on the analysis, **%s** is the strongest deck overall with a score of %.2f/10.0.\n\n",
 		names[bestIdx], results[bestIdx].OverallScore))
@@ -888,8 +955,6 @@ func generateComparisonReport(names []string, results []evaluation.EvaluationRes
 
 		sb.WriteString("\n")
 	}
-
-	return sb.String()
 }
 
 // calculateStars converts overall score to star count (0-3)
@@ -902,20 +967,4 @@ func calculateStars(score float64) int {
 		return 1
 	}
 	return 0
-}
-
-// min returns the minimum of two integers
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}
-
-// max returns the maximum of two integers
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
 }

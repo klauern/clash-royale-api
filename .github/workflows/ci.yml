@@ -51,6 +51,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          # Needed by .golangci.yml `issues.new-from-rev: origin/main`
+          # so lint checks only new violations introduced by the PR.
+          fetch-depth: 0
 
       - name: Set up Go
         uses: actions/setup-go@v5
@@ -60,7 +64,6 @@ jobs:
 
       - name: Run golangci-lint
         id: golangci
-        continue-on-error: true
         uses: golangci/golangci-lint-action@v7
         with:
           version: v2.6.2
@@ -68,7 +71,7 @@ jobs:
           args: --timeout=10m --output.json.path=lint-report.json --output.html.path=lint-report.html
 
       - name: Upload lint reports
-        if: steps.golangci.outcome == 'failure'
+        if: failure() && steps.golangci.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
           name: golangci-lint-reports

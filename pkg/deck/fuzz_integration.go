@@ -121,10 +121,7 @@ func (fi *FuzzIntegration) AnalyzeFromStorage(storage *fuzzstorage.Storage, limi
 
 // getTopPercentileDecks returns the top percentile of decks based on configured percentile
 func (fi *FuzzIntegration) getTopPercentileDecks(topDecks []fuzzstorage.DeckEntry) []fuzzstorage.DeckEntry {
-	cutoffIdx := int(float64(len(topDecks)) * fi.topPercentile)
-	if cutoffIdx < 1 {
-		cutoffIdx = 1
-	}
+	cutoffIdx := max(int(float64(len(topDecks))*fi.topPercentile), 1)
 	return topDecks[:cutoffIdx]
 }
 
@@ -138,9 +135,9 @@ func isValidCardName(cardName string) bool {
 
 	// Skip test/placeholder card names
 	// Common patterns: Card1, Card2, Card3, CardN, card1, card2, etc.
-	if strings.HasPrefix(strings.ToLower(trimmed), "card") {
+	if after, ok := strings.CutPrefix(strings.ToLower(trimmed), "card"); ok {
 		// Check if it ends with a number (pattern like "Card1", "Card123")
-		rest := strings.TrimPrefix(strings.ToLower(trimmed), "card")
+		rest := after
 		if rest == "" || isNumeric(rest) {
 			return false
 		}

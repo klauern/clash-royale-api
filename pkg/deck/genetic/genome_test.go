@@ -405,7 +405,7 @@ func createMockCandidates(count int) []*deck.CardCandidate {
 		config.RoleCycle,
 	}
 
-	for i := 0; i < count; i++ {
+	for i := range count {
 		role := roles[i%len(roles)]
 		candidates[i] = &deck.CardCandidate{
 			Name:     fmt.Sprintf("Card%d", i),

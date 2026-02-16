@@ -15,178 +15,216 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
+// eventTagFlag returns the standard player tag flag for event commands
+func eventTagFlag() *cli.StringFlag {
+	return &cli.StringFlag{
+		Name:     "tag",
+		Aliases:  []string{"p"},
+		Usage:    "Player tag (without #)",
+		Required: true,
+	}
+}
+
+// eventExportCSVFlag returns the standard export-csv flag
+func eventExportCSVFlag() *cli.BoolFlag {
+	return &cli.BoolFlag{
+		Name:  "export-csv",
+		Usage: "Export to CSV",
+	}
+}
+
+// addEventScanCommand creates the events scan subcommand
+func addEventScanCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "scan",
+		Usage: "Scan player's battle log for event decks",
+		Flags: []cli.Flag{
+			eventTagFlag(),
+			&cli.IntFlag{
+				Name:  "days",
+				Value: 7,
+				Usage: "Number of days to scan back",
+			},
+			&cli.StringSliceFlag{
+				Name:  "event-types",
+				Usage: "Specific event types to scan: challenge, tournament, special_event",
+			},
+			&cli.BoolFlag{
+				Name:  "save",
+				Usage: "Save event decks to file",
+			},
+			eventExportCSVFlag(),
+		},
+		Action: eventScanCommand,
+	}
+}
+
+// addEventListCommand creates the events list subcommand
+func addEventListCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "list",
+		Usage: "List tracked event decks for a player",
+		Flags: []cli.Flag{
+			eventTagFlag(),
+			&cli.StringFlag{
+				Name:  "event-type",
+				Usage: "Filter by event type",
+			},
+			&cli.IntFlag{
+				Name:  "days",
+				Usage: "Filter to recent events (in days)",
+			},
+			&cli.IntFlag{
+				Name:  "min-battles",
+				Value: 1,
+				Usage: "Minimum battle count",
+			},
+			&cli.StringFlag{
+				Name:  "sort-by",
+				Value: "date",
+				Usage: "Sort by: date, wins, win_rate",
+			},
+			eventExportCSVFlag(),
+		},
+		Action: eventListCommand,
+	}
+}
+
+// addEventAnalyzeCommand creates the events analyze subcommand
+func addEventAnalyzeCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "analyze",
+		Usage: "Analyze event deck performance",
+		Flags: []cli.Flag{
+			eventTagFlag(),
+			&cli.StringFlag{
+				Name:  "event-id",
+				Usage: "Specific event ID to analyze",
+			},
+			&cli.StringFlag{
+				Name:  "event-type",
+				Usage: "Analyze all events of this type",
+			},
+			&cli.IntFlag{
+				Name:  "min-battles",
+				Value: 5,
+				Usage: "Minimum battles for meaningful analysis",
+			},
+			&cli.BoolFlag{
+				Name:  "include-decks",
+				Usage: "Include individual deck analysis",
+			},
+			eventExportCSVFlag(),
+		},
+		Action: eventAnalyzeCommand,
+	}
+}
+
+// addEventCompareCommand creates the events compare subcommand
+func addEventCompareCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "compare",
+		Usage: "Compare performance between different event types or decks",
+		Flags: []cli.Flag{
+			eventTagFlag(),
+			&cli.StringSliceFlag{
+				Name:  "event-types",
+				Usage: "Event types to compare (e.g., challenge,grand_challenge)",
+			},
+			&cli.StringSliceFlag{
+				Name:  "event-ids",
+				Usage: "Specific event IDs to compare",
+			},
+			&cli.StringFlag{
+				Name:  "metric",
+				Value: "win_rate",
+				Usage: "Comparison metric: win_rate, avg_crowns, win_streak",
+			},
+			eventExportCSVFlag(),
+		},
+		Action: eventCompareCommand,
+	}
+}
+
+// addEventDeckStatsCommand creates the events deck-stats subcommand
+func addEventDeckStatsCommand() *cli.Command {
+	return &cli.Command{
+		Name:  "deck-stats",
+		Usage: "Show statistics for cards used in events",
+		Flags: []cli.Flag{
+			eventTagFlag(),
+			&cli.StringFlag{
+				Name:  "event-type",
+				Usage: "Filter by event type",
+			},
+			&cli.IntFlag{
+				Name:  "days",
+				Value: 30,
+				Usage: "Analyze events from last N days",
+			},
+			&cli.IntFlag{
+				Name:  "min-usage",
+				Value: 3,
+				Usage: "Minimum times card must be used",
+			},
+			&cli.BoolFlag{
+				Name:  "show-archetypes",
+				Usage: "Show deck archetype analysis",
+			},
+			eventExportCSVFlag(),
+		},
+		Action: eventDeckStatsCommand,
+	}
+}
+
 // addEventCommands adds event-related subcommands to the CLI
 func addEventCommands() *cli.Command {
 	return &cli.Command{
 		Name:  "events",
 		Usage: "Event deck tracking and analysis commands",
 		Commands: []*cli.Command{
-			{
-				Name:  "scan",
-				Usage: "Scan player's battle log for event decks",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
-					&cli.IntFlag{
-						Name:  "days",
-						Value: 7,
-						Usage: "Number of days to scan back",
-					},
-					&cli.StringSliceFlag{
-						Name:  "event-types",
-						Usage: "Specific event types to scan: challenge, tournament, special_event",
-					},
-					&cli.BoolFlag{
-						Name:  "save",
-						Usage: "Save event decks to file",
-					},
-					&cli.BoolFlag{
-						Name:  "export-csv",
-						Usage: "Export event data to CSV",
-					},
-				},
-				Action: eventScanCommand,
-			},
-			{
-				Name:  "list",
-				Usage: "List tracked event decks for a player",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:  "event-type",
-						Usage: "Filter by event type",
-					},
-					&cli.IntFlag{
-						Name:  "days",
-						Usage: "Filter to recent events (in days)",
-					},
-					&cli.IntFlag{
-						Name:  "min-battles",
-						Value: 1,
-						Usage: "Minimum battle count",
-					},
-					&cli.StringFlag{
-						Name:  "sort-by",
-						Value: "date",
-						Usage: "Sort by: date, wins, win_rate",
-					},
-					&cli.BoolFlag{
-						Name:  "export-csv",
-						Usage: "Export event list to CSV",
-					},
-				},
-				Action: eventListCommand,
-			},
-			{
-				Name:  "analyze",
-				Usage: "Analyze event deck performance",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:  "event-id",
-						Usage: "Specific event ID to analyze",
-					},
-					&cli.StringFlag{
-						Name:  "event-type",
-						Usage: "Analyze all events of this type",
-					},
-					&cli.IntFlag{
-						Name:  "min-battles",
-						Value: 5,
-						Usage: "Minimum battles for meaningful analysis",
-					},
-					&cli.BoolFlag{
-						Name:  "include-decks",
-						Usage: "Include individual deck analysis",
-					},
-					&cli.BoolFlag{
-						Name:  "export-csv",
-						Usage: "Export analysis to CSV",
-					},
-				},
-				Action: eventAnalyzeCommand,
-			},
-			{
-				Name:  "compare",
-				Usage: "Compare performance between different event types or decks",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
-					&cli.StringSliceFlag{
-						Name:  "event-types",
-						Usage: "Event types to compare (e.g., challenge,grand_challenge)",
-					},
-					&cli.StringSliceFlag{
-						Name:  "event-ids",
-						Usage: "Specific event IDs to compare",
-					},
-					&cli.StringFlag{
-						Name:  "metric",
-						Value: "win_rate",
-						Usage: "Comparison metric: win_rate, avg_crowns, win_streak",
-					},
-					&cli.BoolFlag{
-						Name:  "export-csv",
-						Usage: "Export comparison to CSV",
-					},
-				},
-				Action: eventCompareCommand,
-			},
-			{
-				Name:  "deck-stats",
-				Usage: "Show statistics for cards used in events",
-				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
-					&cli.StringFlag{
-						Name:  "event-type",
-						Usage: "Filter by event type",
-					},
-					&cli.IntFlag{
-						Name:  "days",
-						Value: 30,
-						Usage: "Analyze events from last N days",
-					},
-					&cli.IntFlag{
-						Name:  "min-usage",
-						Value: 3,
-						Usage: "Minimum times card must be used",
-					},
-					&cli.BoolFlag{
-						Name:  "show-archetypes",
-						Usage: "Show deck archetype analysis",
-					},
-					&cli.BoolFlag{
-						Name:  "export-csv",
-						Usage: "Export card stats to CSV",
-					},
-				},
-				Action: eventDeckStatsCommand,
-			},
+			addEventScanCommand(),
+			addEventListCommand(),
+			addEventAnalyzeCommand(),
+			addEventCompareCommand(),
+			addEventDeckStatsCommand(),
 		},
 	}
+}
+
+// Battle filtering helpers
+func filterBattlesByDays(battles []clashroyale.Battle, days int) []clashroyale.Battle {
+	if days <= 0 {
+		return battles
+	}
+
+	cutoff := time.Now().AddDate(0, 0, -days)
+	filtered := make([]clashroyale.Battle, 0, len(battles))
+	for _, battle := range battles {
+		if !battle.UTCDate.Before(cutoff) {
+			filtered = append(filtered, battle)
+		}
+	}
+	return filtered
+}
+
+func filterEventDecksByEventTypes(decks []events.EventDeck, eventTypes []string) []events.EventDeck {
+	if len(eventTypes) == 0 {
+		return decks
+	}
+
+	allowedTypes := make(map[events.EventType]bool)
+	for _, et := range eventTypes {
+		allowedTypes[events.EventType(et)] = true
+	}
+
+	filtered := make([]events.EventDeck, 0, len(decks))
+	for _, deck := range decks {
+		if allowedTypes[deck.EventType] {
+			filtered = append(filtered, deck)
+		}
+	}
+	return filtered
 }
 
 func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
@@ -213,23 +251,14 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 	client := clashroyale.NewClient(apiToken)
 
 	// Get battle logs
-	battleLog, err := client.GetPlayerBattleLog(tag)
+	battleLog, err := client.GetPlayerBattleLogWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get battle logs: %w", err)
 	}
 	battles := []clashroyale.Battle(*battleLog)
 
 	// Filter battles by days
-	if days > 0 {
-		cutoff := time.Now().AddDate(0, 0, -days)
-		filtered := make([]clashroyale.Battle, 0, len(battles))
-		for _, battle := range battles {
-			if !battle.UTCDate.Before(cutoff) {
-				filtered = append(filtered, battle)
-			}
-		}
-		battles = filtered
-	}
+	battles = filterBattlesByDays(battles, days)
 
 	if verbose {
 		printf("Found %d recent battles to scan\n", len(battles))
@@ -243,20 +272,7 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Filter by event types if specified
-	filteredDecks := importedDecks
-	if len(eventTypes) > 0 {
-		allowedTypes := make(map[events.EventType]bool)
-		for _, et := range eventTypes {
-			allowedTypes[events.EventType(et)] = true
-		}
-		filtered := make([]events.EventDeck, 0, len(importedDecks))
-		for _, deck := range importedDecks {
-			if allowedTypes[deck.EventType] {
-				filtered = append(filtered, deck)
-			}
-		}
-		filteredDecks = filtered
-	}
+	filteredDecks := filterEventDecksByEventTypes(importedDecks, eventTypes)
 
 	if verbose {
 		printf("Successfully imported %d event decks (after filtering: %d)\n", len(importedDecks), len(filteredDecks))
@@ -337,6 +353,50 @@ func eventListCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
+// Event filtering helpers
+func filterEventDecksByID(decks []events.EventDeck, eventID string) []events.EventDeck {
+	filtered := make([]events.EventDeck, 0)
+	for _, deck := range decks {
+		if deck.EventID == eventID {
+			filtered = append(filtered, deck)
+		}
+	}
+	return filtered
+}
+
+func filterEventDecksByType(decks []events.EventDeck, eventType string) []events.EventDeck {
+	filtered := make([]events.EventDeck, 0)
+	for _, deck := range decks {
+		if string(deck.EventType) == eventType {
+			filtered = append(filtered, deck)
+		}
+	}
+	return filtered
+}
+
+func filterEventDecksByMinBattles(decks []events.EventDeck, minBattles int) []events.EventDeck {
+	filtered := make([]events.EventDeck, 0)
+	for _, deck := range decks {
+		if deck.Performance.TotalBattles() >= minBattles {
+			filtered = append(filtered, deck)
+		}
+	}
+	return filtered
+}
+
+func applyEventDeckFilters(decks []events.EventDeck, eventID, eventType string, minBattles int) []events.EventDeck {
+	filtered := decks
+
+	if eventID != "" {
+		filtered = filterEventDecksByID(filtered, eventID)
+	} else if eventType != "" {
+		filtered = filterEventDecksByType(filtered, eventType)
+	}
+
+	filtered = filterEventDecksByMinBattles(filtered, minBattles)
+	return filtered
+}
+
 func eventAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	eventID := cmd.String("event-id")
@@ -379,35 +439,7 @@ func eventAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Filter decks based on criteria
-	filteredDecks := collection.Decks
-	if eventID != "" {
-		// Filter by specific event ID
-		filtered := make([]events.EventDeck, 0)
-		for _, deck := range collection.Decks {
-			if deck.EventID == eventID {
-				filtered = append(filtered, deck)
-			}
-		}
-		filteredDecks = filtered
-	} else if eventType != "" {
-		// Filter by event type
-		filtered := make([]events.EventDeck, 0)
-		for _, deck := range collection.Decks {
-			if string(deck.EventType) == eventType {
-				filtered = append(filtered, deck)
-			}
-		}
-		filteredDecks = filtered
-	}
-
-	// Filter by minimum battles
-	minBattlesFilter := make([]events.EventDeck, 0)
-	for _, deck := range filteredDecks {
-		if deck.Performance.TotalBattles() >= minBattles {
-			minBattlesFilter = append(minBattlesFilter, deck)
-		}
-	}
-	filteredDecks = minBattlesFilter
+	filteredDecks := applyEventDeckFilters(collection.Decks, eventID, eventType, minBattles)
 
 	if len(filteredDecks) == 0 {
 		printf("No event decks match the specified criteria\n")
@@ -712,6 +744,51 @@ func displayComprehensiveAnalysis(analysis *events.EventAnalysis, includeDecks b
 		}
 	}
 
+	if analysis.MatchupAnalysis.TotalTrackedBattles > 0 {
+		printf("🧩 Deck Matchups:\n")
+		printf("=================\n")
+		printf("Tracked Battles with Deck Context: %d\n", analysis.MatchupAnalysis.TotalTrackedBattles)
+		printf("Unique Deck Matchups: %d\n\n", analysis.MatchupAnalysis.UniqueDeckMatchups)
+
+		if len(analysis.MatchupAnalysis.TopWinningMatchups) > 0 {
+			printf("Top Winning Matchups:\n")
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fprintf(w, "Player Deck Hash\tOpponent Deck Hash\tRecord\tWin Rate\n")
+			fprintf(w, "----------------\t------------------\t------\t--------\n")
+			for _, matchup := range analysis.MatchupAnalysis.TopWinningMatchups {
+				fprintf(w, "%s\t%s\t%dW-%dL-%dD\t%.1f%%\n",
+					matchup.PlayerDeckHash,
+					matchup.OpponentDeckHash,
+					matchup.Wins,
+					matchup.Losses,
+					matchup.Draws,
+					matchup.WinRate*100,
+				)
+			}
+			flushWriter(w)
+			fmt.Println()
+		}
+
+		if len(analysis.MatchupAnalysis.ArchetypeMatchups) > 0 {
+			printf("Archetype Matchups:\n")
+			w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
+			fprintf(w, "Player Archetype\tOpponent Archetype\tRecord\tWin Rate\n")
+			fprintf(w, "----------------\t------------------\t------\t--------\n")
+			for _, matchup := range analysis.MatchupAnalysis.ArchetypeMatchups {
+				fprintf(w, "%s\t%s\t%dW-%dL-%dD\t%.1f%%\n",
+					matchup.PlayerArchetype,
+					matchup.OpponentArchetype,
+					matchup.Wins,
+					matchup.Losses,
+					matchup.Draws,
+					matchup.WinRate*100,
+				)
+			}
+			flushWriter(w)
+			fmt.Println()
+		}
+	}
+
 	if includeDecks && analysis.TotalDecks > 0 {
 		printf("📋 Individual Deck Details:\n")
 		printf("=============================\n")
@@ -790,6 +867,42 @@ func exportAnalysisToCSV(dataDir string, analysis *events.EventAnalysis) error {
 			fprintf(file, "%d,%s,%s,%.2f,%s,%.1f,%s\n",
 				i+1, deck.EventName, deck.EventType, deck.WinRate,
 				deck.Record, deck.AvgElixir, deckStr)
+		}
+	}
+
+	if len(analysis.MatchupAnalysis.TopWinningMatchups) > 0 {
+		fprintf(file, "\nTop Winning Deck Matchups\n")
+		fprintf(file, "Player Deck Hash,Opponent Deck Hash,Battles,Wins,Losses,Draws,Win Rate,Player Deck,Opponent Deck\n")
+		for _, matchup := range analysis.MatchupAnalysis.TopWinningMatchups {
+			playerDeck := strings.Join(matchup.PlayerDeck, "|")
+			opponentDeck := strings.Join(matchup.OpponentDeck, "|")
+			fprintf(file, "%s,%s,%d,%d,%d,%d,%.2f,%s,%s\n",
+				matchup.PlayerDeckHash,
+				matchup.OpponentDeckHash,
+				matchup.Battles,
+				matchup.Wins,
+				matchup.Losses,
+				matchup.Draws,
+				matchup.WinRate,
+				playerDeck,
+				opponentDeck,
+			)
+		}
+	}
+
+	if len(analysis.MatchupAnalysis.ArchetypeMatchups) > 0 {
+		fprintf(file, "\nArchetype Matchups\n")
+		fprintf(file, "Player Archetype,Opponent Archetype,Battles,Wins,Losses,Draws,Win Rate\n")
+		for _, matchup := range analysis.MatchupAnalysis.ArchetypeMatchups {
+			fprintf(file, "%s,%s,%d,%d,%d,%d,%.2f\n",
+				matchup.PlayerArchetype,
+				matchup.OpponentArchetype,
+				matchup.Battles,
+				matchup.Wins,
+				matchup.Losses,
+				matchup.Draws,
+				matchup.WinRate,
+			)
 		}
 	}
 

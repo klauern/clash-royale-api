@@ -107,7 +107,7 @@ type IconUrls struct {
 
 // Paging represents cursor-based pagination info
 type Paging struct {
-	Cursors PagingCursors `json:"cursors,omitempty"`
+	Cursors PagingCursors `json:"cursors"`
 }
 
 // PagingCursors represents pagination cursors
@@ -206,7 +206,7 @@ type BattleLogResponse []Battle
 // CardList represents the response for cards endpoint
 type CardList struct {
 	Items  []Card `json:"items"`
-	Paging Paging `json:"paging,omitempty"`
+	Paging Paging `json:"paging"`
 }
 
 // Location represents a location
@@ -220,5 +220,5 @@ type Location struct {
 // LocationList represents the response for locations endpoint
 type LocationList struct {
 	Items  []Location `json:"items"`
-	Paging Paging     `json:"paging,omitempty"`
+	Paging Paging     `json:"paging"`
 }

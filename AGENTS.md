@@ -4,7 +4,7 @@
 
 Go CLI for analyzing Clash Royale player data, building decks, tracking events, and exporting data.
 
-**Tech Stack:** Go 1.24, Official Clash Royale API, Rate-limited client (1 req/sec)
+**Tech Stack:** Go 1.26, Official Clash Royale API, Rate-limited client (1 req/sec)
 **Architecture:** Clean separation - API client → Data models → Analysis → Export
 
 ## Quick Start

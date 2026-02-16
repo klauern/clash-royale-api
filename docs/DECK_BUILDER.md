@@ -4,7 +4,18 @@ The Clash Royale API includes an intelligent deck building system that creates o
 
 ## Overview
 
-The deck builder analyzes player data to recommend balanced decks with proper card roles and synergies. It considers card levels, rarity, elixir cost, and strategic roles.
+The deck builder analyzes player data to recommend balanced decks with proper card roles and synergies. It uses an improved **V2 scoring algorithm** that considers:
+
+- **Card Quality (60%)**: Individual card strength, levels, and evolution status
+- **Synergy Score (20%)**: How well cards work together in combinations
+- **Counter Coverage (15%)**: Defense against common threats (air, tanks, swarms)
+- **Archetype Coherence (10%)**: How well cards fit a strategic playstyle
+- **Elixir Fit (25%)**: Elixir curve appropriate for the deck's strategy
+- **Combat Stats (20%)**: DPS, HP efficiency, and targeting coverage
+
+> Note: These are raw component weights. The scorer normalizes them at runtime before computing the final score.
+
+See [IMPROVED_SCORING_DESIGN.md](./IMPROVED_SCORING_DESIGN.md) for complete algorithm details.
 
 ## Card Roles
 
@@ -30,7 +41,20 @@ Each card is assigned a strategic role:
 
 # Build from offline analysis file
 ./bin/cr-api deck build --from-analysis 'path/to/analysis.json'
+
+# Build with custom synergy weight (V2 algorithm)
+./bin/cr-api deck build --tag '#PLAYERTAG' --synergy-weight 0.25
+
+# Build with counter coverage enabled
+./bin/cr-api deck build --tag '#PLAYERTAG' --enable-counters
 ```
+
+### V2 Algorithm Options
+
+| Flag | Default | Range | Description |
+|------|---------|-------|-------------|
+| `--synergy-weight` | `0.20` | `0.0-1.0` | Weight for synergy scoring in V2 mode |
+| `--enable-counters` | `false` | n/a | Enables counter coverage analysis in V2 scoring |
 
 ## Deck Building Strategy
 
@@ -322,6 +346,49 @@ Set default fuzz weight via environment:
 # .env file
 FUZZ_SCORING_WEIGHT=0.15
 ```
+
+## Research Evaluation (Constraint Methodology)
+
+Use `deck research-eval` to benchmark archetype-free methods (`baseline`, `genetic`, `constraint`, `role-first`) and export reproducible artifacts:
+
+```bash
+./bin/cr-api deck research-eval --seed 42 --output-dir reports/research-eval/live
+```
+
+The exported `benchmark.json` contains per-player, per-method outcomes and metric breakdowns; `benchmark.md` adds aggregate tables, per-tag outcomes, violation summaries, and next-step recommendations.
+
+Constraint method tuning knobs:
+- Hard constraints: `--min-wincons`, `--min-spells`, `--min-air`, `--min-tank-killers`
+- Soft weights: `--weight-synergy`, `--weight-coverage`, `--weight-role-fit`, `--weight-elixir-fit`, `--weight-card-quality`
+
+All soft weights are normalized automatically. Invalid hard/soft values fail fast with explicit validation errors.
+
+### Configuration Parameters
+
+Hard constraints (integers, `>= 0`):
+- `--min-wincons` (default: `1`)
+- `--min-spells` (default: `2`)
+- `--min-air` (default: `2`)
+- `--min-tank-killers` (default: `1`)
+
+Soft weights (floats in `0.0-1.0`):
+- `--weight-synergy` (default: `0.20`)
+- `--weight-coverage` (default: `0.15`)
+- `--weight-role-fit` (default: `0.10`)
+- `--weight-elixir-fit` (default: `0.25`)
+- `--weight-card-quality` (default: `0.60`)
+
+Weight normalization:
+- Soft weights are scaled to sum to `1.0` before evaluation.
+- Example: if provided weights sum to `1.5`, each weight is divided by `1.5`.
+
+Validation behavior:
+- Negative hard constraints fail immediately.
+- Soft weights outside `0.0-1.0` fail immediately.
+
+Output artifacts:
+- `benchmark.json`: per-player, per-method metrics and outcomes.
+- `benchmark.md`: aggregate tables, violation summaries, and recommendations.
 
 ## Best Practices
 

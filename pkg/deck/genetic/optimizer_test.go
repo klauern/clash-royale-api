@@ -505,10 +505,10 @@ func TestGeneticOptimizerSeedPopulation(t *testing.T) {
 
 func TestGeneticOptimizerPopulationConfig(t *testing.T) {
 	tests := []struct {
-		name           string
-		config         GeneticConfig
-		wantPopSize    uint
-		wantPopCount   uint
+		name         string
+		config       GeneticConfig
+		wantPopSize  uint
+		wantPopCount uint
 	}{
 		{
 			name: "single population (no island model)",
