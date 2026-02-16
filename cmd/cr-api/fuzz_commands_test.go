@@ -3,6 +3,8 @@ package main
 import (
 	"testing"
 
+	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
+	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
 )
 
@@ -131,4 +133,75 @@ func TestFormatScoreTransition(t *testing.T) {
 			t.Fatalf("formatScoreTransition() = %q, want %q", got, "9.00->4.20")
 		}
 	})
+}
+
+func TestSelectGAFitnessEvaluator(t *testing.T) {
+	t.Run("archetype-free mode uses composite fitness evaluator", func(t *testing.T) {
+		evaluator, mode := selectGAFitnessEvaluator(false)
+		if evaluator == nil {
+			t.Fatal("expected archetype-free mode to return evaluator")
+		}
+		if mode != gaFitnessModeArchetypeFree {
+			t.Fatalf("mode = %q, want %q", mode, gaFitnessModeArchetypeFree)
+		}
+
+		score, err := evaluator(testCompositeDeckCandidates())
+		if err != nil {
+			t.Fatalf("unexpected evaluator error: %v", err)
+		}
+		if score < 0 || score > 10 {
+			t.Fatalf("score = %v, want in range [0,10]", score)
+		}
+	})
+
+	t.Run("legacy mode uses built-in evaluator", func(t *testing.T) {
+		evaluator, mode := selectGAFitnessEvaluator(true)
+		if evaluator != nil {
+			t.Fatal("expected legacy mode to use built-in evaluator")
+		}
+		if mode != gaFitnessModeLegacy {
+			t.Fatalf("mode = %q, want %q", mode, gaFitnessModeLegacy)
+		}
+	})
+}
+
+func testCompositeDeckCandidates() []deck.CardCandidate {
+	return []deck.CardCandidate{
+		{Name: "Hog Rider", Elixir: 4, Role: ptrRole(deck.RoleWinCondition), Level: 11, MaxLevel: 14},
+		{Name: "Fireball", Elixir: 4, Role: ptrRole(deck.RoleSpellBig), Level: 11, MaxLevel: 14},
+		{Name: "Zap", Elixir: 2, Role: ptrRole(deck.RoleSpellSmall), Level: 11, MaxLevel: 14},
+		{
+			Name:   "Musketeer",
+			Elixir: 4,
+			Role:   ptrRole(deck.RoleSupport),
+			Level:  11, MaxLevel: 14,
+			Stats: &clashroyale.CombatStats{Targets: "Air & Ground", DamagePerSecond: 181},
+		},
+		{
+			Name:   "Mini P.E.K.K.A",
+			Elixir: 4,
+			Role:   ptrRole(deck.RoleSupport),
+			Level:  11, MaxLevel: 14,
+			Stats: &clashroyale.CombatStats{Targets: "Ground", DamagePerSecond: 325},
+		},
+		{
+			Name:   "Valkyrie",
+			Elixir: 4,
+			Role:   ptrRole(deck.RoleSupport),
+			Level:  11, MaxLevel: 14,
+			Stats: &clashroyale.CombatStats{Targets: "Ground", Radius: 1.2},
+		},
+		{Name: "Skeletons", Elixir: 1, Role: ptrRole(deck.RoleCycle), Level: 11, MaxLevel: 14},
+		{
+			Name:   "Archers",
+			Elixir: 3,
+			Role:   ptrRole(deck.RoleSupport),
+			Level:  11, MaxLevel: 14,
+			Stats: &clashroyale.CombatStats{Targets: "Air & Ground", DamagePerSecond: 108},
+		},
+	}
+}
+
+func ptrRole(role deck.CardRole) *deck.CardRole {
+	return &role
 }
