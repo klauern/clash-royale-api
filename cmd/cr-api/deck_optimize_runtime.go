@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -16,80 +17,87 @@ import (
 	"golang.org/x/text/language"
 )
 
+const (
+	optimizeFocusBalanced = "balanced"
+	optimizeDefaultTag    = "deck"
+)
+
 func deckAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
-	cardNames := cmd.StringSlice("cards")
+	_ = ctx
+	deckString := cmd.String("deck")
+	format := strings.ToLower(strings.TrimSpace(cmd.String("format")))
+	cardNames := parseDeckString(deckString)
 
 	if len(cardNames) != 8 {
 		return fmt.Errorf("exactly 8 cards are required for deck analysis")
 	}
 
-	return fmt.Errorf("deck analyze is not implemented yet")
+	deckCards := convertToCardCandidates(cardNames)
+	result := evaluation.Evaluate(deckCards, deck.NewSynergyDatabase(), nil)
+
+	switch format {
+	case "", batchFormatHuman:
+		fmt.Print(evaluation.FormatHuman(&result))
+	case batchFormatJSON:
+		jsonOutput, err := evaluation.FormatJSON(&result)
+		if err != nil {
+			return fmt.Errorf("failed to format JSON: %w", err)
+		}
+		fmt.Print(jsonOutput)
+	default:
+		return fmt.Errorf("unknown format: %s (supported: human, json)", format)
+	}
+
+	return nil
 }
 
 //nolint:funlen,gocognit,gocyclo // Command flow complexity scheduled for decomposition in clash-royale-api-1g1r.
 func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
+	deckString := cmd.String("deck")
 	tag := cmd.String("tag")
-	cardNames := cmd.StringSlice("cards")
+	cardNames := parseDeckString(deckString)
 	apiToken := cmd.String("api-token")
 	dataDir := cmd.String("data-dir")
 	verbose := cmd.Bool("verbose")
-	maxChanges := cmd.Int("max-changes")
-	keepWinCondition := cmd.Bool("keep-win-con")
+	suggestions := cmd.Int("suggestions")
+	focus := strings.ToLower(strings.TrimSpace(cmd.String("focus")))
 	exportCSV := cmd.Bool("export-csv")
 
-	if maxChanges > 0 {
-		fprintf(os.Stderr, "Warning: --max-changes is not implemented yet and will be ignored (got %d)\n", maxChanges)
-	}
-	if keepWinCondition {
-		fprintf(os.Stderr, "Warning: --keep-win-con is not implemented yet and will be ignored\n")
-	}
-
-	if apiToken == "" {
-		return fmt.Errorf("API token is required")
-	}
-
-	client := clashroyale.NewClient(apiToken)
-	var player *clashroyale.Player
-	var err error
-
-	// If no cards provided, fetch player's current deck from API
-	if len(cardNames) == 0 {
-		if verbose {
-			printf("Fetching player data for tag: %s\n", tag)
-		}
-
-		player, err = client.GetPlayerWithContext(ctx, tag)
-		if err != nil {
-			return fmt.Errorf("failed to get player: %w", err)
-		}
-
-		if len(player.CurrentDeck) == 0 {
-			return fmt.Errorf("player %s has no current deck configured", tag)
-		}
-
-		if len(player.CurrentDeck) != 8 {
-			return fmt.Errorf("player's current deck has %d cards, expected 8", len(player.CurrentDeck))
-		}
-
-		// Extract card names from CurrentDeck
-		cardNames = make([]string, len(player.CurrentDeck))
-		for i, card := range player.CurrentDeck {
-			cardNames[i] = card.Name
-		}
-
-		if verbose {
-			printf("Using player's current deck: %v\n", cardNames)
-		}
-	} else if len(cardNames) != 8 {
+	if len(cardNames) != 8 {
 		return fmt.Errorf("exactly 8 cards are required for optimization")
 	}
 
-	// Fetch player data for context
-	if player == nil {
-		player, err = client.GetPlayerWithContext(ctx, tag)
+	if suggestions <= 0 {
+		return fmt.Errorf("--suggestions must be >= 1")
+	}
+
+	if focus == "" {
+		focus = optimizeFocusBalanced
+	}
+	if focus != optimizeFocusBalanced && focus != batchSortAttack && focus != batchSortDefense && focus != batchSortSynergy {
+		return fmt.Errorf("invalid --focus value %q (supported: balanced, attack, defense, synergy)", focus)
+	}
+
+	var player *clashroyale.Player
+	var playerContext *evaluation.PlayerContext
+	var playerCardMap map[string]bool
+	if tag != "" && apiToken != "" {
+		client := clashroyale.NewClient(apiToken)
+		if verbose {
+			printf("Fetching player context for tag: %s\n", tag)
+		}
+		loadedPlayer, err := client.GetPlayerWithContext(ctx, tag)
 		if err != nil {
 			return fmt.Errorf("failed to get player: %w", err)
 		}
+		player = loadedPlayer
+		playerContext = evaluation.NewPlayerContextFromPlayer(player)
+		playerCardMap = make(map[string]bool, len(player.Cards))
+		for _, card := range player.Cards {
+			playerCardMap[card.Name] = true
+		}
+	} else if tag != "" && apiToken == "" && verbose {
+		fprintf(os.Stderr, "Warning: --tag provided without API token; proceeding without collection-aware filtering\n")
 	}
 
 	// Convert card names to CardCandidates
@@ -98,26 +106,21 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	// Load synergy database
 	synergyDB := deck.NewSynergyDatabase()
 
-	// Create player context
-	playerContext := evaluation.NewPlayerContextFromPlayer(player)
-
 	// Evaluate current deck
 	if verbose {
 		fmt.Println("Evaluating current deck...")
 	}
 	currentResult := evaluation.Evaluate(deckCards, synergyDB, playerContext)
 
-	// Convert player cards to map for GenerateAlternatives
-	playerCardMap := make(map[string]bool)
-	for _, card := range player.Cards {
-		playerCardMap[card.Name] = true
-	}
-
 	// Generate alternative suggestions
 	if verbose {
 		fmt.Println("Generating optimization suggestions...")
 	}
-	alternatives := evaluation.GenerateAlternatives(deckCards, synergyDB, 10, playerCardMap)
+	alternatives := evaluation.GenerateAlternatives(deckCards, synergyDB, suggestions*3, playerCardMap)
+	alternatives.Suggestions = prioritizeOptimizeSuggestions(alternatives.Suggestions, synergyDB, focus)
+	if len(alternatives.Suggestions) > suggestions {
+		alternatives.Suggestions = alternatives.Suggestions[:suggestions]
+	}
 
 	// Display current deck analysis
 	fmt.Println("╔════════════════════════════════════════════════════════════════╗")
@@ -166,14 +169,11 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	fmt.Println("═══════════════════════════════════════════════════════════════")
-	printf("                OPTIMIZATION SUGGESTIONS (%d found)\n", len(alternatives.Suggestions))
+	printf("                OPTIMIZATION SUGGESTIONS (%d found, focus=%s)\n", len(alternatives.Suggestions), focus)
 	fmt.Println("═══════════════════════════════════════════════════════════════")
 	fmt.Println()
 
-	// Display top suggestions
-	displayCount := min(len(alternatives.Suggestions), 5)
-
-	for i, alt := range alternatives.Suggestions[:displayCount] {
+	for i, alt := range alternatives.Suggestions {
 		printf("Suggestion #%d: %s\n", i+1, alt.Impact)
 		fmt.Println("───────────────────────────────────────────────────────────────")
 		printf("  Replace: %s  →  %s\n", alt.OriginalCard, alt.ReplacementCard)
@@ -186,7 +186,11 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// CSV export if requested
 	if exportCSV {
-		safeTag := sanitizePathComponent(tag)
+		csvTag := tag
+		if csvTag == "" {
+			csvTag = optimizeDefaultTag
+		}
+		safeTag := sanitizePathComponent(csvTag)
 		csvPath := filepath.Join(dataDir, fmt.Sprintf("deck-optimize-%s-%d.csv", safeTag, time.Now().Unix()))
 		if err := exportOptimizationCSV(csvPath, tag, cardNames, currentResult, *alternatives); err != nil {
 			fprintf(os.Stderr, "Warning: Failed to export CSV: %v\n", err)
@@ -196,4 +200,50 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return nil
+}
+
+func prioritizeOptimizeSuggestions(
+	suggestions []evaluation.AlternativeDeck,
+	synergyDB *deck.SynergyDatabase,
+	focus string,
+) []evaluation.AlternativeDeck {
+	if len(suggestions) < 2 || focus == optimizeFocusBalanced {
+		return suggestions
+	}
+
+	type focusedSuggestion struct {
+		suggestion evaluation.AlternativeDeck
+		focusScore float64
+	}
+
+	ranked := make([]focusedSuggestion, 0, len(suggestions))
+	for _, suggestion := range suggestions {
+		result := evaluation.Evaluate(convertToCardCandidates(suggestion.Deck), synergyDB, nil)
+		score := result.OverallScore
+		switch focus {
+		case batchSortAttack:
+			score = result.Attack.Score
+		case batchSortDefense:
+			score = result.Defense.Score
+		case batchSortSynergy:
+			score = result.Synergy.Score
+		}
+		ranked = append(ranked, focusedSuggestion{
+			suggestion: suggestion,
+			focusScore: score,
+		})
+	}
+
+	sort.SliceStable(ranked, func(i, j int) bool {
+		if ranked[i].focusScore == ranked[j].focusScore {
+			return ranked[i].suggestion.ScoreDelta > ranked[j].suggestion.ScoreDelta
+		}
+		return ranked[i].focusScore > ranked[j].focusScore
+	})
+
+	sortedSuggestions := make([]evaluation.AlternativeDeck, 0, len(ranked))
+	for _, rankedSuggestion := range ranked {
+		sortedSuggestions = append(sortedSuggestions, rankedSuggestion.suggestion)
+	}
+	return sortedSuggestions
 }

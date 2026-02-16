@@ -23,7 +23,9 @@ import (
 //nolint:gocognit,gocyclo,funlen // Supports offline/online execution branches; full split tracked in clash-royale-api-sb3q.
 func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
-	limit := cmd.Int("limit")
+	count := cmd.Int("count")
+	archetypeFilter := strings.ToLower(strings.TrimSpace(cmd.String("archetype")))
+	includeUnowned := cmd.Bool("include-unowned")
 	arena := cmd.String("arena")
 	league := cmd.String("league")
 	exportCSV := cmd.Bool("export-csv")
@@ -35,6 +37,9 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	fromAnalysis := cmd.Bool("from-analysis")
 	analysisDir := cmd.String("analysis-dir")
 	analysisFile := cmd.String("analysis-file")
+	if count <= 0 {
+		return fmt.Errorf("--count must be >= 1")
+	}
 
 	var deckCardAnalysis deck.CardAnalysis
 	var playerName, playerTag string
@@ -132,7 +137,7 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Create recommender with options
 	options := recommend.DefaultOptions()
-	options.Limit = limit
+	options.Limit = count
 	options.Arena = arena
 	options.League = league
 
@@ -143,6 +148,7 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to generate recommendations: %w", err)
 	}
+	applyRecommendationFilters(result, deckCardAnalysis, archetypeFilter, includeUnowned)
 
 	// Display results
 	displayRecommendations(result, verbose)
@@ -156,6 +162,50 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	return nil
+}
+
+func applyRecommendationFilters(
+	result *recommend.RecommendationResult,
+	analysis deck.CardAnalysis,
+	archetypeFilter string,
+	includeUnowned bool,
+) {
+	if result == nil {
+		return
+	}
+
+	filtered := make([]*recommend.DeckRecommendation, 0, len(result.Recommendations))
+	for _, rec := range result.Recommendations {
+		if rec == nil {
+			continue
+		}
+		if archetypeFilter != "" && !strings.EqualFold(rec.ArchetypeName, archetypeFilter) {
+			continue
+		}
+		if !includeUnowned && containsUnownedCard(rec, analysis.CardLevels) {
+			continue
+		}
+		filtered = append(filtered, rec)
+	}
+
+	result.Recommendations = filtered
+	if len(filtered) > 0 {
+		result.TopArchetype = filtered[0].ArchetypeName
+	} else {
+		result.TopArchetype = ""
+	}
+}
+
+func containsUnownedCard(rec *recommend.DeckRecommendation, owned map[string]deck.CardLevelData) bool {
+	if rec == nil || rec.Deck == nil {
+		return true
+	}
+	for _, card := range rec.Deck.Deck {
+		if _, ok := owned[card]; !ok {
+			return true
+		}
+	}
+	return false
 }
 
 // displayRecommendations displays deck recommendations in a formatted table

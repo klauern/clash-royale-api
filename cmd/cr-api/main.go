@@ -68,7 +68,6 @@ func main() {
 			addWhatIfCommands(),
 			addOnboardCommand(),
 			addCompareCommands(),
-			addBatchCommands(),
 			addPlayerCommand(),
 			addCardsCommand(),
 			addAnalyzeCommand(),

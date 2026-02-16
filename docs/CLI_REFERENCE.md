@@ -178,6 +178,44 @@ Missing: Skeleton Army (Arena 8), Ice Golem (Arena 6)
 4. Combine with `--format json` for programmatic analysis
 5. Check playability percentage before committing to a deck build
 
+### Deck Analyze, Optimize, and Recommend
+
+```bash
+# Analyze one deck (human or json output)
+./bin/cr-api deck analyze --deck "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log" --format human
+
+# Optimize one deck with focused suggestions
+./bin/cr-api deck optimize --deck "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log" --suggestions 5 --focus synergy
+
+# Collection-aware optimize (optional)
+./bin/cr-api deck optimize --deck "Knight-Archers-Fireball-Musketeer-Hog Rider-Ice Spirit-Cannon-Log" --tag TAG --api-token "$CLASH_ROYALE_API_TOKEN"
+
+# Recommend decks from API-backed analysis
+./bin/cr-api deck recommend --tag TAG --count 5 --archetype cycle
+
+# Recommend decks from offline analysis
+./bin/cr-api deck recommend --tag TAG --from-analysis --analysis-dir data/analysis --count 5
+```
+
+**analyze Flags:**
+- `--deck <deck>` - Required deck string (`Card1-Card2-...-Card8`)
+- `--format <format>` - `human` or `json` (default: `human`)
+
+**optimize Flags:**
+- `--deck <deck>` - Required deck string (`Card1-Card2-...-Card8`)
+- `--suggestions <n>` - Number of suggestions to return (default: 3)
+- `--focus <mode>` - `balanced`, `attack`, `defense`, `synergy`
+- `--tag <TAG>` - Optional player tag for collection-aware suggestions
+- `--export-csv` - Export optimization output
+
+**recommend Flags:**
+- `--tag <TAG>` - Player tag
+- `--count <n>` - Number of recommendations
+- `--archetype <type>` - Optional archetype filter
+- `--include-unowned` - Include decks with cards outside your collection
+- `--from-analysis`, `--analysis-dir`, `--analysis-file` - Offline mode inputs
+- `--arena`, `--league` - Optional recommendation filters
+
 ### Batch Deck Building and Evaluation
 
 Build multiple deck variations systematically and evaluate them in batch:

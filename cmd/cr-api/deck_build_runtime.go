@@ -102,6 +102,27 @@ func parseDeckBuildFlags(cmd *cli.Command) deckBuildFlags {
 	}
 }
 
+func buildSuiteDeckVariation(
+	cmd *cli.Command,
+	dataDir string,
+	strategy string,
+	cardAnalysis deck.CardAnalysis,
+) (*deck.DeckRecommendation, error) {
+	deckBuilder, err := configureDeckBuilder(cmd, dataDir, strategy)
+	if err != nil {
+		return nil, fmt.Errorf("failed to configure builder: %w", err)
+	}
+	if err := configureFuzzIntegration(cmd, deckBuilder); err != nil {
+		return nil, fmt.Errorf("failed to configure fuzz integration: %w", err)
+	}
+
+	deckRec, err := deckBuilder.BuildDeckFromAnalysis(cardAnalysis)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build deck: %w", err)
+	}
+	return deckRec, nil
+}
+
 // validateElixirConstraints checks if deck elixir is within requested range
 func validateElixirConstraints(deckRec *deck.DeckRecommendation, minElixir, maxElixir float64) {
 	if deckRec.AvgElixir < minElixir || deckRec.AvgElixir > maxElixir {
@@ -218,29 +239,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		for v := 1; v <= variations; v++ {
-			// Create a fully configured builder for this deck/strategy
-			deckBuilder, err := configureDeckBuilder(cmd, dataDir, string(strategy))
-			if err != nil {
-				results = append(results, deckResult{
-					Strategy:   string(strategy),
-					Variation:  v,
-					BuildError: err,
-				})
-				printf("  ⚠ Variation %d: Failed to configure builder: %v\n", v, err)
-				continue
-			}
-			if err := configureFuzzIntegration(cmd, deckBuilder); err != nil {
-				results = append(results, deckResult{
-					Strategy:   string(strategy),
-					Variation:  v,
-					BuildError: err,
-				})
-				printf("  ⚠ Variation %d: Failed to configure fuzz integration: %v\n", v, err)
-				continue
-			}
-
-			// Build deck
-			deckRec, err := deckBuilder.BuildDeckFromAnalysis(playerData.CardAnalysis)
+			deckRec, err := buildSuiteDeckVariation(cmd, dataDir, string(strategy), playerData.CardAnalysis)
 			if err != nil {
 				results = append(results, deckResult{
 					Strategy:   string(strategy),
@@ -266,8 +265,9 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 				filename := fmt.Sprintf("%s_deck_%s_var%d_%s.json", timestamp, strategy, v, playerData.PlayerTag)
 				filePath = filepath.Join(outputDir, filename)
 
-				// Save using builder
-				savedPath, err := deckBuilder.SaveDeck(deckRec, outputDir, fmt.Sprintf("%s_var%d_%s", strategy, v, playerData.PlayerTag))
+				// Save with a plain builder instance; build-specific config is not required for serialization.
+				saveBuilder := deck.NewBuilder(dataDir)
+				savedPath, err := saveBuilder.SaveDeck(deckRec, outputDir, fmt.Sprintf("%s_var%d_%s", strategy, v, playerData.PlayerTag))
 				if err != nil {
 					if verbose {
 						printf("  ⚠ Variation %d: Failed to save deck: %v\n", v, err)

@@ -94,6 +94,11 @@ const (
 	IdealBuildings = 1
 )
 
+const (
+	targetsAir          = "Air"
+	targetsAirAndGround = "Air & Ground"
+)
+
 // AntiSynergyPenalties defines score penalties for conflicting card combinations.
 // These penalties are applied to archetype coherence scoring.
 const (
@@ -473,7 +478,7 @@ func calculateCounterCoverageScore(cards []CardCandidate, details *ScorerV2Detai
 
 	for _, card := range cards {
 		// Air defense: cards that target air
-		if card.Stats != nil && (card.Stats.Targets == "Air" || card.Stats.Targets == "Air & Ground") {
+		if card.Stats != nil && (card.Stats.Targets == targetsAir || card.Stats.Targets == targetsAirAndGround) {
 			airDefense++
 		}
 
@@ -812,9 +817,9 @@ func calculateCombatStatsScore(cards []CardCandidate) float64 {
 		// Target coverage
 		targetScore := 0.5
 		switch card.Stats.Targets {
-		case "Air & Ground":
+		case targetsAirAndGround:
 			targetScore = 1.0
-		case "Air", "Ground":
+		case targetsAir, "Ground":
 			targetScore = 0.7
 		}
 

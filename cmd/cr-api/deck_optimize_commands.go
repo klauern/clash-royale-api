@@ -80,6 +80,26 @@ func addDeckRecommendCommand() *cli.Command {
 				Value: 5,
 				Usage: "Number of recommendations to show",
 			},
+			&cli.StringFlag{
+				Name:  "arena",
+				Usage: "Arena filter (if recommendation filters are enabled)",
+			},
+			&cli.StringFlag{
+				Name:  "league",
+				Usage: "League filter (if recommendation filters are enabled)",
+			},
+			&cli.BoolFlag{
+				Name:  "from-analysis",
+				Usage: "Enable offline mode: load from analysis JSON instead of API",
+			},
+			&cli.StringFlag{
+				Name:  "analysis-dir",
+				Usage: "Directory containing analysis JSON files (default: data/analysis)",
+			},
+			&cli.StringFlag{
+				Name:  "analysis-file",
+				Usage: "Specific analysis file path (overrides --analysis-dir lookup)",
+			},
 			&cli.BoolFlag{
 				Name:  "include-unowned",
 				Usage: "Include cards not in player's collection",
