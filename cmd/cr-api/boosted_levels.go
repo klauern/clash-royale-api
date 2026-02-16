@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -38,9 +39,11 @@ func parseBoostedCardLevelEntry(entry string) (string, int, error) {
 	}
 
 	var level int
-	if _, err := fmt.Sscanf(levelPart, "%d", &level); err != nil {
+	parsedLevel, err := strconv.Atoi(levelPart)
+	if err != nil {
 		return "", 0, fmt.Errorf("invalid --boosted-card-level value %q (level must be integer)", entry)
 	}
+	level = parsedLevel
 	if level < 1 || level > 16 {
 		return "", 0, fmt.Errorf("invalid --boosted-card-level value %q (level must be 1-16)", entry)
 	}
