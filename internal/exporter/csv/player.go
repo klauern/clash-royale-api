@@ -3,6 +3,7 @@ package csv
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
@@ -64,136 +65,79 @@ func playerHeaders() []string {
 }
 
 // playerExport exports player data to CSV.
-//
-//nolint:gocognit,gocyclo,funlen // Field-by-field CSV mapping is intentionally explicit.
 func playerExport(dataDir string, data any) error {
 	player, ok := data.(*clashroyale.Player)
 	if !ok {
 		return fmt.Errorf("expected Player type, got %T", data)
 	}
-
-	// Calculate derived statistics
-	winRate := float64(0)
-	if player.BattleCount > 0 {
-		winRate = float64(player.Wins) / float64(player.BattleCount)
-	}
-
-	threeCrownRate := float64(0)
-	if player.BattleCount > 0 {
-		threeCrownRate = float64(player.ThreeCrownWins) / float64(player.BattleCount)
-	}
-
-	// Format cards collection
-	cardsCollection := ""
-	if len(player.Cards) > 0 {
-		cardNames := make([]string, len(player.Cards))
-		for i, card := range player.Cards {
-			cardNames[i] = fmt.Sprintf("%s (Lv.%d)", card.Name, card.Level)
-		}
-		cardsCollection = fmt.Sprintf("%v", cardNames)
-	}
-
-	// Format current deck
-	currentDeck := ""
-	if len(player.CurrentDeck) > 0 {
-		cardNames := make([]string, len(player.CurrentDeck))
-		for i, card := range player.CurrentDeck {
-			cardNames[i] = fmt.Sprintf("%s (Lv.%d)", card.Name, card.Level)
-		}
-		currentDeck = fmt.Sprintf("%v", cardNames)
-	}
-
-	// Prepare CSV rows
-	rows := [][]string{
-		{
-			player.Tag,
-			player.Name,
-			fmt.Sprintf("%t", player.NameSet),
-			fmt.Sprintf("%d", player.ExpLevel),
-			fmt.Sprintf("%d", player.ExpPoints),
-			fmt.Sprintf("%d", player.Trophies),
-			fmt.Sprintf("%d", player.BestTrophies),
-			fmt.Sprintf("%d", player.Wins),
-			fmt.Sprintf("%d", player.Losses),
-			fmt.Sprintf("%d", player.BattleCount),
-			fmt.Sprintf("%.2f%%", winRate*100),
-			fmt.Sprintf("%d", player.ThreeCrownWins),
-			fmt.Sprintf("%.2f%%", threeCrownRate*100),
-			fmt.Sprintf("%d", player.ChallengeWins),
-			fmt.Sprintf("%d", player.ChallengeMaxWins),
-			fmt.Sprintf("%d", player.TournamentWins),
-			fmt.Sprintf("%d", player.TournamentBattleCount),
-			fmt.Sprintf("%d", player.TotalDonations),
-			fmt.Sprintf("%d", player.ChallengeCardsWon),
-			fmt.Sprintf("%d", player.Level),
-			fmt.Sprintf("%d", player.Experience),
-			player.Role,
-			func() string {
-				if player.Clan != nil {
-					return player.Clan.Tag
-				}
-				return ""
-			}(),
-			func() string {
-				if player.Clan != nil {
-					return player.Clan.Name
-				}
-				return ""
-			}(),
-			func() string {
-				if player.Clan != nil {
-					return fmt.Sprintf("%d", player.Clan.ClanScore)
-				}
-				return ""
-			}(),
-			func() string {
-				if player.Clan != nil {
-					return fmt.Sprintf("%d", player.Clan.Donations)
-				}
-				return ""
-			}(),
-			func() string {
-				if player.Clan != nil {
-					return fmt.Sprintf("%d", player.Clan.BadgeID)
-				}
-				return ""
-			}(),
-			func() string {
-				if player.Clan != nil {
-					return player.Clan.Type
-				}
-				return ""
-			}(),
-			func() string {
-				if player.Clan != nil {
-					return fmt.Sprintf("%d", player.Clan.Members)
-				}
-				return ""
-			}(),
-			func() string {
-				if player.Clan != nil {
-					return fmt.Sprintf("%d", player.Clan.RequiredTrophies)
-				}
-				return ""
-			}(),
-			fmt.Sprintf("%d", player.Arena.ID),
-			player.Arena.Name,
-			fmt.Sprintf("%d", player.Arena.TrophyLimit),
-			fmt.Sprintf("%d", player.League.ID),
-			player.League.Name,
-			fmt.Sprintf("%d", player.Donations),
-			fmt.Sprintf("%d", player.StarPoints),
-			fmt.Sprintf("%d", len(player.Cards)),
-			cardsCollection,
-			currentDeck,
-			player.CreatedAt.Format("2006-01-02 15:04:05"),
-		},
-	}
+	rows := [][]string{playerCSVRow(player)}
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "players.csv"}
 	filePath := filepath.Join(dataDir, "csv", "players", exporter.FilenameBase)
 	return exporter.writeCSV(filePath, playerHeaders(), rows)
+}
+
+func playerCSVRow(player *clashroyale.Player) []string {
+	winRate := ratio(player.Wins, player.BattleCount)
+	threeCrownRate := ratio(player.ThreeCrownWins, player.BattleCount)
+	return []string{
+		player.Tag,
+		player.Name,
+		strconv.FormatBool(player.NameSet),
+		strconv.Itoa(player.ExpLevel),
+		strconv.Itoa(player.ExpPoints),
+		strconv.Itoa(player.Trophies),
+		strconv.Itoa(player.BestTrophies),
+		strconv.Itoa(player.Wins),
+		strconv.Itoa(player.Losses),
+		strconv.Itoa(player.BattleCount),
+		fmt.Sprintf("%.2f%%", winRate*100),
+		strconv.Itoa(player.ThreeCrownWins),
+		fmt.Sprintf("%.2f%%", threeCrownRate*100),
+		strconv.Itoa(player.ChallengeWins),
+		strconv.Itoa(player.ChallengeMaxWins),
+		strconv.Itoa(player.TournamentWins),
+		strconv.Itoa(player.TournamentBattleCount),
+		strconv.Itoa(player.TotalDonations),
+		strconv.Itoa(player.ChallengeCardsWon),
+		strconv.Itoa(player.Level),
+		strconv.Itoa(player.Experience),
+		player.Role,
+		clanString(player.Clan, func(c *clashroyale.Clan) string { return c.Tag }),
+		clanString(player.Clan, func(c *clashroyale.Clan) string { return c.Name }),
+		clanString(player.Clan, func(c *clashroyale.Clan) string { return strconv.Itoa(c.ClanScore) }),
+		clanString(player.Clan, func(c *clashroyale.Clan) string { return strconv.Itoa(c.Donations) }),
+		clanString(player.Clan, func(c *clashroyale.Clan) string { return strconv.Itoa(c.BadgeID) }),
+		clanString(player.Clan, func(c *clashroyale.Clan) string { return c.Type }),
+		clanString(player.Clan, func(c *clashroyale.Clan) string { return strconv.Itoa(c.Members) }),
+		clanString(player.Clan, func(c *clashroyale.Clan) string { return strconv.Itoa(c.RequiredTrophies) }),
+		strconv.Itoa(player.Arena.ID),
+		player.Arena.Name,
+		strconv.Itoa(player.Arena.TrophyLimit),
+		strconv.Itoa(player.League.ID),
+		player.League.Name,
+		strconv.Itoa(player.Donations),
+		strconv.Itoa(player.StarPoints),
+		strconv.Itoa(len(player.Cards)),
+		formatDeckCards(player.Cards),
+		formatDeckCards(player.CurrentDeck),
+		player.CreatedAt.Format("2006-01-02 15:04:05"),
+	}
+}
+
+func clanString(clan *clashroyale.Clan, extract func(*clashroyale.Clan) string) string {
+	if clan == nil {
+		return ""
+	}
+	return extract(clan)
+}
+
+func ratio(value, total int) float64 {
+	if total == 0 {
+		return 0
+	}
+	return float64(value) / float64(total)
 }
 
 // NewPlayerCardsExporter creates a new player cards CSV exporter

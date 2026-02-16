@@ -3,6 +3,7 @@ package csv
 import (
 	"fmt"
 	"path/filepath"
+	"strconv"
 
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
@@ -36,86 +37,64 @@ func battleLogHeaders() []string {
 		"Deck Average Elixir",
 		"Deck Link",
 		"Not Counted",
+		"Deck Cards",
 	}
 }
 
 // battleLogExport exports battle log data to CSV.
-//
-//nolint:funlen // Export mapping is explicit to keep CSV schema readable.
 func battleLogExport(dataDir string, data any) error {
 	battles, ok := data.([]clashroyale.Battle)
 	if !ok {
 		return fmt.Errorf("expected []Battle type, got %T", data)
 	}
 
-	// Prepare CSV rows
-	var rows [][]string
-
-	for _, battle := range battles {
-		// Extract player and opponent information
-		// Assume first team is player's team and first opponent is main opponent
-		if len(battle.Team) == 0 || len(battle.Opponent) == 0 {
-			continue // Skip battles with missing data
-		}
-
-		player := battle.Team[0]
-		opponent := battle.Opponent[0]
-
-		// Format deck average elixir
-		deckAvgElixir := ""
-		if battle.DeckAverage > 0 {
-			deckAvgElixir = fmt.Sprintf("%d", battle.DeckAverage)
-		}
-
-		// Format deck link
-		deckLink := ""
-		if battle.GameMode.DeckLink != "" {
-			deckLink = battle.GameMode.DeckLink
-		}
-
-		// Format deck cards as string
-		deckCards := ""
-		if len(battle.Deck) > 0 {
-			cardNames := make([]string, len(battle.Deck))
-			for i, card := range battle.Deck {
-				cardNames[i] = fmt.Sprintf("%s (Lv.%d)", card.Name, card.Level)
-			}
-			deckCards = fmt.Sprintf("%v", cardNames)
-		}
-
-		row := []string{
-			battle.UTCDate.Format("2006-01-02 15:04:05"),
-			battle.Type,
-			player.Tag,
-			player.Name,
-			fmt.Sprintf("%d", player.StartingTrophies),
-			fmt.Sprintf("%d", player.TrophyChange),
-			fmt.Sprintf("%d", player.Crowns),
-			opponent.Tag,
-			opponent.Name,
-			fmt.Sprintf("%d", opponent.StartingTrophies),
-			fmt.Sprintf("%d", opponent.TrophyChange),
-			fmt.Sprintf("%d", opponent.Crowns),
-			fmt.Sprintf("%t", battle.IsLadderTournament),
-			fmt.Sprintf("%d", len(battle.Team)), // Team size
-			deckAvgElixir,
-			deckLink,
-			fmt.Sprintf("%t", battle.GameMode.NotCounted),
-		}
-
-		// Add deck cards as an additional column if it exists
-		if deckCards != "" {
-			// Append deck cards as the last column
-			row = append(row, deckCards)
-		}
-
-		rows = append(rows, row)
-	}
+	rows := makeBattleLogRows(battles)
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "battle_log.csv"}
 	filePath := filepath.Join(dataDir, "csv", "battles", exporter.FilenameBase)
 	return exporter.writeCSV(filePath, battleLogHeaders(), rows)
+}
+
+func makeBattleLogRows(battles []clashroyale.Battle) [][]string {
+	rows := make([][]string, 0, len(battles))
+	for _, battle := range battles {
+		row, ok := battleLogRow(battle)
+		if !ok {
+			continue
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func battleLogRow(battle clashroyale.Battle) ([]string, bool) {
+	if len(battle.Team) == 0 || len(battle.Opponent) == 0 {
+		return nil, false
+	}
+	player := battle.Team[0]
+	opponent := battle.Opponent[0]
+	row := []string{
+		battle.UTCDate.Format("2006-01-02 15:04:05"),
+		battle.Type,
+		player.Tag,
+		player.Name,
+		strconv.Itoa(player.StartingTrophies),
+		strconv.Itoa(player.TrophyChange),
+		strconv.Itoa(player.Crowns),
+		opponent.Tag,
+		opponent.Name,
+		strconv.Itoa(opponent.StartingTrophies),
+		strconv.Itoa(opponent.TrophyChange),
+		strconv.Itoa(opponent.Crowns),
+		strconv.FormatBool(battle.IsLadderTournament),
+		strconv.Itoa(len(battle.Team)),
+		formatPositiveIntOrEmpty(battle.DeckAverage),
+		battle.GameMode.DeckLink,
+		strconv.FormatBool(battle.GameMode.NotCounted),
+		formatDeckCards(battle.Deck),
+	}
+	return row, true
 }
 
 // NewBattleSummaryExporter creates a new battle summary CSV exporter
@@ -154,8 +133,6 @@ func battleSummaryHeaders() []string {
 }
 
 // battleSummaryExport exports battle summary statistics to CSV.
-//
-//nolint:gocognit,gocyclo,funlen // Aggregation logic is straightforward but branch-heavy.
 func battleSummaryExport(dataDir string, data any) error {
 	battles, ok := data.([]clashroyale.Battle)
 	if !ok {
@@ -167,118 +144,8 @@ func battleSummaryExport(dataDir string, data any) error {
 		return nil
 	}
 
-	// Aggregate statistics
-	// Use first battle's player as the reference player
-	playerTag := battles[0].Team[0].Tag
-	playerName := battles[0].Team[0].Name
-
-	totalBattles := len(battles)
-	wins := 0
-	losses := 0
-	totalCrownsWon := 0
-	totalCrownsLost := 0
-	totalTrophyChange := 0
-	ladderBattles := 0
-	challengeBattles := 0
-	tournamentBattles := 0
-	threeCrowns := 0
-	threeCrownsLost := 0
-	currentStreak := 0
-	bestStreak := 0
-	streak := 0
-	bestTrophy := 0
-	worstTrophy := 0
-
-	for _, battle := range battles {
-		if len(battle.Team) == 0 || len(battle.Opponent) == 0 {
-			continue
-		}
-
-		player := battle.Team[0]
-		opponent := battle.Opponent[0]
-
-		// Track wins/losses
-		if player.Crowns > opponent.Crowns {
-			wins++
-			streak++
-			if streak > bestStreak {
-				bestStreak = streak
-			}
-		} else {
-			losses++
-			streak = 0
-		}
-
-		// Track crowns
-		totalCrownsWon += player.Crowns
-		totalCrownsLost += opponent.Crowns
-
-		// Track three crowns
-		if player.Crowns == 3 {
-			threeCrowns++
-		}
-		if opponent.Crowns == 3 {
-			threeCrownsLost++
-		}
-
-		// Track trophies
-		totalTrophyChange += player.TrophyChange
-		if player.StartingTrophies+player.TrophyChange > bestTrophy {
-			bestTrophy = player.StartingTrophies + player.TrophyChange
-		}
-		if player.StartingTrophies+player.TrophyChange < worstTrophy || worstTrophy == 0 {
-			worstTrophy = player.StartingTrophies + player.TrophyChange
-		}
-
-		// Categorize battles
-		if battle.IsLadderTournament {
-			ladderBattles++
-		} else if battle.Type == "PvP" {
-			challengeBattles++
-		} else if battle.Type == "tournament" {
-			tournamentBattles++
-		}
-	}
-
-	// Calculate derived stats
-	winRate := float64(0)
-	if totalBattles > 0 {
-		winRate = float64(wins) / float64(totalBattles)
-	}
-
-	avgTrophyChange := float64(0)
-	if totalBattles > 0 {
-		avgTrophyChange = float64(totalTrophyChange) / float64(totalBattles)
-	}
-
-	threeCrownRate := float64(0)
-	if totalBattles > 0 {
-		threeCrownRate = float64(threeCrowns) / float64(totalBattles)
-	}
-
-	// Prepare CSV row
-	row := []string{
-		playerTag,
-		playerName,
-		fmt.Sprintf("%d", totalBattles),
-		fmt.Sprintf("%d", wins),
-		fmt.Sprintf("%d", losses),
-		fmt.Sprintf("%.2f%%", winRate*100),
-		fmt.Sprintf("%d", totalCrownsWon),
-		fmt.Sprintf("%d", totalCrownsLost),
-		fmt.Sprintf("%d", totalTrophyChange),
-		fmt.Sprintf("%.1f", avgTrophyChange),
-		fmt.Sprintf("%d", ladderBattles),
-		fmt.Sprintf("%d", challengeBattles),
-		fmt.Sprintf("%d", tournamentBattles),
-		fmt.Sprintf("%d", bestTrophy),
-		fmt.Sprintf("%d", worstTrophy),
-		fmt.Sprintf("%d", currentStreak),
-		fmt.Sprintf("%d", bestStreak),
-		fmt.Sprintf("%d", threeCrowns),
-		fmt.Sprintf("%d", threeCrownsLost),
-		fmt.Sprintf("%.2f%%", threeCrownRate*100),
-	}
+	stats := summarizeBattles(battles)
+	row := stats.toCSVRow()
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "battle_summary.csv"}
@@ -287,4 +154,164 @@ func battleSummaryExport(dataDir string, data any) error {
 	// Create a single-row CSV
 	rows := [][]string{row}
 	return exporter.writeCSV(filePath, battleSummaryHeaders(), rows)
+}
+
+type battleSummaryStats struct {
+	PlayerTag         string
+	PlayerName        string
+	TotalBattles      int
+	Wins              int
+	Losses            int
+	TotalCrownsWon    int
+	TotalCrownsLost   int
+	TotalTrophyChange int
+	LadderBattles     int
+	ChallengeBattles  int
+	TournamentBattles int
+	ThreeCrowns       int
+	ThreeCrownsLost   int
+	CurrentStreak     int
+	BestStreak        int
+	streak            int
+	BestTrophy        int
+	WorstTrophy       int
+}
+
+func summarizeBattles(battles []clashroyale.Battle) battleSummaryStats {
+	stats := battleSummaryStats{}
+	for _, battle := range battles {
+		stats.addBattle(battle)
+	}
+	stats.CurrentStreak = stats.streak
+	return stats
+}
+
+func (s *battleSummaryStats) addBattle(battle clashroyale.Battle) {
+	if len(battle.Team) == 0 || len(battle.Opponent) == 0 {
+		return
+	}
+	s.TotalBattles++
+	player := battle.Team[0]
+	opponent := battle.Opponent[0]
+	if s.PlayerTag == "" {
+		s.PlayerTag = player.Tag
+		s.PlayerName = player.Name
+	}
+
+	s.trackResult(player.Crowns, opponent.Crowns)
+	s.TotalCrownsWon += player.Crowns
+	s.TotalCrownsLost += opponent.Crowns
+	s.trackThreeCrowns(player.Crowns, opponent.Crowns)
+	s.trackTrophy(player.StartingTrophies + player.TrophyChange)
+	s.TotalTrophyChange += player.TrophyChange
+	s.categorizeBattle(battle)
+}
+
+func (s *battleSummaryStats) trackResult(playerCrowns, opponentCrowns int) {
+	if playerCrowns > opponentCrowns {
+		s.Wins++
+		s.streak++
+		if s.streak > s.BestStreak {
+			s.BestStreak = s.streak
+		}
+		return
+	}
+	s.Losses++
+	s.streak = 0
+}
+
+func (s *battleSummaryStats) trackThreeCrowns(playerCrowns, opponentCrowns int) {
+	if playerCrowns == 3 {
+		s.ThreeCrowns++
+	}
+	if opponentCrowns == 3 {
+		s.ThreeCrownsLost++
+	}
+}
+
+func (s *battleSummaryStats) trackTrophy(result int) {
+	if result > s.BestTrophy {
+		s.BestTrophy = result
+	}
+	if result < s.WorstTrophy || s.WorstTrophy == 0 {
+		s.WorstTrophy = result
+	}
+}
+
+func (s *battleSummaryStats) categorizeBattle(battle clashroyale.Battle) {
+	if battle.IsLadderTournament {
+		s.LadderBattles++
+		return
+	}
+	if battle.Type == "PvP" {
+		s.ChallengeBattles++
+		return
+	}
+	if battle.Type == "tournament" {
+		s.TournamentBattles++
+	}
+}
+
+func (s battleSummaryStats) winRate() float64 {
+	if s.TotalBattles == 0 {
+		return 0
+	}
+	return float64(s.Wins) / float64(s.TotalBattles)
+}
+
+func (s battleSummaryStats) avgTrophyChange() float64 {
+	if s.TotalBattles == 0 {
+		return 0
+	}
+	return float64(s.TotalTrophyChange) / float64(s.TotalBattles)
+}
+
+func (s battleSummaryStats) threeCrownRate() float64 {
+	if s.TotalBattles == 0 {
+		return 0
+	}
+	return float64(s.ThreeCrowns) / float64(s.TotalBattles)
+}
+
+func (s battleSummaryStats) toCSVRow() []string {
+	return []string{
+		s.PlayerTag,
+		s.PlayerName,
+		strconv.Itoa(s.TotalBattles),
+		strconv.Itoa(s.Wins),
+		strconv.Itoa(s.Losses),
+		fmt.Sprintf("%.2f%%", s.winRate()*100),
+		strconv.Itoa(s.TotalCrownsWon),
+		strconv.Itoa(s.TotalCrownsLost),
+		strconv.Itoa(s.TotalTrophyChange),
+		fmt.Sprintf("%.1f", s.avgTrophyChange()),
+		strconv.Itoa(s.LadderBattles),
+		strconv.Itoa(s.ChallengeBattles),
+		strconv.Itoa(s.TournamentBattles),
+		strconv.Itoa(s.BestTrophy),
+		strconv.Itoa(s.WorstTrophy),
+		strconv.Itoa(s.CurrentStreak),
+		strconv.Itoa(s.BestStreak),
+		strconv.Itoa(s.ThreeCrowns),
+		strconv.Itoa(s.ThreeCrownsLost),
+		fmt.Sprintf("%.2f%%", s.threeCrownRate()*100),
+	}
+}
+
+func formatDeckCards(cards []clashroyale.Card) string {
+	if len(cards) == 0 {
+		return ""
+	}
+	cardNames := make([]string, len(cards))
+	for i, card := range cards {
+		cardNames[i] = fmt.Sprintf("%s (Lv.%d)", card.Name, card.Level)
+	}
+	return fmt.Sprintf("%v", cardNames)
+}
+
+func formatPositiveIntOrEmpty(value int) string {
+	if value <= 0 {
+		return ""
+	}
+	return strconv.Itoa(value)
 }
