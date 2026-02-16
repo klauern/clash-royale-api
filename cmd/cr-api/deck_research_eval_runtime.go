@@ -63,7 +63,7 @@ func parseTags(input []string) []string {
 }
 
 //nolint:gocyclo,funlen // Command wiring intentionally keeps validation/fetch/run/output in one flow.
-func deckResearchEvalCommand(_ context.Context, cmd *cli.Command) error {
+func deckResearchEvalCommand(ctx context.Context, cmd *cli.Command) error {
 	tags := parseTags(cmd.StringSlice("tags"))
 	if len(tags) == 0 {
 		return fmt.Errorf("at least one valid tag is required")
@@ -110,7 +110,7 @@ func deckResearchEvalCommand(_ context.Context, cmd *cli.Command) error {
 	client := clashroyale.NewClient(apiToken)
 	players := make([]research.PlayerInput, 0, len(tags))
 	for _, tag := range tags {
-		player, getErr := client.GetPlayer(tag)
+		player, getErr := client.GetPlayerWithContext(ctx, tag)
 		if getErr != nil {
 			return fmt.Errorf("failed to fetch player %s: %w", tag, getErr)
 		}

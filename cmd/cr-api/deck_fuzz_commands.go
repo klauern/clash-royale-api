@@ -238,7 +238,7 @@ func geneticAlgorithmIslandFlags(gaDefaults genetic.GeneticConfig) []cli.Flag {
 		&cli.BoolFlag{
 			Name:  "ga-use-archetypes",
 			Value: gaDefaults.UseArchetypes,
-			Usage: "Enforce archetype constraints during genetic evolution",
+			Usage: "Use legacy archetype-aware GA fitness objective (default uses archetype-free composite objective)",
 		},
 	}
 }

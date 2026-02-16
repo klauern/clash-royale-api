@@ -58,7 +58,7 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 			printf("Fetching player data for tag: %s\n", tag)
 		}
 
-		player, err = client.GetPlayer(tag)
+		player, err = client.GetPlayerWithContext(ctx, tag)
 		if err != nil {
 			return fmt.Errorf("failed to get player: %w", err)
 		}
@@ -86,7 +86,7 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Fetch player data for context
 	if player == nil {
-		player, err = client.GetPlayer(tag)
+		player, err = client.GetPlayerWithContext(ctx, tag)
 		if err != nil {
 			return fmt.Errorf("failed to get player: %w", err)
 		}

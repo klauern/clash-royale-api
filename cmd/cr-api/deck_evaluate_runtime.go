@@ -69,7 +69,7 @@ func loadDeckCardsFromInput(deckString, fromAnalysis string) ([]string, error) {
 }
 
 // fetchPlayerContextIfNeeded fetches player context from API when available and applies arena overrides.
-func fetchPlayerContextIfNeeded(playerTag, apiToken string, arena int, verbose bool) *evaluation.PlayerContext {
+func fetchPlayerContextIfNeeded(ctx context.Context, playerTag, apiToken string, arena int, verbose bool) *evaluation.PlayerContext {
 	var playerContext *evaluation.PlayerContext
 
 	if playerTag != "" && apiToken != "" {
@@ -78,7 +78,7 @@ func fetchPlayerContextIfNeeded(playerTag, apiToken string, arena int, verbose b
 		}
 
 		client := clashroyale.NewClient(apiToken)
-		player, err := client.GetPlayer(playerTag)
+		player, err := client.GetPlayerWithContext(ctx, playerTag)
 		if err != nil {
 			// Log warning but continue with evaluation using fallback context if possible.
 			fprintf(os.Stderr, "Warning: Failed to fetch player data: %v\n", err)
@@ -220,14 +220,14 @@ func writeEvaluationOutput(formattedOutput, outputFile string, verbose bool) err
 }
 
 // performUpgradeAnalysisIfRequested performs optional upgrade impact analysis
-func performUpgradeAnalysisIfRequested(showUpgradeImpact bool, format string, deckCardNames []string, playerTag string, topUpgrades int, apiToken string, verbose bool) error {
+func performUpgradeAnalysisIfRequested(ctx context.Context, showUpgradeImpact bool, format string, deckCardNames []string, playerTag string, topUpgrades int, apiToken string, verbose bool) error {
 	if !showUpgradeImpact {
 		return nil
 	}
 
 	// Only for human output format (not applicable to JSON/CSV)
 	if format == batchFormatHuman || format == batchFormatDetailed {
-		if err := performDeckUpgradeImpactAnalysis(deckCardNames, playerTag, topUpgrades, apiToken, verbose); err != nil {
+		if err := performDeckUpgradeImpactAnalysis(ctx, deckCardNames, playerTag, topUpgrades, apiToken, verbose); err != nil {
 			// Log error but don't fail the entire command
 			fprintf(os.Stderr, "\nWarning: Failed to perform upgrade impact analysis: %v\n", err)
 		}
@@ -271,7 +271,7 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	synergyDB := deck.NewSynergyDatabase()
 
 	// Fetch player context if available
-	playerContext := fetchPlayerContextIfNeeded(playerTag, apiToken, arena, verbose)
+	playerContext := fetchPlayerContextIfNeeded(ctx, playerTag, apiToken, arena, verbose)
 
 	// Evaluate the deck
 	result := evaluation.Evaluate(deckCards, synergyDB, playerContext)
@@ -293,12 +293,12 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Perform upgrade analysis if requested
-	return performUpgradeAnalysisIfRequested(showUpgradeImpact, format, deckCardNames, playerTag, topUpgrades, apiToken, verbose)
+	return performUpgradeAnalysisIfRequested(ctx, showUpgradeImpact, format, deckCardNames, playerTag, topUpgrades, apiToken, verbose)
 }
 
 // performDeckUpgradeImpactAnalysis performs upgrade impact analysis for a specific deck
 // It fetches the player's card levels and shows which deck card upgrades would have the most impact
-func performDeckUpgradeImpactAnalysis(deckCardNames []string, playerTag string, topN int, apiToken string, verbose bool) error {
+func performDeckUpgradeImpactAnalysis(ctx context.Context, deckCardNames []string, playerTag string, topN int, apiToken string, verbose bool) error {
 	// Create client to fetch player data
 	client := clashroyale.NewClient(apiToken)
 
@@ -307,7 +307,7 @@ func performDeckUpgradeImpactAnalysis(deckCardNames []string, playerTag string, 
 	}
 
 	// Get player information
-	player, err := client.GetPlayer(playerTag)
+	player, err := client.GetPlayerWithContext(ctx, playerTag)
 	if err != nil {
 		return fmt.Errorf("failed to get player: %w", err)
 	}

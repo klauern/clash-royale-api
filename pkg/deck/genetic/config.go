@@ -103,7 +103,7 @@ func DefaultGeneticConfig() GeneticConfig {
 		MigrationInterval:      15,
 		MigrationSize:          2,
 		SeedPopulation:         nil,
-		UseArchetypes:          true,
+		UseArchetypes:          false,
 	}
 }
 

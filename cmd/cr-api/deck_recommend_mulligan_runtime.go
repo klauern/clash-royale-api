@@ -90,7 +90,7 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		// Get player information
-		player, err := client.GetPlayer(tag)
+		player, err := client.GetPlayerWithContext(ctx, tag)
 		if err != nil {
 			return fmt.Errorf("failed to get player: %w", err)
 		}

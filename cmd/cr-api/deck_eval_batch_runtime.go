@@ -268,13 +268,13 @@ func extractEvalPlayerNameFromDeckData(deckData map[string]any) string {
 }
 
 // loadEvalPlayerContext loads player context from API if tag and token are available
-func loadEvalPlayerContext(playerTag, apiToken string, verbose bool) (*evaluation.PlayerContext, string, error) {
+func loadEvalPlayerContext(ctx context.Context, playerTag, apiToken string, verbose bool) (*evaluation.PlayerContext, string, error) {
 	if playerTag == "" || apiToken == "" {
 		return nil, "", nil
 	}
 
 	client := clashroyale.NewClient(apiToken)
-	player, err := client.GetPlayer(playerTag)
+	player, err := client.GetPlayerWithContext(ctx, playerTag)
 	if err != nil {
 		if verbose {
 			printf("Warning: Failed to load player data: %v\n", err)
@@ -604,7 +604,7 @@ type evalBatchSetup struct {
 }
 
 // setupEvalBatch prepares all resources needed for batch evaluation
-func setupEvalBatch(cmd *cli.Command, flags *evalBatchFlags) (*evalBatchSetup, error) {
+func setupEvalBatch(ctx context.Context, cmd *cli.Command, flags *evalBatchFlags) (*evalBatchSetup, error) {
 	decks, playerName, loadedTag, err := loadEvalDecks(flags.FromSuite, flags.DeckDir, flags.Verbose)
 	if err != nil {
 		return nil, err
@@ -623,7 +623,7 @@ func setupEvalBatch(cmd *cli.Command, flags *evalBatchFlags) (*evalBatchSetup, e
 		apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
 	}
 
-	playerContext, loadedName, err := loadEvalPlayerContext(playerTag, apiToken, flags.Verbose)
+	playerContext, loadedName, err := loadEvalPlayerContext(ctx, playerTag, apiToken, flags.Verbose)
 	if err != nil {
 		return nil, err
 	}
@@ -666,7 +666,7 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	setup, err := setupEvalBatch(cmd, flags)
+	setup, err := setupEvalBatch(ctx, cmd, flags)
 	if err != nil {
 		return err
 	}

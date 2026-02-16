@@ -209,7 +209,7 @@ type playerDataLoadResult struct {
 }
 
 // loadPlayerCardAnalysis loads player card data from offline analysis or API
-func loadPlayerCardAnalysis(cmd *cli.Command, builder *deck.Builder, tag string) (*playerDataLoadResult, error) {
+func loadPlayerCardAnalysis(ctx context.Context, cmd *cli.Command, builder *deck.Builder, tag string) (*playerDataLoadResult, error) {
 	fromAnalysis := cmd.Bool("from-analysis")
 	analysisDir := cmd.String("analysis-dir")
 	analysisFile := cmd.String("analysis-file")
@@ -222,7 +222,7 @@ func loadPlayerCardAnalysis(cmd *cli.Command, builder *deck.Builder, tag string)
 	}
 
 	// ONLINE MODE
-	return loadPlayerDataOnline(builder, tag, apiToken, verbose)
+	return loadPlayerDataOnline(ctx, builder, tag, apiToken, verbose)
 }
 
 // loadPlayerDataOffline loads player data from pre-analyzed JSON files
@@ -275,7 +275,7 @@ func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile
 // loadPlayerDataOnline fetches and analyzes player data from the API
 //
 //nolint:dupl // Shared API loading refactor tracked under clash-royale-api-sg50.
-func loadPlayerDataOnline(builder *deck.Builder, tag, apiToken string, verbose bool) (*playerDataLoadResult, error) {
+func loadPlayerDataOnline(ctx context.Context, builder *deck.Builder, tag, apiToken string, verbose bool) (*playerDataLoadResult, error) {
 	if apiToken == "" {
 		return nil, fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode")
 	}
@@ -287,7 +287,7 @@ func loadPlayerDataOnline(builder *deck.Builder, tag, apiToken string, verbose b
 	}
 
 	// Get player information
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get player: %w", err)
 	}

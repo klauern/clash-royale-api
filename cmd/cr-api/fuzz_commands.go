@@ -28,6 +28,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/genetic"
+	"github.com/klauer/clash-royale-api/go/pkg/deck/research"
 	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/schollz/progressbar/v3"
@@ -37,6 +38,24 @@ import (
 type stageCanceler struct {
 	mu     sync.Mutex
 	cancel context.CancelFunc
+}
+
+const (
+	gaFitnessModeLegacy        = "legacy-evaluation"
+	gaFitnessModeArchetypeFree = "archetype-free-composite"
+)
+
+func selectGAFitnessEvaluator(useArchetypes bool) (func([]deck.CardCandidate) (float64, error), string) {
+	if useArchetypes {
+		return nil, gaFitnessModeLegacy
+	}
+
+	constraints := research.DefaultConstraintConfig()
+	synergyDB := deck.NewSynergyDatabase()
+	return func(deckCards []deck.CardCandidate) (float64, error) {
+		metrics := research.ScoreDeckComposite(deckCards, synergyDB, constraints)
+		return metrics.Composite * 10.0, nil
+	}, gaFitnessModeArchetypeFree
 }
 
 func (sc *stageCanceler) Set(cancel context.CancelFunc) {
@@ -229,7 +248,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		client := clashroyale.NewClient(apiToken)
 		cleanTag := strings.TrimPrefix(playerTag, "#")
 
-		player, err = client.GetPlayer(cleanTag)
+		player, err = client.GetPlayerWithContext(ctx, cleanTag)
 		if err != nil {
 			return fmt.Errorf("failed to fetch player: %w", err)
 		}
@@ -324,6 +343,10 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		candidates, err := buildGeneticCandidates(player, includeCards, excludeCards)
 		if err != nil {
 			return err
+		}
+		fitnessEvaluator, gaFitnessMode := selectGAFitnessEvaluator(gaUseArchetypes)
+		if verbose {
+			fprintf(os.Stderr, "GA objective: %s\n", gaFitnessMode)
 		}
 
 		// Store initial seed decks for first round
@@ -420,6 +443,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 			if err != nil {
 				return fmt.Errorf("failed to create genetic optimizer: %w", err)
 			}
+			optimizer.FitnessFunc = fitnessEvaluator
 			if seed != 0 {
 				optimizer.RNG = rand.New(rand.NewSource(int64(seed) + int64(round)))
 			}
@@ -2002,7 +2026,7 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 
 		client := clashroyale.NewClient(apiToken)
 		cleanTag := strings.TrimPrefix(playerTag, "#")
-		player, playerErr := client.GetPlayer(cleanTag)
+		player, playerErr := client.GetPlayerWithContext(ctx, cleanTag)
 		if playerErr != nil {
 			return fmt.Errorf("failed to load player data for %s: %w", playerTag, playerErr)
 		}
@@ -2114,7 +2138,7 @@ func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 		client := clashroyale.NewClient(apiToken)
 		var err error
-		player, err = client.GetPlayer(playerTag)
+		player, err = client.GetPlayerWithContext(ctx, playerTag)
 		if err != nil {
 			return fmt.Errorf("failed to load player data for %s: %w", playerTag, err)
 		}

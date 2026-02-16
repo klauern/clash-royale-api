@@ -14,83 +14,92 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-//nolint:funlen // Command orchestration intentionally keeps full workflow in one place.
 func deckBuildCommand(ctx context.Context, cmd *cli.Command) error {
-	// Parse flags
-	tag := cmd.String("tag")
-	strategy := cmd.String("strategy")
-	minElixir := cmd.Float64("min-elixir")
-	maxElixir := cmd.Float64("max-elixir")
-	dataDir := cmd.String("data-dir")
-	excludeCards := cmd.StringSlice("exclude-cards")
-	boostedCardLevels := cmd.StringSlice("boosted-card-level")
+	flags := parseDeckBuildFlags(cmd)
 
-	// Upgrade recommendations flags
-	noSuggestUpgrades := cmd.Bool("no-suggest-upgrades")
-	upgradeCount := cmd.Int("upgrade-count")
-	idealDeck := cmd.Bool("ideal-deck")
-
-	// Step 1: Configure combat stats
 	if err := configureCombatStats(cmd); err != nil {
 		return err
 	}
 
-	// Step 2: Create and configure deck builder
-	builder, err := configureDeckBuilder(cmd, dataDir, strategy)
+	builder, err := configureDeckBuilder(cmd, flags.DataDir, flags.Strategy)
 	if err != nil {
 		return err
 	}
 
-	// Step 3: Configure fuzz integration if enabled
 	if err := configureFuzzIntegration(cmd, builder); err != nil {
 		return err
 	}
 
-	// Step 4: Load player card analysis
-	playerData, err := loadPlayerCardAnalysis(cmd, builder, tag)
+	playerData, err := loadPlayerCardAnalysis(ctx, cmd, builder, flags.Tag)
 	if err != nil {
 		return err
 	}
-	overrides, err := parseBoostedCardLevels(boostedCardLevels)
+	overrides, err := parseBoostedCardLevels(flags.BoostedCardLevels)
 	if err != nil {
 		return err
 	}
 	applyBoostedLevelsToCardAnalysis(&playerData.CardAnalysis, overrides)
 
-	// Step 5: Apply exclude filter
-	applyExcludeFilter(&playerData.CardAnalysis, excludeCards)
+	applyExcludeFilter(&playerData.CardAnalysis, flags.ExcludeCards)
 
-	// Step 6: Handle --strategy all
-	if strings.ToLower(strings.TrimSpace(strategy)) == deckStrategyAll {
+	if strings.ToLower(strings.TrimSpace(flags.Strategy)) == deckStrategyAll {
 		return buildAllStrategies(ctx, cmd, builder, playerData.CardAnalysis, playerData.PlayerName, playerData.PlayerTag)
 	}
 
-	// Step 7: Build deck from analysis
 	deckRec, err := builder.BuildDeckFromAnalysis(playerData.CardAnalysis)
 	if err != nil {
 		return fmt.Errorf("failed to build deck: %w", err)
 	}
 
-	// Step 8: Validate elixir constraints
-	validateElixirConstraints(deckRec, minElixir, maxElixir)
-
-	// Step 9: Display deck recommendation
+	validateElixirConstraints(deckRec, flags.MinElixir, flags.MaxElixir)
 	displayDeckRecommendationOffline(deckRec, playerData.PlayerName, playerData.PlayerTag)
 
-	// Step 10: Display upgrade recommendations by default (unless disabled)
-	upgrades := displayUpgradeRecommendationsIfEnabled(cmd, builder, playerData.CardAnalysis, deckRec, noSuggestUpgrades, upgradeCount)
+	upgrades := displayUpgradeRecommendationsIfEnabled(
+		cmd,
+		builder,
+		playerData.CardAnalysis,
+		deckRec,
+		flags.NoSuggestUpgrades,
+		flags.UpgradeCount,
+	)
 
-	// Step 11: Show ideal deck with recommended upgrades applied
-	if idealDeck {
+	if flags.IdealDeck {
 		displayIdealDeck(cmd, builder, playerData.CardAnalysis, deckRec, playerData.PlayerName, playerData.PlayerTag, upgrades)
 	}
 
-	// Step 12: Save deck if requested
-	if err := saveDeckIfRequested(cmd, builder, deckRec, playerData.PlayerTag, dataDir); err != nil {
+	if err := saveDeckIfRequested(cmd, builder, deckRec, playerData.PlayerTag, flags.DataDir); err != nil {
 		return err
 	}
 
 	return nil
+}
+
+type deckBuildFlags struct {
+	Tag               string
+	Strategy          string
+	MinElixir         float64
+	MaxElixir         float64
+	DataDir           string
+	ExcludeCards      []string
+	BoostedCardLevels []string
+	NoSuggestUpgrades bool
+	UpgradeCount      int
+	IdealDeck         bool
+}
+
+func parseDeckBuildFlags(cmd *cli.Command) deckBuildFlags {
+	return deckBuildFlags{
+		Tag:               cmd.String("tag"),
+		Strategy:          cmd.String("strategy"),
+		MinElixir:         cmd.Float64("min-elixir"),
+		MaxElixir:         cmd.Float64("max-elixir"),
+		DataDir:           cmd.String("data-dir"),
+		ExcludeCards:      cmd.StringSlice("exclude-cards"),
+		BoostedCardLevels: cmd.StringSlice("boosted-card-level"),
+		NoSuggestUpgrades: cmd.Bool("no-suggest-upgrades"),
+		UpgradeCount:      cmd.Int("upgrade-count"),
+		IdealDeck:         cmd.Bool("ideal-deck"),
+	}
 }
 
 // validateElixirConstraints checks if deck elixir is within requested range
@@ -171,7 +180,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Load player data
-	playerData, err := loadSuitePlayerData(builder, tag, apiToken, dataDir, fromAnalysis, verbose)
+	playerData, err := loadSuitePlayerData(ctx, builder, tag, apiToken, dataDir, fromAnalysis, verbose)
 	if err != nil {
 		return err
 	}

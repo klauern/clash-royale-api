@@ -2,8 +2,10 @@ package clashroyale
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 
 	"go.uber.org/ratelimit"
@@ -84,17 +86,23 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 
 		// Check for rate limit (429) or server errors (5xx) - retry these
 		if resp.StatusCode == 429 || (resp.StatusCode >= 500 && resp.StatusCode < 600) {
+			if resp.StatusCode == 429 {
+				delay := retryAfterDelay(resp, attempt)
+				closeWithLog(resp.Body, "response body")
+				select {
+				case <-req.Context().Done():
+					return nil, req.Context().Err()
+				case <-time.After(delay):
+				}
+				continue
+			}
 			closeWithLog(resp.Body, "response body")
 			continue
 		}
 
 		// Check for client errors (4xx except 429) - don't retry these
 		if resp.StatusCode >= 400 && resp.StatusCode < 500 && resp.StatusCode != 429 {
-			closeWithLog(resp.Body, "response body")
-			return nil, APIError{
-				StatusCode: resp.StatusCode,
-				Message:    fmt.Sprintf("Client error: %d", resp.StatusCode),
-			}
+			return nil, parseAPIError(resp)
 		}
 
 		// Success or other status code
@@ -106,4 +114,42 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 		closeWithLog(resp.Body, "response body")
 	}
 	return nil, fmt.Errorf("max retries exceeded: %w", err)
+}
+
+func retryAfterDelay(resp *http.Response, attempt int) time.Duration {
+	retryAfter := resp.Header.Get("Retry-After")
+	if retryAfter == "" {
+		return time.Second * time.Duration(max(attempt, 1))
+	}
+	seconds, err := strconv.Atoi(retryAfter)
+	if err != nil || seconds <= 0 {
+		return time.Second * time.Duration(max(attempt, 1))
+	}
+	return time.Second * time.Duration(seconds)
+}
+
+func parseAPIError(resp *http.Response) APIError {
+	defer closeWithLog(resp.Body, "response body")
+	payload := struct {
+		Reason  string `json:"reason"`
+		Message string `json:"message"`
+	}{}
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		return APIError{
+			StatusCode: resp.StatusCode,
+			Message:    fmt.Sprintf("Client error: %d", resp.StatusCode),
+			Reason:     resp.Status,
+		}
+	}
+	if payload.Message == "" {
+		payload.Message = fmt.Sprintf("Client error: %d", resp.StatusCode)
+	}
+	if payload.Reason == "" {
+		payload.Reason = resp.Status
+	}
+	return APIError{
+		StatusCode: resp.StatusCode,
+		Message:    payload.Message,
+		Reason:     payload.Reason,
+	}
 }

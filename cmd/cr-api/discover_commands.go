@@ -447,7 +447,7 @@ func initializeDiscoveryResources(ctx context.Context, playerTag string, verbose
 		fprintf(os.Stderr, "Fetching player data for #%s...\n", sanitizedTag)
 	}
 	client := clashroyale.NewClient(apiToken)
-	player, err := client.GetPlayer(sanitizedTag)
+	player, err := client.GetPlayerWithContext(ctx, sanitizedTag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch player: %w", err)
 	}

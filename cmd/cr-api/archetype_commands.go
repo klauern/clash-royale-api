@@ -114,7 +114,7 @@ func analyzeArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Fetch player data
-	player, err := client.GetPlayer(playerTag)
+	player, err := client.GetPlayerWithContext(ctx, playerTag)
 	if err != nil {
 		return fmt.Errorf("failed to fetch player: %w", err)
 	}
@@ -460,7 +460,7 @@ func detectArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Fetch player data
-	player, err := client.GetPlayer(playerTag)
+	player, err := client.GetPlayerWithContext(ctx, playerTag)
 	if err != nil {
 		return fmt.Errorf("failed to fetch player: %w", err)
 	}

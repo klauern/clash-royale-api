@@ -40,7 +40,7 @@ func deckCompareAlgorithmsCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Step 3: Load player card analysis
 	builder := deck.NewBuilder(dataDir)
-	playerData, err := loadPlayerCardAnalysis(cmd, builder, tag)
+	playerData, err := loadPlayerCardAnalysis(ctx, cmd, builder, tag)
 	if err != nil {
 		return fmt.Errorf("failed to analyze player cards: %w", err)
 	}
@@ -148,7 +148,7 @@ func loadSuitePlayerDataFromAnalysis(builder *deck.Builder, tag, dataDir string,
 }
 
 //nolint:dupl // Shared API loading refactor tracked under clash-royale-api-sg50.
-func loadSuitePlayerDataFromAPI(builder *deck.Builder, tag, apiToken string, verbose bool) (*suitePlayerData, error) {
+func loadSuitePlayerDataFromAPI(ctx context.Context, builder *deck.Builder, tag, apiToken string, verbose bool) (*suitePlayerData, error) {
 	if apiToken == "" {
 		return nil, fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode")
 	}
@@ -156,7 +156,7 @@ func loadSuitePlayerDataFromAPI(builder *deck.Builder, tag, apiToken string, ver
 	if verbose {
 		printf("Building deck suite for player %s\n", tag)
 	}
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get player: %w", err)
 	}
@@ -191,11 +191,11 @@ func loadSuitePlayerDataFromAPI(builder *deck.Builder, tag, apiToken string, ver
 	}, nil
 }
 
-func loadSuitePlayerData(builder *deck.Builder, tag, apiToken, dataDir string, fromAnalysis, verbose bool) (*suitePlayerData, error) {
+func loadSuitePlayerData(ctx context.Context, builder *deck.Builder, tag, apiToken, dataDir string, fromAnalysis, verbose bool) (*suitePlayerData, error) {
 	if fromAnalysis {
 		return loadSuitePlayerDataFromAnalysis(builder, tag, dataDir, verbose)
 	}
-	return loadSuitePlayerDataFromAPI(builder, tag, apiToken, verbose)
+	return loadSuitePlayerDataFromAPI(ctx, builder, tag, apiToken, verbose)
 }
 
 // printComparisonHeader prints the algorithm comparison header

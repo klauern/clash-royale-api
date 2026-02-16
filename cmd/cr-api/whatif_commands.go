@@ -74,7 +74,7 @@ func whatIfCommand(ctx context.Context, cmd *cli.Command) error {
 	dataDir := cmd.String("data-dir")
 
 	// Load card levels and player info
-	cardLevels, playerName, err := loadCardLevelsForWhatIf(fromAnalysis, tag, apiToken, verbose)
+	cardLevels, playerName, err := loadCardLevelsForWhatIf(ctx, fromAnalysis, tag, apiToken, verbose)
 	if err != nil {
 		return err
 	}
@@ -100,11 +100,11 @@ func whatIfCommand(ctx context.Context, cmd *cli.Command) error {
 }
 
 // loadCardLevelsForWhatIf loads card level data from file or API
-func loadCardLevelsForWhatIf(fromAnalysis, tag, apiToken string, verbose bool) (map[string]deck.CardLevelData, string, error) {
+func loadCardLevelsForWhatIf(ctx context.Context, fromAnalysis, tag, apiToken string, verbose bool) (map[string]deck.CardLevelData, string, error) {
 	if fromAnalysis != "" {
 		return loadCardLevelsFromFile(fromAnalysis, verbose)
 	}
-	return loadCardLevelsFromAPI(tag, apiToken, verbose)
+	return loadCardLevelsFromAPI(ctx, tag, apiToken, verbose)
 }
 
 // loadCardLevelsFromFile loads card levels from an analysis file
@@ -121,7 +121,7 @@ func loadCardLevelsFromFile(filePath string, verbose bool) (map[string]deck.Card
 }
 
 // loadCardLevelsFromAPI fetches card levels from the Clash Royale API
-func loadCardLevelsFromAPI(tag, apiToken string, verbose bool) (map[string]deck.CardLevelData, string, error) {
+func loadCardLevelsFromAPI(ctx context.Context, tag, apiToken string, verbose bool) (map[string]deck.CardLevelData, string, error) {
 	if apiToken == "" {
 		return nil, "", fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag, or provide --from-analysis")
 	}
@@ -132,7 +132,7 @@ func loadCardLevelsFromAPI(tag, apiToken string, verbose bool) (map[string]deck.
 		printf("Fetching player data for tag: %s\n", tag)
 	}
 
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return nil, "", fmt.Errorf("failed to get player: %w", err)
 	}

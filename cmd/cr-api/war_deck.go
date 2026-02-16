@@ -58,7 +58,7 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 		printf("Building war decks for player %s (%d decks)\n", tag, deckCount)
 	}
 
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get player: %w", err)
 	}

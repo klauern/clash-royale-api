@@ -251,7 +251,7 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 	client := clashroyale.NewClient(apiToken)
 
 	// Get battle logs
-	battleLog, err := client.GetPlayerBattleLog(tag)
+	battleLog, err := client.GetPlayerBattleLogWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get battle logs: %w", err)
 	}

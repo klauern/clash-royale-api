@@ -111,7 +111,7 @@ func addExportCommands() *cli.Command {
 					client := createClient(apiToken)
 
 					// Get player information
-					player, err := client.GetPlayer(tag)
+					player, err := client.GetPlayerWithContext(ctx, tag)
 					if err != nil {
 						return fmt.Errorf("failed to get player data: %w", err)
 					}
@@ -157,7 +157,7 @@ func addExportCommands() *cli.Command {
 					client := createClient(apiToken)
 
 					// Get all cards
-					cardList, err := client.GetCards()
+					cardList, err := client.GetCardsWithContext(ctx)
 					if err != nil {
 						return fmt.Errorf("failed to get card database: %w", err)
 					}
@@ -201,13 +201,13 @@ func addExportCommands() *cli.Command {
 					client := createClient(apiToken)
 
 					// Get player information and analyze
-					player, err := client.GetPlayer(tag)
+					player, err := client.GetPlayerWithContext(ctx, tag)
 					if err != nil {
 						return fmt.Errorf("failed to get player data: %w", err)
 					}
 
 					// Get all cards for analysis context
-					cardList, err := client.GetCards()
+					cardList, err := client.GetCardsWithContext(ctx)
 					if err != nil {
 						return fmt.Errorf("failed to get card database: %w", err)
 					}
@@ -264,7 +264,7 @@ func addExportCommands() *cli.Command {
 					client := createClient(apiToken)
 
 					// Get battle log
-					battleLog, err := client.GetPlayerBattleLog(tag)
+					battleLog, err := client.GetPlayerBattleLogWithContext(ctx, tag)
 					if err != nil {
 						return fmt.Errorf("failed to get battle log: %w", err)
 					}
@@ -311,7 +311,7 @@ func addExportCommands() *cli.Command {
 					client := createClient(apiToken)
 
 					// Get player's battle logs to extract event data
-					battleLog, err := client.GetPlayerBattleLog(tag)
+					battleLog, err := client.GetPlayerBattleLogWithContext(ctx, tag)
 					if err != nil {
 						return fmt.Errorf("failed to get battle log: %w", err)
 					}
@@ -372,19 +372,19 @@ func addExportCommands() *cli.Command {
 					printf("Starting full export for player %s...\n\n", tag)
 
 					// Get player data
-					player, err := client.GetPlayer(tag)
+					player, err := client.GetPlayerWithContext(ctx, tag)
 					if err != nil {
 						return fmt.Errorf("failed to get player data: %w", err)
 					}
 
 					// Get all cards for analysis
-					cardList, err := client.GetCards()
+					cardList, err := client.GetCardsWithContext(ctx)
 					if err != nil {
 						return fmt.Errorf("failed to get card database: %w", err)
 					}
 
 					// Get battle log
-					battleLog, err := client.GetPlayerBattleLog(tag)
+					battleLog, err := client.GetPlayerBattleLogWithContext(ctx, tag)
 					if err != nil {
 						return fmt.Errorf("failed to get battle log: %w", err)
 					}

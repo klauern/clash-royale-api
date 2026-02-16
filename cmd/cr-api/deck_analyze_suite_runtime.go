@@ -87,7 +87,7 @@ func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, cons
 // runPhase1BuildDeckVariations builds deck variations for the analysis suite
 //
 //nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
-func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string, boostedLevelOverrides map[string]int) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
+func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string, boostedLevelOverrides map[string]int) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
 	decksDir := filepath.Join(outputDir, "decks")
 	if err := os.MkdirAll(decksDir, 0o755); err != nil {
 		return nil, nil, 0, 0, "", fmt.Errorf("failed to create decks directory: %w", err)
@@ -112,7 +112,7 @@ func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDi
 	}
 
 	// Load player data
-	playerData, err := loadSuitePlayerData(builder, tag, apiToken, dataDir, fromAnalysis, verbose)
+	playerData, err := loadSuitePlayerData(ctx, builder, tag, apiToken, dataDir, fromAnalysis, verbose)
 	if err != nil {
 		return nil, nil, 0, 0, "", err
 	}
@@ -238,7 +238,7 @@ func runPhase1BuildDeckVariations(cmd *cli.Command, tag, strategiesStr, outputDi
 // runPhase2EvaluateAllDecks evaluates all built decks for the analysis suite
 //
 //nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
-func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlayerData, outputDir, tag, apiToken string, fromAnalysis, verbose bool, timestamp string, boostedLevelOverrides map[string]int) ([]suiteEvalResult, string, error) {
+func runPhase2EvaluateAllDecks(ctx context.Context, builtDecks []suiteDeckInfo, playerData *suitePlayerData, outputDir, tag, apiToken string, fromAnalysis, verbose bool, timestamp string, boostedLevelOverrides map[string]int) ([]suiteEvalResult, string, error) {
 	evaluationsDir := filepath.Join(outputDir, "evaluations")
 	if err := os.MkdirAll(evaluationsDir, 0o755); err != nil {
 		return nil, "", fmt.Errorf("failed to create evaluations directory: %w", err)
@@ -248,7 +248,7 @@ func runPhase2EvaluateAllDecks(builtDecks []suiteDeckInfo, playerData *suitePlay
 	var playerContext *evaluation.PlayerContext
 	if !fromAnalysis && apiToken != "" {
 		client := clashroyale.NewClient(apiToken)
-		player, err := client.GetPlayer(tag)
+		player, err := client.GetPlayerWithContext(ctx, tag)
 		if err == nil {
 			playerContext = evaluation.NewPlayerContextFromPlayer(player)
 			applyBoostedLevelsToPlayerContext(playerContext, boostedLevelOverrides)
@@ -529,7 +529,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Println("─────────────────────────────────────────────────────────────────────")
 
 	builtDecks, playerData, successCount, _, suiteSummaryPath, err := runPhase1BuildDeckVariations(
-		cmd,
+		ctx, cmd,
 		tag, strategiesStr, outputDir, variations, topN, includeCards, excludeCards, verbose,
 		apiToken, dataDir, fromAnalysis, minElixir, maxElixir, timestamp, boostedLevelOverrides,
 	)
@@ -544,7 +544,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	fmt.Println("─────────────────────────────────────────────────────────────────────")
 
 	results, evalFilePath, err := runPhase2EvaluateAllDecks(
-		builtDecks, playerData, outputDir, tag, apiToken, fromAnalysis, verbose, timestamp, boostedLevelOverrides,
+		ctx, builtDecks, playerData, outputDir, tag, apiToken, fromAnalysis, verbose, timestamp, boostedLevelOverrides,
 	)
 	if err != nil {
 		return err

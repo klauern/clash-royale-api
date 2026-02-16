@@ -101,7 +101,7 @@ func playerCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Get player information
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get player: %w", err)
 	}
@@ -114,7 +114,7 @@ func playerCommand(ctx context.Context, cmd *cli.Command) error {
 		if verbose {
 			printf("\nFetching upcoming chests...\n")
 		}
-		chests, err := client.GetPlayerUpcomingChests(tag)
+		chests, err := client.GetPlayerUpcomingChestsWithContext(ctx, tag)
 		if err != nil {
 			printf("Warning: Failed to get chests: %v\n", err)
 		} else {
@@ -239,7 +239,7 @@ func cardsCommand(ctx context.Context, cmd *cli.Command) error {
 		printf("Fetching card database...\n")
 	}
 
-	cards, err := client.GetCards()
+	cards, err := client.GetCardsWithContext(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get cards: %w", err)
 	}
@@ -317,7 +317,7 @@ func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Get player information
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get player: %w", err)
 	}
@@ -507,7 +507,7 @@ func playstyleCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Get player information
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get player: %w", err)
 	}

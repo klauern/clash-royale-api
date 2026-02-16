@@ -27,7 +27,7 @@ func deckPossibleCountCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Fetch player data
 	client := clashroyale.NewClient(apiToken)
-	player, err := client.GetPlayer(tag)
+	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get player data: %w", err)
 	}
