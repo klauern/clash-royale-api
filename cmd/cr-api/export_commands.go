@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/exporter/csv"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
@@ -76,6 +78,33 @@ func moveExportFile(src, dst string) error {
 	return nil
 }
 
+func timestampValue(enabled bool) string {
+	if !enabled {
+		return ""
+	}
+	return time.Now().Format("20060102_150405")
+}
+
+func appendTimestampToFilename(path, timestamp string) string {
+	if timestamp == "" {
+		return path
+	}
+	ext := filepath.Ext(path)
+	base := strings.TrimSuffix(path, ext)
+	return base + "_" + timestamp + ext
+}
+
+func applyTimestampToExport(path, timestamp string) (string, error) {
+	if timestamp == "" {
+		return path, nil
+	}
+	target := appendTimestampToFilename(path, timestamp)
+	if err := moveExportFile(path, target); err != nil {
+		return "", fmt.Errorf("failed to timestamp export %s: %w", path, err)
+	}
+	return target, nil
+}
+
 func exportPlayerCommand() *cli.Command {
 	return &cli.Command{
 		Name:  "player",
@@ -120,7 +149,7 @@ func exportPlayerCommand() *cli.Command {
 			// Export based on requested types
 			for _, exportType := range types {
 				switch exportType {
-				case "summary", "all":
+				case "summary":
 					exporter := csv.NewPlayerExporter()
 					if err := exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, player, "player summary", filepath.Join(exportDir, "players.csv")); err != nil {
 						return err
@@ -129,6 +158,17 @@ func exportPlayerCommand() *cli.Command {
 				case "cards":
 					exporter := csv.NewPlayerCardsExporter()
 					if err := exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, player, "player cards", filepath.Join(exportDir, "player_cards.csv")); err != nil {
+						return err
+					}
+
+				case "all":
+					playerExporter := csv.NewPlayerExporter()
+					if err := exportWithFeedback(func(ddir string, d any) error { return playerExporter.Export(ddir, d) }, dataDir, player, "player summary", filepath.Join(exportDir, "players.csv")); err != nil {
+						return err
+					}
+
+					playerCardsExporter := csv.NewPlayerCardsExporter()
+					if err := exportWithFeedback(func(ddir string, d any) error { return playerCardsExporter.Export(ddir, d) }, dataDir, player, "player cards", filepath.Join(exportDir, "player_cards.csv")); err != nil {
 						return err
 					}
 				}
@@ -206,13 +246,6 @@ func exportAnalysisCommand() *cli.Command {
 			if err != nil {
 				return fmt.Errorf("failed to get player data: %w", err)
 			}
-
-			// Get all cards for analysis context
-			cardList, err := client.GetCards()
-			if err != nil {
-				return fmt.Errorf("failed to get card database: %w", err)
-			}
-			_ = cardList.Items // Cards reference for future use
 
 			// Analyze collection with default options
 			options := analysis.DefaultAnalysisOptions()
@@ -382,27 +415,42 @@ func loadExportAllData(client *clashroyale.Client, tag string) (exportAllData, e
 	}, nil
 }
 
-func exportAllPlayerData(dataDir string, player *clashroyale.Player) error {
+func exportAllPlayerData(dataDir string, player *clashroyale.Player, timestamp string) error {
 	fmt.Println("1. Exporting player data...")
 	playerExportDir := filepath.Join(dataDir, "csv", "players")
 	if err := ensureDir(playerExportDir); err != nil {
 		return fmt.Errorf("failed to create player export directory: %w", err)
 	}
 
+	playerSummaryFile := filepath.Join(playerExportDir, "players.csv")
 	playerExporter := csv.NewPlayerExporter()
-	if err := exportWithFeedback(func(ddir string, d any) error { return playerExporter.Export(ddir, d) }, dataDir, player, "player summary", filepath.Join(playerExportDir, "players.csv")); err != nil {
+	if err := exportWithFeedback(func(ddir string, d any) error { return playerExporter.Export(ddir, d) }, dataDir, player, "player summary", playerSummaryFile); err != nil {
+		return err
+	}
+	timestampedSummaryFile, err := applyTimestampToExport(playerSummaryFile, timestamp)
+	if err != nil {
 		return err
 	}
 
+	playerCardsFile := filepath.Join(playerExportDir, "player_cards.csv")
 	playerCardsExporter := csv.NewPlayerCardsExporter()
-	if err := exportWithFeedback(func(ddir string, d any) error { return playerCardsExporter.Export(ddir, d) }, dataDir, player, "player cards", filepath.Join(playerExportDir, "player_cards.csv")); err != nil {
+	if err := exportWithFeedback(func(ddir string, d any) error { return playerCardsExporter.Export(ddir, d) }, dataDir, player, "player cards", playerCardsFile); err != nil {
 		return err
+	}
+	timestampedCardsFile, err := applyTimestampToExport(playerCardsFile, timestamp)
+	if err != nil {
+		return err
+	}
+	if timestamp != "" {
+		printf("   ✓ Timestamped player exports:\n")
+		printf("     - %s\n", timestampedSummaryFile)
+		printf("     - %s\n", timestampedCardsFile)
 	}
 
 	return nil
 }
 
-func exportAllAnalysisData(dataDir string, player *clashroyale.Player) error {
+func exportAllAnalysisData(dataDir string, player *clashroyale.Player, timestamp string) error {
 	fmt.Println("\n2. Analyzing collection...")
 	options := analysis.DefaultAnalysisOptions()
 	analysisResult, err := analysis.AnalyzeCardCollection(player, options)
@@ -415,30 +463,46 @@ func exportAllAnalysisData(dataDir string, player *clashroyale.Player) error {
 		return fmt.Errorf("failed to create analysis export directory: %w", err)
 	}
 
+	analysisFile := filepath.Join(analysisExportDir, "card_analysis.csv")
 	analysisExporter := csv.NewAnalysisExporter()
-	if err := exportWithFeedback(func(ddir string, d any) error { return analysisExporter.Export(ddir, d) }, dataDir, analysisResult, "collection analysis", filepath.Join(analysisExportDir, "analysis.csv")); err != nil {
+	if err := exportWithFeedback(func(ddir string, d any) error { return analysisExporter.Export(ddir, d) }, dataDir, analysisResult, "collection analysis", analysisFile); err != nil {
 		return err
+	}
+	timestampedAnalysisFile, err := applyTimestampToExport(analysisFile, timestamp)
+	if err != nil {
+		return err
+	}
+	if timestamp != "" {
+		printf("   ✓ Timestamped analysis export: %s\n", timestampedAnalysisFile)
 	}
 
 	return nil
 }
 
-func exportAllBattleData(dataDir string, battles []clashroyale.Battle) error {
+func exportAllBattleData(dataDir string, battles []clashroyale.Battle, timestamp string) error {
 	fmt.Println("\n3. Exporting battle log...")
 	battleExportDir := filepath.Join(dataDir, "csv", "battles")
 	if err := ensureDir(battleExportDir); err != nil {
 		return fmt.Errorf("failed to create battle export directory: %w", err)
 	}
 
+	battleLogFile := filepath.Join(battleExportDir, "battle_log.csv")
 	battleExporter := csv.NewBattleLogExporter()
-	if err := exportWithFeedback(func(ddir string, d any) error { return battleExporter.Export(ddir, d) }, dataDir, battles, fmt.Sprintf("battles (%d records)", len(battles)), filepath.Join(battleExportDir, "battles.csv")); err != nil {
+	if err := exportWithFeedback(func(ddir string, d any) error { return battleExporter.Export(ddir, d) }, dataDir, battles, fmt.Sprintf("battles (%d records)", len(battles)), battleLogFile); err != nil {
 		return err
+	}
+	timestampedBattleFile, err := applyTimestampToExport(battleLogFile, timestamp)
+	if err != nil {
+		return err
+	}
+	if timestamp != "" {
+		printf("   ✓ Timestamped battle export: %s\n", timestampedBattleFile)
 	}
 
 	return nil
 }
 
-func exportAllEventData(dataDir string, battles []clashroyale.Battle) error {
+func exportAllEventData(dataDir string, battles []clashroyale.Battle, timestamp string) error {
 	fmt.Println("\n4. Extracting event battles...")
 	eventBattles := extractEventBattles(battles)
 
@@ -458,7 +522,7 @@ func exportAllEventData(dataDir string, battles []clashroyale.Battle) error {
 	}
 
 	battlesFile := filepath.Join(dataDir, "csv", "battles", "battle_log.csv")
-	eventsFile := filepath.Join(eventExportDir, "event_battles.csv")
+	eventsFile := appendTimestampToFilename(filepath.Join(eventExportDir, "event_battles.csv"), timestamp)
 	if err := moveExportFile(battlesFile, eventsFile); err != nil {
 		return err
 	}
@@ -466,16 +530,24 @@ func exportAllEventData(dataDir string, battles []clashroyale.Battle) error {
 	return nil
 }
 
-func exportAllCardDatabase(dataDir string, cardList *clashroyale.CardList) error {
+func exportAllCardDatabase(dataDir string, cardList *clashroyale.CardList, timestamp string) error {
 	fmt.Println("\n5. Exporting card database...")
 	cardExportDir := filepath.Join(dataDir, "csv", "reference")
 	if err := ensureDir(cardExportDir); err != nil {
 		return fmt.Errorf("failed to create card export directory: %w", err)
 	}
 
+	cardFile := filepath.Join(cardExportDir, "cards.csv")
 	cardExporter := csv.NewCardsExporter()
-	if err := exportWithFeedback(func(ddir string, d any) error { return cardExporter.Export(ddir, d) }, dataDir, cardList.Items, "card database", filepath.Join(cardExportDir, "cards.csv")); err != nil {
+	if err := exportWithFeedback(func(ddir string, d any) error { return cardExporter.Export(ddir, d) }, dataDir, cardList.Items, "card database", cardFile); err != nil {
 		return err
+	}
+	timestampedCardFile, err := applyTimestampToExport(cardFile, timestamp)
+	if err != nil {
+		return err
+	}
+	if timestamp != "" {
+		printf("   ✓ Timestamped card export: %s\n", timestampedCardFile)
 	}
 
 	return nil
@@ -508,6 +580,7 @@ func exportAllCommand() *cli.Command {
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			tag := cmd.String("tag")
 			dataDir := cmd.String("data-dir")
+			timestamp := timestampValue(cmd.Bool("timestamp"))
 
 			apiToken, err := validateAPIToken(cmd)
 			if err != nil {
@@ -523,23 +596,23 @@ func exportAllCommand() *cli.Command {
 				return err
 			}
 
-			if err := exportAllPlayerData(dataDir, exportData.player); err != nil {
+			if err := exportAllPlayerData(dataDir, exportData.player, timestamp); err != nil {
 				return err
 			}
 
-			if err := exportAllAnalysisData(dataDir, exportData.player); err != nil {
+			if err := exportAllAnalysisData(dataDir, exportData.player, timestamp); err != nil {
 				return err
 			}
 
-			if err := exportAllBattleData(dataDir, exportData.battles); err != nil {
+			if err := exportAllBattleData(dataDir, exportData.battles, timestamp); err != nil {
 				return err
 			}
 
-			if err := exportAllEventData(dataDir, exportData.battles); err != nil {
+			if err := exportAllEventData(dataDir, exportData.battles, timestamp); err != nil {
 				return err
 			}
 
-			if err := exportAllCardDatabase(dataDir, exportData.cardList); err != nil {
+			if err := exportAllCardDatabase(dataDir, exportData.cardList, timestamp); err != nil {
 				return err
 			}
 
