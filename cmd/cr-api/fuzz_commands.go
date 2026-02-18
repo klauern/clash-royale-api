@@ -2016,12 +2016,11 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 
 	var theoreticalByID map[int]fuzzstorage.DeckEntry
 	if playerTag != "" && len(decks) > 0 {
-		apiToken := cmd.String("api-token")
-		if apiToken == "" {
-			apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
-		}
-		if apiToken == "" {
-			return fmt.Errorf("API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)")
+		apiToken, err := requireAPIToken(cmd, apiTokenRequirement{
+			Reason: "to load player context",
+		})
+		if err != nil {
+			return err
 		}
 
 		client := clashroyale.NewClient(apiToken)
@@ -2129,12 +2128,11 @@ func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 	var player *clashroyale.Player
 	var playerContext *evaluation.PlayerContext
 	if playerTag != "" {
-		apiToken := cmd.String("api-token")
-		if apiToken == "" {
-			apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
-		}
-		if apiToken == "" {
-			return fmt.Errorf("API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)")
+		apiToken, err := requireAPIToken(cmd, apiTokenRequirement{
+			Reason: "to load player context",
+		})
+		if err != nil {
+			return err
 		}
 		client := clashroyale.NewClient(apiToken)
 		var err error

@@ -231,13 +231,13 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	days := cmd.Int("days")
 	eventTypes := cmd.StringSlice("event-types")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	exportCSV := cmd.Bool("export-csv")
 	dataDir := cmd.String("data-dir")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
+	if err != nil {
+		return err
 	}
 
 	if verbose {
@@ -312,10 +312,9 @@ func eventListCommand(ctx context.Context, cmd *cli.Command) error {
 	minBattles := cmd.Int("min-battles")
 	sortBy := cmd.String("sort-by")
 	exportCSV := cmd.Bool("export-csv")
-	apiToken := cmd.String("api-token")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required")
+	if _, err := requireAPIToken(cmd, apiTokenRequirement{}); err != nil {
+		return err
 	}
 
 	// Load existing event deck collection
@@ -404,11 +403,10 @@ func eventAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	minBattles := cmd.Int("min-battles")
 	includeDecks := cmd.Bool("include-decks")
 	exportCSV := cmd.Bool("export-csv")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	if _, err := requireAPIToken(cmd, apiTokenRequirement{}); err != nil {
+		return err
 	}
 
 	if eventID == "" && eventType == "" {
@@ -480,10 +478,8 @@ func eventAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 
 func eventCompareCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
-	apiToken := cmd.String("api-token")
-
-	if apiToken == "" {
-		return fmt.Errorf("API token is required")
+	if _, err := requireAPIToken(cmd, apiTokenRequirement{}); err != nil {
+		return err
 	}
 
 	// Load event deck collection
@@ -501,10 +497,8 @@ func eventCompareCommand(ctx context.Context, cmd *cli.Command) error {
 
 func eventDeckStatsCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
-	apiToken := cmd.String("api-token")
-
-	if apiToken == "" {
-		return fmt.Errorf("API token is required")
+	if _, err := requireAPIToken(cmd, apiTokenRequirement{}); err != nil {
+		return err
 	}
 
 	// Load event deck collection

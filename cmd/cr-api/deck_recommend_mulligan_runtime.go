@@ -84,8 +84,11 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 		playerName = tag // Use tag as name in offline mode
 	} else {
 		// ONLINE MODE: Fetch from API
-		if apiToken == "" {
-			return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode")
+		apiToken, err := requireAPITokenValue(apiToken, apiTokenRequirement{
+			OfflineHint: "Use --from-analysis for offline mode",
+		})
+		if err != nil {
+			return err
 		}
 
 		client := clashroyale.NewClient(apiToken)

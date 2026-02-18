@@ -91,12 +91,12 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 	saveData := cmd.Bool("save")
 	useCombatStats := cmd.Bool("use-combat-stats")
 	archetypesFile := cmd.String("archetypes-file")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
+	if err != nil {
+		return err
 	}
 
 	client := clashroyale.NewClient(apiToken)

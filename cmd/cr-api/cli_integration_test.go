@@ -379,7 +379,7 @@ func TestErrorHandling(t *testing.T) {
 				os.Unsetenv("CLASH_ROYALE_API_TOKEN")
 			},
 			wantErr:    true,
-			wantErrMsg: "API token is required",
+			wantErrMsg: "API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag",
 		},
 		{
 			name: "Invalid player tag",

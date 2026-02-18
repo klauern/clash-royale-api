@@ -82,12 +82,11 @@ func analyzeArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	exportCSV := cmd.Bool("export-csv")
 	saveJSON := cmd.Bool("save")
 	verbose := cmd.Bool("verbose")
-	apiToken := cmd.String("api-token")
 	dataDir := cmd.String("data-dir")
 
-	// Validate API token
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
+	if err != nil {
+		return err
 	}
 
 	// Validate target level
@@ -439,12 +438,11 @@ func detectArchetypesCommand(ctx context.Context, cmd *cli.Command) error {
 	jsonOutput := cmd.Bool("json")
 	archetypesFile := cmd.String("archetypes-file")
 	verbose := cmd.Bool("verbose")
-	apiToken := cmd.String("api-token")
 	dataDir := cmd.String("data-dir")
 
-	// Validate API token
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
+	if err != nil {
+		return err
 	}
 
 	// Validate min-viability

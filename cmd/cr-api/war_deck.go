@@ -24,15 +24,15 @@ type warDeckCandidate struct {
 
 func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
 	deckCount := cmd.Int("deck-count")
 	combatStatsWeight := cmd.Float64("combat-stats-weight")
 	disableCombatStats := cmd.Bool("disable-combat-stats")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
+	if err != nil {
+		return err
 	}
 
 	if deckCount < 1 {

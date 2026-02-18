@@ -86,11 +86,11 @@ func playerCommand(ctx context.Context, cmd *cli.Command) error {
 	showChests := cmd.Bool("chests")
 	saveData := cmd.Bool("save")
 	exportCSV := cmd.Bool("export-csv")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
+	if err != nil {
+		return err
 	}
 
 	client := clashroyale.NewClient(apiToken)
@@ -223,13 +223,13 @@ func savePlayerData(dataDir string, p *clashroyale.Player) error {
 }
 
 func cardsCommand(ctx context.Context, cmd *cli.Command) error {
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	exportCSV := cmd.Bool("export-csv")
 	dataDir := cmd.String("data-dir")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
+	if err != nil {
+		return err
 	}
 
 	client := clashroyale.NewClient(apiToken)
@@ -290,13 +290,13 @@ func displayCards(cards []clashroyale.Card) {
 
 func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	saveData := cmd.Bool("save")
 	exportCSV := cmd.Bool("export-csv")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
+	if err != nil {
+		return err
 	}
 
 	// Build analysis options from CLI flags
@@ -491,12 +491,12 @@ func playstyleCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	recommendDecks := cmd.Bool("recommend-decks")
 	saveData := cmd.Bool("save")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
+	if err != nil {
+		return err
 	}
 
 	client := clashroyale.NewClient(apiToken)

@@ -15,15 +15,6 @@ import (
 
 // Helper functions for export commands
 
-// validateAPIToken validates and returns the API token from the command context
-func validateAPIToken(cmd *cli.Command) (string, error) {
-	apiToken := cmd.String("api-token")
-	if apiToken == "" {
-		return "", fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
-	}
-	return apiToken, nil
-}
-
 // createClient creates a new Clash Royale API client
 func createClient(apiToken string) *clashroyale.Client {
 	return clashroyale.NewClient(apiToken)
@@ -103,7 +94,7 @@ func addExportCommands() *cli.Command {
 					types := cmd.StringSlice("types")
 					dataDir := cmd.String("data-dir")
 
-					apiToken, err := validateAPIToken(cmd)
+					apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
 					if err != nil {
 						return err
 					}
@@ -149,7 +140,7 @@ func addExportCommands() *cli.Command {
 				Action: func(ctx context.Context, cmd *cli.Command) error {
 					dataDir := cmd.String("data-dir")
 
-					apiToken, err := validateAPIToken(cmd)
+					apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
 					if err != nil {
 						return err
 					}
@@ -193,7 +184,7 @@ func addExportCommands() *cli.Command {
 					tag := cmd.String("tag")
 					dataDir := cmd.String("data-dir")
 
-					apiToken, err := validateAPIToken(cmd)
+					apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
 					if err != nil {
 						return err
 					}

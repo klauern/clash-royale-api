@@ -31,12 +31,12 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	readyOnly := cmd.Bool("ready-only")
 	jsonOutput := cmd.Bool("json")
 	saveData := cmd.Bool("save")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPIToken(cmd, apiTokenRequirement{})
+	if err != nil {
+		return err
 	}
 	if tag == "" {
 		return fmt.Errorf("player tag is required. Use --tag flag to specify a player tag")

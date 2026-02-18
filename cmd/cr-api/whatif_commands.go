@@ -122,8 +122,11 @@ func loadCardLevelsFromFile(filePath string, verbose bool) (map[string]deck.Card
 
 // loadCardLevelsFromAPI fetches card levels from the Clash Royale API
 func loadCardLevelsFromAPI(ctx context.Context, tag, apiToken string, verbose bool) (map[string]deck.CardLevelData, string, error) {
-	if apiToken == "" {
-		return nil, "", fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag, or provide --from-analysis")
+	apiToken, err := requireAPITokenValue(apiToken, apiTokenRequirement{
+		OfflineHint: "Use --from-analysis for offline mode",
+	})
+	if err != nil {
+		return nil, "", err
 	}
 
 	client := clashroyale.NewClient(apiToken)
