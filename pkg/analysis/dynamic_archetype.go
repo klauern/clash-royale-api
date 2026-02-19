@@ -618,7 +618,7 @@ func (d *DynamicArchetypeDetector) calculateCrossArchetypeImpacts(
 				impactMap[cardName] = &CardArchetypeImpact{
 					CardName:           cardName,
 					CurrentLevel:       cardInfo.Level,
-					GoldCost:           estimateGoldCost(cardInfo), // TODO: implement proper gold cost
+					GoldCost:           estimateGoldCost(cardInfo), // TODO(clash-royale-api-p6q5): implement proper gold cost
 					AffectedArchetypes: []string{},
 					TotalViabilityGain: 0,
 					ArchetypesUnlocked: 0,
@@ -725,7 +725,7 @@ func (d *DynamicArchetypeDetector) calculateGoldToCompetitive(arch *DetectedArch
 // estimateGoldCost estimates the gold cost for a +1 upgrade (simplified)
 func estimateGoldCost(cardInfo CardLevelInfo) int {
 	// Simplified gold cost estimation
-	// TODO: Use actual upgrade costs from configuration
+	// TODO(clash-royale-api-3mun): Use actual upgrade costs from configuration
 	switch cardInfo.Rarity {
 	case rarityCommon:
 		return 2000 + (cardInfo.Level * 200)

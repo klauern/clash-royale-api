@@ -197,7 +197,7 @@ func (r *Recommender) getTopArchetypes(recommendations []*DeckRecommendation, n 
 
 // applyFilters applies arena and league filters to recommendations
 func (r *Recommender) applyFilters(recommendations []*DeckRecommendation) []*DeckRecommendation {
-	// TODO: Implement arena/league filtering
+// TODO(clash-royale-api-4xhi): Implement arena/league filtering
 	// For now, just return all recommendations
 	// Future implementation could:
 	// - Filter out cards not available at certain arenas

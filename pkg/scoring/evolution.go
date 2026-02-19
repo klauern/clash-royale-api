@@ -265,7 +265,7 @@ func (s *EvolutionScorer) GetLevelScalingExponent() float64 {
 func HasEvolutionOverride(cardName string, evolutionLevel int) bool {
 	// This would integrate with deck.evolutionOverrides from the original code
 	// For now, return a placeholder
-	// TODO: Integrate with deck.HasEvolutionOverride when available
+	// TODO(clash-royale-api-42nu): Integrate with deck.HasEvolutionOverride when available
 	return false
 }
 

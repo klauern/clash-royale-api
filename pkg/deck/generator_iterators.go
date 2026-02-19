@@ -476,7 +476,7 @@ func (it *archetypeIterator) Next(ctx context.Context) ([]string, error) {
 	it.remaining--
 	it.generated++
 
-	// TODO: Implement archetype-specific logic
+	// TODO(clash-royale-api-tmmp): Implement archetype-specific logic
 	// For now, delegate to smart sampling
 	// Future: integrate with archetypes package for archetype-aware generation
 

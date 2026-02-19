@@ -399,7 +399,7 @@ func calculateDeckCardUpgrades(deckCardNames []string, cardAnalysis deck.CardAna
 			CardsNeeded:    cardsNeeded,
 			Reason:         reason,
 			IsKeyUpgrade:   isKeyUpgrade,
-			UnlocksNewDeck: false, // TODO: Could analyze if this unlocks new archetypes
+			UnlocksNewDeck: false, // TODO(clash-royale-api-wxev): Could analyze if this unlocks new archetypes
 		})
 	}
 

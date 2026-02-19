@@ -1409,7 +1409,7 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 	// 3. Score gap < 2.0
 	// 4. Not be related archetypes
 	// These strict requirements mean few test hybrids are detected
-	// TODO: Improve hybrid detection or adjust test expectations
+	// TODO(clash-royale-api-tapx): Improve hybrid detection or adjust test expectations
 }
 
 func TestConfidenceCalibration(t *testing.T) {
