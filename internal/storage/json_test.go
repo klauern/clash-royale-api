@@ -519,6 +519,44 @@ func TestMoveFile(t *testing.T) {
 	}
 }
 
+func TestMoveFileFallbackWhenRenameFails(t *testing.T) {
+	tempDir := t.TempDir()
+	srcFile := filepath.Join(tempDir, "source.txt")
+	dstFile := filepath.Join(tempDir, "nested", "dest.txt")
+	content := []byte("test content for rename fallback")
+	if err := os.WriteFile(srcFile, content, 0o644); err != nil {
+		t.Fatalf("failed to create source file: %v", err)
+	}
+
+	originalRename := renameFile
+	renameFile = func(_, _ string) error {
+		return fmt.Errorf("rename failure for test")
+	}
+	t.Cleanup(func() {
+		renameFile = originalRename
+	})
+
+	if err := MoveFile(srcFile, dstFile); err != nil {
+		t.Fatalf("MoveFile() fallback error = %v", err)
+	}
+
+	if FileExists(srcFile) {
+		t.Error("MoveFile() source file still exists after fallback")
+	}
+
+	if !FileExists(dstFile) {
+		t.Fatal("MoveFile() destination file was not created by fallback")
+	}
+
+	dstContent, err := os.ReadFile(dstFile)
+	if err != nil {
+		t.Fatalf("MoveFile() failed to read fallback destination: %v", err)
+	}
+	if string(dstContent) != string(content) {
+		t.Error("MoveFile() fallback content mismatch")
+	}
+}
+
 func TestGetFileSize(t *testing.T) {
 	tempDir := t.TempDir()
 	testFile := filepath.Join(tempDir, "test.txt")

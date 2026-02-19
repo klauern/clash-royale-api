@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1734,18 +1733,11 @@ func formatResultsJSON(
 
 // formatResultsCSV outputs results in CSV format
 func formatResultsCSV(results []FuzzingResult) error {
-	w := csv.NewWriter(os.Stdout)
-
-	// Write header
 	header := []string{"Rank", "Deck", "Overall", "Contextual", "Ladder", "Normalized", "LevelRatio", "NormFactor", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
-	if err := w.Write(header); err != nil {
-		return err
-	}
-
-	// Write rows
+	rows := make([][]string, 0, len(results))
 	for i, result := range results {
 		deckStr := strings.Join(result.Deck, ", ")
-		row := []string{
+		rows = append(rows, []string{
 			strconv.Itoa(i + 1),
 			deckStr,
 			fmt.Sprintf("%.2f", result.OverallScore),
@@ -1760,18 +1752,9 @@ func formatResultsCSV(results []FuzzingResult) error {
 			fmt.Sprintf("%.2f", result.VersatilityScore),
 			fmt.Sprintf("%.2f", result.AvgElixir),
 			result.Archetype,
-		}
-		if err := w.Write(row); err != nil {
-			return err
-		}
+		})
 	}
-
-	w.Flush()
-	if err := w.Error(); err != nil {
-		return err
-	}
-
-	return nil
+	return writeCSVDocument(os.Stdout, header, rows)
 }
 
 // formatResultsDetailed outputs results in detailed format with full evaluation
@@ -2392,8 +2375,6 @@ func formatListResultsJSON(
 
 // formatListResultsCSV formats list results in CSV format
 func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int]fuzzstorage.DeckEntry) error {
-	w := csv.NewWriter(os.Stdout)
-
 	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
 	if theoreticalByID != nil {
 		header = []string{
@@ -2405,10 +2386,7 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int
 			"Versatility", "AvgElixir", "Archetype",
 		}
 	}
-	if err := w.Write(header); err != nil {
-		return err
-	}
-
+	rows := make([][]string, 0, len(decks))
 	for i, deck := range decks {
 		deckStr := strings.Join(deck.Cards, ", ")
 		row := []string{
@@ -2441,17 +2419,9 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int
 				deck.Archetype,
 			)
 		}
-		if err := w.Write(row); err != nil {
-			return err
-		}
+		rows = append(rows, row)
 	}
-
-	w.Flush()
-	if err := w.Error(); err != nil {
-		return err
-	}
-
-	return nil
+	return writeCSVDocument(os.Stdout, header, rows)
 }
 
 // formatListResultsDetailed formats list results in detailed format

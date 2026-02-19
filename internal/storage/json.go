@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 )
 
+var renameFile = os.Rename
+
 // WriteJSON writes data to a JSON file with pretty formatting (2-space indentation)
 // Creates parent directories if they don't exist
 func WriteJSON(filePath string, data any) error {
@@ -139,12 +141,21 @@ func CopyFile(src, dst string) error {
 
 // MoveFile moves a file from src to dst
 func MoveFile(src, dst string) error {
-	// Copy first
-	if err := CopyFile(src, dst); err != nil {
+	// Ensure destination directory exists before attempting rename.
+	dstDir := filepath.Dir(dst)
+	if err := EnsureDirectory(dstDir); err != nil {
 		return err
 	}
 
-	// Delete source
+	// Try atomic rename first.
+	if err := renameFile(src, dst); err == nil {
+		return nil
+	}
+
+	// Fallback for cross-device and other rename failures: copy then delete.
+	if err := CopyFile(src, dst); err != nil {
+		return err
+	}
 	if err := DeleteFile(src); err != nil {
 		return fmt.Errorf("failed to delete source file after copy: %w", err)
 	}

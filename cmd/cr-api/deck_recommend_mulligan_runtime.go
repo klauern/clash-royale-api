@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -298,24 +297,17 @@ func exportRecommendationsToCSV(dataDir string, result *recommend.Recommendation
 	}
 	defer closeFile(file)
 
-	writer := csv.NewWriter(file)
-
-	// Write header
 	header := []string{
 		"Rank", "Archetype", "Type", "Compatibility", "Synergy", "Overall",
 		"AvgElixir", "Cards", "EvolutionSlots", "Reasons",
 	}
-	if err := writer.Write(header); err != nil {
-		return fmt.Errorf("failed to write header: %w", err)
-	}
-
-	// Write rows
+	rows := make([][]string, 0, len(result.Recommendations))
 	for i, rec := range result.Recommendations {
 		cardsStr := strings.Join(rec.Deck.Deck, ";")
 		evoSlotsStr := strings.Join(rec.Deck.EvolutionSlots, ";")
 		reasonsStr := strings.Join(rec.Reasons, "; ")
 
-		row := []string{
+		rows = append(rows, []string{
 			strconv.Itoa(i + 1),
 			rec.ArchetypeName,
 			string(rec.Type),
@@ -326,14 +318,10 @@ func exportRecommendationsToCSV(dataDir string, result *recommend.Recommendation
 			cardsStr,
 			evoSlotsStr,
 			reasonsStr,
-		}
-		if err := writer.Write(row); err != nil {
-			return fmt.Errorf("failed to write row: %w", err)
-		}
+		})
 	}
-	writer.Flush()
-	if err := writer.Error(); err != nil {
-		return fmt.Errorf("failed to flush CSV data: %w", err)
+	if err := writeCSVDocument(file, header, rows); err != nil {
+		return err
 	}
 
 	return nil
