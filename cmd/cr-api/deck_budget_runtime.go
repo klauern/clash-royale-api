@@ -83,8 +83,8 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	finder := budget.NewFinder(dataDir, options)
 
 	// Override unlocked evolutions if CLI flag provided
-	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
-		finder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+	if unlockedEvos := unlockedEvolutionsFromCommand(cmd); len(unlockedEvos) > 0 {
+		finder.SetUnlockedEvolutions(unlockedEvos)
 	}
 
 	// Override evolution slot limit if provided

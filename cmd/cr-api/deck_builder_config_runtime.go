@@ -64,8 +64,8 @@ func configureDeckBuilder(cmd *cli.Command, dataDir, strategy string) (*deck.Bui
 
 // configureEvolutions sets up evolution overrides from CLI flags
 func configureEvolutions(cmd *cli.Command, builder *deck.Builder) error {
-	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
-		builder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+	if unlockedEvos := unlockedEvolutionsFromCommand(cmd); len(unlockedEvos) > 0 {
+		builder.SetUnlockedEvolutions(unlockedEvos)
 	}
 
 	if slots := cmd.Int("evolution-slots"); slots > 0 {
