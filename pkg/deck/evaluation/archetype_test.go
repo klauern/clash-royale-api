@@ -421,13 +421,14 @@ func TestHybridDetection(t *testing.T) {
 
 	result := DetectArchetype(mixedDeck)
 
-	// This deck should potentially be detected as hybrid or have high secondary confidence
-	if result.SecondaryConfidence < 0.3 {
-		t.Logf("Hybrid test: Primary=%v (%.2f), Secondary=%v (%.2f), IsHybrid=%v",
-			result.Primary, result.PrimaryConfidence,
-			result.Secondary, result.SecondaryConfidence,
-			result.IsHybrid)
-		// Note: Not failing here as hybrid detection depends on scoring thresholds
+	// This deck should be either explicitly hybrid or show strong secondary signal.
+	if !result.IsHybrid && result.SecondaryConfidence < 0.3 {
+		t.Fatalf("expected hybrid signal, got primary=%v(%.2f) secondary=%v(%.2f) isHybrid=%v",
+			result.Primary, result.PrimaryConfidence, result.Secondary, result.SecondaryConfidence, result.IsHybrid)
+	}
+
+	if result.Secondary == ArchetypeUnknown {
+		t.Fatalf("expected a meaningful secondary archetype, got %v", result.Secondary)
 	}
 }
 
@@ -1402,14 +1403,16 @@ func TestArchetypeDetectionAccuracy(t *testing.T) {
 		t.Errorf("Pure archetype accuracy %.1f%% is below 85%% threshold", pureAccuracy)
 	}
 
-	// Hybrid detection threshold - currently very strict
-	// Skipping the 75% accuracy check since hybrid detection requires:
+	// Hybrid detection threshold - currently very strict.
+	// 75% is not realistic for current production thresholds because hybrid detection requires:
 	// 1. Both archetypes to have > 0.7 confidence
 	// 2. Secondary score > 70% of primary score
 	// 3. Score gap < 2.0
 	// 4. Not be related archetypes
-	// These strict requirements mean few test hybrids are detected
-	// TODO: Improve hybrid detection or adjust test expectations
+	// Keep a regression floor so hybrid detection quality does not silently degrade.
+	if hybridTotal > 0 && hybridAccuracy < 20.0 {
+		t.Errorf("Hybrid archetype accuracy %.1f%% is below 20%% regression threshold", hybridAccuracy)
+	}
 }
 
 func TestConfidenceCalibration(t *testing.T) {

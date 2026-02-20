@@ -99,6 +99,29 @@ func TestNewStorage_InvalidPlayerTag(t *testing.T) {
 	}
 }
 
+func TestNewStorage_NormalizesPlayerTag(t *testing.T) {
+	tmpDir, err := os.MkdirTemp("", "leaderboard_test_*")
+	if err != nil {
+		t.Fatalf("failed to create temp dir: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	storage, err := NewStorage(" #abc123 ")
+	if err != nil {
+		t.Fatalf("expected normalized player tag to be accepted: %v", err)
+	}
+	defer storage.Close()
+
+	expectedPath := filepath.Join(os.Getenv("HOME"), ".cr-api", "leaderboards", "ABC123.db")
+	if storage.GetDBPath() != expectedPath {
+		t.Fatalf("expected db path %s, got %s", expectedPath, storage.GetDBPath())
+	}
+}
+
 func TestQuery_InvalidSortByFallsBackSafely(t *testing.T) {
 	storage, cleanup := createTestStorage(t)
 	defer cleanup()

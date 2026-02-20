@@ -2,9 +2,9 @@ package csv
 
 import (
 	"fmt"
-	"path/filepath"
 	"strconv"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
@@ -52,7 +52,7 @@ func battleLogExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "battle_log.csv"}
-	filePath := filepath.Join(dataDir, "csv", "battles", exporter.FilenameBase)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVBattlesSubdir)
 	return exporter.writeCSV(filePath, battleLogHeaders(), rows)
 }
 
@@ -149,7 +149,7 @@ func battleSummaryExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "battle_summary.csv"}
-	filePath := filepath.Join(dataDir, "csv", "battles", exporter.FilenameBase)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVBattlesSubdir)
 
 	// Create a single-row CSV
 	rows := [][]string{row}

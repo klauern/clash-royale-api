@@ -133,6 +133,26 @@ func TestDeckGenerator_GenerateOne(t *testing.T) {
 	}
 }
 
+func TestArchetypeRoleComposition(t *testing.T) {
+	base := *DefaultRoleComposition()
+
+	cycle := archetypeRoleComposition("cycle", base)
+	if cycle.Cycle < 2 {
+		t.Fatalf("cycle composition should prioritize cycle cards, got %d", cycle.Cycle)
+	}
+	if cycle.BigSpells != 0 {
+		t.Fatalf("cycle composition should de-prioritize big spells, got %d", cycle.BigSpells)
+	}
+
+	beatdown := archetypeRoleComposition("beatdown", base)
+	if beatdown.Support < 4 {
+		t.Fatalf("beatdown composition should prioritize support cards, got %d", beatdown.Support)
+	}
+	if beatdown.Buildings != 0 {
+		t.Fatalf("beatdown composition should avoid buildings, got %d", beatdown.Buildings)
+	}
+}
+
 func TestDeckGenerator_Generate(t *testing.T) {
 	gen, err := NewDeckGenerator(GeneratorConfig{
 		Strategy:   StrategyRandomSample,
@@ -159,6 +179,49 @@ func TestDeckGenerator_Generate(t *testing.T) {
 		if len(deck) != 8 {
 			t.Errorf("deck %d has %d cards, expected 8", i, len(deck))
 		}
+	}
+}
+
+func TestArchetypeFocusedIterator_GeneratesArchetypeBiasedDeck(t *testing.T) {
+	candidates := createTestCandidates(24)
+	gen, err := NewDeckGenerator(GeneratorConfig{
+		Strategy:   StrategyArchetypeFocused,
+		Archetype:  "cycle",
+		Candidates: candidates,
+		SampleSize: 10,
+		Seed:       42,
+		Constraints: &GeneratorConstraints{
+			MinAvgElixir:        2.0,
+			MaxAvgElixir:        5.0,
+			RequireWinCondition: true,
+		},
+	})
+	if err != nil {
+		t.Fatalf("failed to create generator: %v", err)
+	}
+
+	deck, err := gen.GenerateOne(context.Background())
+	if err != nil {
+		t.Fatalf("failed to generate archetype-focused deck: %v", err)
+	}
+	if len(deck) != 8 {
+		t.Fatalf("expected 8 cards, got %d", len(deck))
+	}
+
+	candidateByName := make(map[string]*CardCandidate, len(candidates))
+	for _, c := range candidates {
+		candidateByName[c.Name] = c
+	}
+
+	cycleCardCount := 0
+	for _, name := range deck {
+		if card, ok := candidateByName[name]; ok && card.Elixir <= 2 {
+			cycleCardCount++
+		}
+	}
+
+	if cycleCardCount == 0 {
+		t.Fatalf("expected at least one low-elixir cycle card in cycle archetype deck, got %v", deck)
 	}
 }
 

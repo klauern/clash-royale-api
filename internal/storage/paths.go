@@ -5,23 +5,26 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
+
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 )
 
 // Default data directory structure
 const (
-	DefaultDataDir     = "./data"
-	StaticDir          = "static"
-	PlayersDir         = "players"
-	AnalysisDir        = "analysis"
-	DecksDir           = "decks"
-	EventDecksDir      = "event_decks"
-	CSVDir             = "csv"
-	CSVPlayersSubdir   = "players"
-	CSVReferenceSubdir = "reference"
-	CSVEventsSubdir    = "events"
-	CSVAnalysisSubdir  = "analysis"
+	DefaultDataDir      = "./data"
+	StaticDir           = "static"
+	PlayersDir          = "players"
+	AnalysisDir         = "analysis"
+	DecksDir            = "decks"
+	EventDecksDir       = "event_decks"
+	CSVDir              = "csv"
+	CSVPlayersSubdir    = "players"
+	CSVReferenceSubdir  = "reference"
+	CSVEventsSubdir     = "events"
+	CSVAnalysisSubdir   = "analysis"
+	CSVBattlesSubdir    = "battles"
+	CSVArchetypesSubdir = "archetypes"
 )
 
 // PathBuilder constructs standardized file paths for data storage
@@ -99,85 +102,116 @@ func (pb *PathBuilder) GetCSVAnalysisDir() string {
 
 // GetPlayerFilePath returns the file path for a player profile JSON
 // Format: data/players/{playerTag}.json
-func (pb *PathBuilder) GetPlayerFilePath(playerTag string) string {
-	sanitized := SanitizePlayerTag(playerTag)
-	return filepath.Join(pb.GetPlayersDir(), fmt.Sprintf("%s.json", sanitized))
+func (pb *PathBuilder) GetPlayerFilePath(playerTag string) (string, error) {
+	sanitized, err := SanitizePlayerTag(playerTag)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(pb.GetPlayersDir(), fmt.Sprintf("%s.json", sanitized)), nil
 }
 
 // GetAnalysisFilePath returns the timestamped file path for an analysis result
 // Format: data/analysis/YYYYMMDD_HHMMSS_analysis_{playerTag}.json
-func (pb *PathBuilder) GetAnalysisFilePath(playerTag string) string {
-	sanitized := SanitizePlayerTag(playerTag)
+func (pb *PathBuilder) GetAnalysisFilePath(playerTag string) (string, error) {
+	sanitized, err := SanitizePlayerTag(playerTag)
+	if err != nil {
+		return "", err
+	}
 	timestamp := time.Now().Format("20060102_150405")
 	filename := fmt.Sprintf("%s_analysis_%s.json", timestamp, sanitized)
-	return filepath.Join(pb.GetAnalysisDir(), filename)
+	return filepath.Join(pb.GetAnalysisDir(), filename), nil
 }
 
 // GetDeckFilePath returns the timestamped file path for a deck recommendation
 // Format: data/decks/YYYYMMDD_HHMMSS_deck_{playerTag}.json
-func (pb *PathBuilder) GetDeckFilePath(playerTag string) string {
-	sanitized := SanitizePlayerTag(playerTag)
+func (pb *PathBuilder) GetDeckFilePath(playerTag string) (string, error) {
+	sanitized, err := SanitizePlayerTag(playerTag)
+	if err != nil {
+		return "", err
+	}
 	timestamp := time.Now().Format("20060102_150405")
 	filename := fmt.Sprintf("%s_deck_%s.json", timestamp, sanitized)
-	return filepath.Join(pb.GetDecksDir(), filename)
+	return filepath.Join(pb.GetDecksDir(), filename), nil
 }
 
 // GetEventDeckPlayerDir returns the player-specific event deck directory
 // Format: data/event_decks/{playerTag}/
-func (pb *PathBuilder) GetEventDeckPlayerDir(playerTag string) string {
-	sanitized := SanitizePlayerTag(playerTag)
-	return filepath.Join(pb.GetEventDecksDir(), sanitized)
+func (pb *PathBuilder) GetEventDeckPlayerDir(playerTag string) (string, error) {
+	sanitized, err := SanitizePlayerTag(playerTag)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(pb.GetEventDecksDir(), sanitized), nil
 }
 
 // GetEventDeckCollectionPath returns the path to a player's event deck collection file
 // Format: data/event_decks/{playerTag}/collection.json
-func (pb *PathBuilder) GetEventDeckCollectionPath(playerTag string) string {
-	return filepath.Join(pb.GetEventDeckPlayerDir(playerTag), "collection.json")
+func (pb *PathBuilder) GetEventDeckCollectionPath(playerTag string) (string, error) {
+	playerDir, err := pb.GetEventDeckPlayerDir(playerTag)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(playerDir, "collection.json"), nil
 }
 
 // GetEventDeckTypeDir returns the directory for a specific event type
 // Format: data/event_decks/{playerTag}/{eventType}/
-func (pb *PathBuilder) GetEventDeckTypeDir(playerTag, eventType string) string {
-	sanitized := SanitizePlayerTag(playerTag)
-	return filepath.Join(pb.GetEventDecksDir(), sanitized, eventType)
+func (pb *PathBuilder) GetEventDeckTypeDir(playerTag, eventType string) (string, error) {
+	sanitized, err := SanitizePlayerTag(playerTag)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(pb.GetEventDecksDir(), sanitized, eventType), nil
 }
 
 // GetCSVPlayerExportPath returns the path for a player CSV export
 // Format: data/csv/players/{playerTag}_player.csv
-func (pb *PathBuilder) GetCSVPlayerExportPath(playerTag string) string {
-	sanitized := SanitizePlayerTag(playerTag)
+func (pb *PathBuilder) GetCSVPlayerExportPath(playerTag string) (string, error) {
+	sanitized, err := SanitizePlayerTag(playerTag)
+	if err != nil {
+		return "", err
+	}
 	filename := fmt.Sprintf("%s_player.csv", sanitized)
-	return filepath.Join(pb.GetCSVPlayersDir(), filename)
+	return filepath.Join(pb.GetCSVPlayersDir(), filename), nil
 }
 
 // GetCSVCardsExportPath returns the path for a cards CSV export
 // Format: data/csv/players/{playerTag}_cards.csv
-func (pb *PathBuilder) GetCSVCardsExportPath(playerTag string) string {
-	sanitized := SanitizePlayerTag(playerTag)
+func (pb *PathBuilder) GetCSVCardsExportPath(playerTag string) (string, error) {
+	sanitized, err := SanitizePlayerTag(playerTag)
+	if err != nil {
+		return "", err
+	}
 	filename := fmt.Sprintf("%s_cards.csv", sanitized)
-	return filepath.Join(pb.GetCSVPlayersDir(), filename)
+	return filepath.Join(pb.GetCSVPlayersDir(), filename), nil
 }
 
 // GetCSVEventsExportPath returns the path for an events CSV export
 // Format: data/csv/events/{playerTag}_events.csv
-func (pb *PathBuilder) GetCSVEventsExportPath(playerTag string) string {
-	sanitized := SanitizePlayerTag(playerTag)
+func (pb *PathBuilder) GetCSVEventsExportPath(playerTag string) (string, error) {
+	sanitized, err := SanitizePlayerTag(playerTag)
+	if err != nil {
+		return "", err
+	}
 	filename := fmt.Sprintf("%s_events.csv", sanitized)
-	return filepath.Join(pb.GetCSVEventsDir(), filename)
+	return filepath.Join(pb.GetCSVEventsDir(), filename), nil
 }
 
 // GetCSVAnalysisExportPath returns the path for an analysis CSV export
 // Format: data/csv/analysis/{playerTag}_analysis.csv
-func (pb *PathBuilder) GetCSVAnalysisExportPath(playerTag string) string {
-	sanitized := SanitizePlayerTag(playerTag)
+func (pb *PathBuilder) GetCSVAnalysisExportPath(playerTag string) (string, error) {
+	sanitized, err := SanitizePlayerTag(playerTag)
+	if err != nil {
+		return "", err
+	}
 	filename := fmt.Sprintf("%s_analysis.csv", sanitized)
-	return filepath.Join(pb.GetCSVAnalysisDir(), filename)
+	return filepath.Join(pb.GetCSVAnalysisDir(), filename), nil
 }
 
 // SanitizePlayerTag removes # prefix and converts to safe filename
 // Example: #PLAYERTAG -> R8QGUQRCV
-func SanitizePlayerTag(playerTag string) string {
-	return strings.TrimPrefix(playerTag, "#")
+func SanitizePlayerTag(playerTag string) (string, error) {
+	return playertag.Sanitize(playerTag)
 }
 
 // EnsureDataDirectories creates all standard data directories if they don't exist
