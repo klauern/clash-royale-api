@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
+	"strings"
 	"time"
 )
 
@@ -449,6 +450,16 @@ type archetypeIterator struct {
 	archetype string
 }
 
+const (
+	iteratorArchetypeCycle         = "cycle"
+	iteratorArchetypeBeatdown      = "beatdown"
+	iteratorArchetypeControl       = "control"
+	iteratorArchetypeBait          = "bait"
+	iteratorArchetypeBridge        = "bridge"
+	iteratorArchetypeBridgeSpam    = "bridge_spam"
+	iteratorArchetypeBridgeSpamAlt = "bridgespam"
+)
+
 func newArchetypeIterator(gen *DeckGenerator) *archetypeIterator {
 	sampleSize := gen.config.SampleSize
 	if sampleSize <= 0 {
@@ -476,12 +487,55 @@ func (it *archetypeIterator) Next(ctx context.Context) ([]string, error) {
 	it.remaining--
 	it.generated++
 
-	// TODO: Implement archetype-specific logic
-	// For now, delegate to smart sampling
-	// Future: integrate with archetypes package for archetype-aware generation
+	maxAttempts := 100
+	var lastErr error
+	targetComposition := archetypeRoleComposition(it.archetype, it.gen.composition)
+	smartIter := &smartSampleIterator{gen: it.gen, rng: it.gen.rng}
 
-	smartIter := newSmartSampleIterator(it.gen)
-	return smartIter.Next(ctx)
+	for range maxAttempts {
+		deck := make([]string, 0, 8)
+		used := make(map[string]bool)
+
+		for card := range it.gen.includeMap {
+			deck = append(deck, card)
+			used[card] = true
+		}
+
+		roleSelections := []struct {
+			role  CardRole
+			count int
+		}{
+			{RoleWinCondition, targetComposition.WinConditions},
+			{RoleBuilding, targetComposition.Buildings},
+			{RoleSpellBig, targetComposition.BigSpells},
+			{RoleSpellSmall, targetComposition.SmallSpells},
+			{RoleSupport, targetComposition.Support},
+			{RoleCycle, targetComposition.Cycle},
+		}
+
+		for _, sel := range roleSelections {
+			selected := smartIter.selectWeightedCardsFromRole(sel.role, sel.count, used)
+			deck = append(deck, selected...)
+		}
+
+		for len(deck) < 8 {
+			added := it.gen.fillRemainingSlots(len(deck), used)
+			if len(added) == 0 {
+				break
+			}
+			deck = append(deck, added...)
+		}
+
+		lastErr = it.gen.validateDeck(deck)
+		if lastErr == nil {
+			return deck, nil
+		}
+	}
+
+	if lastErr != nil {
+		return nil, fmt.Errorf("failed to generate archetype-focused deck after %d attempts, last error: %w", maxAttempts, lastErr)
+	}
+	return nil, fmt.Errorf("failed to generate archetype-focused deck after %d attempts", maxAttempts)
 }
 
 func (it *archetypeIterator) Checkpoint() *GeneratorCheckpoint {
@@ -518,6 +572,50 @@ func (it *archetypeIterator) Reset() {
 
 func (it *archetypeIterator) Close() error {
 	return nil
+}
+
+func archetypeRoleComposition(archetype string, base RoleComposition) RoleComposition {
+	composition := base
+
+	switch strings.ToLower(strings.TrimSpace(archetype)) {
+	case iteratorArchetypeCycle:
+		composition.WinConditions = 1
+		composition.Buildings = 1
+		composition.BigSpells = 0
+		composition.SmallSpells = 2
+		composition.Support = 2
+		composition.Cycle = 2
+	case iteratorArchetypeBeatdown:
+		composition.WinConditions = 1
+		composition.Buildings = 0
+		composition.BigSpells = 1
+		composition.SmallSpells = 1
+		composition.Support = 4
+		composition.Cycle = 1
+	case iteratorArchetypeControl:
+		composition.WinConditions = 1
+		composition.Buildings = 2
+		composition.BigSpells = 1
+		composition.SmallSpells = 1
+		composition.Support = 2
+		composition.Cycle = 1
+	case iteratorArchetypeBait:
+		composition.WinConditions = 1
+		composition.Buildings = 1
+		composition.BigSpells = 1
+		composition.SmallSpells = 2
+		composition.Support = 2
+		composition.Cycle = 1
+	case iteratorArchetypeBridge, iteratorArchetypeBridgeSpam, iteratorArchetypeBridgeSpamAlt:
+		composition.WinConditions = 2
+		composition.Buildings = 0
+		composition.BigSpells = 1
+		composition.SmallSpells = 1
+		composition.Support = 3
+		composition.Cycle = 1
+	}
+
+	return composition
 }
 
 // geneticIterator uses genetic algorithm to evolve optimal decks

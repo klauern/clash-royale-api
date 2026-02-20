@@ -2,13 +2,15 @@
 package events
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/klauer/clash-royale-api/go/internal/csvutil"
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 )
 
 // ExportFormat represents the supported export formats
@@ -158,119 +160,42 @@ func (e *Exporter) groupByEventType(collection *EventDeckCollection) *EventDeckC
 }
 
 // exportCSV exports the collection to CSV format
-func (e *Exporter) exportCSV(collection *EventDeckCollection) (returnErr error) {
-	if err := os.MkdirAll(e.options.OutputDir, 0o755); err != nil {
+func (e *Exporter) exportCSV(collection *EventDeckCollection) error {
+	if err := storage.EnsureDirectory(e.options.OutputDir); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	filename := fmt.Sprintf("event_decks_%s.csv", time.Now().Format("20060102_150405"))
 	filePath := filepath.Join(e.options.OutputDir, filename)
 
-	file, err := os.Create(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to create CSV file: %w", err)
-	}
-	defer func() {
-		if err := file.Close(); err != nil && returnErr == nil {
-			returnErr = fmt.Errorf("failed to close CSV file: %w", err)
-		}
-	}()
-
-	// Write headers
-	headers := []string{
-		"Event ID", "Event Name", "Event Type", "Start Time", "End Time",
-		"Deck Cards", "Average Elixir", "Total Battles", "Wins", "Losses",
-		"Win Rate", "Current Streak", "Best Streak", "Crowns Earned",
-		"Crowns Lost", "Progress", "Notes",
-	}
-
-	if _, err := file.WriteString(strings.Join(headers, ",") + "\n"); err != nil {
-		return fmt.Errorf("failed to write CSV headers: %w", err)
-	}
-
-	// Write deck data
-	currentEventType := ""
+	rows := make([][]string, 0, len(collection.Decks))
+	currentEventType := EventType("")
 	for _, deck := range collection.Decks {
-		// Add event type separator if grouping
-		if e.options.GroupByEvent && string(deck.EventType) != currentEventType {
-			currentEventType = string(deck.EventType)
-			if _, err := file.WriteString(fmt.Sprintf("# Event Type: %s\n", currentEventType)); err != nil {
-				return fmt.Errorf("failed to write event separator: %w", err)
-			}
+		if e.options.GroupByEvent && deck.EventType != currentEventType {
+			currentEventType = deck.EventType
+			rows = append(rows, EventTypeSeparatorCSVRow(currentEventType))
 		}
+		rows = append(rows, EventDeckCSVRow(deck))
+	}
 
-		// Format deck cards
-		cardNames := make([]string, len(deck.Deck.Cards))
-		for i, card := range deck.Deck.Cards {
-			cardNames[i] = fmt.Sprintf("%s(L%d)", card.Name, card.Level)
-		}
-
-		endTime := ""
-		if deck.EndTime != nil {
-			endTime = deck.EndTime.Format("2006-01-02 15:04:05")
-		}
-
-		row := []string{
-			deck.EventID,
-			deck.EventName,
-			string(deck.EventType),
-			deck.StartTime.Format("2006-01-02 15:04:05"),
-			endTime,
-			strings.Join(cardNames, "|"),
-			fmt.Sprintf("%.1f", deck.Deck.AvgElixir),
-			fmt.Sprintf("%d", deck.Performance.TotalBattles()),
-			fmt.Sprintf("%d", deck.Performance.Wins),
-			fmt.Sprintf("%d", deck.Performance.Losses),
-			fmt.Sprintf("%.2f", deck.Performance.WinRate),
-			fmt.Sprintf("%d", deck.Performance.CurrentStreak),
-			fmt.Sprintf("%d", deck.Performance.BestStreak),
-			fmt.Sprintf("%d", deck.Performance.CrownsEarned),
-			fmt.Sprintf("%d", deck.Performance.CrownsLost),
-			string(deck.Performance.Progress),
-			deck.Notes,
-		}
-
-		csvRow := make([]string, len(row))
-		for i, value := range row {
-			if strings.Contains(value, ",") || strings.Contains(value, " ") {
-				csvRow[i] = fmt.Sprintf(`"%s"`, value)
-			} else {
-				csvRow[i] = value
-			}
-		}
-
-		if _, err := file.WriteString(strings.Join(csvRow, ",") + "\n"); err != nil {
-			return fmt.Errorf("failed to write CSV row: %w", err)
-		}
+	if err := csvutil.Write(filePath, EventDeckCSVHeaders(), rows); err != nil {
+		return fmt.Errorf("failed to write CSV export: %w", err)
 	}
 
 	return nil
 }
 
 // exportJSON exports the collection to JSON format
-func (e *Exporter) exportJSON(collection *EventDeckCollection) (returnErr error) {
-	if err := os.MkdirAll(e.options.OutputDir, 0o755); err != nil {
+func (e *Exporter) exportJSON(collection *EventDeckCollection) error {
+	if err := storage.EnsureDirectory(e.options.OutputDir); err != nil {
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	filename := fmt.Sprintf("event_decks_%s.json", time.Now().Format("20060102_150405"))
 	filePath := filepath.Join(e.options.OutputDir, filename)
 
-	file, err := os.Create(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to create JSON file: %w", err)
-	}
-	defer func() {
-		if err := file.Close(); err != nil && returnErr == nil {
-			returnErr = fmt.Errorf("failed to close JSON file: %w", err)
-		}
-	}()
-
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-
-	if err := encoder.Encode(collection); err != nil {
-		return fmt.Errorf("failed to encode JSON: %w", err)
+	if err := storage.WriteJSON(filePath, collection); err != nil {
+		return fmt.Errorf("failed to write JSON export: %w", err)
 	}
 
 	return nil

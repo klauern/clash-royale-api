@@ -7,11 +7,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
@@ -21,8 +21,6 @@ type Storage struct {
 	playerTag string
 	dbPath    string
 }
-
-var playerTagPattern = regexp.MustCompile(`^[A-Za-z0-9]+$`)
 
 // NewStorage creates a new Storage instance for the given player tag
 // The database file is stored at ~/.cr-api/leaderboards/<player_tag>.db
@@ -68,14 +66,11 @@ func NewStorage(playerTag string) (*Storage, error) {
 }
 
 func normalizePlayerTag(playerTag string) (string, string, error) {
-	sanitizedTag := strings.TrimSpace(strings.TrimPrefix(playerTag, "#"))
-	if sanitizedTag == "" {
-		return "", "", fmt.Errorf("player tag is required")
+	sanitizedTag, err := playertag.Sanitize(playerTag)
+	if err != nil {
+		return "", "", err
 	}
-	if !playerTagPattern.MatchString(sanitizedTag) {
-		return "", "", fmt.Errorf("invalid player tag: must contain only letters and digits")
-	}
-	sanitizedTag = strings.ToUpper(sanitizedTag)
+
 	return "#" + sanitizedTag, sanitizedTag, nil
 }
 

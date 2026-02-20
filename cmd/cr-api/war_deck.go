@@ -77,8 +77,8 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 	deckAnalysis := deckpkg.ConvertAnalysisForDeckBuilding(cardAnalysis)
 
 	builder := archetypes.NewArchetypeBuilder(dataDir)
-	if unlockedEvos := cmd.String("unlocked-evolutions"); unlockedEvos != "" {
-		builder.SetUnlockedEvolutions(strings.Split(unlockedEvos, ","))
+	if unlockedEvos := unlockedEvolutionsFromCommand(cmd); len(unlockedEvos) > 0 {
+		builder.SetUnlockedEvolutions(unlockedEvos)
 	}
 	if slots := cmd.Int("evolution-slots"); slots > 0 {
 		builder.SetEvolutionSlotLimit(slots)

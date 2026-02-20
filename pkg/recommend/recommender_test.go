@@ -438,23 +438,63 @@ func TestGetTopArchetypes_LimitExceedsAvailable(t *testing.T) {
 	}
 }
 
-// TestApplyFilters tests filter application (currently a no-op)
+// TestApplyFilters tests arena/league progression filtering behavior.
 func TestApplyFilters(t *testing.T) {
 	dataDir := createTestDataDir(t)
-	options := DefaultOptions()
-	recommender := NewRecommender(dataDir, options)
-
 	recommendations := []*DeckRecommendation{
-		{Deck: &deck.DeckRecommendation{}, Archetype: "cycle"},
-		{Deck: &deck.DeckRecommendation{}, Archetype: "beatdown"},
+		{
+			Deck:               &deck.DeckRecommendation{},
+			Archetype:          "cycle",
+			CompatibilityScore: 55,
+			UpgradeCost: UpgradeCost{
+				DistanceMetric: 0.30,
+				CardsNeeded:    8000,
+			},
+		},
+		{
+			Deck:               &deck.DeckRecommendation{},
+			Archetype:          "beatdown",
+			CompatibilityScore: 28,
+			UpgradeCost: UpgradeCost{
+				DistanceMetric: 0.72,
+				CardsNeeded:    26000,
+			},
+		},
 	}
 
-	filtered := recommender.applyFilters(recommendations)
+	t.Run("no filters returns all", func(t *testing.T) {
+		recommender := NewRecommender(dataDir, DefaultOptions())
+		filtered := recommender.applyFilters(recommendations)
+		if len(filtered) != len(recommendations) {
+			t.Fatalf("applyFilters returned %d, want %d", len(filtered), len(recommendations))
+		}
+	})
 
-	// Currently filters are not implemented, should return all
-	if len(filtered) != len(recommendations) {
-		t.Errorf("applyFilters returned %d items, want %d (no filtering yet)", len(filtered), len(recommendations))
-	}
+	t.Run("arena filter removes high-upgrade recommendations", func(t *testing.T) {
+		options := DefaultOptions()
+		options.Arena = "Arena 9"
+		recommender := NewRecommender(dataDir, options)
+		filtered := recommender.applyFilters(recommendations)
+		if len(filtered) != 1 {
+			t.Fatalf("applyFilters with arena returned %d, want 1", len(filtered))
+		}
+		if filtered[0].Archetype != "cycle" {
+			t.Fatalf("expected cycle recommendation to remain, got %s", filtered[0].Archetype)
+		}
+	})
+
+	t.Run("league filter enforces compatibility threshold", func(t *testing.T) {
+		options := DefaultOptions()
+		options.League = "Challenger I"
+		recommender := NewRecommender(dataDir, options)
+		filtered := recommender.applyFilters(recommendations)
+		if len(filtered) != 1 {
+			t.Fatalf("applyFilters with league returned %d, want 1", len(filtered))
+		}
+		if filtered[0].CompatibilityScore < 40.0 {
+			t.Fatalf("expected compatibility >= 40 after challenger filter, got %.1f", filtered[0].CompatibilityScore)
+		}
+	})
 }
 
 // TestRecommendationFiltering tests minimum compatibility filtering

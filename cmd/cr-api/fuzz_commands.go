@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -1546,43 +1545,12 @@ func deckKeyForResult(result FuzzingResult) string {
 
 // sortFuzzingResults sorts fuzzing results by the specified field
 func sortFuzzingResults(results []FuzzingResult, sortBy string) {
-	sort.Slice(results, func(i, j int) bool {
-		var iValue, jValue float64
-
-		switch sortBy {
-		case "overall":
-			iValue = results[i].OverallScore
-			jValue = results[j].OverallScore
-		case "attack":
-			iValue = results[i].AttackScore
-			jValue = results[j].AttackScore
-		case "defense":
-			iValue = results[i].DefenseScore
-			jValue = results[j].DefenseScore
-		case "synergy":
-			iValue = results[i].SynergyScore
-			jValue = results[j].SynergyScore
-		case "versatility":
-			iValue = results[i].VersatilityScore
-			jValue = results[j].VersatilityScore
-		case "elixir":
-			// For elixir, sort ascending (lower is better)
-			return results[i].AvgElixir < results[j].AvgElixir
-		default:
-			iValue = results[i].OverallScore
-			jValue = results[j].OverallScore
-		}
-
-		return iValue > jValue // Descending order (higher is better)
-	})
+	sortFuzzingResultsImpl(results, sortBy)
 }
 
 // getTopResults returns the top N results
 func getTopResults(results []FuzzingResult, top int) []FuzzingResult {
-	if len(results) <= top {
-		return results
-	}
-	return results[:top]
+	return getTopResultsImpl(results, top)
 }
 
 // formatFuzzingResults formats and outputs fuzzing results
@@ -1597,16 +1565,7 @@ func formatFuzzingResults(
 	stats *deck.FuzzingStats,
 	totalFiltered int,
 ) error {
-	switch format {
-	case "json":
-		return formatResultsJSON(results, playerName, playerTag, fuzzerConfig, mode, generationTime, stats, totalFiltered)
-	case "csv":
-		return formatResultsCSV(results)
-	case "detailed":
-		return formatResultsDetailed(results, playerName, playerTag)
-	default:
-		return formatResultsSummary(results, playerName, playerTag, fuzzerConfig, mode, generationTime, stats, totalFiltered)
-	}
+	return formatFuzzingResultsImpl(results, format, playerName, playerTag, fuzzerConfig, mode, generationTime, stats, totalFiltered)
 }
 
 // formatResultsSummary outputs results in summary format
@@ -1620,77 +1579,7 @@ func formatResultsSummary(
 	stats *deck.FuzzingStats,
 	totalFiltered int,
 ) error {
-	printf("\nDeck Fuzzing Results for %s (%s)\n", playerName, playerTag)
-	printf("Generated %d decks in %v\n", stats.Generated, generationTime.Round(time.Millisecond))
-	printf("Configuration:\n")
-	if mode != "" {
-		printf("  Mode: %s\n", mode)
-	}
-
-	if len(fuzzerConfig.IncludeCards) > 0 {
-		printf("  Include cards: %s\n", strings.Join(fuzzerConfig.IncludeCards, ", "))
-	}
-	if len(fuzzerConfig.ExcludeCards) > 0 {
-		printf("  Exclude cards: %s\n", strings.Join(fuzzerConfig.ExcludeCards, ", "))
-	}
-	printf("  Elixir range: %.1f - %.1f\n", fuzzerConfig.MinAvgElixir, fuzzerConfig.MaxAvgElixir)
-	if fuzzerConfig.MinOverallScore > 0 {
-		printf("  Min overall score: %.1f\n", fuzzerConfig.MinOverallScore)
-	}
-	if fuzzerConfig.MinSynergyScore > 0 {
-		printf("  Min synergy score: %.1f\n", fuzzerConfig.MinSynergyScore)
-	}
-
-	printf("\nTop %d Decks (from %d decks passing filters):\n\n", len(results), totalFiltered)
-
-	// Print table header with multi-line deck display
-	w := new(tabwriter.Writer)
-	w.Init(os.Stdout, 0, 8, 2, ' ', 0)
-	fprintln(w, "Rank\tDeck\tOverall\tLadder\tNorm\tAttack\tDefense\tSynergy\tElixir")
-
-	// Print each deck with all 8 cards
-	for i, result := range results {
-		// Format deck with all cards (no truncation)
-		deckStr := strings.Join(result.Deck, ", ")
-
-		// If deck string is very long, use multi-line format
-		if len(deckStr) > 50 {
-			// First line: Rank, first 4 cards, scores
-			firstLine := strings.Join(result.Deck[:4], ", ")
-			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
-				i+1,
-				firstLine+",",
-				result.OverallScore,
-				result.LadderScore,
-				result.NormalizedScore,
-				result.AttackScore,
-				result.DefenseScore,
-				result.SynergyScore,
-				result.AvgElixir,
-			)
-
-			// Second line: continuation with remaining cards
-			secondLine := strings.Join(result.Deck[4:], ", ")
-			fprintf(w, "\t%s\n", secondLine)
-		} else {
-			// Single line format for shorter deck strings
-			fprintf(w, "%d\t%s\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\t%.2f\n",
-				i+1,
-				deckStr,
-				result.OverallScore,
-				result.LadderScore,
-				result.NormalizedScore,
-				result.AttackScore,
-				result.DefenseScore,
-				result.SynergyScore,
-				result.AvgElixir,
-			)
-		}
-	}
-
-	flushWriter(w)
-
-	return nil
+	return formatResultsSummaryImpl(results, playerName, playerTag, fuzzerConfig, mode, generationTime, stats, totalFiltered)
 }
 
 // formatResultsJSON outputs results in JSON format
@@ -1704,74 +1593,12 @@ func formatResultsJSON(
 	stats *deck.FuzzingStats,
 	totalFiltered int,
 ) error {
-	output := map[string]any{
-		"player_name":             playerName,
-		"player_tag":              playerTag,
-		"generated":               stats.Generated,
-		"success":                 stats.Success,
-		"failed":                  stats.Failed,
-		"filtered":                totalFiltered,
-		"returned":                len(results),
-		"generation_time_seconds": generationTime.Seconds(),
-		"config": map[string]any{
-			"mode":              mode,
-			"count":             fuzzerConfig.Count,
-			"workers":           fuzzerConfig.Workers,
-			"include_cards":     fuzzerConfig.IncludeCards,
-			"exclude_cards":     fuzzerConfig.ExcludeCards,
-			"min_avg_elixir":    fuzzerConfig.MinAvgElixir,
-			"max_avg_elixir":    fuzzerConfig.MaxAvgElixir,
-			"min_overall_score": fuzzerConfig.MinOverallScore,
-			"min_synergy_score": fuzzerConfig.MinSynergyScore,
-		},
-		"results": results,
-	}
-
-	encoder := json.NewEncoder(os.Stdout)
-	encoder.SetIndent("", "  ")
-	return encoder.Encode(output)
+	return formatResultsJSONImpl(results, playerName, playerTag, fuzzerConfig, mode, generationTime, stats, totalFiltered)
 }
 
 // formatResultsCSV outputs results in CSV format
 func formatResultsCSV(results []FuzzingResult) error {
-	w := csv.NewWriter(os.Stdout)
-
-	// Write header
-	header := []string{"Rank", "Deck", "Overall", "Contextual", "Ladder", "Normalized", "LevelRatio", "NormFactor", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
-	if err := w.Write(header); err != nil {
-		return err
-	}
-
-	// Write rows
-	for i, result := range results {
-		deckStr := strings.Join(result.Deck, ", ")
-		row := []string{
-			strconv.Itoa(i + 1),
-			deckStr,
-			fmt.Sprintf("%.2f", result.OverallScore),
-			fmt.Sprintf("%.2f", result.ContextualScore),
-			fmt.Sprintf("%.2f", result.LadderScore),
-			fmt.Sprintf("%.2f", result.NormalizedScore),
-			fmt.Sprintf("%.3f", result.DeckLevelRatio),
-			fmt.Sprintf("%.3f", result.NormalizationFactor),
-			fmt.Sprintf("%.2f", result.AttackScore),
-			fmt.Sprintf("%.2f", result.DefenseScore),
-			fmt.Sprintf("%.2f", result.SynergyScore),
-			fmt.Sprintf("%.2f", result.VersatilityScore),
-			fmt.Sprintf("%.2f", result.AvgElixir),
-			result.Archetype,
-		}
-		if err := w.Write(row); err != nil {
-			return err
-		}
-	}
-
-	w.Flush()
-	if err := w.Error(); err != nil {
-		return err
-	}
-
-	return nil
+	return formatResultsCSVImpl(results)
 }
 
 // formatResultsDetailed outputs results in detailed format with full evaluation
@@ -1780,74 +1607,12 @@ func formatResultsDetailed(
 	playerName string,
 	playerTag string,
 ) error {
-	printf("\nDeck Fuzzing Results for %s (%s)\n", playerName, playerTag)
-	printf("\nTop %d Decks:\n\n", len(results))
-
-	for i, result := range results {
-		printf("=== Deck %d ===\n", i+1)
-		printf("Cards: %s\n", strings.Join(result.Deck, ", "))
-		printf("Overall: %.2f | Attack: %.2f | Defense: %.2f | Synergy: %.2f | Versatility: %.2f\n",
-			result.OverallScore, result.AttackScore, result.DefenseScore, result.SynergyScore, result.VersatilityScore)
-		printf("Contextual: %.2f | Ladder: %.2f | Normalized: %.2f\n",
-			result.ContextualScore, result.LadderScore, result.NormalizedScore)
-		printf("Level Ratio: %.3f | Normalization Factor: %.3f\n",
-			result.DeckLevelRatio, result.NormalizationFactor)
-		printf("Avg Elixir: %.2f | Archetype: %s (%.0f%% confidence)\n",
-			result.AvgElixir, result.Archetype, result.ArchetypeConfidence*100)
-		printf("Evaluated: %s\n\n", result.EvaluatedAt.Format(time.RFC3339))
-	}
-
-	return nil
+	return formatResultsDetailedImpl(results, playerName, playerTag)
 }
 
 // saveResultsToFile saves results to a file in the specified format
 func saveResultsToFile(results []FuzzingResult, outputDir, format, playerTag string) error {
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		return err
-	}
-
-	timestamp := time.Now().Format("20060102_150405")
-	cleanTag := strings.TrimPrefix(playerTag, "#")
-	var filename string
-
-	switch format {
-	case "json":
-		filename = fmt.Sprintf("fuzz_%s_%s.json", cleanTag, timestamp)
-	case "csv":
-		filename = fmt.Sprintf("fuzz_%s_%s.csv", cleanTag, timestamp)
-	default:
-		filename = fmt.Sprintf("fuzz_%s_%s.txt", cleanTag, timestamp)
-	}
-
-	outputPath := filepath.Join(outputDir, filename)
-
-	file, err := os.Create(outputPath)
-	if err != nil {
-		return err
-	}
-	defer closeFile(file)
-
-	// Redirect stdout to file for formatting
-	oldStdout := os.Stdout
-	oldStderr := os.Stderr
-	os.Stdout = file
-	os.Stderr = file
-	defer func() {
-		os.Stdout = oldStdout
-		os.Stderr = oldStderr
-	}()
-
-	// Format results to file
-	switch format {
-	case "json":
-		config := &deck.FuzzingConfig{}
-		stats := &deck.FuzzingStats{}
-		return formatResultsJSON(results, cleanTag, playerTag, config, "unknown", 0, stats, len(results))
-	case "csv":
-		return formatResultsCSV(results)
-	default:
-		return formatResultsSummary(results, cleanTag, playerTag, &deck.FuzzingConfig{}, "unknown", 0, &deck.FuzzingStats{}, len(results))
-	}
+	return saveResultsToFileImpl(results, outputDir, format, playerTag)
 }
 
 // loadPlayerFromAnalysis loads player data from an existing analysis file
@@ -2392,8 +2157,6 @@ func formatListResultsJSON(
 
 // formatListResultsCSV formats list results in CSV format
 func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int]fuzzstorage.DeckEntry) error {
-	w := csv.NewWriter(os.Stdout)
-
 	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
 	if theoreticalByID != nil {
 		header = []string{
@@ -2405,10 +2168,7 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int
 			"Versatility", "AvgElixir", "Archetype",
 		}
 	}
-	if err := w.Write(header); err != nil {
-		return err
-	}
-
+	rows := make([][]string, 0, len(decks))
 	for i, deck := range decks {
 		deckStr := strings.Join(deck.Cards, ", ")
 		row := []string{
@@ -2441,17 +2201,9 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int
 				deck.Archetype,
 			)
 		}
-		if err := w.Write(row); err != nil {
-			return err
-		}
+		rows = append(rows, row)
 	}
-
-	w.Flush()
-	if err := w.Error(); err != nil {
-		return err
-	}
-
-	return nil
+	return writeCSVDocument(os.Stdout, header, rows)
 }
 
 // formatListResultsDetailed formats list results in detailed format

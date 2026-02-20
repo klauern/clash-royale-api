@@ -384,9 +384,13 @@ func calculateDeckCardUpgrades(deckCardNames []string, cardAnalysis deck.CardAna
 
 		// Determine if this is a key upgrade
 		isKeyUpgrade := cardData.Rarity == rarityLegendary || cardData.Rarity == rarityChampion
+		unlocksNewDeck := upgradeUnlocksNewArchetype(cardName, cardData, targetLevel)
 
 		// Generate reason
 		reason := fmt.Sprintf("Upgrade %s from level %d to %d (%s)", cardName, cardData.Level, targetLevel, cardData.Rarity)
+		if unlocksNewDeck {
+			reason += " - may unlock additional archetype options"
+		}
 
 		impacts = append(impacts, DeckCardUpgrade{
 			CardName:       cardName,
@@ -399,11 +403,26 @@ func calculateDeckCardUpgrades(deckCardNames []string, cardAnalysis deck.CardAna
 			CardsNeeded:    cardsNeeded,
 			Reason:         reason,
 			IsKeyUpgrade:   isKeyUpgrade,
-			UnlocksNewDeck: false, // TODO: Could analyze if this unlocks new archetypes
+			UnlocksNewDeck: unlocksNewDeck,
 		})
 	}
 
 	return impacts
+}
+
+func upgradeUnlocksNewArchetype(cardName string, cardData deck.CardLevelData, targetLevel int) bool {
+	// Win conditions crossing level 11 usually unlock more viable deck archetypes.
+	if deck.IsWinCondition(cardName) && cardData.Level < 11 && targetLevel >= 11 {
+		return true
+	}
+
+	// High-rarity cards crossing level 12 often become practical in additional archetypes.
+	isHighRarity := cardData.Rarity == rarityLegendary || cardData.Rarity == rarityChampion
+	if isHighRarity && cardData.Level < 12 && targetLevel >= 12 {
+		return true
+	}
+
+	return false
 }
 
 // calculateBaseImpact calculates the base impact score for an upgrade

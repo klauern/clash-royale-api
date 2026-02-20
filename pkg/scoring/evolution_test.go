@@ -485,3 +485,25 @@ func TestEvolutionScorer_OverMaxEvolution(t *testing.T) {
 		t.Errorf("score should be clamped to 0.25, got %f", score)
 	}
 }
+
+func TestHasEvolutionOverride_UsesDeckOverrides(t *testing.T) {
+	tests := []struct {
+		name           string
+		cardName       string
+		evolutionLevel int
+		want           bool
+	}{
+		{name: "known override evolved", cardName: "Valkyrie", evolutionLevel: 1, want: true},
+		{name: "known override not evolved", cardName: "Valkyrie", evolutionLevel: 0, want: false},
+		{name: "unknown override", cardName: "Hog Rider", evolutionLevel: 1, want: false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := HasEvolutionOverride(tt.cardName, tt.evolutionLevel)
+			if got != tt.want {
+				t.Fatalf("HasEvolutionOverride(%q, %d) = %v, want %v", tt.cardName, tt.evolutionLevel, got, tt.want)
+			}
+		})
+	}
+}

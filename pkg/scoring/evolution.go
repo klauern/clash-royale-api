@@ -4,6 +4,8 @@ package scoring
 
 import (
 	"math"
+
+	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
 // EvolutionScorer implements the Scorer interface for evolution-aware scoring.
@@ -263,10 +265,7 @@ func (s *EvolutionScorer) GetLevelScalingExponent() float64 {
 // This is determined by checking against known evolution overrides in the
 // deck package.
 func HasEvolutionOverride(cardName string, evolutionLevel int) bool {
-	// This would integrate with deck.evolutionOverrides from the original code
-	// For now, return a placeholder
-	// TODO: Integrate with deck.HasEvolutionOverride when available
-	return false
+	return deck.HasEvolutionOverride(cardName, evolutionLevel)
 }
 
 // CalculateEvolutionBonusForCard is a convenience function for calculating

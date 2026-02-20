@@ -1,10 +1,10 @@
 package csv
 
 import (
-	"encoding/csv"
-	"fmt"
-	"os"
 	"path/filepath"
+
+	"github.com/klauer/clash-royale-api/go/internal/csvutil"
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 )
 
 // BaseExporter provides common functionality for CSV exporters
@@ -14,43 +14,12 @@ type BaseExporter struct {
 
 // writeCSV writes data to a CSV file
 func (e *BaseExporter) writeCSV(filePath string, headers []string, rows [][]string) (returnErr error) {
-	// Create directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
+	return csvutil.Write(filePath, headers, rows)
+}
 
-	// Create file
-	file, err := os.Create(filePath)
-	if err != nil {
-		return fmt.Errorf("failed to create file: %w", err)
-	}
-	defer func() {
-		if err := file.Close(); err != nil && returnErr == nil {
-			returnErr = fmt.Errorf("failed to close file: %w", err)
-		}
-	}()
-
-	// Create CSV writer
-	writer := csv.NewWriter(file)
-
-	// Write headers
-	if err := writer.Write(headers); err != nil {
-		return fmt.Errorf("failed to write headers: %w", err)
-	}
-
-	// Write rows
-	for _, row := range rows {
-		if err := writer.Write(row); err != nil {
-			return fmt.Errorf("failed to write row: %w", err)
-		}
-	}
-
-	writer.Flush()
-	if err := writer.Error(); err != nil {
-		return fmt.Errorf("failed to flush csv: %w", err)
-	}
-
-	return nil
+func (e *BaseExporter) csvFilePath(dataDir, subdir string) string {
+	pathBuilder := storage.NewPathBuilder(dataDir)
+	return filepath.Join(pathBuilder.GetCSVDir(), subdir, e.FilenameBase)
 }
 
 // CSVExporter wraps a BaseExporter to implement the exporter.Exporter interface

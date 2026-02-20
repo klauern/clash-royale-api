@@ -342,7 +342,11 @@ func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
 			printf("\nSaving analysis to: %s\n", dataDir)
 		}
 		pb := storage.NewPathBuilder(dataDir)
-		analysisPath := pb.GetAnalysisFilePath(cardAnalysis.PlayerTag)
+		analysisPath, pathErr := pb.GetAnalysisFilePath(cardAnalysis.PlayerTag)
+		if pathErr != nil {
+			printf("Warning: failed to build analysis path for player tag %q: %v\n", cardAnalysis.PlayerTag, pathErr)
+			analysisPath = pb.GetAnalysisDir()
+		}
 		if err := saveAnalysisData(dataDir, cardAnalysis); err != nil {
 			printf("Warning: Failed to save analysis: %v\n", err)
 		} else {
@@ -473,7 +477,10 @@ func saveAnalysisData(dataDir string, a *analysis.CardAnalysis) error {
 	}
 
 	// Get standardized file path with timestamp
-	filename := pb.GetAnalysisFilePath(a.PlayerTag)
+	filename, err := pb.GetAnalysisFilePath(a.PlayerTag)
+	if err != nil {
+		return fmt.Errorf("failed to sanitize player tag %q: %w", a.PlayerTag, err)
+	}
 
 	data, err := json.MarshalIndent(a, "", "  ")
 	if err != nil {

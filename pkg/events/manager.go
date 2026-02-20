@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
@@ -51,7 +52,7 @@ func (m *Manager) ensurePlayerDirectories(playerTag string) error {
 	}
 
 	for _, dir := range dirs {
-		if err := os.MkdirAll(dir, 0o755); err != nil {
+		if err := storage.EnsureDirectory(dir); err != nil {
 			return fmt.Errorf("failed to create directory %s: %w", dir, err)
 		}
 	}
@@ -84,16 +85,9 @@ func (m *Manager) SaveEventDeck(eventDeck *EventDeck) error {
 	eventName = strings.ReplaceAll(eventName, " ", "_")
 	eventName = strings.ReplaceAll(eventName, "/", "_")
 	filename := fmt.Sprintf("%s_%s.json", timestamp, eventName)
-	filepath := filepath.Join(subdir, filename)
+	filePath := filepath.Join(subdir, filename)
 
-	// Marshal to JSON
-	data, err := json.MarshalIndent(eventDeck, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal event deck: %w", err)
-	}
-
-	// Save to file
-	if err := os.WriteFile(filepath, data, 0o644); err != nil {
+	if err := storage.WriteJSON(filePath, eventDeck); err != nil {
 		return fmt.Errorf("failed to write event deck file: %w", err)
 	}
 
@@ -132,13 +126,7 @@ func (m *Manager) updateCollectionFile(eventDeck *EventDeck) error {
 	// Add the deck
 	collection.AddDeck(*eventDeck)
 
-	// Save collection
-	data, err := json.MarshalIndent(collection, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal collection: %w", err)
-	}
-
-	if err := os.WriteFile(collectionFile, data, 0o644); err != nil {
+	if err := storage.WriteJSON(collectionFile, collection); err != nil {
 		return fmt.Errorf("failed to write collection file: %w", err)
 	}
 

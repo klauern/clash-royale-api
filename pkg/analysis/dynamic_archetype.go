@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"sort"
 	"time"
+
+	"github.com/klauer/clash-royale-api/go/internal/config"
 )
 
 const (
@@ -618,7 +620,7 @@ func (d *DynamicArchetypeDetector) calculateCrossArchetypeImpacts(
 				impactMap[cardName] = &CardArchetypeImpact{
 					CardName:           cardName,
 					CurrentLevel:       cardInfo.Level,
-					GoldCost:           estimateGoldCost(cardInfo), // TODO: implement proper gold cost
+					GoldCost:           estimateGoldCost(cardInfo),
 					AffectedArchetypes: []string{},
 					TotalViabilityGain: 0,
 					ArchetypesUnlocked: 0,
@@ -722,19 +724,31 @@ func (d *DynamicArchetypeDetector) calculateGoldToCompetitive(arch *DetectedArch
 
 // Helper functions
 
-// estimateGoldCost estimates the gold cost for a +1 upgrade (simplified)
+// estimateGoldCost estimates the gold cost for a +1 upgrade using config data,
+// with fallback for levels where gold tables are incomplete.
 func estimateGoldCost(cardInfo CardLevelInfo) int {
-	// Simplified gold cost estimation
-	// TODO: Use actual upgrade costs from configuration
-	switch cardInfo.Rarity {
+	normalizedRarity := config.NormalizeRarity(cardInfo.Rarity)
+	if goldCost := config.GetGoldCost(cardInfo.Level, normalizedRarity); goldCost > 0 {
+		return goldCost
+	}
+
+	// Gold cost tables may not include all higher levels; use nearest known level.
+	for level := cardInfo.Level - 1; level >= 1; level-- {
+		if goldCost := config.GetGoldCost(level, normalizedRarity); goldCost > 0 {
+			return goldCost
+		}
+	}
+
+	// Final fallback for unknown rarities or missing config entries.
+	switch normalizedRarity {
 	case rarityCommon:
-		return 2000 + (cardInfo.Level * 200)
+		return 5000
 	case rarityRare:
-		return 4000 + (cardInfo.Level * 400)
+		return 10000
 	case rarityEpic:
-		return 8000 + (cardInfo.Level * 800)
+		return 20000
 	case rarityLegendary, rarityChampion:
-		return 20000 + (cardInfo.Level * 2000)
+		return 50000
 	default:
 		return 5000
 	}

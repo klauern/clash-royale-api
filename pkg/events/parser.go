@@ -20,6 +20,25 @@ type Parser struct {
 	eventPatterns map[string]string
 }
 
+var defaultParser = NewParser()
+
+// IsEventBattle checks if a battle is part of an event.
+func IsEventBattle(battle clashroyale.Battle) bool {
+	return defaultParser.isEventBattle(battle)
+}
+
+// FilterEventBattles returns only event battles from the provided list.
+func FilterEventBattles(battles []clashroyale.Battle) []clashroyale.Battle {
+	eventBattles := make([]clashroyale.Battle, 0, len(battles))
+	for _, battle := range battles {
+		if IsEventBattle(battle) {
+			eventBattles = append(eventBattles, battle)
+		}
+	}
+
+	return eventBattles
+}
+
 // NewParser creates a new battle log parser
 func NewParser() *Parser {
 	return &Parser{
@@ -84,13 +103,8 @@ type eventGroup struct {
 
 // groupBattlesByEvent groups battles into events based on timing and mode
 func (p *Parser) groupBattlesByEvent(battleLogs []clashroyale.Battle, playerTag string) []eventGroup {
-	// Filter and sort event battles by time
-	eventBattles := make([]clashroyale.Battle, 0)
-	for _, battle := range battleLogs {
-		if p.isEventBattle(battle) {
-			eventBattles = append(eventBattles, battle)
-		}
-	}
+	// Filter and sort event battles by time.
+	eventBattles := FilterEventBattles(battleLogs)
 
 	// Sort by battle time (oldest first)
 	sort.Slice(eventBattles, func(i, j int) bool {
