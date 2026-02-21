@@ -77,7 +77,13 @@ func fetchPlayerContextIfNeeded(ctx context.Context, playerTag, apiToken string,
 			printf("Fetching player data for context-aware evaluation...\n")
 		}
 
-		client := clashroyale.NewClient(apiToken)
+		client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
+		if err != nil {
+			if verbose {
+				fprintf(os.Stderr, "Warning: Failed to create API client: %v\n", err)
+			}
+			return playerContext
+		}
 		player, err := client.GetPlayerWithContext(ctx, playerTag)
 		if err != nil {
 			// Log warning but continue with evaluation using fallback context if possible.
@@ -299,8 +305,10 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 // performDeckUpgradeImpactAnalysis performs upgrade impact analysis for a specific deck
 // It fetches the player's card levels and shows which deck card upgrades would have the most impact
 func performDeckUpgradeImpactAnalysis(ctx context.Context, deckCardNames []string, playerTag string, topN int, apiToken string, verbose bool) error {
-	// Create client to fetch player data
-	client := clashroyale.NewClient(apiToken)
+	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
+	if err != nil {
+		return err
+	}
 
 	if verbose {
 		printf("\nFetching player data for upgrade impact analysis...\n")

@@ -276,11 +276,10 @@ func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile
 //
 //nolint:dupl // Shared API loading refactor tracked under clash-royale-api-sg50.
 func loadPlayerDataOnline(ctx context.Context, builder *deck.Builder, tag, apiToken string, verbose bool) (*playerDataLoadResult, error) {
-	if apiToken == "" {
-		return nil, fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode")
+	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{offlineAllowed: true})
+	if err != nil {
+		return nil, err
 	}
-
-	client := clashroyale.NewClient(apiToken)
 
 	if verbose {
 		printf("Building deck for player %s\n", tag)

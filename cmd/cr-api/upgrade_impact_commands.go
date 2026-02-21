@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
-	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/urfave/cli/v3"
 )
 
@@ -91,15 +90,13 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 	saveData := cmd.Bool("save")
 	useCombatStats := cmd.Bool("use-combat-stats")
 	archetypesFile := cmd.String("archetypes-file")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	client, err := requireAPIClient(cmd, apiClientOptions{})
+	if err != nil {
+		return err
 	}
-
-	client := clashroyale.NewClient(apiToken)
 
 	if verbose {
 		printf("Analyzing upgrade impact for player %s...\n", tag)

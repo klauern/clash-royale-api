@@ -236,8 +236,9 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 	exportCSV := cmd.Bool("export-csv")
 	dataDir := cmd.String("data-dir")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
+	if err != nil {
+		return err
 	}
 
 	if verbose {
@@ -246,9 +247,6 @@ func eventScanCommand(ctx context.Context, cmd *cli.Command) error {
 			printf("Event types to scan: %v\n", eventTypes)
 		}
 	}
-
-	// Create API client
-	client := clashroyale.NewClient(apiToken)
 
 	// Get battle logs
 	battleLog, err := client.GetPlayerBattleLogWithContext(ctx, tag)
@@ -314,8 +312,8 @@ func eventListCommand(ctx context.Context, cmd *cli.Command) error {
 	exportCSV := cmd.Bool("export-csv")
 	apiToken := cmd.String("api-token")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required")
+	if _, err := requireAPITokenValue(apiToken, apiClientOptions{}); err != nil {
+		return err
 	}
 
 	// Load existing event deck collection
@@ -407,8 +405,8 @@ func eventAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	if _, err := requireAPITokenValue(apiToken, apiClientOptions{}); err != nil {
+		return err
 	}
 
 	if eventID == "" && eventType == "" {
@@ -482,8 +480,8 @@ func eventCompareCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	apiToken := cmd.String("api-token")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required")
+	if _, err := requireAPITokenValue(apiToken, apiClientOptions{}); err != nil {
+		return err
 	}
 
 	// Load event deck collection
@@ -503,8 +501,8 @@ func eventDeckStatsCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	apiToken := cmd.String("api-token")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required")
+	if _, err := requireAPITokenValue(apiToken, apiClientOptions{}); err != nil {
+		return err
 	}
 
 	// Load event deck collection

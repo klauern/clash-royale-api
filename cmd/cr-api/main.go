@@ -86,14 +86,12 @@ func playerCommand(ctx context.Context, cmd *cli.Command) error {
 	showChests := cmd.Bool("chests")
 	saveData := cmd.Bool("save")
 	exportCSV := cmd.Bool("export-csv")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	client, err := requireAPIClient(cmd, apiClientOptions{})
+	if err != nil {
+		return err
 	}
-
-	client := clashroyale.NewClient(apiToken)
 
 	if verbose {
 		printf("Getting player data for tag: %s\n", tag)
@@ -223,16 +221,14 @@ func savePlayerData(dataDir string, p *clashroyale.Player) error {
 }
 
 func cardsCommand(ctx context.Context, cmd *cli.Command) error {
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	exportCSV := cmd.Bool("export-csv")
 	dataDir := cmd.String("data-dir")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	client, err := requireAPIClient(cmd, apiClientOptions{})
+	if err != nil {
+		return err
 	}
-
-	client := clashroyale.NewClient(apiToken)
 
 	if verbose {
 		printf("Fetching card database...\n")
@@ -290,14 +286,9 @@ func displayCards(cards []clashroyale.Card) {
 
 func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	saveData := cmd.Bool("save")
 	exportCSV := cmd.Bool("export-csv")
-
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
-	}
 
 	// Build analysis options from CLI flags
 	options := analysis.AnalysisOptions{
@@ -309,7 +300,10 @@ func analyzeCommand(ctx context.Context, cmd *cli.Command) error {
 		TopN:              cmd.Int("top-n"),
 	}
 
-	client := clashroyale.NewClient(apiToken)
+	client, err := requireAPIClient(cmd, apiClientOptions{})
+	if err != nil {
+		return err
+	}
 
 	if verbose {
 		printf("Analyzing card collection for tag: %s\n", tag)
@@ -491,15 +485,13 @@ func playstyleCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	recommendDecks := cmd.Bool("recommend-decks")
 	saveData := cmd.Bool("save")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	client, err := requireAPIClient(cmd, apiClientOptions{})
+	if err != nil {
+		return err
 	}
-
-	client := clashroyale.NewClient(apiToken)
 
 	if verbose {
 		printf("Analyzing playstyle for tag: %s\n", tag)

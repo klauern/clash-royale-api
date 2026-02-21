@@ -19,14 +19,14 @@ func deckPossibleCountCommand(ctx context.Context, cmd *cli.Command) error {
 	verbose := cmd.Bool("verbose")
 	outputFile := cmd.String("output")
 
-	// Get API token
-	apiToken := cmd.String("api-token")
-	if apiToken == "" {
-		return fmt.Errorf("API token required (set CLASH_ROYALE_API_TOKEN or use --api-token)")
+	client, err := requireAPIClient(cmd, apiClientOptions{
+		missingToken: "API token required (set CLASH_ROYALE_API_TOKEN or use --api-token)",
+	})
+	if err != nil {
+		return err
 	}
 
 	// Fetch player data
-	client := clashroyale.NewClient(apiToken)
 	player, err := client.GetPlayerWithContext(ctx, tag)
 	if err != nil {
 		return fmt.Errorf("failed to get player data: %w", err)
