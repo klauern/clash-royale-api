@@ -2,6 +2,7 @@
 package events
 
 import (
+	"encoding/csv"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +10,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/klauer/clash-royale-api/go/internal/csvutil"
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 )
 
@@ -168,18 +168,32 @@ func (e *Exporter) exportCSV(collection *EventDeckCollection) error {
 	filename := fmt.Sprintf("event_decks_%s.csv", time.Now().Format("20060102_150405"))
 	filePath := filepath.Join(e.options.OutputDir, filename)
 
-	rows := make([][]string, 0, len(collection.Decks))
+	file, err := os.Create(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create CSV file: %w", err)
+	}
+	defer func() { _ = file.Close() }()
+
+	writer := csv.NewWriter(file)
+	if err := writer.Write(EventDeckCSVHeaders()); err != nil {
+		return fmt.Errorf("failed to write CSV headers: %w", err)
+	}
+
 	currentEventType := EventType("")
 	for _, deck := range collection.Decks {
 		if e.options.GroupByEvent && deck.EventType != currentEventType {
 			currentEventType = deck.EventType
-			rows = append(rows, EventTypeSeparatorCSVRow(currentEventType))
+			if err := writer.Write(EventTypeSeparatorCSVRow(currentEventType)); err != nil {
+				return fmt.Errorf("failed to write event separator row: %w", err)
+			}
 		}
-		rows = append(rows, EventDeckCSVRow(deck))
+		if err := writer.Write(EventDeckCSVRow(deck)); err != nil {
+			return fmt.Errorf("failed to write CSV row: %w", err)
+		}
 	}
-
-	if err := csvutil.Write(filePath, EventDeckCSVHeaders(), rows); err != nil {
-		return fmt.Errorf("failed to write CSV export: %w", err)
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		return fmt.Errorf("failed to flush csv writer: %w", err)
 	}
 
 	return nil
