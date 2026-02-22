@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/klauer/clash-royale-api/go/pkg/deck"
+	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 )
 
 const testArchetypeCycle = "cycle"
@@ -241,9 +241,9 @@ func TestComputeDeckHash_Consistency(t *testing.T) {
 	cards2 := []string{"Ice Spirit", "Giant", "Wizard", "Mini P.E.K.K.A", "Musketeer", "Arrows", "Fireball", "Goblin Gang"}
 	cards3 := []string{"Giant", "Wizard", "Mini P.E.K.K.A", "Musketeer", "Arrows", "Fireball", "Goblin Gang", "Skeleton Army"} // Different deck
 
-	hash1 := deck.DeckHash(cards1)
-	hash2 := deck.DeckHash(cards2)
-	hash3 := deck.DeckHash(cards3)
+	hash1 := deckhash.DeckHash(cards1)
+	hash2 := deckhash.DeckHash(cards2)
+	hash3 := deckhash.DeckHash(cards3)
 
 	if hash1 != hash2 {
 		t.Errorf("expected same hash for same cards in different order")

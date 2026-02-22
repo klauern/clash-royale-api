@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/playertag"
-	"github.com/klauer/clash-royale-api/go/pkg/deck"
+	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
@@ -135,7 +134,7 @@ func (s *Storage) initSchema() error {
 // Returns the deck ID and whether it was a new insert (true) or update (false)
 func (s *Storage) InsertDeck(entry *DeckEntry) (int, bool, error) {
 	// Compute deck hash for deduplication
-	entry.DeckHash = deck.DeckHash(entry.Cards)
+	entry.DeckHash = deckhash.DeckHash(entry.Cards)
 
 	// Serialize cards to JSON
 	cardsJSON, err := json.Marshal(entry.Cards)
