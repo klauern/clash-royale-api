@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
-	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/klauer/clash-royale-api/go/pkg/recommend"
@@ -83,11 +82,10 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 		playerName = tag // Use tag as name in offline mode
 	} else {
 		// ONLINE MODE: Fetch from API
-		if apiToken == "" {
-			return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag. Use --from-analysis for offline mode")
+		client, err := requireAPIClientFromToken(apiToken, apiClientOptions{offlineAllowed: true})
+		if err != nil {
+			return err
 		}
-
-		client := clashroyale.NewClient(apiToken)
 
 		if verbose {
 			printf("Generating recommendations for player %s\n", tag)

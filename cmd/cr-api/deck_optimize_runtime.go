@@ -82,7 +82,10 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	var playerContext *evaluation.PlayerContext
 	var playerCardMap map[string]bool
 	if tag != "" && apiToken != "" {
-		client := clashroyale.NewClient(apiToken)
+		client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
+		if err != nil {
+			return err
+		}
 		if verbose {
 			printf("Fetching player context for tag: %s\n", tag)
 		}
