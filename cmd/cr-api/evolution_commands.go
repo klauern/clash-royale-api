@@ -74,10 +74,7 @@ func addEvolutionCommands() *cli.Command {
 						Name:  "verbose",
 						Usage: "Show detailed reasons for each recommendation",
 					},
-					&cli.StringFlag{
-						Name:  "unlocked-evolutions",
-						Usage: "Comma-separated list of cards with unlocked evolutions (overrides UNLOCKED_EVOLUTIONS env var)",
-					},
+					unlockedEvolutionsFlag(),
 				},
 				Action: evolutionRecommendCommand,
 			},
@@ -259,25 +256,7 @@ func evolutionRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	verbose := cmd.Bool("verbose")
 	playerTag := cmd.String("tag")
 	topN := cmd.Int("top")
-	unlockedEvolutionsStr := cmd.String("unlocked-evolutions")
-
-	// Parse unlocked evolutions
-	var unlockedEvolutions []string
-	if unlockedEvolutionsStr != "" {
-		unlockedEvolutions = strings.Split(unlockedEvolutionsStr, ",")
-		for i := range unlockedEvolutions {
-			unlockedEvolutions[i] = strings.TrimSpace(unlockedEvolutions[i])
-		}
-	} else {
-		// Fallback to env var if not specified
-		envVar := cmd.String("unlocked-evolutions") // Note: this gets from env if set
-		if envVar != "" {
-			unlockedEvolutions = strings.Split(envVar, ",")
-			for i := range unlockedEvolutions {
-				unlockedEvolutions[i] = strings.TrimSpace(unlockedEvolutions[i])
-			}
-		}
-	}
+	unlockedEvolutions := unlockedEvolutionsFromCommand(cmd)
 
 	// Load player data
 	client := clashroyale.NewClient(apiToken)

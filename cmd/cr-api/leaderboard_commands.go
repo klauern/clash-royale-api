@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -11,6 +10,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/urfave/cli/v3"
 )
@@ -405,10 +405,12 @@ func leaderboardStatsCommand(ctx context.Context, cmd *cli.Command) error {
 	// Get database file size
 	homeDir, err := os.UserHomeDir()
 	if err == nil {
-		sanitizedTag := strings.TrimPrefix(playerTag, "#")
-		dbPath := filepath.Join(homeDir, ".cr-api", "leaderboards", fmt.Sprintf("%s.db", sanitizedTag))
-		if info, err := os.Stat(dbPath); err == nil {
-			printf("Database Size: %.2f MB\n", float64(info.Size())/(1024*1024))
+		sanitizedTag, sanitizeErr := playertag.Sanitize(playerTag)
+		if sanitizeErr == nil {
+			dbPath := filepath.Join(homeDir, ".cr-api", "leaderboards", fmt.Sprintf("%s.db", sanitizedTag))
+			if info, err := os.Stat(dbPath); err == nil {
+				printf("Database Size: %.2f MB\n", float64(info.Size())/(1024*1024))
+			}
 		}
 	}
 
@@ -557,22 +559,15 @@ func formatDecksDetailed(decks []leaderboard.DeckEntry) string {
 // formatDecksAsCSV formats decks as CSV
 func formatDecksAsCSV(decks []leaderboard.DeckEntry) (string, error) {
 	var sb strings.Builder
-	writer := csv.NewWriter(&sb)
-
-	// Write header
 	header := []string{
 		"Rank", "OverallScore", "AttackScore", "DefenseScore", "SynergyScore",
 		"VersatilityScore", "F2PScore", "PlayabilityScore",
 		"Archetype", "ArchetypeConf", "AvgElixir", "Strategy", "Cards",
 	}
-	if err := writer.Write(header); err != nil {
-		return "", fmt.Errorf("failed to write CSV header: %w", err)
-	}
-
-	// Write data rows
+	rows := make([][]string, 0, len(decks))
 	for i, deck := range decks {
 		cardsStr := strings.Join(deck.Cards, "; ")
-		row := []string{
+		rows = append(rows, []string{
 			fmt.Sprintf("%d", i+1),
 			fmt.Sprintf("%.2f", deck.OverallScore),
 			fmt.Sprintf("%.2f", deck.AttackScore),
@@ -586,15 +581,10 @@ func formatDecksAsCSV(decks []leaderboard.DeckEntry) (string, error) {
 			fmt.Sprintf("%.1f", deck.AvgElixir),
 			deck.Strategy,
 			cardsStr,
-		}
-		if err := writer.Write(row); err != nil {
-			return "", fmt.Errorf("failed to write CSV row: %w", err)
-		}
+		})
 	}
-
-	writer.Flush()
-	if err := writer.Error(); err != nil {
-		return "", fmt.Errorf("CSV error: %w", err)
+	if err := writeCSVDocument(&sb, header, rows); err != nil {
+		return "", err
 	}
 
 	return sb.String(), nil

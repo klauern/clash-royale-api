@@ -21,10 +21,7 @@ func addDeckWarCommand() *cli.Command {
 				Value: 4,
 				Usage: "Number of decks to build (default 4)",
 			},
-			&cli.StringFlag{
-				Name:  "unlocked-evolutions",
-				Usage: "Comma-separated list of cards with unlocked evolutions (overrides UNLOCKED_EVOLUTIONS env var)",
-			},
+			unlockedEvolutionsFlag(),
 			&cli.IntFlag{
 				Name:  "evolution-slots",
 				Value: 2,
@@ -89,7 +86,7 @@ func addDeckBudgetCommand() *cli.Command {
 			&cli.IntFlag{Name: "max-variations", Value: 5, Usage: "Maximum number of deck variations to generate"},
 			&cli.BoolFlag{Name: "quick-wins", Usage: "Show only quick-win decks (1-2 upgrades away)"},
 			&cli.BoolFlag{Name: "ready-only", Usage: "Show only decks that are already competitive"},
-			&cli.StringFlag{Name: "unlocked-evolutions", Usage: "Comma-separated list of cards with unlocked evolutions"},
+			unlockedEvolutionsFlag(),
 			&cli.IntFlag{Name: "evolution-slots", Value: 2, Usage: "Number of evolution slots available"},
 			&cli.BoolFlag{Name: "json", Usage: "Output results in JSON format"},
 			&cli.BoolFlag{Name: "save", Usage: "Save results to file"},

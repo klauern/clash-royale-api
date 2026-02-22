@@ -210,21 +210,6 @@ func buildCardList(cards []deck.CardCandidate) string {
 	return strings.Join(parts, ", ")
 }
 
-// calculateDeckAvgElixir calculates average elixir cost of deck
-// Note: Similar function exists in archetype.go but kept separate to avoid circular dependency
-func calculateDeckAvgElixir(cards []deck.CardCandidate) float64 {
-	if len(cards) == 0 {
-		return 0.0
-	}
-
-	total := 0
-	for _, card := range cards {
-		total += card.Elixir
-	}
-
-	return float64(total) / float64(len(cards))
-}
-
 func extractNonEmptyCardNames(cards []deck.CardCandidate) []string {
 	names := make([]string, 0, len(cards))
 	for _, card := range cards {
@@ -677,7 +662,7 @@ func calculateCycleScore(avgElixir float64, lowCostCount, shortestCycle int) flo
 // BuildCycleAnalysis creates detailed cycle analysis
 func BuildCycleAnalysis(deckCards []deck.CardCandidate) AnalysisSection {
 	// Calculate cycle metrics
-	avgElixir := calculateDeckAvgElixir(deckCards)
+	avgElixir := calculateAvgElixir(deckCards)
 	shortestCycle, _ := findShortestCycle(deckCards)
 	elixirCurve := calculateElixirCurve(deckCards)
 
@@ -1411,7 +1396,7 @@ func Evaluate(deckCards []deck.CardCandidate, synergyDB *deck.SynergyDatabase, p
 	}
 
 	// Calculate average elixir
-	avgElixir := calculateDeckAvgElixir(deckCards)
+	avgElixir := calculateAvgElixir(deckCards)
 
 	// Phase 1: Category Scoring
 	attackScore := ScoreAttack(deckCards)

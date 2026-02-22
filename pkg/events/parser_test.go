@@ -90,6 +90,27 @@ func TestParser_IsEventBattle(t *testing.T) {
 	}
 }
 
+func TestFilterEventBattles(t *testing.T) {
+	battles := []clashroyale.Battle{
+		{GameMode: clashroyale.GameMode{Name: "Ladder"}},
+		{GameMode: clashroyale.GameMode{Name: "Grand Challenge"}},
+		{GameMode: clashroyale.GameMode{Name: "Tournament"}},
+		{GameMode: clashroyale.GameMode{Name: "1v1"}},
+		{GameMode: clashroyale.GameMode{Name: "Random"}, IsLadderTournament: true},
+	}
+
+	filtered := FilterEventBattles(battles)
+	if len(filtered) != 3 {
+		t.Fatalf("FilterEventBattles returned %d battles, want 3", len(filtered))
+	}
+
+	for _, battle := range filtered {
+		if !IsEventBattle(battle) {
+			t.Fatalf("filtered battle should be an event battle: %+v", battle)
+		}
+	}
+}
+
 func TestParser_ExtractEventData(t *testing.T) {
 	parser := NewParser()
 

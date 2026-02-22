@@ -2,8 +2,8 @@ package csv
 
 import (
 	"fmt"
-	"path/filepath"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/events"
 )
 
@@ -18,27 +18,7 @@ func NewEventDeckExporter() *CSVExporter {
 
 // eventDeckHeaders returns the CSV headers for event deck data
 func eventDeckHeaders() []string {
-	return []string{
-		"Event ID",
-		"Player Tag",
-		"Event Name",
-		"Event Type",
-		"Start Time",
-		"End Time",
-		"Deck Cards",
-		"Deck Average Elixir",
-		"Total Battles",
-		"Wins",
-		"Losses",
-		"Win Rate",
-		"Current Streak",
-		"Best Streak",
-		"Crowns Earned",
-		"Crowns Lost",
-		"Event Progress",
-		"Max Wins",
-		"Notes",
-	}
+	return events.EventDeckCSVHeaders()
 }
 
 // eventDeckExport exports event deck data to CSV
@@ -52,55 +32,12 @@ func eventDeckExport(dataDir string, data any) error {
 	var rows [][]string
 
 	for _, deck := range collection.Decks {
-		// Format deck cards as a string, including evolution level if present
-		cardNames := make([]string, len(deck.Deck.Cards))
-		for i, card := range deck.Deck.Cards {
-			if card.EvolutionLevel > 0 {
-				cardNames[i] = fmt.Sprintf("%s (Lv.%d Evo.%d)", card.Name, card.Level, card.EvolutionLevel)
-			} else {
-				cardNames[i] = fmt.Sprintf("%s (Lv.%d)", card.Name, card.Level)
-			}
-		}
-
-		// Format end time
-		endTime := ""
-		if deck.EndTime != nil {
-			endTime = deck.EndTime.Format("2006-01-02 15:04:05")
-		}
-
-		// Format max wins
-		maxWins := ""
-		if deck.Performance.MaxWins != nil {
-			maxWins = fmt.Sprintf("%d", *deck.Performance.MaxWins)
-		}
-
-		row := []string{
-			deck.EventID,
-			deck.PlayerTag,
-			deck.EventName,
-			string(deck.EventType),
-			deck.StartTime.Format("2006-01-02 15:04:05"),
-			endTime,
-			fmt.Sprintf("%v", cardNames),
-			fmt.Sprintf("%.1f", deck.Deck.AvgElixir),
-			fmt.Sprintf("%d", deck.Performance.TotalBattles()),
-			fmt.Sprintf("%d", deck.Performance.Wins),
-			fmt.Sprintf("%d", deck.Performance.Losses),
-			fmt.Sprintf("%.2f", deck.Performance.WinRate),
-			fmt.Sprintf("%d", deck.Performance.CurrentStreak),
-			fmt.Sprintf("%d", deck.Performance.BestStreak),
-			fmt.Sprintf("%d", deck.Performance.CrownsEarned),
-			fmt.Sprintf("%d", deck.Performance.CrownsLost),
-			string(deck.Performance.Progress),
-			maxWins,
-			deck.Notes,
-		}
-		rows = append(rows, row)
+		rows = append(rows, events.EventDeckCSVRow(deck))
 	}
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "event_decks.csv"}
-	filePath := filepath.Join(dataDir, "csv", "events", exporter.FilenameBase)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVEventsSubdir)
 	return exporter.writeCSV(filePath, eventDeckHeaders(), rows)
 }
 
@@ -173,6 +110,6 @@ func eventBattlesExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "event_battles.csv"}
-	filePath := filepath.Join(dataDir, "csv", "events", exporter.FilenameBase)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVEventsSubdir)
 	return exporter.writeCSV(filePath, eventBattlesHeaders(), rows)
 }

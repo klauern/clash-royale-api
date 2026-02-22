@@ -3,6 +3,7 @@ package recommend
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes"
@@ -197,11 +198,124 @@ func (r *Recommender) getTopArchetypes(recommendations []*DeckRecommendation, n 
 
 // applyFilters applies arena and league filters to recommendations
 func (r *Recommender) applyFilters(recommendations []*DeckRecommendation) []*DeckRecommendation {
-	// TODO: Implement arena/league filtering
-	// For now, just return all recommendations
-	// Future implementation could:
-	// - Filter out cards not available at certain arenas
-	// - Prioritize decks that work well in specific leagues
+	profile, enabled := progressionFilterProfile(r.options.Arena, r.options.League)
+	if !enabled {
+		return recommendations
+	}
 
-	return recommendations
+	filtered := make([]*DeckRecommendation, 0, len(recommendations))
+	for _, rec := range recommendations {
+		if rec.CompatibilityScore < profile.minCompatibility {
+			continue
+		}
+		if rec.UpgradeCost.DistanceMetric > profile.maxDistanceMetric {
+			continue
+		}
+		if profile.maxCardsNeeded > 0 && rec.UpgradeCost.CardsNeeded > profile.maxCardsNeeded {
+			continue
+		}
+		filtered = append(filtered, rec)
+	}
+
+	return filtered
+}
+
+type progressionFilterConfig struct {
+	minCompatibility  float64
+	maxDistanceMetric float64
+	maxCardsNeeded    int
+}
+
+func progressionFilterProfile(arena, league string) (progressionFilterConfig, bool) {
+	arena = strings.ToLower(strings.TrimSpace(arena))
+	league = strings.ToLower(strings.TrimSpace(league))
+	if arena == "" && league == "" {
+		return progressionFilterConfig{}, false
+	}
+
+	// Conservative defaults when filters are requested but stage parsing is unknown.
+	config := progressionFilterConfig{
+		minCompatibility:  30.0,
+		maxDistanceMetric: 0.65,
+		maxCardsNeeded:    22000,
+	}
+
+	if level, ok := parseProgressionLevel(arena); ok {
+		switch {
+		case level <= 10:
+			config.minCompatibility = 45.0
+			config.maxDistanceMetric = 0.45
+			config.maxCardsNeeded = 12000
+		case level <= 14:
+			config.minCompatibility = 35.0
+			config.maxDistanceMetric = 0.55
+			config.maxCardsNeeded = 18000
+		}
+	}
+
+	switch {
+	case strings.Contains(league, "challenger"):
+		config.minCompatibility = maxFloat(config.minCompatibility, 40.0)
+		config.maxDistanceMetric = minFloat(config.maxDistanceMetric, 0.55)
+		config.maxCardsNeeded = minIntPositive(config.maxCardsNeeded, 18000)
+	case strings.Contains(league, "master"):
+		config.minCompatibility = maxFloat(config.minCompatibility, 35.0)
+		config.maxDistanceMetric = minFloat(config.maxDistanceMetric, 0.60)
+	case strings.Contains(league, "champion"), strings.Contains(league, "ultimate"):
+		// High leagues can support broader recommendations.
+		config.minCompatibility = minFloat(config.minCompatibility, 25.0)
+		config.maxDistanceMetric = maxFloat(config.maxDistanceMetric, 0.75)
+		config.maxCardsNeeded = 0
+	}
+
+	return config, true
+}
+
+func parseProgressionLevel(value string) (int, bool) {
+	start := -1
+	for i, r := range value {
+		if r >= '0' && r <= '9' {
+			start = i
+			break
+		}
+	}
+	if start == -1 {
+		return 0, false
+	}
+
+	level := 0
+	for _, r := range value[start:] {
+		if r < '0' || r > '9' {
+			break
+		}
+		level = (level * 10) + int(r-'0')
+	}
+	return level, true
+}
+
+func maxFloat(a, b float64) float64 {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minFloat(a, b float64) float64 {
+	if a < b {
+		return a
+	}
+	return b
+}
+
+func minIntPositive(a, b int) int {
+	if a == 0 {
+		return b
+	}
+	if b == 0 {
+		return a
+	}
+	if a < b {
+		return a
+	}
+	return b
 }
