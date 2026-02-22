@@ -1535,12 +1535,9 @@ func deduplicateResults(results []FuzzingResult) []FuzzingResult {
 	return deduped
 }
 
-// deckKeyForResult creates a unique key for a deck based on sorted card names
+// deckKeyForResult creates a unique key for a deck based on canonicalized card names.
 func deckKeyForResult(result FuzzingResult) string {
-	cards := make([]string, len(result.Deck))
-	copy(cards, result.Deck)
-	sort.Strings(cards)
-	return strings.Join(cards, "|")
+	return deck.CanonicalDeckKey(result.Deck)
 }
 
 // sortFuzzingResults sorts fuzzing results by the specified field

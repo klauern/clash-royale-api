@@ -1,17 +1,16 @@
 package leaderboard
 
 import (
-	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/playertag"
+	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
@@ -130,25 +129,12 @@ func (s *Storage) initSchema() error {
 	return err
 }
 
-// computeDeckHash computes a SHA256 hash of the sorted card names for deduplication
-func computeDeckHash(cards []string) string {
-	// Sort cards to ensure consistent hash regardless of order
-	sorted := make([]string, len(cards))
-	copy(sorted, cards)
-	sort.Strings(sorted)
-
-	// Compute SHA256 hash
-	data := strings.Join(sorted, "|")
-	hash := sha256.Sum256([]byte(data))
-	return fmt.Sprintf("%x", hash)
-}
-
 // InsertDeck inserts or updates a deck entry in the leaderboard
 // If a deck with the same cards exists (same hash), it updates the existing entry
 // Returns the deck ID and whether it was a new insert (true) or update (false)
 func (s *Storage) InsertDeck(entry *DeckEntry) (int, bool, error) {
 	// Compute deck hash for deduplication
-	entry.DeckHash = computeDeckHash(entry.Cards)
+	entry.DeckHash = deckhash.DeckHash(entry.Cards)
 
 	// Serialize cards to JSON
 	cardsJSON, err := json.Marshal(entry.Cards)
