@@ -120,10 +120,10 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 		if verbose {
 			printf("\nSaving budget analysis to: %s\n", dataDir)
 		}
-		if err := saveBudgetResult(dataDir, result); err != nil {
+		if savedPath, err := saveBudgetResult(dataDir, result); err != nil {
 			printf("Warning: Failed to save budget analysis: %v\n", err)
 		} else {
-			printf("\nBudget analysis saved to file\n")
+			printf("\nBudget analysis saved to: %s\n", savedPath)
 		}
 	}
 
@@ -277,7 +277,7 @@ func outputBudgetResultJSON(result *budget.BudgetFinderResult) error {
 }
 
 // saveBudgetResult saves budget analysis to a JSON file
-func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
+func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) (string, error) {
 	budgetDir := filepath.Join(dataDir, "budget")
 
 	// Generate filename with timestamp
@@ -286,9 +286,8 @@ func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 	filename := filepath.Join(budgetDir, fmt.Sprintf("%s_budget_%s.json", timestamp, cleanTag))
 
 	if err := storage.WriteJSON(filename, result); err != nil {
-		return fmt.Errorf("failed to write budget file: %w", err)
+		return "", fmt.Errorf("failed to write budget file: %w", err)
 	}
 
-	printf("Budget analysis saved to: %s\n", filename)
-	return nil
+	return filename, nil
 }
