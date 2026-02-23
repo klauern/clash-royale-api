@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/urfave/cli/v3"
 )
@@ -376,23 +377,13 @@ func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) err
 }
 
 func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) error {
-	// Create analysis directory if it doesn't exist
 	analysisDir := filepath.Join(dataDir, "analysis")
-	if err := os.MkdirAll(analysisDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create analysis directory: %w", err)
-	}
 
 	// Generate filename with timestamp
 	timestamp := time.Now().Format("20060102_150405")
 	filename := filepath.Join(analysisDir, fmt.Sprintf("upgrade_impact_%s_%s.json", impactAnalysis.PlayerTag, timestamp))
 
-	// Save as JSON
-	data, err := json.MarshalIndent(impactAnalysis, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal analysis: %w", err)
-	}
-
-	if err := os.WriteFile(filename, data, 0o644); err != nil {
+	if err := storage.WriteJSON(filename, impactAnalysis); err != nil {
 		return fmt.Errorf("failed to write analysis file: %w", err)
 	}
 
