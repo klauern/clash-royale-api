@@ -367,6 +367,7 @@ func displayUpgradeImpactAnalysis(impactAnalysis *analysis.UpgradeImpactAnalysis
 }
 
 // outputUpgradeImpactJSON prints upgrade impact analysis in pretty JSON format.
+// outputUpgradeImpactJSON prints upgrade impact analysis in pretty JSON format.
 func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) error {
 	data, err := json.MarshalIndent(impactAnalysis, "", "  ")
 	if err != nil {
