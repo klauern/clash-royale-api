@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/closeutil"
 	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
@@ -57,7 +58,7 @@ func NewStorage(playerTag string) (*Storage, error) {
 
 	// Initialize schema
 	if err := storage.initSchema(); err != nil {
-		closeWithLog(db, "leaderboard database")
+		closeutil.CloseWithLog("leaderboard", db, "leaderboard database")
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -209,7 +210,7 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
-	defer closeWithLog(rows, "deck rows")
+	defer closeutil.CloseWithLog("leaderboard", rows, "deck rows")
 
 	entries, err := scanDeckEntries(rows)
 	if err != nil {
@@ -692,7 +693,7 @@ func (s *Storage) GetArchetypeCounts() ([]ArchetypeCount, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query archetype counts: %w", err)
 	}
-	defer closeWithLog(rows, "archetype count rows")
+	defer closeutil.CloseWithLog("leaderboard", rows, "archetype count rows")
 
 	counts := make([]ArchetypeCount, 0)
 	for rows.Next() {

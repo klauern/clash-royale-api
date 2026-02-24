@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+
+	"github.com/klauer/clash-royale-api/go/internal/closeutil"
 )
 
 // makeAPIRequest is a generic helper to reduce duplication across API endpoints.
@@ -20,7 +22,7 @@ func makeAPIRequest[T any](ctx context.Context, c *Client, endpoint, errorMsg st
 	if err != nil {
 		return nil, err
 	}
-	defer closeWithLog(resp.Body, "response body")
+	defer closeutil.CloseWithLog("clashroyale", resp.Body, "response body")
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, APIError{

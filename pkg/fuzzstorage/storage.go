@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/closeutil"
 	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
@@ -55,7 +56,7 @@ func NewStorage(dbPath string) (*Storage, error) {
 
 	// Initialize schema
 	if err := storage.initSchema(); err != nil {
-		closeWithLog(db, "fuzz storage database")
+		closeutil.CloseWithLog("fuzzstorage", db, "fuzz storage database")
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -246,7 +247,7 @@ func (s *Storage) GetTopN(n int) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query top decks: %w", err)
 	}
-	defer closeWithLog(rows, "top decks rows")
+	defer closeutil.CloseWithLog("fuzzstorage", rows, "top decks rows")
 
 	return s.scanRows(rows)
 }
@@ -266,7 +267,7 @@ func (s *Storage) GetByArchetype(archetype string, limit int) ([]DeckEntry, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to query by archetype: %w", err)
 	}
-	defer closeWithLog(rows, "deck rows by archetype")
+	defer closeutil.CloseWithLog("fuzzstorage", rows, "deck rows by archetype")
 
 	return s.scanRows(rows)
 }
@@ -361,7 +362,7 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
-	defer closeWithLog(rows, "stats rows")
+	defer closeutil.CloseWithLog("fuzzstorage", rows, "stats rows")
 
 	return s.scanRows(rows)
 }
@@ -432,7 +433,7 @@ func (s *Storage) ArchetypeHistogram(opts QueryOptions) (map[string]int, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query archetype histogram: %w", err)
 	}
-	defer closeWithLog(rows, "archetype histogram rows")
+	defer closeutil.CloseWithLog("fuzzstorage", rows, "archetype histogram rows")
 
 	histogram := make(map[string]int)
 	for rows.Next() {

@@ -7,6 +7,8 @@ import (
 	"math"
 	"os"
 	"strings"
+
+	"github.com/klauer/clash-royale-api/go/internal/closeutil"
 )
 
 // CombatStats represents the combat statistics of a card at a specific level (Standard Level 11)
@@ -37,7 +39,7 @@ func LoadStats(filepath string) (*CardStatsRegistry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open stats file: %w", err)
 	}
-	defer closeWithLog(file, "combat stats file")
+	defer closeutil.CloseWithLog("clashroyale", file, "combat stats file")
 
 	bytes, err := io.ReadAll(file)
 	if err != nil {
