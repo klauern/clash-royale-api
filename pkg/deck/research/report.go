@@ -2,20 +2,13 @@ package research
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
-)
 
-func writeJSON(path string, v any) error {
-	data, err := json.MarshalIndent(v, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(path, data, 0o644)
-}
+	"github.com/klauer/clash-royale-api/go/internal/storage"
+)
 
 //nolint:gocyclo,funlen // Report sections are intentionally explicit for stable output.
 func buildMarkdown(report *BenchmarkReport) string {
@@ -93,11 +86,11 @@ func WriteReport(outputDir string, report *BenchmarkReport) (string, string, err
 	jsonPath := filepath.Join(outputDir, "benchmark.json")
 	mdPath := filepath.Join(outputDir, "benchmark.md")
 
-	if err := writeJSON(jsonPath, report); err != nil {
-		return "", "", err
+	if err := storage.WriteJSON(jsonPath, report); err != nil {
+		return "", "", fmt.Errorf("failed to write benchmark JSON %s: %w", jsonPath, err)
 	}
 	if err := os.WriteFile(mdPath, []byte(buildMarkdown(report)), 0o644); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to write benchmark markdown %s: %w", mdPath, err)
 	}
 	return jsonPath, mdPath, nil
 }

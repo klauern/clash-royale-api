@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/internal/util"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
@@ -405,21 +406,12 @@ func (b *Builder) SaveDeck(deckData *DeckRecommendation, outputDir, playerTag st
 		outputDir = filepath.Join(b.dataDir, "decks")
 	}
 
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		return "", fmt.Errorf("failed to create output directory: %w", err)
-	}
-
 	timestamp := time.Now().Format("20060102_150405")
 	cleanTag := strings.TrimPrefix(playerTag, "#")
 	filename := fmt.Sprintf("%s_deck_%s.json", timestamp, cleanTag)
 	path := filepath.Join(outputDir, filename)
 
-	data, err := json.MarshalIndent(deckData, "", "  ")
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal deck data: %w", err)
-	}
-
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := storage.WriteJSON(path, deckData); err != nil {
 		return "", fmt.Errorf("failed to write deck file: %w", err)
 	}
 
