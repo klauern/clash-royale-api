@@ -13,6 +13,25 @@ func (failingWriter) Write(_ []byte) (int, error) {
 	return 0, errors.New("write failed")
 }
 
+type limitedFailWriter struct {
+	remaining int
+}
+
+func (w *limitedFailWriter) Write(p []byte) (int, error) {
+	if w.remaining <= 0 {
+		return 0, errors.New("write failed")
+	}
+
+	if len(p) > w.remaining {
+		n := w.remaining
+		w.remaining = 0
+		return n, nil
+	}
+
+	w.remaining -= len(p)
+	return len(p), nil
+}
+
 func TestWriteTo(t *testing.T) {
 	t.Parallel()
 
@@ -40,6 +59,16 @@ func TestWriteToWriteError(t *testing.T) {
 	t.Parallel()
 
 	err := WriteTo(failingWriter{}, []string{"A"}, [][]string{{"1"}})
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestWriteToMidWriteError(t *testing.T) {
+	t.Parallel()
+
+	rowPayload := strings.Repeat("x", 5000)
+	err := WriteTo(&limitedFailWriter{remaining: 8}, []string{"A"}, [][]string{{rowPayload}})
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
