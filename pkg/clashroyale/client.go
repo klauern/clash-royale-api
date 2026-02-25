@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/closeutil"
 	"go.uber.org/ratelimit"
 )
 
@@ -88,7 +89,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 		if resp.StatusCode == 429 || (resp.StatusCode >= 500 && resp.StatusCode < 600) {
 			if resp.StatusCode == 429 {
 				delay := retryAfterDelay(resp, attempt)
-				closeWithLog(resp.Body, "response body")
+				closeutil.CloseWithLog("clashroyale", resp.Body, "response body")
 				select {
 				case <-req.Context().Done():
 					return nil, req.Context().Err()
@@ -96,7 +97,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 				}
 				continue
 			}
-			closeWithLog(resp.Body, "response body")
+			closeutil.CloseWithLog("clashroyale", resp.Body, "response body")
 			continue
 		}
 
@@ -111,7 +112,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 
 	// All retries exhausted
 	if resp != nil {
-		closeWithLog(resp.Body, "response body")
+		closeutil.CloseWithLog("clashroyale", resp.Body, "response body")
 	}
 	return nil, fmt.Errorf("max retries exceeded: %w", err)
 }
@@ -129,7 +130,7 @@ func retryAfterDelay(resp *http.Response, attempt int) time.Duration {
 }
 
 func parseAPIError(resp *http.Response) APIError {
-	defer closeWithLog(resp.Body, "response body")
+	defer closeutil.CloseWithLog("clashroyale", resp.Body, "response body")
 	payload := struct {
 		Reason  string `json:"reason"`
 		Message string `json:"message"`
