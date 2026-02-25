@@ -362,7 +362,7 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
-	defer closeutil.CloseWithLog("fuzzstorage", rows, "stats rows")
+	defer closeutil.CloseWithLog("fuzzstorage", rows, "deck query rows")
 
 	return s.scanRows(rows)
 }
