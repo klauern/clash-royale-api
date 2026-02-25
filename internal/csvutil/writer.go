@@ -3,6 +3,7 @@ package csvutil
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 )
@@ -23,7 +24,12 @@ func Write(filePath string, headers []string, rows [][]string) (returnErr error)
 		}
 	}()
 
-	writer := csv.NewWriter(file)
+	return WriteTo(file, headers, rows)
+}
+
+// WriteTo writes CSV headers and rows to a writer.
+func WriteTo(w io.Writer, headers []string, rows [][]string) error {
+	writer := csv.NewWriter(w)
 	if err := writer.Write(headers); err != nil {
 		return fmt.Errorf("failed to write headers: %w", err)
 	}
