@@ -367,7 +367,6 @@ func displayUpgradeImpactAnalysis(impactAnalysis *analysis.UpgradeImpactAnalysis
 }
 
 // outputUpgradeImpactJSON prints upgrade impact analysis in pretty JSON format.
-// outputUpgradeImpactJSON prints upgrade impact analysis in pretty JSON format.
 func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) error {
 	data, err := json.MarshalIndent(impactAnalysis, "", "  ")
 	if err != nil {
@@ -387,7 +386,7 @@ func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeI
 	filename := filepath.Join(analysisDir, fmt.Sprintf("upgrade_impact_%s_%s.json", impactAnalysis.PlayerTag, timestamp))
 
 	if err := storage.WriteJSON(filename, impactAnalysis); err != nil {
-		return "", fmt.Errorf("failed to write analysis file: %w", err)
+		return "", err
 	}
 
 	return filename, nil
