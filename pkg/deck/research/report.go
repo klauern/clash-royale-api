@@ -87,10 +87,10 @@ func WriteReport(outputDir string, report *BenchmarkReport) (string, string, err
 	mdPath := filepath.Join(outputDir, "benchmark.md")
 
 	if err := storage.WriteJSON(jsonPath, report); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to write benchmark JSON %s: %w", jsonPath, err)
 	}
 	if err := os.WriteFile(mdPath, []byte(buildMarkdown(report)), 0o644); err != nil {
-		return "", "", err
+		return "", "", fmt.Errorf("failed to write benchmark markdown %s: %w", mdPath, err)
 	}
 	return jsonPath, mdPath, nil
 }
