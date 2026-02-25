@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"go.uber.org/ratelimit"
 )
@@ -348,15 +349,8 @@ func (r *DiscoveryRunner) SaveCheckpoint() error {
 		Strategy:            r.strategy,
 	}
 
-	// Marshal to JSON
-	data, err := json.MarshalIndent(checkpoint, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal checkpoint: %w", err)
-	}
-
-	// Write to file
 	checkpointPath := r.getCheckpointPath()
-	if err := os.WriteFile(checkpointPath, data, 0o644); err != nil {
+	if err := storage.WriteJSON(checkpointPath, checkpoint); err != nil {
 		return fmt.Errorf("failed to write checkpoint: %w", err)
 	}
 
