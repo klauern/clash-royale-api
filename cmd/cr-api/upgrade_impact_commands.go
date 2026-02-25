@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/urfave/cli/v3"
 )
@@ -149,10 +150,10 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Save if requested
 	if saveData {
-		if err := saveUpgradeImpactAnalysis(dataDir, impactAnalysis); err != nil {
+		if savedPath, err := saveUpgradeImpactAnalysis(dataDir, impactAnalysis); err != nil {
 			printf("Warning: Failed to save analysis: %v\n", err)
 		} else {
-			printf("\nAnalysis saved to: %s/analysis/upgrade_impact_%s.json\n", dataDir, impactAnalysis.PlayerTag)
+			printf("\nAnalysis saved to: %s\n", savedPath)
 		}
 	}
 
@@ -365,6 +366,7 @@ func displayUpgradeImpactAnalysis(impactAnalysis *analysis.UpgradeImpactAnalysis
 	displayUpgradeImpactRecommendations(impactAnalysis.TopImpacts)
 }
 
+// outputUpgradeImpactJSON prints upgrade impact analysis in pretty JSON format.
 func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) error {
 	data, err := json.MarshalIndent(impactAnalysis, "", "  ")
 	if err != nil {
@@ -375,26 +377,17 @@ func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) err
 	return nil
 }
 
-func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) error {
-	// Create analysis directory if it doesn't exist
+// saveUpgradeImpactAnalysis writes upgrade impact analysis and returns the final file path.
+func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) (string, error) {
 	analysisDir := filepath.Join(dataDir, "analysis")
-	if err := os.MkdirAll(analysisDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create analysis directory: %w", err)
-	}
 
 	// Generate filename with timestamp
 	timestamp := time.Now().Format("20060102_150405")
 	filename := filepath.Join(analysisDir, fmt.Sprintf("upgrade_impact_%s_%s.json", impactAnalysis.PlayerTag, timestamp))
 
-	// Save as JSON
-	data, err := json.MarshalIndent(impactAnalysis, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal analysis: %w", err)
+	if err := storage.WriteJSON(filename, impactAnalysis); err != nil {
+		return "", err
 	}
 
-	if err := os.WriteFile(filename, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write analysis file: %w", err)
-	}
-
-	return nil
+	return filename, nil
 }

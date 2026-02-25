@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -200,20 +199,9 @@ func displayUpcomingChests(chests *clashroyale.ChestCycle) {
 }
 
 func savePlayerData(dataDir string, p *clashroyale.Player) error {
-	// Create data directory if it doesn't exist
 	playersDir := filepath.Join(dataDir, "players")
-	if err := os.MkdirAll(playersDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create players directory: %w", err)
-	}
-
-	// Save as JSON
 	filename := filepath.Join(playersDir, fmt.Sprintf("%s.json", p.Tag))
-	data, err := json.MarshalIndent(p, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal player data: %w", err)
-	}
-
-	if err := os.WriteFile(filename, data, 0o644); err != nil {
+	if err := storage.WriteJSON(filename, p); err != nil {
 		return fmt.Errorf("failed to write player file: %w", err)
 	}
 
@@ -465,23 +453,13 @@ func saveAnalysisData(dataDir string, a *analysis.CardAnalysis) error {
 	// Use storage.PathBuilder for consistent file naming
 	pb := storage.NewPathBuilder(dataDir)
 
-	// Ensure analysis directory exists
-	if err := os.MkdirAll(pb.GetAnalysisDir(), 0o755); err != nil {
-		return fmt.Errorf("failed to create analysis directory: %w", err)
-	}
-
 	// Get standardized file path with timestamp
 	filename, err := pb.GetAnalysisFilePath(a.PlayerTag)
 	if err != nil {
 		return fmt.Errorf("failed to sanitize player tag %q: %w", a.PlayerTag, err)
 	}
 
-	data, err := json.MarshalIndent(a, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal analysis data: %w", err)
-	}
-
-	if err := os.WriteFile(filename, data, 0o644); err != nil {
+	if err := storage.WriteJSON(filename, a); err != nil {
 		return fmt.Errorf("failed to write analysis file: %w", err)
 	}
 
@@ -669,13 +647,7 @@ func displayDeckRecommendations(r *analysis.DeckRecommendationResult) {
 }
 
 func savePlaystyleData(dataDir string, p *analysis.PlaystyleAnalysis, r *analysis.DeckRecommendationResult) error {
-	// Create analysis directory if it doesn't exist
 	analysisDir := filepath.Join(dataDir, "analysis")
-	if err := os.MkdirAll(analysisDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create analysis directory: %w", err)
-	}
-
-	// Prepare data for saving
 	saveData := struct {
 		PlaystyleAnalysis   *analysis.PlaystyleAnalysis        `json:"playstyle_analysis"`
 		DeckRecommendations *analysis.DeckRecommendationResult `json:"deck_recommendations,omitempty"`
@@ -687,14 +659,8 @@ func savePlaystyleData(dataDir string, p *analysis.PlaystyleAnalysis, r *analysi
 		saveData.DeckRecommendations = r
 	}
 
-	// Save as JSON
 	filename := filepath.Join(analysisDir, fmt.Sprintf("playstyle_%s.json", p.PlayerTag))
-	data, err := json.MarshalIndent(saveData, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal playstyle data: %w", err)
-	}
-
-	if err := os.WriteFile(filename, data, 0o644); err != nil {
+	if err := storage.WriteJSON(filename, saveData); err != nil {
 		return fmt.Errorf("failed to write playstyle file: %w", err)
 	}
 
