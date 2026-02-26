@@ -2,7 +2,6 @@ package deck
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -348,43 +347,14 @@ func (r *DiscoveryRunner) SaveCheckpoint() error {
 		Strategy:            r.strategy,
 	}
 
-	// Marshal to JSON
-	data, err := json.MarshalIndent(checkpoint, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal checkpoint: %w", err)
-	}
-
-	// Write to file
-	checkpointPath := r.getCheckpointPath()
-	if err := os.WriteFile(checkpointPath, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write checkpoint: %w", err)
-	}
-
-	return nil
+	return SaveDiscoveryCheckpoint(r.getCheckpointPath(), checkpoint)
 }
 
 // Resume resumes from a saved checkpoint
 func (r *DiscoveryRunner) Resume() error {
-	checkpointPath := r.getCheckpointPath()
-
-	// Read checkpoint file
-	data, err := os.ReadFile(checkpointPath)
+	checkpoint, err := LoadDiscoveryCheckpoint(r.getCheckpointPath())
 	if err != nil {
-		if os.IsNotExist(err) {
-			return ErrNoCheckpoint
-		}
-		return fmt.Errorf("failed to read checkpoint: %w", err)
-	}
-
-	// Unmarshal checkpoint
-	var checkpoint DiscoveryCheckpoint
-	if err := json.Unmarshal(data, &checkpoint); err != nil {
-		return ErrInvalidCheckpoint
-	}
-
-	// Validate checkpoint
-	if checkpoint.GeneratorCheckpoint == nil {
-		return ErrInvalidCheckpoint
+		return err
 	}
 
 	// Resume iterator
@@ -422,7 +392,7 @@ func (r *DiscoveryRunner) ClearCheckpoint() error {
 
 // getCheckpointPath returns the path to the checkpoint file
 func (r *DiscoveryRunner) getCheckpointPath() string {
-	return filepath.Join(r.checkpointDir, fmt.Sprintf("%s.json", r.playerTag))
+	return DiscoveryCheckpointPath(r.checkpointDir, r.playerTag)
 }
 
 // GetStatusSummary returns a human-readable status summary

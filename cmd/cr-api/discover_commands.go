@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -368,28 +367,17 @@ func deckDiscoverStatusCommand(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	// Check for checkpoint
-	homeDir, err := os.UserHomeDir()
+	checkpointPath := deck.DiscoveryCheckpointPath(deck.DefaultDiscoveryCheckpointDir(), sanitizedTag)
+	checkpoint, err := deck.LoadDiscoveryCheckpoint(checkpointPath)
 	if err != nil {
-		homeDir = "."
-	}
-	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
-
-	if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
-		printf("No active discovery session found for player #%s\n", playerTag)
-		return nil
-	}
-
-	// Read checkpoint
-	data, err := os.ReadFile(checkpointPath)
-	if err != nil {
-		return fmt.Errorf("failed to read checkpoint: %w", err)
-	}
-
-	// Parse checkpoint
-	var checkpoint deck.DiscoveryCheckpoint
-	if err := json.Unmarshal(data, &checkpoint); err != nil {
-		return fmt.Errorf("failed to parse checkpoint: %w", err)
+		if errors.Is(err, deck.ErrNoCheckpoint) {
+			printf("No active discovery session found for player #%s\n", playerTag)
+			return nil
+		}
+		if errors.Is(err, deck.ErrInvalidCheckpoint) {
+			return fmt.Errorf("failed to parse checkpoint: %w", err)
+		}
+		return err
 	}
 
 	// Display status
@@ -618,7 +606,7 @@ func warnExistingCheckpoint(playerTag string) {
 	if err != nil {
 		homeDir = "."
 	}
-	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
+	checkpointPath := deck.DiscoveryCheckpointPath(filepath.Join(homeDir, ".cr-api", "discover"), sanitizedTag)
 	if _, err := os.Stat(checkpointPath); err == nil {
 		fprintf(os.Stderr, "Warning: Existing checkpoint found. Use --resume or 'cr-api deck discover resume' to continue.\n")
 		fprintf(os.Stderr, "Starting fresh will clear the existing checkpoint.\n")
@@ -800,26 +788,16 @@ func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	// Verify checkpoint exists
-	homeDir, err := os.UserHomeDir()
+	checkpointPath := deck.DiscoveryCheckpointPath(deck.DefaultDiscoveryCheckpointDir(), sanitizedTag)
+	checkpoint, err := deck.LoadDiscoveryCheckpoint(checkpointPath)
 	if err != nil {
-		homeDir = "."
-	}
-	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
-
-	if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
-		return fmt.Errorf("no checkpoint found for player #%s. Use 'cr-api deck discover start' to begin a new session", playerTag)
-	}
-
-	// Read checkpoint to verify it's valid
-	data, err := os.ReadFile(checkpointPath)
-	if err != nil {
-		return fmt.Errorf("failed to read checkpoint: %w", err)
-	}
-
-	var checkpoint deck.DiscoveryCheckpoint
-	if err := json.Unmarshal(data, &checkpoint); err != nil {
-		return fmt.Errorf("failed to parse checkpoint: %w", err)
+		if errors.Is(err, deck.ErrNoCheckpoint) {
+			return fmt.Errorf("no checkpoint found for player #%s. Use 'cr-api deck discover start' to begin a new session", playerTag)
+		}
+		if errors.Is(err, deck.ErrInvalidCheckpoint) {
+			return fmt.Errorf("failed to parse checkpoint: %w", err)
+		}
+		return err
 	}
 
 	if verbose {
@@ -844,27 +822,16 @@ func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	homeDir, err := os.UserHomeDir()
+	checkpointPath := deck.DiscoveryCheckpointPath(deck.DefaultDiscoveryCheckpointDir(), sanitizedTag)
+	checkpoint, err := deck.LoadDiscoveryCheckpoint(checkpointPath)
 	if err != nil {
-		homeDir = "."
-	}
-
-	// Check for checkpoint
-	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
-
-	if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
-		return fmt.Errorf("no discovery session found for player #%s", playerTag)
-	}
-
-	// Read checkpoint
-	data, err := os.ReadFile(checkpointPath)
-	if err != nil {
-		return fmt.Errorf("failed to read checkpoint: %w", err)
-	}
-
-	var checkpoint deck.DiscoveryCheckpoint
-	if err := json.Unmarshal(data, &checkpoint); err != nil {
-		return fmt.Errorf("failed to parse checkpoint: %w", err)
+		if errors.Is(err, deck.ErrNoCheckpoint) {
+			return fmt.Errorf("no discovery session found for player #%s", playerTag)
+		}
+		if errors.Is(err, deck.ErrInvalidCheckpoint) {
+			return fmt.Errorf("failed to parse checkpoint: %w", err)
+		}
+		return err
 	}
 
 	// Display detailed statistics
