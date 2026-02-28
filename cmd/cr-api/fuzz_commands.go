@@ -9,7 +9,6 @@ import (
 	"math/rand"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"runtime"
 	"slices"
 	"sort"
@@ -22,7 +21,6 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
-	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
@@ -1614,53 +1612,20 @@ func saveResultsToFile(results []FuzzingResult, outputDir, format, playerTag str
 
 // loadPlayerFromAnalysis loads player data from an existing analysis file
 func loadPlayerFromAnalysis(analysisFile, analysisDir, playerTag string) (*clashroyale.Player, string, error) {
-	var analysisPath string
-
-	if analysisFile != "" {
-		analysisPath = analysisFile
-	} else {
-		// Find latest analysis file for player
-		cleanTag := strings.TrimPrefix(playerTag, "#")
-		pattern := fmt.Sprintf("*analysis*%s.json", cleanTag)
-
-		matches, err := filepath.Glob(filepath.Join(analysisDir, pattern))
-		if err != nil {
-			return nil, "", fmt.Errorf("failed to glob analysis files: %w", err)
-		}
-
-		if len(matches) == 0 {
-			return nil, "", fmt.Errorf("no analysis files found for player %s", playerTag)
-		}
-
-		// Sort by modification time (newest first)
-		sort.Slice(matches, func(i, j int) bool {
-			infoI, _ := os.Stat(matches[i])
-			infoJ, _ := os.Stat(matches[j])
-			return infoI.ModTime().After(infoJ.ModTime())
-		})
-
-		analysisPath = matches[0]
-	}
-
-	// Load analysis data
-	data, err := os.ReadFile(analysisPath)
+	builder := deck.NewBuilder("")
+	loadedAnalysis, err := loadOfflineAnalysisFromFlags(builder, playerTag, "", analysisDir, analysisFile, false)
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to read analysis file: %w", err)
-	}
-
-	var cardAnalysis analysis.CardAnalysis
-	if err := json.Unmarshal(data, &cardAnalysis); err != nil {
-		return nil, "", fmt.Errorf("failed to parse analysis JSON: %w", err)
+		return nil, "", err
 	}
 
 	// Convert analysis to player object
 	player := &clashroyale.Player{
-		Name:  cardAnalysis.PlayerName,
-		Tag:   cardAnalysis.PlayerTag,
-		Cards: make([]clashroyale.Card, 0, len(cardAnalysis.CardLevels)),
+		Name:  loadedAnalysis.PlayerName,
+		Tag:   loadedAnalysis.PlayerTag,
+		Cards: make([]clashroyale.Card, 0, len(loadedAnalysis.CardAnalysis.CardLevels)),
 	}
 
-	for cardName, cardData := range cardAnalysis.CardLevels {
+	for cardName, cardData := range loadedAnalysis.CardAnalysis.CardLevels {
 		card := clashroyale.Card{
 			Name:              cardName,
 			Level:             cardData.Level,
@@ -1673,7 +1638,7 @@ func loadPlayerFromAnalysis(analysisFile, analysisDir, playerTag string) (*clash
 		player.Cards = append(player.Cards, card)
 	}
 
-	return player, cardAnalysis.PlayerName, nil
+	return player, loadedAnalysis.PlayerName, nil
 }
 
 // saveTopDecksToStorage saves the top fuzzing results to persistent storage

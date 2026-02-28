@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -126,23 +125,15 @@ func loadSuitePlayerDataFromAnalysis(builder *deck.Builder, tag, dataDir string,
 	if verbose {
 		printf("Building deck suite from offline analysis for player %s\n", tag)
 	}
-	analysisDir := filepath.Join(dataDir, "analysis")
-	loadedAnalysis, err := builder.LoadLatestAnalysis(tag, analysisDir)
+	loadedAnalysis, err := loadOfflineAnalysisFromFlags(builder, tag, dataDir, "", "", verbose)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+		return nil, err
 	}
-	playerName := loadedAnalysis.PlayerName
-	if playerName == "" {
-		playerName = tag
-	}
-	playerTag := loadedAnalysis.PlayerTag
-	if playerTag == "" {
-		playerTag = tag
-	}
+
 	return &suitePlayerData{
-		CardAnalysis: *loadedAnalysis,
-		PlayerName:   playerName,
-		PlayerTag:    playerTag,
+		CardAnalysis: loadedAnalysis.CardAnalysis,
+		PlayerName:   loadedAnalysis.PlayerName,
+		PlayerTag:    loadedAnalysis.PlayerTag,
 	}, nil
 }
 
