@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 	"time"
@@ -261,13 +259,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			// Save deck file if requested
 			var filePath string
 			if saveData {
-				timestamp := time.Now().Format("20060102_150405")
-				filename := fmt.Sprintf("%s_deck_%s_var%d_%s.json", timestamp, strategy, v, playerData.PlayerTag)
-				filePath = filepath.Join(outputDir, filename)
-
-				// Save with a plain builder instance; build-specific config is not required for serialization.
-				saveBuilder := deck.NewBuilder(dataDir)
-				savedPath, err := saveBuilder.SaveDeck(deckRec, outputDir, fmt.Sprintf("%s_var%d_%s", strategy, v, playerData.PlayerTag))
+				savedPath, err := saveSuiteDeckFile(outputDir, string(strategy), v, playerData.PlayerTag, deckRec)
 				if err != nil {
 					if verbose {
 						printf("  ⚠ Variation %d: Failed to save deck: %v\n", v, err)
@@ -320,58 +312,38 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Save summary JSON if requested
 	if saveData && successful > 0 {
 		timestamp := time.Now().Format("20060102_150405")
-		summaryFilename := fmt.Sprintf("%s_deck_suite_summary_%s.json", timestamp, playerData.PlayerTag)
-		summaryPath := filepath.Join(outputDir, summaryFilename)
-
-		// Build summary structure
-		summary := map[string]any{
-			"version":   "1.0.0",
-			"timestamp": time.Now().UTC().Format(time.RFC3339),
-			"player": map[string]string{
-				"name": playerData.PlayerName,
-				"tag":  playerData.PlayerTag,
-			},
-			"build_info": map[string]any{
-				"total_decks":     len(results),
-				"successful":      successful,
-				"failed":          failed,
-				"strategies":      len(strategies),
-				"variations":      variations,
-				"generation_time": totalTime.String(),
-			},
-			"decks": []map[string]any{},
-		}
-
-		// Add individual deck summaries
-		decks := []map[string]any{}
-		for _, r := range results {
-			if r.Deck != nil {
-				deckSummary := map[string]any{
-					"strategy":   r.Strategy,
-					"variation":  r.Variation,
-					"cards":      r.Deck.Deck,
-					"avg_elixir": r.Deck.AvgElixir,
-					"file_path":  r.FilePath,
-				}
-				decks = append(decks, deckSummary)
+		summaryPath := filepath.Join(outputDir, deck.SuiteSummaryFilename(timestamp, playerData.PlayerTag))
+		summaries := make([]deck.SuiteDeckSummary, 0, len(results))
+		for _, result := range results {
+			if result.Deck == nil {
+				continue
 			}
+			summaries = append(summaries, deck.SuiteDeckSummary{
+				Strategy:  result.Strategy,
+				Variation: result.Variation,
+				Cards:     result.Deck.Deck,
+				AvgElixir: result.Deck.AvgElixir,
+				FilePath:  result.FilePath,
+			})
 		}
-		summary["decks"] = decks
-
-		// Write summary JSON
-		summaryJSON, err := json.MarshalIndent(summary, "", "  ")
-		if err != nil {
-			printf("Warning: Failed to marshal summary JSON: %v\n", err)
+		summary := deck.NewSuiteSummary(
+			time.Now().UTC().Format(time.RFC3339),
+			playerData.PlayerName,
+			playerData.PlayerTag,
+			deck.SuiteBuildInfo{
+				TotalDecks:     len(results),
+				Successful:     successful,
+				Failed:         failed,
+				Strategies:     len(strategies),
+				Variations:     variations,
+				GenerationTime: totalTime.String(),
+			},
+			summaries,
+		)
+		if err := deck.WriteSuiteSummary(summaryPath, summary); err != nil {
+			printf("Warning: Failed to write summary file: %v\n", err)
 		} else {
-			if err := os.MkdirAll(outputDir, 0o755); err != nil {
-				printf("Warning: Failed to create output directory: %v\n", err)
-			} else {
-				if err := os.WriteFile(summaryPath, summaryJSON, 0o644); err != nil {
-					printf("Warning: Failed to write summary file: %v\n", err)
-				} else {
-					printf("Summary saved to: %s\n", summaryPath)
-				}
-			}
+			printf("Summary saved to: %s\n", summaryPath)
 		}
 	}
 

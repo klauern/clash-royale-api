@@ -140,23 +140,10 @@ func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, st
 			}
 
 			// Save deck to file
-			deckFileName := fmt.Sprintf("%s_deck_%s_var%d_%s.json", timestamp, strategy, v, strings.TrimPrefix(playerData.PlayerTag, "#"))
+			deckFileName := deck.SuiteDeckFilename(timestamp, string(strategy), v, playerData.PlayerTag)
 			deckFilePath := filepath.Join(decksDir, deckFileName)
 
-			deckData := map[string]any{
-				"deck":           deckRec.Deck,
-				"avg_elixir":     deckRec.AvgElixir,
-				"recommendation": deckRec,
-			}
-
-			deckJSON, err := json.MarshalIndent(deckData, "", "  ")
-			if err != nil {
-				printf("  ✗ Failed to marshal deck %s variation %d: %v\n", strategy, v, err)
-				failCount++
-				continue
-			}
-
-			if err := os.WriteFile(deckFilePath, deckJSON, 0o644); err != nil {
+			if err := deck.WriteSuiteDeck(deckFilePath, deckRec); err != nil {
 				printf("  ✗ Failed to save deck %s variation %d: %v\n", strategy, v, err)
 				failCount++
 				continue
@@ -180,33 +167,23 @@ func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, st
 	buildDuration := time.Since(buildStart)
 
 	// Save suite summary
-	suiteFileName := fmt.Sprintf("%s_deck_suite_summary_%s.json", timestamp, strings.TrimPrefix(playerData.PlayerTag, "#"))
-	suiteSummaryPath := filepath.Join(decksDir, suiteFileName)
-
-	suiteData := map[string]any{
-		"version":   "1.0.0",
-		"timestamp": timestamp,
-		"player": map[string]string{
-			"name": playerData.PlayerName,
-			"tag":  playerData.PlayerTag,
+	suiteSummaryPath := filepath.Join(decksDir, deck.SuiteSummaryFilename(timestamp, playerData.PlayerTag))
+	suiteSummary := deck.NewSuiteSummary(
+		time.Now().UTC().Format(time.RFC3339),
+		playerData.PlayerName,
+		playerData.PlayerTag,
+		deck.SuiteBuildInfo{
+			TotalDecks:     len(strategies) * variations,
+			Successful:     successCount,
+			Failed:         failCount,
+			Strategies:     len(strategies),
+			Variations:     variations,
+			GenerationTime: buildDuration.String(),
 		},
-		"build_info": map[string]any{
-			"total_decks":     len(strategies) * variations,
-			"successful":      successCount,
-			"failed":          failCount,
-			"strategies":      len(strategies),
-			"variations":      variations,
-			"generation_time": buildDuration.String(),
-		},
-		"decks": builtDecks,
-	}
+		toSuiteDeckSummaries(builtDecks),
+	)
 
-	suiteJSON, err := json.MarshalIndent(suiteData, "", "  ")
-	if err != nil {
-		return nil, nil, 0, 0, "", fmt.Errorf("failed to marshal suite summary: %w", err)
-	}
-
-	if err := os.WriteFile(suiteSummaryPath, suiteJSON, 0o644); err != nil {
+	if err := deck.WriteSuiteSummary(suiteSummaryPath, suiteSummary); err != nil {
 		return nil, nil, 0, 0, "", fmt.Errorf("failed to save suite summary: %w", err)
 	}
 
@@ -220,6 +197,20 @@ func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, st
 	}
 
 	return builtDecks, playerData, successCount, failCount, suiteSummaryPath, nil
+}
+
+func toSuiteDeckSummaries(builtDecks []suiteDeckInfo) []deck.SuiteDeckSummary {
+	summaries := make([]deck.SuiteDeckSummary, 0, len(builtDecks))
+	for _, builtDeck := range builtDecks {
+		summaries = append(summaries, deck.SuiteDeckSummary{
+			Strategy:  builtDeck.Strategy,
+			Variation: builtDeck.Variation,
+			Cards:     builtDeck.Cards,
+			AvgElixir: builtDeck.AvgElixir,
+			FilePath:  builtDeck.FilePath,
+		})
+	}
+	return summaries
 }
 
 // runPhase2EvaluateAllDecks evaluates all built decks for the analysis suite
