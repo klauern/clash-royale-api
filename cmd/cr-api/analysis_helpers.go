@@ -75,15 +75,16 @@ func loadDeckCardAnalysis(
 		return loadedAnalysis, nil
 	}
 
-	if strings.TrimSpace(playerTag) == "" {
+	normalizedTag := strings.TrimSpace(playerTag)
+	if normalizedTag == "" {
 		return nil, fmt.Errorf("--tag is required when using --analysis-dir without --analysis-file")
 	}
 
-	loadedAnalysis, err := builder.LoadLatestAnalysis(playerTag, analysisDir)
+	loadedAnalysis, err := builder.LoadLatestAnalysis(normalizedTag, analysisDir)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to load latest analysis for player %s from --analysis-dir %q: %w",
-			playerTag,
+			normalizedTag,
 			analysisDir,
 			err,
 		)

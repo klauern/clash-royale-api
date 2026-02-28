@@ -79,6 +79,33 @@ func TestLoadOfflineAnalysisFromFlags_UsesLatestFromDefaultAnalysisDir(t *testin
 	}
 }
 
+func TestLoadOfflineAnalysisFromFlags_TrimmedTagWorksForLatestLookup(t *testing.T) {
+	t.Parallel()
+
+	dataDir := t.TempDir()
+	analysisDir := filepath.Join(dataDir, "analysis")
+	if err := os.MkdirAll(analysisDir, 0o755); err != nil {
+		t.Fatalf("MkdirAll failed: %v", err)
+	}
+
+	writeDeckAnalysisFixture(
+		t,
+		analysisDir,
+		"20260221_analysis_P2Y8Q.json",
+		deck.CardAnalysis{PlayerName: "Trimmed", PlayerTag: "#P2Y8Q", CardLevels: map[string]deck.CardLevelData{}},
+		time.Now(),
+	)
+
+	builder := deck.NewBuilder(dataDir)
+	result, err := loadOfflineAnalysisFromFlags(builder, "  #P2Y8Q  ", dataDir, "", "", false)
+	if err != nil {
+		t.Fatalf("loadOfflineAnalysisFromFlags() error = %v", err)
+	}
+	if result.PlayerName != "Trimmed" {
+		t.Fatalf("PlayerName = %q, want %q", result.PlayerName, "Trimmed")
+	}
+}
+
 func TestLoadOfflineAnalysisFromFlags_RequiresTagForAnalysisDirMode(t *testing.T) {
 	t.Parallel()
 
