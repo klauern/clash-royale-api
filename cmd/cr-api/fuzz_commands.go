@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -245,7 +246,10 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		client := clashroyale.NewClient(apiToken)
-		cleanTag := strings.TrimPrefix(playerTag, "#")
+		cleanTag, err := playertag.Sanitize(playerTag)
+		if err != nil {
+			return err
+		}
 
 		player, err = client.GetPlayerWithContext(ctx, cleanTag)
 		if err != nil {
@@ -1620,7 +1624,10 @@ func loadPlayerFromAnalysis(analysisFile, analysisDir, playerTag string) (*clash
 		analysisPath = analysisFile
 	} else {
 		// Find latest analysis file for player
-		cleanTag := strings.TrimPrefix(playerTag, "#")
+		cleanTag, err := playertag.Sanitize(playerTag)
+		if err != nil {
+			return nil, "", err
+		}
 		pattern := fmt.Sprintf("*analysis*%s.json", cleanTag)
 
 		matches, err := filepath.Glob(filepath.Join(analysisDir, pattern))
@@ -1787,7 +1794,10 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		client := clashroyale.NewClient(apiToken)
-		cleanTag := strings.TrimPrefix(playerTag, "#")
+		cleanTag, err := playertag.Sanitize(playerTag)
+		if err != nil {
+			return err
+		}
 		player, playerErr := client.GetPlayerWithContext(ctx, cleanTag)
 		if playerErr != nil {
 			return fmt.Errorf("failed to load player data for %s: %w", playerTag, playerErr)

@@ -18,3 +18,13 @@ func TestSanitizePlayerTagInvalid(t *testing.T) {
 		t.Fatal("expected error for invalid tag")
 	}
 }
+
+func TestDisplayPlayerTag(t *testing.T) {
+	tag, err := DisplayPlayerTag(" abc123 ")
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if tag != "#ABC123" {
+		t.Fatalf("expected #ABC123, got %s", tag)
+	}
+}

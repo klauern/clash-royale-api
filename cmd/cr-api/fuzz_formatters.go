@@ -11,6 +11,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
@@ -251,7 +252,10 @@ func saveResultsToFileImpl(results []FuzzingResult, outputDir, format, playerTag
 	}
 
 	timestamp := time.Now().Format("20060102_150405")
-	cleanTag := strings.TrimPrefix(playerTag, "#")
+	cleanTag, err := playertag.Sanitize(playerTag)
+	if err != nil {
+		return err
+	}
 	var filename string
 
 	switch format {

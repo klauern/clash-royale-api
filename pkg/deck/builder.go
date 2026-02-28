@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/internal/util"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
@@ -377,7 +378,10 @@ func (b *Builder) LoadLatestAnalysis(playerTag, analysisDir string) (*CardAnalys
 		return nil, fmt.Errorf("analysis directory does not exist: %s", analysisDir)
 	}
 
-	cleanTag := strings.TrimPrefix(playerTag, "#")
+	cleanTag, err := playertag.Sanitize(playerTag)
+	if err != nil {
+		return nil, err
+	}
 	pattern := fmt.Sprintf("*analysis*%s.json", cleanTag)
 
 	matches, err := filepath.Glob(filepath.Join(analysisDir, pattern))
@@ -410,7 +414,10 @@ func (b *Builder) SaveDeck(deckData *DeckRecommendation, outputDir, playerTag st
 	}
 
 	timestamp := time.Now().Format("20060102_150405")
-	cleanTag := strings.TrimPrefix(playerTag, "#")
+	cleanTag, err := playertag.Sanitize(playerTag)
+	if err != nil {
+		return "", err
+	}
 	filename := fmt.Sprintf("%s_deck_%s.json", timestamp, cleanTag)
 	path := filepath.Join(outputDir, filename)
 

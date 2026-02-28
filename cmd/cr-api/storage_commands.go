@@ -11,6 +11,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/urfave/cli/v3"
 )
@@ -146,8 +147,13 @@ func storageStatsCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("failed to read database size: %w", err)
 	}
 
+	displayTag, err := playertag.Display(playerTag)
+	if err != nil {
+		return err
+	}
+
 	output := storageStatsOutput{
-		PlayerTag:       strings.TrimPrefix(playerTag, "#"),
+		PlayerTag:       displayTag,
 		DBPath:          dbPath,
 		DBSizeBytes:     dbInfo.Size(),
 		DBSizeHuman:     humanReadableBytes(dbInfo.Size()),
@@ -475,7 +481,7 @@ func confirmStorageAction(prompt string) (bool, error) {
 }
 
 func printStorageStatsSummary(stats storageStatsOutput) error {
-	printf("\nStorage Statistics for #%s\n", stats.PlayerTag)
+	printf("\nStorage Statistics for %s\n", stats.PlayerTag)
 	printf("═══════════════════════════════════════════\n")
 	printf("Database: %s\n", stats.DBPath)
 	printf("Database Size: %s (%d bytes)\n", stats.DBSizeHuman, stats.DBSizeBytes)
