@@ -146,12 +146,7 @@ func addDiscoverCommands() *cli.Command {
 				Name:  "start",
 				Usage: "Start a new deck discovery evaluation session",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 					&cli.StringFlag{
 						Name:  "strategy",
 						Value: string(deck.StrategySmartSample),
@@ -221,12 +216,7 @@ func addDiscoverCommands() *cli.Command {
 				Name:  "run",
 				Usage: "Run deck discovery evaluation session (alias for start)",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 					&cli.StringFlag{
 						Name:  "strategy",
 						Value: string(deck.StrategySmartSample),
@@ -300,12 +290,7 @@ func addDiscoverCommands() *cli.Command {
 				Name:  "stop",
 				Usage: "Stop a running discovery session gracefully",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 				},
 				Action: deckDiscoverStopCommand,
 			},
@@ -313,12 +298,7 @@ func addDiscoverCommands() *cli.Command {
 				Name:  "resume",
 				Usage: "Resume a discovery session from checkpoint",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 					&cli.BoolFlag{
 						Name:    "verbose",
 						Aliases: []string{"v"},
@@ -335,12 +315,7 @@ func addDiscoverCommands() *cli.Command {
 				Name:  "status",
 				Usage: "Show status of discovery session",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 				},
 				Action: deckDiscoverStatusCommand,
 			},
@@ -348,12 +323,7 @@ func addDiscoverCommands() *cli.Command {
 				Name:  "stats",
 				Usage: "Show detailed session statistics",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 				},
 				Action: deckDiscoverStatsCommand,
 			},

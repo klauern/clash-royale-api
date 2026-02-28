@@ -21,12 +21,7 @@ func addUpgradeImpactCommands() *cli.Command {
 		Aliases: []string{"ui"},
 		Usage:   "Analyze which card upgrades have the biggest impact on deck viability",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.IntFlag{
 				Name:  "top",
 				Value: 10,

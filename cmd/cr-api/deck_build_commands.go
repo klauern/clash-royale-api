@@ -12,7 +12,7 @@ func addDeckBuildCommand() *cli.Command {
 		Name:  "build",
 		Usage: "Build an optimized deck based on player's card collection",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #)", Required: true},
+			playerTagFlag(true),
 			&cli.StringFlag{Name: "strategy", Aliases: []string{"s"}, Value: "balanced", Usage: "Deck building strategy: balanced, aggro, control, cycle, splash, spell, synergy-first, all"},
 			&cli.Float64Flag{Name: "min-elixir", Value: 2.5, Usage: "Minimum average elixir for the deck"},
 			&cli.Float64Flag{Name: "max-elixir", Value: 4.5, Usage: "Maximum average elixir for the deck"},
@@ -52,12 +52,7 @@ func addDeckBuildSuiteCommand() *cli.Command {
 		Name:  "build-suite",
 		Usage: "Build multiple deck variations in one invocation for systematic analysis",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.StringFlag{
 				Name:    "strategies",
 				Aliases: []string{"s"},
@@ -124,7 +119,7 @@ func addDeckAnalyzeSuiteCommand() *cli.Command {
 		Name:  "analyze-suite",
 		Usage: "Build deck variations, evaluate all decks, compare top performers, and generate comprehensive report",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #)", Required: true},
+			playerTagFlag(true),
 			&cli.StringFlag{Name: "strategies", Aliases: []string{"s"}, Value: deckStrategyAll, Usage: "Deck building strategies (comma-separated or 'all'): balanced, aggro, control, cycle, splash, spell"},
 			&cli.IntFlag{Name: "variations", Value: 1, Usage: "Number of variations per strategy"},
 			&cli.StringFlag{Name: "output-dir", Value: "data/analysis", Usage: "Base output directory for all analysis results"},

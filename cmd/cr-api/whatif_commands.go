@@ -23,12 +23,7 @@ func addWhatIfCommands() *cli.Command {
 		Aliases: []string{"wi"},
 		Usage:   "Simulate deck changes with upgraded cards ('what-if' analysis)",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.StringSliceFlag{
 				Name:     "upgrade",
 				Aliases:  []string{"u"},

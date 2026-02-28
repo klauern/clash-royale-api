@@ -41,12 +41,7 @@ func addArchetypeVarietyCommand() *cli.Command {
 		Name:  "variety",
 		Usage: "Analyze archetype variety across 8 predefined playstyles",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.IntFlag{
 				Name:  "target-level",
 				Value: 11,
@@ -383,12 +378,7 @@ func addArchetypeDetectCommand() *cli.Command {
 		Name:  "detect",
 		Usage: "Dynamically detect viable archetypes based on player's card collection",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.Float64Flag{
 				Name:  "min-viability",
 				Value: 0,

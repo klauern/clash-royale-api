@@ -10,12 +10,7 @@ func addDeckWarCommand() *cli.Command {
 		Name:  "war",
 		Usage: "Build a 4-deck war set with no repeated cards",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.IntFlag{
 				Name:  "deck-count",
 				Value: 4,
@@ -76,7 +71,7 @@ func addDeckBudgetCommand() *cli.Command {
 		Name:  "budget",
 		Usage: "Find budget-optimized decks with minimal upgrade investment",
 		Flags: []cli.Flag{
-			&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #)", Required: true},
+			playerTagFlag(true),
 			&cli.IntFlag{Name: "max-cards", Value: 0, Usage: "Maximum cards needed for upgrades (0 = no limit)"},
 			&cli.IntFlag{Name: "max-gold", Value: 0, Usage: "Maximum gold needed for upgrades (0 = no limit)"},
 			&cli.Float64Flag{Name: "target-level", Value: 12.0, Usage: "Target average card level for viability"},
@@ -101,12 +96,7 @@ func addDeckPossibleCountCommand() *cli.Command {
 		Name:  "possible-count",
 		Usage: "Calculate the number of possible deck combinations from available cards",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #) - calculates decks possible with player's cards",
-				Required: true,
-			},
+			playerTagFlagWithUsage(true, "Player tag (without #) - calculates decks possible with player's cards"),
 			&cli.StringFlag{
 				Name:  "format",
 				Value: "human",
@@ -132,12 +122,7 @@ func addDeckCompareAlgorithmsCommand() *cli.Command {
 		Name:  "compare-algorithms",
 		Usage: "Compare V1 vs V2 deck building algorithms on quality metrics",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.StringFlag{
 				Name:    "strategies",
 				Aliases: []string{"s"},

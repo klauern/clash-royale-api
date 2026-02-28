@@ -25,12 +25,7 @@ func addLeaderboardCommands() *cli.Command {
 				Name:  "show",
 				Usage: "Display top decks from the leaderboard",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 					&cli.IntFlag{
 						Name:    "top",
 						Aliases: []string{"n"},
@@ -53,12 +48,7 @@ func addLeaderboardCommands() *cli.Command {
 				Name:  "filter",
 				Usage: "Query leaderboard with filters",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 					&cli.StringFlag{
 						Name:  "archetype",
 						Usage: "Filter by archetype (e.g., beatdown, control, cycle)",
@@ -132,12 +122,7 @@ func addLeaderboardCommands() *cli.Command {
 				Name:  "export",
 				Usage: "Export leaderboard to file",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 					&cli.StringFlag{
 						Name:  "format",
 						Value: "json",
@@ -154,12 +139,7 @@ func addLeaderboardCommands() *cli.Command {
 				Name:  "stats",
 				Usage: "Display leaderboard statistics",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 					&cli.BoolFlag{
 						Name:  "archetypes",
 						Usage: "Show archetype distribution",
@@ -171,12 +151,7 @@ func addLeaderboardCommands() *cli.Command {
 				Name:  "clear",
 				Usage: "Clear all decks from the leaderboard",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 					&cli.BoolFlag{
 						Name:    "confirm",
 						Aliases: []string{"y"},
