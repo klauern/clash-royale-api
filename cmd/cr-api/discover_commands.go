@@ -602,11 +602,7 @@ func warnExistingCheckpoint(playerTag string) {
 		return
 	}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-	checkpointPath := deck.DiscoveryCheckpointPath(filepath.Join(homeDir, ".cr-api", "discover"), sanitizedTag)
+	checkpointPath := deck.DiscoveryCheckpointPath(deck.DefaultDiscoveryCheckpointDir(), sanitizedTag)
 	if _, err := os.Stat(checkpointPath); err == nil {
 		fprintf(os.Stderr, "Warning: Existing checkpoint found. Use --resume or 'cr-api deck discover resume' to continue.\n")
 		fprintf(os.Stderr, "Starting fresh will clear the existing checkpoint.\n")

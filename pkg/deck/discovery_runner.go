@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -148,16 +147,11 @@ func NewDiscoveryRunner(config DiscoveryConfig) (*DiscoveryRunner, error) {
 		return nil, fmt.Errorf("failed to create iterator: %w", err)
 	}
 
-	// Get checkpoint directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
 	sanitizedTag, err := SanitizePlayerTag(config.PlayerTag)
 	if err != nil {
 		return nil, fmt.Errorf("invalid player tag: %w", err)
 	}
-	checkpointDir := filepath.Join(homeDir, ".cr-api", "discover")
+	checkpointDir := DefaultDiscoveryCheckpointDir()
 
 	runner := &DiscoveryRunner{
 		generator:     generator,

@@ -38,7 +38,7 @@ func SaveDiscoveryCheckpoint(path string, checkpoint DiscoveryCheckpoint) error 
 func LoadDiscoveryCheckpoint(path string) (DiscoveryCheckpoint, error) {
 	var checkpoint DiscoveryCheckpoint
 	if err := storage.ReadJSON(path, &checkpoint); err != nil {
-		if os.IsNotExist(err) || errors.Is(err, fs.ErrNotExist) || errors.Is(err, os.ErrNotExist) {
+		if errors.Is(err, fs.ErrNotExist) {
 			return DiscoveryCheckpoint{}, ErrNoCheckpoint
 		}
 		if isInvalidCheckpointError(err) {
@@ -59,6 +59,8 @@ func isInvalidCheckpointError(err error) bool {
 	var typeErr *json.UnmarshalTypeError
 	var invalidUnmarshalErr *json.InvalidUnmarshalError
 
+	// storage.ReadJSON wraps json.Unmarshal errors in a file-specific message, so
+	// we retain this substring check until storage exposes a sentinel or typed error.
 	return errors.As(err, &syntaxErr) ||
 		errors.As(err, &typeErr) ||
 		errors.As(err, &invalidUnmarshalErr) ||
