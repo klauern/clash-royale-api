@@ -14,11 +14,7 @@ func addDeckEvaluateCommand() *cli.Command {
 				Name:  "deck",
 				Usage: "Deck string (8 cards separated by dashes, e.g., Knight-Archers-Fireball-...)",
 			},
-			&cli.StringFlag{
-				Name:    "tag",
-				Aliases: []string{"p"},
-				Usage:   "Player tag (without #) for card level context and upgrade impact analysis",
-			},
+			playerTagFlagWithUsage(false, "Player tag (without #) for card level context and upgrade impact analysis"),
 			&cli.StringFlag{
 				Name:  "from-analysis",
 				Usage: "Load deck from analysis JSON file",
@@ -59,7 +55,7 @@ func addDeckEvaluateBatchCommand() *cli.Command {
 		Flags: []cli.Flag{
 			&cli.StringFlag{Name: "from-suite", Usage: "Path to deck suite summary JSON file (from build-suite command)"},
 			&cli.StringFlag{Name: "deck-dir", Usage: "Directory containing deck JSON files"},
-			&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #) for context-aware evaluation"},
+			playerTagFlagWithUsage(false, "Player tag (without #) for context-aware evaluation"),
 			&cli.StringFlag{Name: "format", Value: "summary", Usage: "Output format: summary, json, csv, detailed"},
 			&cli.StringFlag{Name: "output-dir", Usage: "Output directory for evaluation files (default: prints to stdout)"},
 			&cli.StringFlag{Name: "sort-by", Value: "overall", Usage: "Sort results by: overall, attack, defense, synergy, versatility, f2p, playability, elixir"},

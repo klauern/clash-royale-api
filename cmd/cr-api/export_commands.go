@@ -106,12 +106,7 @@ func exportPlayerCommand() *cli.Command {
 		Name:  "player",
 		Usage: "Export player data to CSV",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.StringSliceFlag{
 				Name:  "types",
 				Value: []string{"summary"},
@@ -200,12 +195,7 @@ func exportAnalysisCommand() *cli.Command {
 		Name:  "analysis",
 		Usage: "Export card collection analysis to CSV",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			tag := cmd.String("tag")
@@ -254,12 +244,7 @@ func exportBattlesCommand() *cli.Command {
 		Name:  "battles",
 		Usage: "Export battle log to CSV",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.IntFlag{
 				Name:  "limit",
 				Value: 0,
@@ -311,12 +296,7 @@ func exportEventsCommand() *cli.Command {
 		Name:  "events",
 		Usage: "Export event deck data to CSV",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 		},
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			tag := cmd.String("tag")
@@ -561,12 +541,7 @@ func exportAllCommand() *cli.Command {
 		Name:  "all",
 		Usage: "Export all available data for a player",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.BoolFlag{
 				Name:  "timestamp",
 				Usage: "Include timestamp in exported filenames",

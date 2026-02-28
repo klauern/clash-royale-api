@@ -32,12 +32,7 @@ func addStorageCommands() *cli.Command {
 				Name:  "stats",
 				Usage: "Show storage database size and deck counts by archetype",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 					&cli.StringFlag{
 						Name:  "format",
 						Value: storageFormatSummary,
@@ -50,7 +45,7 @@ func addStorageCommands() *cli.Command {
 				Name:  "purge",
 				Usage: "Delete all saved decks for a player",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #)", Required: true},
+					playerTagFlag(true),
 					&cli.BoolFlag{Name: "confirm", Aliases: []string{"y"}, Usage: "Skip confirmation prompt"},
 				},
 				Action: storagePurgeCommand,
@@ -59,7 +54,7 @@ func addStorageCommands() *cli.Command {
 				Name:  "cleanup",
 				Usage: "Remove low-score and/or old decks",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #)", Required: true},
+					playerTagFlag(true),
 					&cli.Float64Flag{Name: "min-score", Usage: "Delete decks with overall score below this threshold"},
 					&cli.IntFlag{Name: "older-than-days", Usage: "Delete decks evaluated more than N days ago"},
 					&cli.StringFlag{Name: "archetype", Usage: "Restrict cleanup to a single archetype"},
@@ -72,7 +67,7 @@ func addStorageCommands() *cli.Command {
 				Name:  "prune",
 				Usage: "Keep only top N decks per archetype",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #)", Required: true},
+					playerTagFlag(true),
 					&cli.IntFlag{Name: "keep", Value: 50, Usage: "Number of top decks to keep per archetype"},
 					&cli.BoolFlag{Name: "dry-run", Usage: "Show decks that would be deleted without deleting"},
 					&cli.BoolFlag{Name: "confirm", Aliases: []string{"y"}, Usage: "Skip confirmation prompt"},
@@ -83,7 +78,7 @@ func addStorageCommands() *cli.Command {
 				Name:  "vacuum",
 				Usage: "Compact the SQLite database file",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #)", Required: true},
+					playerTagFlag(true),
 				},
 				Action: storageVacuumCommand,
 			},
@@ -91,7 +86,7 @@ func addStorageCommands() *cli.Command {
 				Name:  "export",
 				Usage: "Export storage decks for backup",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #)", Required: true},
+					playerTagFlag(true),
 					&cli.StringFlag{Name: "output", Aliases: []string{"o"}, Usage: "Output path for backup JSON", Required: true},
 					&cli.StringFlag{Name: "format", Value: storageFormatJSON, Usage: "Export format (json)"},
 				},
@@ -101,7 +96,7 @@ func addStorageCommands() *cli.Command {
 				Name:  "import",
 				Usage: "Import decks from backup",
 				Flags: []cli.Flag{
-					&cli.StringFlag{Name: "tag", Aliases: []string{"p"}, Usage: "Player tag (without #)", Required: true},
+					playerTagFlag(true),
 					&cli.StringFlag{Name: "input", Aliases: []string{"i"}, Usage: "Backup file to import", Required: true},
 					&cli.BoolFlag{Name: "confirm", Aliases: []string{"y"}, Usage: "Skip confirmation prompt"},
 				},

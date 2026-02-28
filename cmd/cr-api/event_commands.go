@@ -17,12 +17,7 @@ import (
 
 // eventTagFlag returns the standard player tag flag for event commands
 func eventTagFlag() *cli.StringFlag {
-	return &cli.StringFlag{
-		Name:     "tag",
-		Aliases:  []string{"p"},
-		Usage:    "Player tag (without #)",
-		Required: true,
-	}
+	return playerTagFlag(true)
 }
 
 // eventExportCSVFlag returns the standard export-csv flag

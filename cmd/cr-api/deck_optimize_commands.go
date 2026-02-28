@@ -36,11 +36,7 @@ func addDeckOptimizeCommand() *cli.Command {
 				Usage:    "Current deck string (8 cards separated by dashes)",
 				Required: true,
 			},
-			&cli.StringFlag{
-				Name:    "tag",
-				Aliases: []string{"p"},
-				Usage:   "Player tag (without #) for card level context",
-			},
+			playerTagFlagWithUsage(false, "Player tag (without #) for card level context"),
 			&cli.IntFlag{
 				Name:  "suggestions",
 				Value: 3,
@@ -66,11 +62,7 @@ func addDeckRecommendCommand() *cli.Command {
 		Name:  "recommend",
 		Usage: "Get meta-based deck recommendations",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:    "tag",
-				Aliases: []string{"p"},
-				Usage:   "Player tag (without #) for personalized recommendations",
-			},
+			playerTagFlagWithUsage(false, "Player tag (without #) for personalized recommendations"),
 			&cli.StringFlag{
 				Name:  "archetype",
 				Usage: "Preferred archetype (beatdown, control, cycle, siege, bait, hybrid)",

@@ -8,12 +8,7 @@ import (
 // basicFlags returns the basic fuzzing parameters
 func basicFlags() []cli.Flag {
 	return []cli.Flag{
-		&cli.StringFlag{
-			Name:     "tag",
-			Aliases:  []string{"p"},
-			Usage:    "Player tag (without #) for card collection context",
-			Required: true,
-		},
+		playerTagFlagWithUsage(true, "Player tag (without #) for card collection context"),
 		&cli.StringFlag{
 			Name:  "mode",
 			Value: "random",
@@ -402,10 +397,7 @@ func addDeckFuzzListCommand() *cli.Command {
 				Value: "summary",
 				Usage: "Output format: summary, json, csv, detailed",
 			},
-			&cli.StringFlag{
-				Name:  "tag",
-				Usage: "Player tag (without #) to re-evaluate saved decks with your card levels",
-			},
+			playerTagFlagWithUsage(false, "Player tag (without #) to re-evaluate saved decks with your card levels"),
 			&cli.StringFlag{
 				Name:  "api-token",
 				Usage: "Clash Royale API token (defaults to CLASH_ROYALE_API_TOKEN env var)",
@@ -431,10 +423,7 @@ func addDeckFuzzUpdateCommand() *cli.Command {
 		Name:  "update",
 		Usage: "Re-evaluate saved decks with current scoring and update storage",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:  "tag",
-				Usage: "Player tag (without #) to apply level-aware scoring",
-			},
+			playerTagFlagWithUsage(false, "Player tag (without #) to apply level-aware scoring"),
 			&cli.IntFlag{
 				Name:  "top",
 				Value: 0,

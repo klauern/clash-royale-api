@@ -707,12 +707,7 @@ func addPlayerCommand() *cli.Command {
 		Name:  "player",
 		Usage: "Get player information",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.BoolFlag{
 				Name:  "chests",
 				Usage: "Show upcoming chests",
@@ -751,12 +746,7 @@ func addAnalyzeCommand() *cli.Command {
 		Name:  "analyze",
 		Usage: "Analyze player card collection and upgrade priorities",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.BoolFlag{
 				Name:  "include-max-level",
 				Usage: "Include max level cards in analysis",
@@ -803,12 +793,7 @@ func addPlaystyleCommand() *cli.Command {
 		Name:  "playstyle",
 		Usage: "Analyze player's playstyle and recommend decks",
 		Flags: []cli.Flag{
-			&cli.StringFlag{
-				Name:     "tag",
-				Aliases:  []string{"p"},
-				Usage:    "Player tag (without #)",
-				Required: true,
-			},
+			playerTagFlag(true),
 			&cli.BoolFlag{
 				Name:  "recommend-decks",
 				Usage: "Include deck recommendations based on playstyle",

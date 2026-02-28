@@ -59,12 +59,7 @@ func addEvolutionCommands() *cli.Command {
 				Name:  "recommend",
 				Usage: "Recommend optimal evolutions based on shards and card levels",
 				Flags: []cli.Flag{
-					&cli.StringFlag{
-						Name:     "tag",
-						Aliases:  []string{"p"},
-						Usage:    "Player tag (without #)",
-						Required: true,
-					},
+					playerTagFlag(true),
 					&cli.IntFlag{
 						Name:  "top",
 						Value: 10,
