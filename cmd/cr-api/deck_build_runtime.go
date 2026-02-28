@@ -259,12 +259,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			// Save deck file if requested
 			var filePath string
 			if saveData {
-				timestamp := time.Now().Format("20060102_150405")
-				filePath = filepath.Join(outputDir, deck.SuiteDeckFilename(timestamp, string(strategy), v, playerData.PlayerTag))
-
-				// Save with a plain builder instance; build-specific config is not required for serialization.
-				saveBuilder := deck.NewBuilder(dataDir)
-				savedPath, err := saveBuilder.SaveDeck(deckRec, outputDir, fmt.Sprintf("%s_var%d_%s", strategy, v, playerData.PlayerTag))
+				savedPath, err := saveSuiteDeckFile(outputDir, string(strategy), v, playerData.PlayerTag, deckRec)
 				if err != nil {
 					if verbose {
 						printf("  ⚠ Variation %d: Failed to save deck: %v\n", v, err)

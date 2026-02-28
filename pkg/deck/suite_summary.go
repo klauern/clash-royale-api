@@ -1,6 +1,7 @@
 package deck
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -8,6 +9,8 @@ import (
 )
 
 const suiteSummaryVersion = "1.0.0"
+
+var ErrNilRecommendation = errors.New("deck recommendation is required")
 
 // SuiteDeckSummary captures per-deck metadata in suite summary files.
 type SuiteDeckSummary struct {
@@ -82,6 +85,10 @@ func NewSuiteSummary(timestamp, playerName, playerTag string, buildInfo SuiteBui
 
 // WriteSuiteDeck writes a suite deck payload to disk.
 func WriteSuiteDeck(path string, recommendation *DeckRecommendation) error {
+	if recommendation == nil {
+		return ErrNilRecommendation
+	}
+
 	payload := SuiteDeckPayload{
 		Deck:           recommendation.Deck,
 		AvgElixir:      recommendation.AvgElixir,

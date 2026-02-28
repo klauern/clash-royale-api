@@ -169,7 +169,7 @@ func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, st
 	// Save suite summary
 	suiteSummaryPath := filepath.Join(decksDir, deck.SuiteSummaryFilename(timestamp, playerData.PlayerTag))
 	suiteSummary := deck.NewSuiteSummary(
-		timestamp,
+		time.Now().UTC().Format(time.RFC3339),
 		playerData.PlayerName,
 		playerData.PlayerTag,
 		deck.SuiteBuildInfo{

@@ -83,3 +83,12 @@ func TestWriteSuiteDeckAndSummary(t *testing.T) {
 		t.Fatalf("unexpected deck count: %d", len(loadedSummary.Decks))
 	}
 }
+
+func TestWriteSuiteDeckNilInput(t *testing.T) {
+	t.Parallel()
+
+	deckPath := filepath.Join(t.TempDir(), "deck.json")
+	if err := WriteSuiteDeck(deckPath, nil); err == nil {
+		t.Fatal("expected WriteSuiteDeck to reject nil recommendation")
+	}
+}
