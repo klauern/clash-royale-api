@@ -339,11 +339,7 @@ func deckDiscoverStatusCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Check for checkpoint
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
+	checkpointPath := deck.DiscoveryCheckpointPathForTag(sanitizedTag)
 
 	if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
 		printf("No active discovery session found for player #%s\n", playerTag)
@@ -584,11 +580,7 @@ func warnExistingCheckpoint(playerTag string) {
 		return
 	}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
+	checkpointPath := deck.DiscoveryCheckpointPathForTag(sanitizedTag)
 	if _, err := os.Stat(checkpointPath); err == nil {
 		fprintf(os.Stderr, "Warning: Existing checkpoint found. Use --resume or 'cr-api deck discover resume' to continue.\n")
 		fprintf(os.Stderr, "Starting fresh will clear the existing checkpoint.\n")
@@ -713,16 +705,11 @@ func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-
 	// Check for PID file
-	pidFile := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.pid", sanitizedTag))
+	pidFile := deck.DiscoveryPIDPathForTag(sanitizedTag)
 	if _, err := os.Stat(pidFile); os.IsNotExist(err) {
 		// Check if there's a checkpoint (might be foreground process)
-		checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
+		checkpointPath := deck.DiscoveryCheckpointPathForTag(sanitizedTag)
 		if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
 			return fmt.Errorf("no active discovery session found for player #%s", playerTag)
 		}
@@ -771,11 +758,7 @@ func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Verify checkpoint exists
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
+	checkpointPath := deck.DiscoveryCheckpointPathForTag(sanitizedTag)
 
 	if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
 		return fmt.Errorf("no checkpoint found for player #%s. Use 'cr-api deck discover start' to begin a new session", playerTag)
@@ -814,13 +797,8 @@ func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 		return err
 	}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-
 	// Check for checkpoint
-	checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
+	checkpointPath := deck.DiscoveryCheckpointPathForTag(sanitizedTag)
 
 	if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
 		return fmt.Errorf("no discovery session found for player #%s", playerTag)
@@ -901,13 +879,8 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 		return err
 	}
 
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-
 	// Check for already running process
-	pidFile := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.pid", sanitizedTag))
+	pidFile := deck.DiscoveryPIDPathForTag(sanitizedTag)
 	if _, err := os.Stat(pidFile); err == nil {
 		pidData, readErr := os.ReadFile(pidFile)
 		if readErr != nil {
@@ -980,7 +953,7 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	}
 
 	// Redirect output to log file
-	logFile := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.log", sanitizedTag))
+	logFile := deck.DiscoveryLogPathForTag(sanitizedTag)
 	logHandle, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %w", err)
