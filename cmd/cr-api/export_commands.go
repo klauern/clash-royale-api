@@ -44,6 +44,10 @@ func exportWithFeedback(fn exportFunc, dataDir string, data any, description, ta
 	return nil
 }
 
+func exportTargetFile(exportDir, filename string) string {
+	return filepath.Join(exportDir, filename)
+}
+
 // extractEventBattles filters battles to include only non-ladder/training events
 func extractEventBattles(battles []clashroyale.Battle) []clashroyale.Battle {
 	return events.FilterEventBattles(battles)
@@ -79,11 +83,11 @@ func applyTimestampToExport(path, timestamp string) (string, error) {
 func exportPlayerType(exportType, dataDir, exportDir string, player *clashroyale.Player) error {
 	exportSummary := func() error {
 		exporter := csv.NewPlayerExporter()
-		return exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, player, "player summary", filepath.Join(exportDir, "players.csv"))
+		return exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, player, "player summary", exportTargetFile(exportDir, exporter.Filename()))
 	}
 	exportCards := func() error {
 		exporter := csv.NewPlayerCardsExporter()
-		return exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, player, "player cards", filepath.Join(exportDir, "player_cards.csv"))
+		return exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, player, "player cards", exportTargetFile(exportDir, exporter.Filename()))
 	}
 
 	switch exportType {
@@ -181,7 +185,7 @@ func exportCardsCommand() *cli.Command {
 
 			// Export cards
 			exporter := csv.NewCardsExporter()
-			if err := exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, cards, fmt.Sprintf("%d cards", len(cards)), filepath.Join(exportDir, "cards.csv")); err != nil {
+			if err := exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, cards, fmt.Sprintf("%d cards", len(cards)), exportTargetFile(exportDir, exporter.Filename())); err != nil {
 				return err
 			}
 
@@ -230,7 +234,7 @@ func exportAnalysisCommand() *cli.Command {
 
 			// Export analysis
 			exporter := csv.NewAnalysisExporter()
-			if err := exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, result, "collection analysis", filepath.Join(exportDir, "analysis.csv")); err != nil {
+			if err := exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, result, "collection analysis", exportTargetFile(exportDir, exporter.Filename())); err != nil {
 				return err
 			}
 
@@ -282,7 +286,7 @@ func exportBattlesCommand() *cli.Command {
 
 			// Export battles
 			exporter := csv.NewBattleLogExporter()
-			if err := exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, battles, fmt.Sprintf("%d battles", len(battles)), filepath.Join(exportDir, "battles.csv")); err != nil {
+			if err := exportWithFeedback(func(ddir string, d any) error { return exporter.Export(ddir, d) }, dataDir, battles, fmt.Sprintf("%d battles", len(battles)), exportTargetFile(exportDir, exporter.Filename())); err != nil {
 				return err
 			}
 
@@ -333,7 +337,10 @@ func exportEventsCommand() *cli.Command {
 			}
 
 			// Move the output file to events directory
-			battlesFile := filepath.Join(pathBuilder.GetCSVDir(), storage.CSVBattlesSubdir, "battle_log.csv")
+			battlesFile := exportTargetFile(
+				filepath.Join(pathBuilder.GetCSVDir(), storage.CSVBattlesSubdir),
+				exporter.Filename(),
+			)
 			eventsFile := filepath.Join(exportDir, "event_battles.csv")
 			if err := storage.MoveFile(battlesFile, eventsFile); err != nil {
 				return err
@@ -383,8 +390,8 @@ func exportAllPlayerData(dataDir string, player *clashroyale.Player, timestamp s
 		return fmt.Errorf("failed to create player export directory: %w", err)
 	}
 
-	playerSummaryFile := filepath.Join(playerExportDir, "players.csv")
 	playerExporter := csv.NewPlayerExporter()
+	playerSummaryFile := exportTargetFile(playerExportDir, playerExporter.Filename())
 	if err := exportWithFeedback(func(ddir string, d any) error { return playerExporter.Export(ddir, d) }, dataDir, player, "player summary", playerSummaryFile); err != nil {
 		return err
 	}
@@ -393,8 +400,8 @@ func exportAllPlayerData(dataDir string, player *clashroyale.Player, timestamp s
 		return err
 	}
 
-	playerCardsFile := filepath.Join(playerExportDir, "player_cards.csv")
 	playerCardsExporter := csv.NewPlayerCardsExporter()
+	playerCardsFile := exportTargetFile(playerExportDir, playerCardsExporter.Filename())
 	if err := exportWithFeedback(func(ddir string, d any) error { return playerCardsExporter.Export(ddir, d) }, dataDir, player, "player cards", playerCardsFile); err != nil {
 		return err
 	}
@@ -425,8 +432,8 @@ func exportAllAnalysisData(dataDir string, player *clashroyale.Player, timestamp
 		return fmt.Errorf("failed to create analysis export directory: %w", err)
 	}
 
-	analysisFile := filepath.Join(analysisExportDir, "card_analysis.csv")
 	analysisExporter := csv.NewAnalysisExporter()
+	analysisFile := exportTargetFile(analysisExportDir, analysisExporter.Filename())
 	if err := exportWithFeedback(func(ddir string, d any) error { return analysisExporter.Export(ddir, d) }, dataDir, analysisResult, "collection analysis", analysisFile); err != nil {
 		return err
 	}
@@ -449,8 +456,8 @@ func exportAllBattleData(dataDir string, battles []clashroyale.Battle, timestamp
 		return fmt.Errorf("failed to create battle export directory: %w", err)
 	}
 
-	battleLogFile := filepath.Join(battleExportDir, "battle_log.csv")
 	battleExporter := csv.NewBattleLogExporter()
+	battleLogFile := exportTargetFile(battleExportDir, battleExporter.Filename())
 	if err := exportWithFeedback(func(ddir string, d any) error { return battleExporter.Export(ddir, d) }, dataDir, battles, fmt.Sprintf("battles (%d records)", len(battles)), battleLogFile); err != nil {
 		return err
 	}
@@ -495,7 +502,10 @@ func exportAllEventData(dataDir string, battles []clashroyale.Battle, timestamp 
 		return fmt.Errorf("failed to export event battles: %w", err)
 	}
 
-	battlesFile := filepath.Join(storage.NewPathBuilder(tempDir).GetCSVDir(), storage.CSVBattlesSubdir, "battle_log.csv")
+	battlesFile := exportTargetFile(
+		filepath.Join(storage.NewPathBuilder(tempDir).GetCSVDir(), storage.CSVBattlesSubdir),
+		eventExporter.Filename(),
+	)
 	eventsFile := appendTimestampToFilename(filepath.Join(eventExportDir, "event_battles.csv"), timestamp)
 	if err := storage.MoveFile(battlesFile, eventsFile); err != nil {
 		return err
@@ -512,8 +522,8 @@ func exportAllCardDatabase(dataDir string, cardList *clashroyale.CardList, times
 		return fmt.Errorf("failed to create card export directory: %w", err)
 	}
 
-	cardFile := filepath.Join(cardExportDir, "cards.csv")
 	cardExporter := csv.NewCardsExporter()
+	cardFile := exportTargetFile(cardExportDir, cardExporter.Filename())
 	if err := exportWithFeedback(func(ddir string, d any) error { return cardExporter.Export(ddir, d) }, dataDir, cardList.Items, "card database", cardFile); err != nil {
 		return err
 	}
