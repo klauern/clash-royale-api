@@ -10,32 +10,18 @@ import (
 	"github.com/klauer/clash-royale-api/go/internal/config"
 )
 
-// ClassifyCard determines the strategic role of a card based on its properties
-// Returns a pointer to CardRole, or nil if the card doesn't fit a clear role
+// ClassifyCard determines the strategic role of a card using the config package
+// as the single source of truth.
 func ClassifyCard(cardName string, elixirCost int) *CardRole {
 	return ClassifyCardWithEvolution(cardName, elixirCost, 0)
 }
 
 // ClassifyCardWithEvolution determines the strategic role of a card considering
-// both its base properties and evolution status. When a card is evolved and has
-// a specific evolution role override, that role takes precedence over base classification.
+// both its base properties and evolution status.
 func ClassifyCardWithEvolution(cardName string, elixirCost, evolutionLevel int) *CardRole {
-	// Use the single source of truth from config
 	role := config.GetCardRoleWithEvolution(cardName, evolutionLevel)
-
-	// Fallback: classify by elixir cost if not in config database
 	if role == "" {
-		if elixirCost <= 2 {
-			role = RoleCycle
-		} else if elixirCost >= 3 && elixirCost <= 5 {
-			role = RoleSupport
-		} else if elixirCost >= 6 {
-			role = RoleWinCondition
-		} else {
-			// Unknown elixir cost, no clear role
-			return nil
-		}
-		return &role
+		return nil
 	}
 
 	return &role
@@ -105,20 +91,7 @@ func GetEvolutionOverrideRole(cardName string, evolutionLevel int) *CardRole {
 
 // GetRoleDescription returns a human-readable description of a card role
 func GetRoleDescription(role CardRole) string {
-	descriptions := map[CardRole]string{
-		RoleWinCondition: "Primary tower-damaging threat",
-		RoleBuilding:     "Defensive building or siege structure",
-		RoleSpellBig:     "High-damage spell (4+ elixir)",
-		RoleSpellSmall:   "Utility spell (2-3 elixir)",
-		RoleSupport:      "Mid-cost support troop",
-		RoleCycle:        "Cheap cycle card (1-2 elixir)",
-	}
-
-	if desc, exists := descriptions[role]; exists {
-		return desc
-	}
-
-	return "Unknown role"
+	return config.GetRoleDescription(config.CardRole(role))
 }
 
 // CountRoles returns a map of role counts from a slice of candidates

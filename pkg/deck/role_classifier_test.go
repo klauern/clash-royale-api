@@ -182,63 +182,50 @@ func TestClassifyCard(t *testing.T) {
 	}
 }
 
-// TestClassifyCardFallback tests fallback classification by elixir cost
-func TestClassifyCardFallback(t *testing.T) {
+// TestClassifyCardUnknownReturnsNil verifies unknown cards are not heuristically classified.
+func TestClassifyCardUnknownReturnsNil(t *testing.T) {
 	tests := []struct {
 		name       string
 		cardName   string
 		elixirCost int
-		wantRole   CardRole
 	}{
 		{
-			name:       "Unknown 1 elixir -> cycle",
+			name:       "Unknown 1 elixir",
 			cardName:   "Unknown Card",
 			elixirCost: 1,
-			wantRole:   RoleCycle,
 		},
 		{
-			name:       "Unknown 2 elixir -> cycle",
+			name:       "Unknown 2 elixir",
 			cardName:   "Unknown Card",
 			elixirCost: 2,
-			wantRole:   RoleCycle,
 		},
 		{
-			name:       "Unknown 3 elixir -> support",
+			name:       "Unknown 3 elixir",
 			cardName:   "Unknown Card",
 			elixirCost: 3,
-			wantRole:   RoleSupport,
 		},
 		{
-			name:       "Unknown 4 elixir -> support",
+			name:       "Unknown 4 elixir",
 			cardName:   "Unknown Card",
 			elixirCost: 4,
-			wantRole:   RoleSupport,
 		},
 		{
-			name:       "Unknown 6 elixir -> win condition",
+			name:       "Unknown 6 elixir",
 			cardName:   "Unknown Card",
 			elixirCost: 6,
-			wantRole:   RoleWinCondition,
 		},
 		{
-			name:       "Unknown 8 elixir -> win condition",
+			name:       "Unknown 8 elixir",
 			cardName:   "Unknown Card",
 			elixirCost: 8,
-			wantRole:   RoleWinCondition,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			role := ClassifyCard(tt.cardName, tt.elixirCost)
-
-			if role == nil {
-				t.Errorf("ClassifyCard(%v, %v) = nil, want %v", tt.cardName, tt.elixirCost, tt.wantRole)
-				return
-			}
-
-			if *role != tt.wantRole {
-				t.Errorf("ClassifyCard(%v, %v) = %v, want %v", tt.cardName, tt.elixirCost, *role, tt.wantRole)
+			if role != nil {
+				t.Errorf("ClassifyCard(%v, %v) = %v, want nil", tt.cardName, tt.elixirCost, *role)
 			}
 		})
 	}
