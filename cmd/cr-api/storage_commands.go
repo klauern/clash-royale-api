@@ -149,7 +149,7 @@ func storageStatsCommand(ctx context.Context, cmd *cli.Command) error {
 
 	displayTag, err := playertag.Display(playerTag)
 	if err != nil {
-		return err
+		return fmt.Errorf("displaying player tag %q: %w", playerTag, err)
 	}
 
 	output := storageStatsOutput{
