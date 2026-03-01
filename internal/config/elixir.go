@@ -194,6 +194,10 @@ var roleDescriptions = map[CardRole]string{
 	RoleCycle:        "Cheap cycle card (1-2 elixir)",
 }
 
+var roleAliases = map[string]string{
+	"The Log": "Log",
+}
+
 // GetCardElixir returns the elixir cost for a card.
 // It first checks the API-provided elixir cost, then falls back to the static mapping.
 // Returns 4 (default fallback) if the card is not found in either source.
@@ -223,6 +227,10 @@ func GetCardRole(cardName string) CardRole {
 // When evolutionLevel > 0, checks evolutionRoleOverrides first before roleGroups.
 // Returns empty CardRole ("") if the card is not found in any role group.
 func GetCardRoleWithEvolution(cardName string, evolutionLevel int) CardRole {
+	if canonicalName, exists := roleAliases[cardName]; exists {
+		cardName = canonicalName
+	}
+
 	// Check evolution overrides first if evolved
 	if evolutionLevel > 0 {
 		if role, exists := evolutionRoleOverrides[cardName]; exists {

@@ -231,6 +231,17 @@ func TestClassifyCardUnknownReturnsNil(t *testing.T) {
 	}
 }
 
+func TestClassifyCardAliases(t *testing.T) {
+	role := ClassifyCard("The Log", 2)
+	if role == nil {
+		t.Fatal("ClassifyCard(The Log) returned nil")
+	}
+
+	if *role != RoleSpellSmall {
+		t.Fatalf("ClassifyCard(The Log) = %v, want %v", *role, RoleSpellSmall)
+	}
+}
+
 // TestClassifyCardCandidate tests classifying a CardCandidate
 func TestClassifyCardCandidate(t *testing.T) {
 	candidate := CardCandidate{
