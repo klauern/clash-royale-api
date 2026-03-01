@@ -736,7 +736,7 @@ func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
 	pidFile := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.pid", sanitizedTag))
 	if _, err := os.Stat(pidFile); os.IsNotExist(err) {
 		// Check if there's a checkpoint (might be foreground process)
-		checkpointPath := filepath.Join(homeDir, ".cr-api", "discover", fmt.Sprintf("%s.json", sanitizedTag))
+		checkpointPath := deck.DiscoveryCheckpointPath(deck.DefaultDiscoveryCheckpointDir(), sanitizedTag)
 		if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
 			return fmt.Errorf("no active discovery session found for player #%s", playerTag)
 		}
