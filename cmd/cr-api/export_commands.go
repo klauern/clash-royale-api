@@ -357,7 +357,10 @@ func exportEventsCommand() *cli.Command {
 			}
 
 			// Move the output file to events directory
-			battlesFile := filepath.Join(pathBuilder.GetCSVDir(), storage.CSVBattlesSubdir, "battle_log.csv")
+			battlesFile := exportTargetFile(
+				filepath.Join(pathBuilder.GetCSVDir(), storage.CSVBattlesSubdir),
+				exporter.Filename(),
+			)
 			eventsFile := filepath.Join(exportDir, "event_battles.csv")
 			if err := storage.MoveFile(battlesFile, eventsFile); err != nil {
 				return err
@@ -519,7 +522,10 @@ func exportAllEventData(dataDir string, battles []clashroyale.Battle, timestamp 
 		return fmt.Errorf("failed to export event battles: %w", err)
 	}
 
-	battlesFile := filepath.Join(storage.NewPathBuilder(tempDir).GetCSVDir(), storage.CSVBattlesSubdir, "battle_log.csv")
+	battlesFile := exportTargetFile(
+		filepath.Join(storage.NewPathBuilder(tempDir).GetCSVDir(), storage.CSVBattlesSubdir),
+		eventExporter.Filename(),
+	)
 	eventsFile := appendTimestampToFilename(filepath.Join(eventExportDir, "event_battles.csv"), timestamp)
 	if err := storage.MoveFile(battlesFile, eventsFile); err != nil {
 		return err
