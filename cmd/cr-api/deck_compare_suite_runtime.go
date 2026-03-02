@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -168,21 +167,7 @@ func loadSuitePlayerDataFromAPI(ctx context.Context, builder *deck.Builder, tag,
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze card collection: %w", err)
 	}
-	deckCardAnalysis := deck.CardAnalysis{
-		CardLevels:   make(map[string]deck.CardLevelData),
-		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
-		PlayerName:   player.Name,
-		PlayerTag:    player.Tag,
-	}
-	for cardName, cardInfo := range cardAnalysis.CardLevels {
-		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
-			Level:             cardInfo.Level,
-			MaxLevel:          cardInfo.MaxLevel,
-			Rarity:            cardInfo.Rarity,
-			Elixir:            cardInfo.Elixir,
-			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
-		}
-	}
+	deckCardAnalysis := convertToDeckCardAnalysis(cardAnalysis, player)
 	return &suitePlayerData{
 		CardAnalysis: deckCardAnalysis,
 		PlayerName:   player.Name,
