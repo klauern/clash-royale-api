@@ -156,7 +156,7 @@ var roleGroups = map[CardRole][]string{
 		"Archer Queen", "Golden Knight", "Skeleton King", "Mighty Miner",
 		"Monk", "Little Prince",
 		// Common support troops
-		"Princess", "Archers", "Valkyrie", "Goblin Gang", "Minions",
+		"Princess", "Archers", "Knight", "Valkyrie", "Goblin Gang", "Minions",
 		"Mega Minion", "Guards", "Skeleton Army",
 		// Additional support
 		"Battle Healer", "Electro Dragon", "Inferno Dragon", "Royal Recruits",
@@ -183,6 +183,19 @@ var evolutionRoleOverrides = map[string]CardRole{
 	"Barbarian":   RoleSupport,      // Evolved: 3 spawned barbarians act as support swarm
 	"Witch":       RoleSupport,      // Evolved: faster skeleton spawn enhances support
 	"Golem":       RoleWinCondition, // Evolved: golemites spawn on death strengthens win condition
+}
+
+var roleDescriptions = map[CardRole]string{
+	RoleWinCondition: "Primary tower-damaging threat",
+	RoleBuilding:     "Defensive building or siege structure",
+	RoleSpellBig:     "High-damage spell (4+ elixir)",
+	RoleSpellSmall:   "Utility spell (2-3 elixir)",
+	RoleSupport:      "Mid-cost support troop",
+	RoleCycle:        "Cheap cycle card (1-2 elixir)",
+}
+
+var roleAliases = map[string]string{
+	"The Log": "Log",
 }
 
 // GetCardElixir returns the elixir cost for a card.
@@ -214,6 +227,10 @@ func GetCardRole(cardName string) CardRole {
 // When evolutionLevel > 0, checks evolutionRoleOverrides first before roleGroups.
 // Returns empty CardRole ("") if the card is not found in any role group.
 func GetCardRoleWithEvolution(cardName string, evolutionLevel int) CardRole {
+	if canonicalName, exists := roleAliases[cardName]; exists {
+		cardName = canonicalName
+	}
+
 	// Check evolution overrides first if evolved
 	if evolutionLevel > 0 {
 		if role, exists := evolutionRoleOverrides[cardName]; exists {
@@ -237,6 +254,15 @@ func GetRoleCards(role CardRole) []string {
 		return cards
 	}
 	return nil
+}
+
+// GetRoleDescription returns a human-readable description for a card role.
+// Unknown roles return "Unknown role".
+func GetRoleDescription(role CardRole) string {
+	if desc, exists := roleDescriptions[role]; exists {
+		return desc
+	}
+	return "Unknown role"
 }
 
 // HasEvolutionOverride returns true if the card has an evolution role override defined.
