@@ -218,17 +218,19 @@ func writeSummaryTable[T batchEvaluationRow](buf *strings.Builder, results []T) 
 	buf.WriteString("│ Rank│ Deck Name                    │ Overall │ Attack │ Defense│ Synergy│ Archetype    │\n")
 	buf.WriteString("├─────┼──────────────────────────────┼─────────┼────────┼────────┼────────┼──────────────┤\n")
 
-	for i, r := range results {
+	displayRank := 0
+	for _, r := range results {
 		name := r.BatchName()
 		if name == "" {
 			continue
 		}
+		displayRank++
 		name = truncateWithEllipsis(name, 28)
 		result := r.BatchResult()
 		archetype := truncateWithEllipsis(string(result.DetectedArchetype), 12)
 
 		fmt.Fprintf(buf, "│ %3d │ %-28s │  %5.2f  │  %5.2f │  %5.2f │  %5.2f │ %-12s │\n",
-			i+1, name,
+			displayRank, name,
 			result.OverallScore,
 			result.Attack.Score,
 			result.Defense.Score,
@@ -256,17 +258,19 @@ func writeCSVHeader(buf *strings.Builder) {
 
 // writeCSVRows writes CSV data rows for evaluation results
 func writeCSVRows[T batchEvaluationRow](buf *strings.Builder, results []T) {
-	for i, r := range results {
+	displayRank := 0
+	for _, r := range results {
 		name := r.BatchName()
 		if name == "" {
 			continue
 		}
+		displayRank++
 		strategy := r.BatchStrategy()
 		deck := r.BatchDeck()
 		result := r.BatchResult()
 
 		fmt.Fprintf(buf, "%d,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%.2f,\"%s\"\n",
-			i+1,
+			displayRank,
 			name,
 			strategy,
 			result.OverallScore,
@@ -305,16 +309,18 @@ func writeDetailedHeader(buf *strings.Builder, playerName, playerTag string) {
 
 // writeDetailedResults writes detailed evaluation for each deck
 func writeDetailedResults[T batchEvaluationRow](buf *strings.Builder, results []T) {
-	for i, r := range results {
+	displayRank := 0
+	for _, r := range results {
 		name := r.BatchName()
 		if name == "" {
 			continue
 		}
+		displayRank++
 		strategy := r.BatchStrategy()
 		deck := r.BatchDeck()
 		result := r.BatchResult()
 
-		writeDeckHeader(buf, i+1, name)
+		writeDeckHeader(buf, displayRank, name)
 		writeDeckInfo(buf, strategy, deck, result)
 		writeDeckScores(buf, result)
 		writeDeckAssessments(buf, result)

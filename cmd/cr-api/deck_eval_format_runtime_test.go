@@ -9,29 +9,74 @@ import (
 )
 
 func TestSortEvaluationResultsUsesTypedAdapters(t *testing.T) {
-	results := []evalBatchResult{
+	t.Parallel()
+
+	testCases := []struct {
+		name      string
+		verifyTop func(*testing.T, string)
+	}{
 		{
-			Name:     "Heavy Deck",
-			Strategy: "beatdown",
-			Deck:     []string{"Giant"},
-			Result:   testBatchEvaluationResult(6.2, 8.0, 7.5, 7.1, 6.8, 5.9, 3.8, evaluation.ArchetypeBeatdown),
+			name: "eval batch results",
+			verifyTop: func(t *testing.T, sortBy string) {
+				t.Helper()
+				results := testEvalBatchResults()
+				sortEvaluationResults(results, sortBy)
+				if got := results[0].Name; got != "Fast Deck" {
+					t.Fatalf("sortEvaluationResults(%s) first = %q, want %q", sortBy, got, "Fast Deck")
+				}
+			},
 		},
 		{
-			Name:     "Fast Deck",
-			Strategy: "cycle",
-			Deck:     []string{"Hog Rider"},
-			Result:   testBatchEvaluationResult(8.4, 7.1, 6.8, 7.9, 7.6, 8.2, 2.8, evaluation.ArchetypeCycle),
+			name: "compare batch results",
+			verifyTop: func(t *testing.T, sortBy string) {
+				t.Helper()
+				results := testCompareBatchResults()
+				sortEvaluationResults(results, sortBy)
+				if got := results[0].Name; got != "Fast Deck" {
+					t.Fatalf("sortEvaluationResults(%s) first = %q, want %q", sortBy, got, "Fast Deck")
+				}
+			},
+		},
+		{
+			name: "suite batch results",
+			verifyTop: func(t *testing.T, sortBy string) {
+				t.Helper()
+				results := testSuiteBatchResults()
+				sortEvaluationResults(results, sortBy)
+				if got := results[0].Name; got != "Fast Deck" {
+					t.Fatalf("sortEvaluationResults(%s) first = %q, want %q", sortBy, got, "Fast Deck")
+				}
+			},
+		},
+		{
+			name: "detailed formatter path",
+			verifyTop: func(t *testing.T, sortBy string) {
+				t.Helper()
+				results := testEvalBatchResults()
+				sortEvaluationResults(results, sortBy)
+
+				got := formatEvaluationBatchDetailed(results, "Player One", "#TAG")
+				firstIdx := strings.Index(got, "DECK #1: Fast Deck")
+				secondIdx := strings.Index(got, "DECK #2: Heavy Deck")
+				if firstIdx == -1 || secondIdx == -1 {
+					t.Fatalf("detailed output missing expected deck headings\n%s", got)
+				}
+				if firstIdx > secondIdx {
+					t.Fatalf("detailed output order incorrect for %s\n%s", sortBy, got)
+				}
+			},
 		},
 	}
 
-	sortEvaluationResults(results, "overall")
-	if got := results[0].Name; got != "Fast Deck" {
-		t.Fatalf("sortEvaluationResults overall first = %q, want %q", got, "Fast Deck")
-	}
-
-	sortEvaluationResults(results, "elixir")
-	if got := results[0].Name; got != "Fast Deck" {
-		t.Fatalf("sortEvaluationResults elixir first = %q, want %q", got, "Fast Deck")
+	for _, tc := range testCases {
+		tc := tc
+		for _, sortBy := range []string{"overall", "elixir"} {
+			sortBy := sortBy
+			t.Run(tc.name+"/"+sortBy, func(t *testing.T) {
+				t.Parallel()
+				tc.verifyTop(t, sortBy)
+			})
+		}
 	}
 }
 
@@ -69,6 +114,8 @@ func TestFormatEvaluationBatchSummaryOutput(t *testing.T) {
 }
 
 func TestFormatEvaluationBatchCSVOutput(t *testing.T) {
+	t.Parallel()
+
 	results := []evalBatchResult{
 		{
 			Name:     "Fast Deck",
@@ -87,6 +134,97 @@ func TestFormatEvaluationBatchCSVOutput(t *testing.T) {
 
 	if got != want {
 		t.Fatalf("formatEvaluationBatchCSV mismatch\nwant:\n%s\ngot:\n%s", want, got)
+	}
+}
+
+func TestFormatEvaluationBatchSkipsUnnamedRowsWithoutRankGaps(t *testing.T) {
+	t.Parallel()
+
+	results := []evalBatchResult{
+		{
+			Name:     "Fast Deck",
+			Strategy: "cycle",
+			Deck:     []string{"Hog Rider"},
+			Result:   testBatchEvaluationResult(8.4, 7.1, 6.8, 7.9, 7.6, 8.2, 2.8, evaluation.ArchetypeCycle),
+		},
+		{
+			Name:     "",
+			Strategy: "skip",
+			Deck:     []string{"Knight"},
+			Result:   testBatchEvaluationResult(7.4, 7.0, 7.0, 7.0, 7.0, 7.0, 3.2, evaluation.ArchetypeControl),
+		},
+		{
+			Name:     "Heavy Deck",
+			Strategy: "beatdown",
+			Deck:     []string{"Giant"},
+			Result:   testBatchEvaluationResult(6.2, 8.0, 7.5, 7.1, 6.8, 5.9, 3.8, evaluation.ArchetypeBeatdown),
+		},
+	}
+
+	summary := formatEvaluationBatchSummary(results, 3, 3*time.Second, "overall", "Player One", "#TAG")
+	if !strings.Contains(summary, "│   2 │ Heavy Deck") {
+		t.Fatalf("summary output should use contiguous ranks\n%s", summary)
+	}
+
+	csvOutput := formatEvaluationBatchCSV(results)
+	if !strings.Contains(csvOutput, "\n2,Heavy Deck,beatdown,") {
+		t.Fatalf("csv output should use contiguous ranks\n%s", csvOutput)
+	}
+
+	detailed := formatEvaluationBatchDetailed(results, "Player One", "#TAG")
+	if !strings.Contains(detailed, "DECK #2: Heavy Deck") {
+		t.Fatalf("detailed output should use contiguous ranks\n%s", detailed)
+	}
+}
+
+func testEvalBatchResults() []evalBatchResult {
+	return []evalBatchResult{
+		{
+			Name:     "Heavy Deck",
+			Strategy: "beatdown",
+			Deck:     []string{"Giant"},
+			Result:   testBatchEvaluationResult(6.2, 8.0, 7.5, 7.1, 6.8, 5.9, 3.8, evaluation.ArchetypeBeatdown),
+		},
+		{
+			Name:     "Fast Deck",
+			Strategy: "cycle",
+			Deck:     []string{"Hog Rider"},
+			Result:   testBatchEvaluationResult(8.4, 7.1, 6.8, 7.9, 7.6, 8.2, 2.8, evaluation.ArchetypeCycle),
+		},
+	}
+}
+
+func testCompareBatchResults() []batchEvalResult {
+	return []batchEvalResult{
+		{
+			Name:     "Heavy Deck",
+			Strategy: "beatdown",
+			Deck:     []string{"Giant"},
+			Result:   testBatchEvaluationResult(6.2, 8.0, 7.5, 7.1, 6.8, 5.9, 3.8, evaluation.ArchetypeBeatdown),
+		},
+		{
+			Name:     "Fast Deck",
+			Strategy: "cycle",
+			Deck:     []string{"Hog Rider"},
+			Result:   testBatchEvaluationResult(8.4, 7.1, 6.8, 7.9, 7.6, 8.2, 2.8, evaluation.ArchetypeCycle),
+		},
+	}
+}
+
+func testSuiteBatchResults() []suiteEvalResult {
+	return []suiteEvalResult{
+		{
+			Name:     "Heavy Deck",
+			Strategy: "beatdown",
+			Deck:     []string{"Giant"},
+			Result:   testBatchEvaluationResult(6.2, 8.0, 7.5, 7.1, 6.8, 5.9, 3.8, evaluation.ArchetypeBeatdown),
+		},
+		{
+			Name:     "Fast Deck",
+			Strategy: "cycle",
+			Deck:     []string{"Hog Rider"},
+			Result:   testBatchEvaluationResult(8.4, 7.1, 6.8, 7.9, 7.6, 8.2, 2.8, evaluation.ArchetypeCycle),
+		},
 	}
 }
 
