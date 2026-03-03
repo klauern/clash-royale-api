@@ -8,6 +8,11 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 )
 
+const (
+	testFastDeckName  = "Fast Deck"
+	testHeavyDeckName = "Heavy Deck"
+)
+
 func TestSortEvaluationResultsUsesTypedAdapters(t *testing.T) {
 	t.Parallel()
 
@@ -21,8 +26,8 @@ func TestSortEvaluationResultsUsesTypedAdapters(t *testing.T) {
 				t.Helper()
 				results := testEvalBatchResults()
 				sortEvaluationResults(results, sortBy)
-				if got := results[0].Name; got != "Fast Deck" {
-					t.Fatalf("sortEvaluationResults(%s) first = %q, want %q", sortBy, got, "Fast Deck")
+				if got := results[0].Name; got != testFastDeckName {
+					t.Fatalf("sortEvaluationResults(%s) first = %q, want %q", sortBy, got, testFastDeckName)
 				}
 			},
 		},
@@ -32,8 +37,8 @@ func TestSortEvaluationResultsUsesTypedAdapters(t *testing.T) {
 				t.Helper()
 				results := testCompareBatchResults()
 				sortEvaluationResults(results, sortBy)
-				if got := results[0].Name; got != "Fast Deck" {
-					t.Fatalf("sortEvaluationResults(%s) first = %q, want %q", sortBy, got, "Fast Deck")
+				if got := results[0].Name; got != testFastDeckName {
+					t.Fatalf("sortEvaluationResults(%s) first = %q, want %q", sortBy, got, testFastDeckName)
 				}
 			},
 		},
@@ -43,8 +48,8 @@ func TestSortEvaluationResultsUsesTypedAdapters(t *testing.T) {
 				t.Helper()
 				results := testSuiteBatchResults()
 				sortEvaluationResults(results, sortBy)
-				if got := results[0].Name; got != "Fast Deck" {
-					t.Fatalf("sortEvaluationResults(%s) first = %q, want %q", sortBy, got, "Fast Deck")
+				if got := results[0].Name; got != testFastDeckName {
+					t.Fatalf("sortEvaluationResults(%s) first = %q, want %q", sortBy, got, testFastDeckName)
 				}
 			},
 		},
@@ -56,8 +61,8 @@ func TestSortEvaluationResultsUsesTypedAdapters(t *testing.T) {
 				sortEvaluationResults(results, sortBy)
 
 				got := formatEvaluationBatchDetailed(results, "Player One", "#TAG")
-				firstIdx := strings.Index(got, "DECK #1: Fast Deck")
-				secondIdx := strings.Index(got, "DECK #2: Heavy Deck")
+				firstIdx := strings.Index(got, "DECK #1: "+testFastDeckName)
+				secondIdx := strings.Index(got, "DECK #2: "+testHeavyDeckName)
 				if firstIdx == -1 || secondIdx == -1 {
 					t.Fatalf("detailed output missing expected deck headings\n%s", got)
 				}
@@ -118,7 +123,7 @@ func TestFormatEvaluationBatchCSVOutput(t *testing.T) {
 
 	results := []evalBatchResult{
 		{
-			Name:     "Fast Deck",
+			Name:     testFastDeckName,
 			Strategy: "cycle",
 			Deck:     []string{"Hog Rider", "Ice Spirit", "The Log"},
 			Result:   testBatchEvaluationResult(8.4, 7.1, 6.8, 7.9, 7.6, 8.2, 2.8, evaluation.ArchetypeCycle),
@@ -128,7 +133,7 @@ func TestFormatEvaluationBatchCSVOutput(t *testing.T) {
 	got := formatEvaluationBatchCSV(results)
 	want := strings.Join([]string{
 		"Rank,Name,Strategy,Overall,Attack,Defense,Synergy,Versatility,F2P,Playability,Archetype,Avg_Elixir,Deck",
-		"1,Fast Deck,cycle,8.40,7.10,6.80,7.90,7.60,8.20,6.50,cycle,2.80,\"Hog Rider - Ice Spirit - The Log\"",
+		"1," + testFastDeckName + ",cycle,8.40,7.10,6.80,7.90,7.60,8.20,6.50,cycle,2.80,\"Hog Rider - Ice Spirit - The Log\"",
 		"",
 	}, "\n")
 
@@ -142,7 +147,7 @@ func TestFormatEvaluationBatchSkipsUnnamedRowsWithoutRankGaps(t *testing.T) {
 
 	results := []evalBatchResult{
 		{
-			Name:     "Fast Deck",
+			Name:     testFastDeckName,
 			Strategy: "cycle",
 			Deck:     []string{"Hog Rider"},
 			Result:   testBatchEvaluationResult(8.4, 7.1, 6.8, 7.9, 7.6, 8.2, 2.8, evaluation.ArchetypeCycle),
@@ -154,7 +159,7 @@ func TestFormatEvaluationBatchSkipsUnnamedRowsWithoutRankGaps(t *testing.T) {
 			Result:   testBatchEvaluationResult(7.4, 7.0, 7.0, 7.0, 7.0, 7.0, 3.2, evaluation.ArchetypeControl),
 		},
 		{
-			Name:     "Heavy Deck",
+			Name:     testHeavyDeckName,
 			Strategy: "beatdown",
 			Deck:     []string{"Giant"},
 			Result:   testBatchEvaluationResult(6.2, 8.0, 7.5, 7.1, 6.8, 5.9, 3.8, evaluation.ArchetypeBeatdown),
@@ -162,17 +167,17 @@ func TestFormatEvaluationBatchSkipsUnnamedRowsWithoutRankGaps(t *testing.T) {
 	}
 
 	summary := formatEvaluationBatchSummary(results, 3, 3*time.Second, "overall", "Player One", "#TAG")
-	if !strings.Contains(summary, "│   2 │ Heavy Deck") {
+	if !strings.Contains(summary, "│   2 │ "+testHeavyDeckName) {
 		t.Fatalf("summary output should use contiguous ranks\n%s", summary)
 	}
 
 	csvOutput := formatEvaluationBatchCSV(results)
-	if !strings.Contains(csvOutput, "\n2,Heavy Deck,beatdown,") {
+	if !strings.Contains(csvOutput, "\n2,"+testHeavyDeckName+",beatdown,") {
 		t.Fatalf("csv output should use contiguous ranks\n%s", csvOutput)
 	}
 
 	detailed := formatEvaluationBatchDetailed(results, "Player One", "#TAG")
-	if !strings.Contains(detailed, "DECK #2: Heavy Deck") {
+	if !strings.Contains(detailed, "DECK #2: "+testHeavyDeckName) {
 		t.Fatalf("detailed output should use contiguous ranks\n%s", detailed)
 	}
 }
@@ -180,13 +185,13 @@ func TestFormatEvaluationBatchSkipsUnnamedRowsWithoutRankGaps(t *testing.T) {
 func testEvalBatchResults() []evalBatchResult {
 	return []evalBatchResult{
 		{
-			Name:     "Heavy Deck",
+			Name:     testHeavyDeckName,
 			Strategy: "beatdown",
 			Deck:     []string{"Giant"},
 			Result:   testBatchEvaluationResult(6.2, 8.0, 7.5, 7.1, 6.8, 5.9, 3.8, evaluation.ArchetypeBeatdown),
 		},
 		{
-			Name:     "Fast Deck",
+			Name:     testFastDeckName,
 			Strategy: "cycle",
 			Deck:     []string{"Hog Rider"},
 			Result:   testBatchEvaluationResult(8.4, 7.1, 6.8, 7.9, 7.6, 8.2, 2.8, evaluation.ArchetypeCycle),
@@ -197,13 +202,13 @@ func testEvalBatchResults() []evalBatchResult {
 func testCompareBatchResults() []batchEvalResult {
 	return []batchEvalResult{
 		{
-			Name:     "Heavy Deck",
+			Name:     testHeavyDeckName,
 			Strategy: "beatdown",
 			Deck:     []string{"Giant"},
 			Result:   testBatchEvaluationResult(6.2, 8.0, 7.5, 7.1, 6.8, 5.9, 3.8, evaluation.ArchetypeBeatdown),
 		},
 		{
-			Name:     "Fast Deck",
+			Name:     testFastDeckName,
 			Strategy: "cycle",
 			Deck:     []string{"Hog Rider"},
 			Result:   testBatchEvaluationResult(8.4, 7.1, 6.8, 7.9, 7.6, 8.2, 2.8, evaluation.ArchetypeCycle),
@@ -214,13 +219,13 @@ func testCompareBatchResults() []batchEvalResult {
 func testSuiteBatchResults() []suiteEvalResult {
 	return []suiteEvalResult{
 		{
-			Name:     "Heavy Deck",
+			Name:     testHeavyDeckName,
 			Strategy: "beatdown",
 			Deck:     []string{"Giant"},
 			Result:   testBatchEvaluationResult(6.2, 8.0, 7.5, 7.1, 6.8, 5.9, 3.8, evaluation.ArchetypeBeatdown),
 		},
 		{
-			Name:     "Fast Deck",
+			Name:     testFastDeckName,
 			Strategy: "cycle",
 			Deck:     []string{"Hog Rider"},
 			Result:   testBatchEvaluationResult(8.4, 7.1, 6.8, 7.9, 7.6, 8.2, 2.8, evaluation.ArchetypeCycle),
