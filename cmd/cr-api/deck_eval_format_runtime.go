@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -76,40 +75,44 @@ func exportOptimizationCSV(
 	return nil
 }
 
+type batchEvaluationRow interface {
+	BatchName() string
+	BatchStrategy() string
+	BatchDeck() []string
+	BatchResult() evaluation.EvaluationResult
+}
+
+func (r evalBatchResult) BatchName() string { return r.Name }
+
+func (r evalBatchResult) BatchStrategy() string { return r.Strategy }
+
+func (r evalBatchResult) BatchDeck() []string { return r.Deck }
+
+func (r evalBatchResult) BatchResult() evaluation.EvaluationResult { return r.Result }
+
+func (r suiteEvalResult) BatchName() string { return r.Name }
+
+func (r suiteEvalResult) BatchStrategy() string { return r.Strategy }
+
+func (r suiteEvalResult) BatchDeck() []string { return r.Deck }
+
+func (r suiteEvalResult) BatchResult() evaluation.EvaluationResult { return r.Result }
+
+func (r batchEvalResult) BatchName() string { return r.Name }
+
+func (r batchEvalResult) BatchStrategy() string { return r.Strategy }
+
+func (r batchEvalResult) BatchDeck() []string { return r.Deck }
+
+func (r batchEvalResult) BatchResult() evaluation.EvaluationResult { return r.Result }
+
 // sortEvaluationResults sorts batch evaluation results by the specified criteria
-func sortEvaluationResults[T any](results []T, sortBy string) {
+func sortEvaluationResults[T batchEvaluationRow](results []T, sortBy string) {
 	if len(results) < 2 {
 		return
 	}
 
-	type resultInterface interface {
-		GetResult() evaluation.EvaluationResult
-	}
-
-	// Type assertion helper
-	getResult := func(r T) evaluation.EvaluationResult {
-		switch v := any(r).(type) {
-		case resultInterface:
-			return v.GetResult()
-		default:
-			rv := reflect.ValueOf(r)
-			if rv.Kind() == reflect.Pointer {
-				rv = rv.Elem()
-			}
-			if rv.IsValid() && rv.Kind() == reflect.Struct {
-				field := rv.FieldByName("Result")
-				if field.IsValid() && field.Type() == reflect.TypeFor[evaluation.EvaluationResult]() {
-					if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
-						return result
-					}
-				}
-			}
-			return evaluation.EvaluationResult{}
-		}
-	}
-
-	// Get the comparison function for the sort criteria
-	less := getSortLessFunc(getResult, strings.ToLower(sortBy))
+	less := getSortLessFunc(strings.ToLower(sortBy))
 	sort.Slice(results, func(i, j int) bool { return less(results[i], results[j]) })
 }
 
@@ -129,10 +132,10 @@ var (
 )
 
 // getSortLessFunc returns a comparison function for the given sort criteria.
-func getSortLessFunc[T any](getResult func(T) evaluation.EvaluationResult, sortBy string) func(T, T) bool {
+func getSortLessFunc(sortBy string) func(batchEvaluationRow, batchEvaluationRow) bool {
 	comparator := getComparatorForCriteria(sortBy)
-	return func(a, b T) bool {
-		return comparator(getResult(a), getResult(b))
+	return func(a, b batchEvaluationRow) bool {
+		return comparator(a.BatchResult(), b.BatchResult())
 	}
 }
 
@@ -159,58 +162,6 @@ func getComparatorForCriteria(sortBy string) evaluationComparator {
 }
 
 // ============================================================================
-// Reflection Helper Functions - Type Field Extraction
-// ============================================================================
-
-// extractName extracts the Name field from a generic struct type using reflection
-func extractName[T any](r T) string {
-	v := reflect.ValueOf(r)
-	if v.Kind() == reflect.Struct {
-		if field := v.FieldByName("Name"); field.IsValid() && field.Kind() == reflect.String {
-			return field.String()
-		}
-	}
-	return ""
-}
-
-// extractStrategy extracts the Strategy field from a generic struct type using reflection
-func extractStrategy[T any](r T) string {
-	v := reflect.ValueOf(r)
-	if v.Kind() == reflect.Struct {
-		if field := v.FieldByName("Strategy"); field.IsValid() && field.Kind() == reflect.String {
-			return field.String()
-		}
-	}
-	return ""
-}
-
-// extractDeck extracts the Deck field from a generic struct type using reflection
-func extractDeck[T any](r T) []string {
-	v := reflect.ValueOf(r)
-	if v.Kind() == reflect.Struct {
-		if field := v.FieldByName("Deck"); field.IsValid() && field.Kind() == reflect.Slice {
-			if deck, ok := field.Interface().([]string); ok {
-				return deck
-			}
-		}
-	}
-	return nil
-}
-
-// extractResult extracts the Result field from a generic struct type using reflection
-func extractResult[T any](r T) evaluation.EvaluationResult {
-	v := reflect.ValueOf(r)
-	if v.Kind() == reflect.Struct {
-		if field := v.FieldByName("Result"); field.IsValid() {
-			if result, ok := field.Interface().(evaluation.EvaluationResult); ok {
-				return result
-			}
-		}
-	}
-	return evaluation.EvaluationResult{}
-}
-
-// ============================================================================
 // Formatting Helper Functions - Text Utilities
 // ============================================================================
 
@@ -234,7 +185,7 @@ func formatScoreWithRating(score float64, rating string) string {
 // ============================================================================
 
 // formatEvaluationBatchSummary formats batch evaluation results as a human-readable summary
-func formatEvaluationBatchSummary[T any](results []T, totalDecks int, totalTime time.Duration, sortBy, playerName, playerTag string) string {
+func formatEvaluationBatchSummary[T batchEvaluationRow](results []T, totalDecks int, totalTime time.Duration, sortBy, playerName, playerTag string) string {
 	var buf strings.Builder
 
 	writeSummaryHeader(&buf, playerName, playerTag)
@@ -262,18 +213,18 @@ func writeSummaryStats(buf *strings.Builder, totalDecks, evaluatedCount int, tot
 }
 
 // writeSummaryTable writes the results table for batch summary
-func writeSummaryTable[T any](buf *strings.Builder, results []T) {
+func writeSummaryTable[T batchEvaluationRow](buf *strings.Builder, results []T) {
 	buf.WriteString("┌─────┬──────────────────────────────┬─────────┬────────┬────────┬────────┬──────────────┐\n")
 	buf.WriteString("│ Rank│ Deck Name                    │ Overall │ Attack │ Defense│ Synergy│ Archetype    │\n")
 	buf.WriteString("├─────┼──────────────────────────────┼─────────┼────────┼────────┼────────┼──────────────┤\n")
 
 	for i, r := range results {
-		name := extractName(r)
+		name := r.BatchName()
 		if name == "" {
 			continue
 		}
 		name = truncateWithEllipsis(name, 28)
-		result := extractResult(r)
+		result := r.BatchResult()
 		archetype := truncateWithEllipsis(string(result.DetectedArchetype), 12)
 
 		fmt.Fprintf(buf, "│ %3d │ %-28s │  %5.2f  │  %5.2f │  %5.2f │  %5.2f │ %-12s │\n",
@@ -289,7 +240,7 @@ func writeSummaryTable[T any](buf *strings.Builder, results []T) {
 }
 
 // formatEvaluationBatchCSV formats batch evaluation results as CSV
-func formatEvaluationBatchCSV[T any](results []T) string {
+func formatEvaluationBatchCSV[T batchEvaluationRow](results []T) string {
 	var buf strings.Builder
 
 	writeCSVHeader(&buf)
@@ -304,15 +255,15 @@ func writeCSVHeader(buf *strings.Builder) {
 }
 
 // writeCSVRows writes CSV data rows for evaluation results
-func writeCSVRows[T any](buf *strings.Builder, results []T) {
+func writeCSVRows[T batchEvaluationRow](buf *strings.Builder, results []T) {
 	for i, r := range results {
-		name := extractName(r)
+		name := r.BatchName()
 		if name == "" {
 			continue
 		}
-		strategy := extractStrategy(r)
-		deck := extractDeck(r)
-		result := extractResult(r)
+		strategy := r.BatchStrategy()
+		deck := r.BatchDeck()
+		result := r.BatchResult()
 
 		fmt.Fprintf(buf, "%d,%s,%s,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%s,%.2f,\"%s\"\n",
 			i+1,
@@ -332,7 +283,7 @@ func writeCSVRows[T any](buf *strings.Builder, results []T) {
 }
 
 // formatEvaluationBatchDetailed formats batch evaluation results with detailed analysis
-func formatEvaluationBatchDetailed[T any](results []T, playerName, playerTag string) string {
+func formatEvaluationBatchDetailed[T batchEvaluationRow](results []T, playerName, playerTag string) string {
 	var buf strings.Builder
 
 	writeDetailedHeader(&buf, playerName, playerTag)
@@ -353,15 +304,15 @@ func writeDetailedHeader(buf *strings.Builder, playerName, playerTag string) {
 }
 
 // writeDetailedResults writes detailed evaluation for each deck
-func writeDetailedResults[T any](buf *strings.Builder, results []T) {
+func writeDetailedResults[T batchEvaluationRow](buf *strings.Builder, results []T) {
 	for i, r := range results {
-		name := extractName(r)
+		name := r.BatchName()
 		if name == "" {
 			continue
 		}
-		strategy := extractStrategy(r)
-		deck := extractDeck(r)
-		result := extractResult(r)
+		strategy := r.BatchStrategy()
+		deck := r.BatchDeck()
+		result := r.BatchResult()
 
 		writeDeckHeader(buf, i+1, name)
 		writeDeckInfo(buf, strategy, deck, result)
