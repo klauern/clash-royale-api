@@ -36,7 +36,10 @@ func TestManager_EnsurePlayerDirectories(t *testing.T) {
 	}
 
 	// Check that directories were created
-	playerDir := manager.getPlayerEventDir(playerTag)
+	playerDir, err := manager.getPlayerEventDir(playerTag)
+	if err != nil {
+		t.Fatalf("getPlayerEventDir failed: %v", err)
+	}
 	dirs := []string{
 		playerDir,
 		filepath.Join(playerDir, "challenges"),
@@ -49,6 +52,18 @@ func TestManager_EnsurePlayerDirectories(t *testing.T) {
 		if _, err := os.Stat(dir); os.IsNotExist(err) {
 			t.Errorf("Directory was not created: %s", dir)
 		}
+	}
+}
+
+func TestManager_GetPlayerEventDirCanonicalizesPlayerTag(t *testing.T) {
+	manager := NewManager(t.TempDir())
+
+	playerDir, err := manager.getPlayerEventDir(" abc123 ")
+	if err != nil {
+		t.Fatalf("getPlayerEventDir failed: %v", err)
+	}
+	if filepath.Base(playerDir) != "ABC123" {
+		t.Fatalf("expected canonical player directory, got %s", filepath.Base(playerDir))
 	}
 }
 
@@ -90,7 +105,10 @@ func TestManager_SaveEventDeck(t *testing.T) {
 	}
 
 	// Verify file was created
-	playerDir := manager.getPlayerEventDir(eventDeck.PlayerTag)
+	playerDir, err := manager.getPlayerEventDir(eventDeck.PlayerTag)
+	if err != nil {
+		t.Fatalf("getPlayerEventDir failed: %v", err)
+	}
 	subdir := filepath.Join(playerDir, "challenges")
 	files, err := filepath.Glob(filepath.Join(subdir, "*.json"))
 	if err != nil {
@@ -174,7 +192,10 @@ func TestManager_SaveEventDeck_DifferentTypes(t *testing.T) {
 			}
 
 			// Verify file was created in correct subdirectory
-			playerDir := manager.getPlayerEventDir(eventDeck.PlayerTag)
+			playerDir, err := manager.getPlayerEventDir(eventDeck.PlayerTag)
+			if err != nil {
+				t.Fatalf("getPlayerEventDir failed: %v", err)
+			}
 			subdir := filepath.Join(playerDir, tt.subdir)
 			files, err := filepath.Glob(filepath.Join(subdir, "*.json"))
 			if err != nil {

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
@@ -243,7 +244,10 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		client := clashroyale.NewClient(apiToken)
-		cleanTag := strings.TrimPrefix(playerTag, "#")
+		cleanTag, err := playertag.Sanitize(playerTag)
+		if err != nil {
+			return err
+		}
 
 		player, err = client.GetPlayerWithContext(ctx, cleanTag)
 		if err != nil {
@@ -1752,7 +1756,10 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 
 		client := clashroyale.NewClient(apiToken)
-		cleanTag := strings.TrimPrefix(playerTag, "#")
+		cleanTag, err := playertag.Sanitize(playerTag)
+		if err != nil {
+			return err
+		}
 		player, playerErr := client.GetPlayerWithContext(ctx, cleanTag)
 		if playerErr != nil {
 			return fmt.Errorf("failed to load player data for %s: %w", playerTag, playerErr)

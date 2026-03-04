@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
@@ -32,15 +33,20 @@ func NewManager(dataDir string) *Manager {
 }
 
 // getPlayerEventDir returns the directory for a player's event decks
-func (m *Manager) getPlayerEventDir(playerTag string) string {
-	// Remove # from tag for directory name
-	cleanTag := strings.TrimPrefix(playerTag, "#")
-	return filepath.Join(m.eventDecksDir, cleanTag)
+func (m *Manager) getPlayerEventDir(playerTag string) (string, error) {
+	cleanTag, err := playertag.Sanitize(playerTag)
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(m.eventDecksDir, cleanTag), nil
 }
 
 // ensurePlayerDirectories creates all necessary subdirectories for a player
 func (m *Manager) ensurePlayerDirectories(playerTag string) error {
-	playerDir := m.getPlayerEventDir(playerTag)
+	playerDir, err := m.getPlayerEventDir(playerTag)
+	if err != nil {
+		return err
+	}
 
 	// Create subdirectories
 	dirs := []string{
@@ -66,7 +72,10 @@ func (m *Manager) SaveEventDeck(eventDeck *EventDeck) error {
 		return err
 	}
 
-	playerDir := m.getPlayerEventDir(eventDeck.PlayerTag)
+	playerDir, err := m.getPlayerEventDir(eventDeck.PlayerTag)
+	if err != nil {
+		return err
+	}
 
 	// Determine subdirectory based on event type
 	var subdir string
@@ -101,7 +110,10 @@ func (m *Manager) SaveEventDeck(eventDeck *EventDeck) error {
 
 // updateCollectionFile updates the player's event deck collection file
 func (m *Manager) updateCollectionFile(eventDeck *EventDeck) error {
-	playerDir := m.getPlayerEventDir(eventDeck.PlayerTag)
+	playerDir, err := m.getPlayerEventDir(eventDeck.PlayerTag)
+	if err != nil {
+		return err
+	}
 	collectionFile := filepath.Join(playerDir, "collection.json")
 
 	// Load existing collection
@@ -146,7 +158,10 @@ func (m *Manager) GetEventDecks(playerTag string, opts *GetEventDeckOptions) ([]
 		opts = &GetEventDeckOptions{}
 	}
 
-	playerDir := m.getPlayerEventDir(playerTag)
+	playerDir, err := m.getPlayerEventDir(playerTag)
+	if err != nil {
+		return nil, err
+	}
 	decks := make([]EventDeck, 0)
 
 	// Determine which subdirectories to search
@@ -248,7 +263,10 @@ func (m *Manager) ImportFromBattleLogs(battleLogs []clashroyale.Battle, playerTa
 
 // GetCollection loads the player's event deck collection
 func (m *Manager) GetCollection(playerTag string) (*EventDeckCollection, error) {
-	playerDir := m.getPlayerEventDir(playerTag)
+	playerDir, err := m.getPlayerEventDir(playerTag)
+	if err != nil {
+		return nil, err
+	}
 	collectionFile := filepath.Join(playerDir, "collection.json")
 
 	data, err := os.ReadFile(collectionFile)
@@ -361,7 +379,10 @@ func (m *Manager) DeleteEventDeck(playerTag, eventID string) error {
 		return fmt.Errorf("event deck not found: %s", eventID)
 	}
 
-	playerDir := m.getPlayerEventDir(playerTag)
+	playerDir, err := m.getPlayerEventDir(playerTag)
+	if err != nil {
+		return err
+	}
 	subdir := getSubdirectoryForEventType(targetDeck.EventType, playerDir)
 
 	filePath, err := findDeckFileInDirectory(subdir, eventID)
