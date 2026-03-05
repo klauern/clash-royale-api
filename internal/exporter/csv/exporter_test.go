@@ -133,6 +133,23 @@ func TestBaseExporter_WriteCSV_DirectoryCreation(t *testing.T) {
 	}
 }
 
+func TestBaseExporter_WriteCSVInSubdir(t *testing.T) {
+	tempDir := t.TempDir()
+	headers := []string{"ID", "Name"}
+	rows := [][]string{{"1", "Knight"}}
+	exporter := &BaseExporter{FilenameBase: "subdir.csv"}
+
+	err := exporter.writeCSVInSubdir(tempDir, "analysis", headers, rows)
+	if err != nil {
+		t.Fatalf("writeCSVInSubdir() failed: %v", err)
+	}
+
+	expectedPath := filepath.Join(tempDir, "csv", "analysis", "subdir.csv")
+	if _, err := os.Stat(expectedPath); os.IsNotExist(err) {
+		t.Fatalf("writeCSVInSubdir() did not create file at expected path: %s", expectedPath)
+	}
+}
+
 func TestNewCSVExporter(t *testing.T) {
 	filename := "test.csv"
 	headers := func() []string { return []string{"ID", "Name"} }

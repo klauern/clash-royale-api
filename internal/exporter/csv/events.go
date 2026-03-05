@@ -37,8 +37,7 @@ func eventDeckExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "event_decks.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVEventsSubdir)
-	return exporter.writeCSV(filePath, eventDeckHeaders(), rows)
+	return exporter.writeCSVInSubdir(dataDir, storage.CSVEventsSubdir, eventDeckHeaders(), rows)
 }
 
 // NewEventBattlesExporter creates a new event battles CSV exporter
@@ -110,6 +109,5 @@ func eventBattlesExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "event_battles.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVEventsSubdir)
-	return exporter.writeCSV(filePath, eventBattlesHeaders(), rows)
+	return exporter.writeCSVInSubdir(dataDir, storage.CSVEventsSubdir, eventBattlesHeaders(), rows)
 }

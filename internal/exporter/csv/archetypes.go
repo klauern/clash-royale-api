@@ -2,9 +2,9 @@ package csv
 
 import (
 	"fmt"
-	"path/filepath"
 	"strings"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes"
 )
 
@@ -61,8 +61,7 @@ func archetypeExport(dataDir string, data any) error {
 	}
 
 	exporter := &BaseExporter{FilenameBase: "archetype_comparison.csv"}
-	filePath := filepath.Join(dataDir, "csv", "archetypes", exporter.FilenameBase)
-	return exporter.writeCSV(filePath, archetypeHeaders(), rows)
+	return exporter.writeCSVInSubdir(dataDir, storage.CSVArchetypesSubdir, archetypeHeaders(), rows)
 }
 
 // NewArchetypeDetailsExporter creates per-card upgrade details exporter
@@ -116,8 +115,7 @@ func archetypeDetailsExport(dataDir string, data any) error {
 	}
 
 	exporter := &BaseExporter{FilenameBase: "archetype_upgrade_details.csv"}
-	filePath := filepath.Join(dataDir, "csv", "archetypes", exporter.FilenameBase)
-	return exporter.writeCSV(filePath, archetypeDetailsHeaders(), rows)
+	return exporter.writeCSVInSubdir(dataDir, storage.CSVArchetypesSubdir, archetypeDetailsHeaders(), rows)
 }
 
 // formatDeckCSV formats deck cards as comma-separated string
