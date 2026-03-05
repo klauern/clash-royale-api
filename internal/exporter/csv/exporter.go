@@ -22,6 +22,11 @@ func (e *BaseExporter) csvFilePath(dataDir, subdir string) string {
 	return filepath.Join(pathBuilder.GetCSVDir(), subdir, e.FilenameBase)
 }
 
+// writeCSVInSubdir writes CSV data to the export file under the given CSV subdirectory.
+func (e *BaseExporter) writeCSVInSubdir(dataDir, subdir string, headers []string, rows [][]string) error {
+	return e.writeCSV(e.csvFilePath(dataDir, subdir), headers, rows)
+}
+
 // CSVExporter wraps a BaseExporter to implement the exporter.Exporter interface
 type CSVExporter struct {
 	BaseExporter

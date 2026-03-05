@@ -2,8 +2,8 @@ package csv
 
 import (
 	"fmt"
-	"path/filepath"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
@@ -55,6 +55,5 @@ func cardsExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "cards.csv"}
-	filePath := filepath.Join(dataDir, "csv", "reference", exporter.FilenameBase)
-	return exporter.writeCSV(filePath, cardsHeaders(), rows)
+	return exporter.writeCSVInSubdir(dataDir, storage.CSVReferenceSubdir, cardsHeaders(), rows)
 }

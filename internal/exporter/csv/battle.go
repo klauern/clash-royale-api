@@ -52,8 +52,7 @@ func battleLogExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "battle_log.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVBattlesSubdir)
-	return exporter.writeCSV(filePath, battleLogHeaders(), rows)
+	return exporter.writeCSVInSubdir(dataDir, storage.CSVBattlesSubdir, battleLogHeaders(), rows)
 }
 
 func makeBattleLogRows(battles []clashroyale.Battle) [][]string {
@@ -149,11 +148,10 @@ func battleSummaryExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "battle_summary.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVBattlesSubdir)
 
 	// Create a single-row CSV
 	rows := [][]string{row}
-	return exporter.writeCSV(filePath, battleSummaryHeaders(), rows)
+	return exporter.writeCSVInSubdir(dataDir, storage.CSVBattlesSubdir, battleSummaryHeaders(), rows)
 }
 
 type battleSummaryStats struct {
