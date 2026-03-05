@@ -1,7 +1,11 @@
 package main
 
 import (
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -204,4 +208,51 @@ func testCompositeDeckCandidates() []deck.CardCandidate {
 
 func ptrRole(role deck.CardRole) *deck.CardRole {
 	return &role
+}
+
+func TestSaveResultsToFileCanonicalizesPlayerTag(t *testing.T) {
+	outputDir := t.TempDir()
+	results := []FuzzingResult{
+		{
+			Deck:         []string{"Knight", "Archers", "Fireball", "Zap", "Giant", "Musketeer", "Minions", "Arrows"},
+			OverallScore: 8.5,
+			EvaluatedAt:  time.Now(),
+		},
+	}
+
+	if err := saveResultsToFileImpl(results, outputDir, fuzzOutputJSON, " abc123 "); err != nil {
+		t.Fatalf("saveResultsToFileImpl failed: %v", err)
+	}
+
+	matches, err := filepath.Glob(filepath.Join(outputDir, "fuzz_ABC123_*.json"))
+	if err != nil {
+		t.Fatalf("glob failed: %v", err)
+	}
+	if len(matches) != 1 {
+		t.Fatalf("expected one canonicalized output file, got %d", len(matches))
+	}
+}
+
+func TestLoadPlayerFromAnalysisCanonicalizesPlayerTag(t *testing.T) {
+	analysisDir := t.TempDir()
+	analysisPath := filepath.Join(analysisDir, "latest_analysis_ABC123.json")
+
+	data := `{"player_name":"Test","player_tag":"#ABC123","analysis_time":"2026-02-28T12:00:00Z","card_levels":{"Knight":{"level":11,"max_level":14,"rarity":"Common","elixir":3}}}`
+	if err := os.WriteFile(analysisPath, []byte(data), 0o644); err != nil {
+		t.Fatalf("write analysis: %v", err)
+	}
+
+	player, playerName, err := loadPlayerFromAnalysis("", analysisDir, " abc123 ")
+	if err != nil {
+		t.Fatalf("loadPlayerFromAnalysis failed: %v", err)
+	}
+	if playerName != "Test" {
+		t.Fatalf("playerName = %q, want Test", playerName)
+	}
+	if player.Tag != "#ABC123" {
+		t.Fatalf("player.Tag = %q, want #ABC123", player.Tag)
+	}
+	if len(player.Cards) != 1 || !strings.EqualFold(player.Cards[0].Name, "Knight") {
+		t.Fatalf("expected one Knight card, got %+v", player.Cards)
+	}
 }

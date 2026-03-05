@@ -11,6 +11,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
@@ -251,7 +252,11 @@ func saveResultsToFileImpl(results []FuzzingResult, outputDir, format, playerTag
 	}
 
 	timestamp := time.Now().Format("20060102_150405")
-	cleanTag := strings.TrimPrefix(playerTag, "#")
+	cleanTag, err := playertag.Sanitize(playerTag)
+	if err != nil {
+		return err
+	}
+	displayTag := cleanTag
 	var filename string
 
 	switch format {
@@ -284,10 +289,10 @@ func saveResultsToFileImpl(results []FuzzingResult, outputDir, format, playerTag
 	case fuzzOutputJSON:
 		config := &deck.FuzzingConfig{}
 		stats := &deck.FuzzingStats{}
-		return formatResultsJSONImpl(results, cleanTag, playerTag, config, "unknown", 0, stats, len(results))
+		return formatResultsJSONImpl(results, displayTag, playerTag, config, "unknown", 0, stats, len(results))
 	case fuzzOutputCSV:
 		return formatResultsCSVImpl(results)
 	default:
-		return formatResultsSummaryImpl(results, cleanTag, playerTag, &deck.FuzzingConfig{}, "unknown", 0, &deck.FuzzingStats{}, len(results))
+		return formatResultsSummaryImpl(results, displayTag, playerTag, &deck.FuzzingConfig{}, "unknown", 0, &deck.FuzzingStats{}, len(results))
 	}
 }

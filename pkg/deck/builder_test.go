@@ -1902,6 +1902,28 @@ func TestSaveDeck(t *testing.T) {
 	}
 }
 
+func TestSaveDeckCanonicalizesPlayerTag(t *testing.T) {
+	builder := NewBuilder(t.TempDir())
+
+	deck := &DeckRecommendation{
+		Deck: []string{"Knight", "Archers"},
+		DeckDetail: []CardDetail{
+			{Name: "Knight", Level: 11},
+			{Name: "Archers", Level: 12},
+		},
+		AvgElixir: 3.0,
+	}
+
+	path, err := builder.SaveDeck(deck, "", " abc123 ")
+	if err != nil {
+		t.Fatalf("SaveDeck failed: %v", err)
+	}
+
+	if !strings.HasSuffix(path, "_deck_ABC123.json") {
+		t.Fatalf("expected canonicalized filename suffix, got %s", filepath.Base(path))
+	}
+}
+
 // TestBuildDeckFromFile tests building deck from file
 func TestBuildDeckFromFile(t *testing.T) {
 	tempDir := t.TempDir()

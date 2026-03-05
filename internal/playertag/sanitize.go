@@ -20,3 +20,12 @@ func Sanitize(playerTag string) (string, error) {
 	}
 	return strings.ToUpper(tag), nil
 }
+
+// Display validates and canonicalizes a player tag for user-facing output.
+func Display(playerTag string) (string, error) {
+	tag, err := Sanitize(playerTag)
+	if err != nil {
+		return "", err
+	}
+	return "#" + tag, nil
+}
