@@ -256,7 +256,7 @@ func saveResultsToFileImpl(results []FuzzingResult, outputDir, format, playerTag
 	if err != nil {
 		return err
 	}
-	displayTag := strings.TrimPrefix(playerTag, "#")
+	displayTag := cleanTag
 	var filename string
 
 	switch format {
