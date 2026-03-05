@@ -8,9 +8,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes"
-	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	deckpkg "github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/urfave/cli/v3"
@@ -52,29 +50,14 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	client := clashroyale.NewClient(apiToken)
-
 	if verbose {
 		printf("Building war decks for player %s (%d decks)\n", tag, deckCount)
 	}
 
-	player, err := client.GetPlayerWithContext(ctx, tag)
+	result, err := loadOnlinePlayerAnalysis(ctx, tag, apiToken, verbose)
 	if err != nil {
-		return fmt.Errorf("failed to get player: %w", err)
+		return err
 	}
-
-	if verbose {
-		printf("Player: %s (%s)\n", player.Name, player.Tag)
-		printf("Analyzing %d cards...\n", len(player.Cards))
-	}
-
-	analysisOptions := analysis.DefaultAnalysisOptions()
-	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
-	if err != nil {
-		return fmt.Errorf("failed to analyze card collection: %w", err)
-	}
-
-	deckAnalysis := deckpkg.ConvertAnalysisForDeckBuilding(cardAnalysis)
 
 	builder := archetypes.NewArchetypeBuilder(dataDir)
 	if unlockedEvos := unlockedEvolutionsFromCommand(cmd); len(unlockedEvos) > 0 {
@@ -84,12 +67,12 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 		builder.SetEvolutionSlotLimit(slots)
 	}
 
-	warDecks, err := buildWarDecks(builder, deckAnalysis, deckCount)
+	warDecks, err := buildWarDecks(builder, result.DeckCardAnalysis, deckCount)
 	if err != nil {
 		return err
 	}
 
-	displayWarDecks(player, warDecks)
+	displayWarDecks(result.Player.Name, result.Player.Tag, warDecks)
 	return nil
 }
 
@@ -155,7 +138,7 @@ func buildWarDecks(
 	return best, nil
 }
 
-func displayWarDecks(player *clashroyale.Player, warDecks []warDeckCandidate) {
+func displayWarDecks(playerName, playerTag string, warDecks []warDeckCandidate) {
 	totalScore := 0.0
 	uniqueCards := make(map[string]bool)
 	for _, deck := range warDecks {
@@ -167,7 +150,7 @@ func displayWarDecks(player *clashroyale.Player, warDecks []warDeckCandidate) {
 
 	printf("\nWAR DECK SET (NO REPEATS)\n")
 	printf("========================\n\n")
-	printf("Player: %s (%s)\n", player.Name, player.Tag)
+	printf("Player: %s (%s)\n", playerName, playerTag)
 	printf("Decks: %d\n", len(warDecks))
 	printf("Unique cards: %d\n", len(uniqueCards))
 	printf("Total score: %.3f\n", totalScore)

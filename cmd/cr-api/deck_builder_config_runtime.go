@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -221,7 +222,7 @@ func loadPlayerCardAnalysis(ctx context.Context, cmd *cli.Command, builder *deck
 	}
 
 	// ONLINE MODE
-	return loadPlayerDataOnline(ctx, builder, tag, apiToken, verbose)
+	return loadPlayerDataOnline(ctx, tag, apiToken, verbose)
 }
 
 // loadPlayerDataOffline loads player data from pre-analyzed JSON files
@@ -230,55 +231,63 @@ func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile
 		printf("Building deck from offline analysis for player %s\n", tag)
 	}
 
-	loadedAnalysis, err := loadOfflineAnalysisFromFlags(builder, tag, dataDir, analysisDir, analysisFile, verbose)
-	if err != nil {
-		return nil, err
+	// Default analysis dir to data/analysis if not specified
+	if analysisDir == "" {
+		analysisDir = filepath.Join(dataDir, "analysis")
+	}
+
+	var loadedAnalysis *deck.CardAnalysis
+	var err error
+
+	if analysisFile != "" {
+		// Load from explicit file path
+		loadedAnalysis, err = builder.LoadAnalysis(analysisFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load analysis file %s: %w", analysisFile, err)
+		}
+		if verbose {
+			printf("Loaded analysis from: %s\n", analysisFile)
+		}
+	} else {
+		// Load latest analysis for player tag
+		loadedAnalysis, err = builder.LoadLatestAnalysis(tag, analysisDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+		}
+		if verbose {
+			printf("Loaded latest analysis from: %s\n", analysisDir)
+		}
+	}
+
+	// Use player name from analysis if available, fallback to tag
+	playerName := loadedAnalysis.PlayerName
+	if playerName == "" {
+		playerName = tag
 	}
 
 	return &playerDataLoadResult{
-		CardAnalysis: loadedAnalysis.CardAnalysis,
-		PlayerName:   loadedAnalysis.PlayerName,
-		PlayerTag:    loadedAnalysis.PlayerTag,
+		CardAnalysis: *loadedAnalysis,
+		PlayerName:   playerName,
+		PlayerTag:    tag,
 	}, nil
 }
 
 // loadPlayerDataOnline fetches and analyzes player data from the API
 //
 //nolint:dupl // Shared API loading refactor tracked under clash-royale-api-sg50.
-func loadPlayerDataOnline(ctx context.Context, builder *deck.Builder, tag, apiToken string, verbose bool) (*playerDataLoadResult, error) {
-	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{offlineAllowed: true})
+func loadPlayerDataOnline(ctx context.Context, tag, apiToken string, verbose bool) (*playerDataLoadResult, error) {
+	if verbose {
+		printf("Building deck for player %s\n", tag)
+	}
+	result, err := loadOnlinePlayerAnalysis(ctx, tag, apiToken, verbose)
 	if err != nil {
 		return nil, err
 	}
 
-	if verbose {
-		printf("Building deck for player %s\n", tag)
-	}
-
-	// Get player information
-	player, err := client.GetPlayerWithContext(ctx, tag)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get player: %w", err)
-	}
-
-	if verbose {
-		printf("Player: %s (%s)\n", player.Name, player.Tag)
-		printf("Analyzing %d cards...\n", len(player.Cards))
-	}
-
-	// Perform card collection analysis
-	analysisOptions := analysis.DefaultAnalysisOptions()
-	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to analyze card collection: %w", err)
-	}
-
-	deckCardAnalysis := convertToDeckCardAnalysis(cardAnalysis, player)
-
 	return &playerDataLoadResult{
-		CardAnalysis: deckCardAnalysis,
-		PlayerName:   player.Name,
-		PlayerTag:    player.Tag,
+		CardAnalysis: result.DeckCardAnalysis,
+		PlayerName:   result.Player.Name,
+		PlayerTag:    result.Player.Tag,
 	}, nil
 }
 

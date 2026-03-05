@@ -4,10 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
-	"time"
 
-	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/comparison"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
@@ -125,59 +124,38 @@ func loadSuitePlayerDataFromAnalysis(builder *deck.Builder, tag, dataDir string,
 	if verbose {
 		printf("Building deck suite from offline analysis for player %s\n", tag)
 	}
-	loadedAnalysis, err := loadOfflineAnalysisFromFlags(builder, tag, dataDir, "", "", verbose)
+	analysisDir := filepath.Join(dataDir, "analysis")
+	loadedAnalysis, err := builder.LoadLatestAnalysis(tag, analysisDir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
 	}
-
+	playerName := loadedAnalysis.PlayerName
+	if playerName == "" {
+		playerName = tag
+	}
+	playerTag := loadedAnalysis.PlayerTag
+	if playerTag == "" {
+		playerTag = tag
+	}
 	return &suitePlayerData{
-		CardAnalysis: loadedAnalysis.CardAnalysis,
-		PlayerName:   loadedAnalysis.PlayerName,
-		PlayerTag:    loadedAnalysis.PlayerTag,
+		CardAnalysis: *loadedAnalysis,
+		PlayerName:   playerName,
+		PlayerTag:    playerTag,
 	}, nil
 }
 
-//nolint:dupl // Shared API loading refactor tracked under clash-royale-api-sg50.
-func loadSuitePlayerDataFromAPI(ctx context.Context, builder *deck.Builder, tag, apiToken string, verbose bool) (*suitePlayerData, error) {
-	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{offlineAllowed: true})
-	if err != nil {
-		return nil, err
-	}
+func loadSuitePlayerDataFromAPI(ctx context.Context, tag, apiToken string, verbose bool) (*suitePlayerData, error) {
 	if verbose {
 		printf("Building deck suite for player %s\n", tag)
 	}
-	player, err := client.GetPlayerWithContext(ctx, tag)
+	result, err := loadOnlinePlayerAnalysis(ctx, tag, apiToken, verbose)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get player: %w", err)
-	}
-	if verbose {
-		printf("Player: %s (%s)\n", player.Name, player.Tag)
-		printf("Analyzing %d cards...\n", len(player.Cards))
-	}
-	analysisOptions := analysis.DefaultAnalysisOptions()
-	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to analyze card collection: %w", err)
-	}
-	deckCardAnalysis := deck.CardAnalysis{
-		CardLevels:   make(map[string]deck.CardLevelData),
-		AnalysisTime: cardAnalysis.AnalysisTime.Format(time.RFC3339),
-		PlayerName:   player.Name,
-		PlayerTag:    player.Tag,
-	}
-	for cardName, cardInfo := range cardAnalysis.CardLevels {
-		deckCardAnalysis.CardLevels[cardName] = deck.CardLevelData{
-			Level:             cardInfo.Level,
-			MaxLevel:          cardInfo.MaxLevel,
-			Rarity:            cardInfo.Rarity,
-			Elixir:            cardInfo.Elixir,
-			MaxEvolutionLevel: cardInfo.MaxEvolutionLevel,
-		}
+		return nil, err
 	}
 	return &suitePlayerData{
-		CardAnalysis: deckCardAnalysis,
-		PlayerName:   player.Name,
-		PlayerTag:    player.Tag,
+		CardAnalysis: result.DeckCardAnalysis,
+		PlayerName:   result.Player.Name,
+		PlayerTag:    result.Player.Tag,
 	}, nil
 }
 
@@ -185,7 +163,7 @@ func loadSuitePlayerData(ctx context.Context, builder *deck.Builder, tag, apiTok
 	if fromAnalysis {
 		return loadSuitePlayerDataFromAnalysis(builder, tag, dataDir, verbose)
 	}
-	return loadSuitePlayerDataFromAPI(ctx, builder, tag, apiToken, verbose)
+	return loadSuitePlayerDataFromAPI(ctx, tag, apiToken, verbose)
 }
 
 // printComparisonHeader prints the algorithm comparison header

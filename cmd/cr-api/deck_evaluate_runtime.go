@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
-	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
@@ -305,43 +304,27 @@ func deckEvaluateCommand(ctx context.Context, cmd *cli.Command) error {
 // performDeckUpgradeImpactAnalysis performs upgrade impact analysis for a specific deck
 // It fetches the player's card levels and shows which deck card upgrades would have the most impact
 func performDeckUpgradeImpactAnalysis(ctx context.Context, deckCardNames []string, playerTag string, topN int, apiToken string, verbose bool) error {
-	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
+	if verbose {
+		printf("\nFetching player data for upgrade impact analysis...\n")
+	}
+
+	result, err := loadOnlinePlayerAnalysis(ctx, playerTag, apiToken, verbose)
 	if err != nil {
 		return err
 	}
 
 	if verbose {
-		printf("\nFetching player data for upgrade impact analysis...\n")
-	}
-
-	// Get player information
-	player, err := client.GetPlayerWithContext(ctx, playerTag)
-	if err != nil {
-		return fmt.Errorf("failed to get player: %w", err)
-	}
-
-	if verbose {
-		printf("Player: %s (%s)\n", player.Name, player.Tag)
 		printf("Analyzing deck: %v\n", deckCardNames)
 	}
 
-	// Perform card collection analysis
-	analysisOptions := analysis.DefaultAnalysisOptions()
-	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
-	if err != nil {
-		return fmt.Errorf("failed to analyze card collection: %w", err)
-	}
-
-	deckCardAnalysis := convertToDeckCardAnalysis(cardAnalysis, player)
-
 	// Find which deck cards can be upgraded and calculate their impact
-	upgradeImpacts := calculateDeckCardUpgrades(deckCardNames, deckCardAnalysis)
+	upgradeImpacts := calculateDeckCardUpgrades(deckCardNames, result.DeckCardAnalysis)
 
 	// Sort by impact score (highest first)
 	sortUpgradeImpactsByScore(upgradeImpacts)
 
 	// Display the upgrade impact analysis
-	displayDeckUpgradeImpactAnalysis(deckCardNames, upgradeImpacts, topN, player)
+	displayDeckUpgradeImpactAnalysis(deckCardNames, upgradeImpacts, topN, result.Player.Name, result.Player.Tag)
 
 	return nil
 }
@@ -538,13 +521,13 @@ func sortUpgradeImpactsByScore(impacts []DeckCardUpgrade) {
 // displayDeckUpgradeImpactAnalysis displays the upgrade impact analysis for deck cards
 //
 //nolint:funlen // Output formatting block kept cohesive; broader extraction tracked in clash-royale-api-sb3q.
-func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCardUpgrade, topN int, player *clashroyale.Player) {
+func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCardUpgrade, topN int, playerName, playerTag string) {
 	printf("\n")
 	printf("╔══════════════════════════════════════════════════════════════════════╗\n")
 	printf("║                      UPGRADE IMPACT ANALYSIS                       ║\n")
 	printf("╚══════════════════════════════════════════════════════════════════════╝\n\n")
 
-	printf("Player: %s (%s)\n", player.Name, player.Tag)
+	printf("Player: %s (%s)\n", playerName, playerTag)
 	printf("Deck: %v\n\n", deckCardNames)
 
 	if len(impacts) == 0 {
