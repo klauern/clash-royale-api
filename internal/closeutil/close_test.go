@@ -21,9 +21,15 @@ func (c *testCloser) Close() error {
 func TestCloseWithLogSuccess(t *testing.T) {
 	var buf bytes.Buffer
 	originalWriter := log.Writer()
+	originalFlags := log.Flags()
+	originalPrefix := log.Prefix()
 	log.SetOutput(&buf)
+	log.SetFlags(0)
+	log.SetPrefix("")
 	t.Cleanup(func() {
 		log.SetOutput(originalWriter)
+		log.SetFlags(originalFlags)
+		log.SetPrefix(originalPrefix)
 	})
 
 	closer := &testCloser{}
@@ -40,9 +46,15 @@ func TestCloseWithLogSuccess(t *testing.T) {
 func TestCloseWithLogError(t *testing.T) {
 	var buf bytes.Buffer
 	originalWriter := log.Writer()
+	originalFlags := log.Flags()
+	originalPrefix := log.Prefix()
 	log.SetOutput(&buf)
+	log.SetFlags(0)
+	log.SetPrefix("")
 	t.Cleanup(func() {
 		log.SetOutput(originalWriter)
+		log.SetFlags(originalFlags)
+		log.SetPrefix(originalPrefix)
 	})
 
 	closer := &testCloser{err: errors.New("close failed")}
