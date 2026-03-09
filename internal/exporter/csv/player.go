@@ -74,7 +74,8 @@ func playerExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "players.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVPlayersSubdir, playerHeaders(), rows)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVPlayersSubdir)
+	return exporter.writeCSV(filePath, playerHeaders(), rows)
 }
 
 func playerCSVRow(player *clashroyale.Player) []string {
@@ -198,5 +199,6 @@ func playerCardsExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "player_cards.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVPlayersSubdir, playerCardsHeaders(), rows)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVPlayersSubdir)
+	return exporter.writeCSV(filePath, playerCardsHeaders(), rows)
 }

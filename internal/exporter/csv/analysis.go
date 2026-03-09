@@ -56,7 +56,8 @@ func analysisExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "card_analysis.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVAnalysisSubdir, analysisHeaders(), rows)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
+	return exporter.writeCSV(filePath, analysisHeaders(), rows)
 }
 
 // NewCardLevelsExporter creates a new card levels CSV exporter
@@ -125,7 +126,8 @@ func cardLevelsExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "card_levels.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVAnalysisSubdir, cardLevelsHeaders(), rows)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
+	return exporter.writeCSV(filePath, cardLevelsHeaders(), rows)
 }
 
 // NewUpgradePrioritiesExporter creates a new upgrade priorities CSV exporter
@@ -194,7 +196,8 @@ func upgradePrioritiesExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "upgrade_priorities.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVAnalysisSubdir, upgradePrioritiesHeaders(), rows)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
+	return exporter.writeCSV(filePath, upgradePrioritiesHeaders(), rows)
 }
 
 // NewRarityBreakdownExporter creates a new rarity breakdown CSV exporter
@@ -246,5 +249,6 @@ func rarityBreakdownExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "rarity_breakdown.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVAnalysisSubdir, rarityBreakdownHeaders(), rows)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
+	return exporter.writeCSV(filePath, rarityBreakdownHeaders(), rows)
 }
