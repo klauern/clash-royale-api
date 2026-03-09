@@ -10,7 +10,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/klauer/clash-royale-api/go/pkg/recommend"
@@ -47,48 +46,51 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 			printf("Generating recommendations from offline analysis for player %s\n", tag)
 		}
 
+		// Default analysis dir to data/analysis if not specified
+		if analysisDir == "" {
+			analysisDir = filepath.Join(dataDir, "analysis")
+		}
+
 		builder := deck.NewBuilder(dataDir)
-		loadedAnalysis, err := loadOfflineAnalysisFromFlags(builder, tag, dataDir, analysisDir, analysisFile, verbose)
-		if err != nil {
-			return err
+		var loadedAnalysis *deck.CardAnalysis
+		var err error
+
+		if analysisFile != "" {
+			// Load from explicit file path
+			loadedAnalysis, err = builder.LoadAnalysis(analysisFile)
+			if err != nil {
+				return fmt.Errorf("failed to load analysis file %s: %w", analysisFile, err)
+			}
+			if verbose {
+				printf("Loaded analysis from: %s\n", analysisFile)
+			}
+		} else {
+			// Load latest analysis for player tag
+			loadedAnalysis, err = builder.LoadLatestAnalysis(tag, analysisDir)
+			if err != nil {
+				return fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+			}
+			if verbose {
+				printf("Loaded latest analysis from: %s\n", analysisDir)
+			}
 		}
 
-		deckCardAnalysis = loadedAnalysis.CardAnalysis
-		playerTag = loadedAnalysis.PlayerTag
-		playerName = loadedAnalysis.PlayerName
+		deckCardAnalysis = *loadedAnalysis
+		playerTag = tag
+		playerName = tag // Use tag as name in offline mode
 	} else {
-		// ONLINE MODE: Fetch from API
-		client, err := requireAPIClientFromToken(apiToken, apiClientOptions{offlineAllowed: true})
-		if err != nil {
-			return err
-		}
-
 		if verbose {
 			printf("Generating recommendations for player %s\n", tag)
 		}
 
-		// Get player information
-		player, err := client.GetPlayerWithContext(ctx, tag)
+		result, err := loadOnlinePlayerAnalysis(ctx, tag, apiToken, verbose)
 		if err != nil {
-			return fmt.Errorf("failed to get player: %w", err)
+			return err
 		}
 
-		playerName = player.Name
-		playerTag = player.Tag
-
-		if verbose {
-			printf("Player: %s (%s)\n", player.Name, player.Tag)
-			printf("Analyzing %d cards...\n", len(player.Cards))
-		}
-
-		// Perform card collection analysis
-		analysisOptions := analysis.DefaultAnalysisOptions()
-		cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
-		if err != nil {
-			return fmt.Errorf("failed to analyze card collection: %w", err)
-		}
-
-		deckCardAnalysis = convertToDeckCardAnalysis(cardAnalysis, player)
+		deckCardAnalysis = result.DeckCardAnalysis
+		playerName = result.Player.Name
+		playerTag = result.Player.Tag
 	}
 
 	// Create recommender with options
