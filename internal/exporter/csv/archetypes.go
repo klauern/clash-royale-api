@@ -61,7 +61,8 @@ func archetypeExport(dataDir string, data any) error {
 	}
 
 	exporter := &BaseExporter{FilenameBase: "archetype_comparison.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVArchetypesSubdir, archetypeHeaders(), rows)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVArchetypesSubdir)
+	return exporter.writeCSV(filePath, archetypeHeaders(), rows)
 }
 
 // NewArchetypeDetailsExporter creates per-card upgrade details exporter
@@ -115,7 +116,8 @@ func archetypeDetailsExport(dataDir string, data any) error {
 	}
 
 	exporter := &BaseExporter{FilenameBase: "archetype_upgrade_details.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVArchetypesSubdir, archetypeDetailsHeaders(), rows)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVArchetypesSubdir)
+	return exporter.writeCSV(filePath, archetypeDetailsHeaders(), rows)
 }
 
 // formatDeckCSV formats deck cards as comma-separated string

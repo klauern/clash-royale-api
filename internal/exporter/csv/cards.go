@@ -55,5 +55,6 @@ func cardsExport(dataDir string, data any) error {
 
 	// Create exporter and write to file
 	exporter := &BaseExporter{FilenameBase: "cards.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVReferenceSubdir, cardsHeaders(), rows)
+	filePath := exporter.csvFilePath(dataDir, storage.CSVReferenceSubdir)
+	return exporter.writeCSV(filePath, cardsHeaders(), rows)
 }
