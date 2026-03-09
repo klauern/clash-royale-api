@@ -9,7 +9,6 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/urfave/cli/v3"
 )
@@ -21,7 +20,12 @@ func addUpgradeImpactCommands() *cli.Command {
 		Aliases: []string{"ui"},
 		Usage:   "Analyze which card upgrades have the biggest impact on deck viability",
 		Flags: []cli.Flag{
-			playerTagFlag(true),
+			&cli.StringFlag{
+				Name:     "tag",
+				Aliases:  []string{"p"},
+				Usage:    "Player tag (without #)",
+				Required: true,
+			},
 			&cli.IntFlag{
 				Name:  "top",
 				Value: 10,
@@ -89,31 +93,13 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
 
-	client, err := requireAPIClient(cmd, apiClientOptions{})
-	if err != nil {
-		return err
-	}
-
 	if verbose {
 		printf("Analyzing upgrade impact for player %s...\n", tag)
 	}
 
-	// Get player information
-	player, err := client.GetPlayerWithContext(ctx, tag)
+	result, err := loadOnlinePlayerAnalysis(ctx, tag, cmd.String("api-token"), verbose)
 	if err != nil {
-		return fmt.Errorf("failed to get player: %w", err)
-	}
-
-	if verbose {
-		printf("Player: %s (%s)\n", player.Name, player.Tag)
-		printf("Analyzing %d cards...\n", len(player.Cards))
-	}
-
-	// Perform card collection analysis first
-	analysisOptions := analysis.DefaultAnalysisOptions()
-	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
-	if err != nil {
-		return fmt.Errorf("failed to analyze card collection: %w", err)
+		return err
 	}
 
 	// Configure upgrade impact options
@@ -131,7 +117,7 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return fmt.Errorf("failed to create analyzer: %w", err)
 	}
-	impactAnalysis, err := analyzer.AnalyzeUpgradeImpact(cardAnalysis)
+	impactAnalysis, err := analyzer.AnalyzeUpgradeImpact(result.CardAnalysis)
 	if err != nil {
 		return fmt.Errorf("failed to analyze upgrade impact: %w", err)
 	}
@@ -145,10 +131,10 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Save if requested
 	if saveData {
-		if savedPath, err := saveUpgradeImpactAnalysis(dataDir, impactAnalysis); err != nil {
+		if err := saveUpgradeImpactAnalysis(dataDir, impactAnalysis); err != nil {
 			printf("Warning: Failed to save analysis: %v\n", err)
 		} else {
-			printf("\nAnalysis saved to: %s\n", savedPath)
+			printf("\nAnalysis saved to: %s/analysis/upgrade_impact_%s.json\n", dataDir, impactAnalysis.PlayerTag)
 		}
 	}
 
@@ -361,7 +347,6 @@ func displayUpgradeImpactAnalysis(impactAnalysis *analysis.UpgradeImpactAnalysis
 	displayUpgradeImpactRecommendations(impactAnalysis.TopImpacts)
 }
 
-// outputUpgradeImpactJSON prints upgrade impact analysis in pretty JSON format.
 func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) error {
 	data, err := json.MarshalIndent(impactAnalysis, "", "  ")
 	if err != nil {
@@ -372,17 +357,26 @@ func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) err
 	return nil
 }
 
-// saveUpgradeImpactAnalysis writes upgrade impact analysis and returns the final file path.
-func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) (string, error) {
+func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) error {
+	// Create analysis directory if it doesn't exist
 	analysisDir := filepath.Join(dataDir, "analysis")
+	if err := os.MkdirAll(analysisDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create analysis directory: %w", err)
+	}
 
 	// Generate filename with timestamp
 	timestamp := time.Now().Format("20060102_150405")
 	filename := filepath.Join(analysisDir, fmt.Sprintf("upgrade_impact_%s_%s.json", impactAnalysis.PlayerTag, timestamp))
 
-	if err := storage.WriteJSON(filename, impactAnalysis); err != nil {
-		return "", err
+	// Save as JSON
+	data, err := json.MarshalIndent(impactAnalysis, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal analysis: %w", err)
 	}
 
-	return filename, nil
+	if err := os.WriteFile(filename, data, 0o644); err != nil {
+		return fmt.Errorf("failed to write analysis file: %w", err)
+	}
+
+	return nil
 }

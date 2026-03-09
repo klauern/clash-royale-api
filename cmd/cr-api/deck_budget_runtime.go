@@ -10,10 +10,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/klauer/clash-royale-api/go/internal/storage"
-	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/budget"
-	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/urfave/cli/v3"
 )
@@ -39,31 +36,14 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("player tag is required. Use --tag flag to specify a player tag")
 	}
 
-	client, err := requireAPIClient(cmd, apiClientOptions{})
-	if err != nil {
-		return err
-	}
-
 	if verbose {
 		printf("Finding budget-optimized decks for player %s\n", tag)
 	}
 
-	// Get player information
-	player, err := client.GetPlayerWithContext(ctx, tag)
+	apiToken := cmd.String("api-token")
+	result, err := loadOnlinePlayerAnalysis(ctx, tag, apiToken, verbose)
 	if err != nil {
-		return fmt.Errorf("failed to get player: %w", err)
-	}
-
-	if verbose {
-		printf("Player: %s (%s)\n", player.Name, player.Tag)
-		printf("Analyzing %d cards...\n", len(player.Cards))
-	}
-
-	// Perform card collection analysis
-	analysisOptions := analysis.DefaultAnalysisOptions()
-	cardAnalysis, err := analysis.AnalyzeCardCollection(player, analysisOptions)
-	if err != nil {
-		return fmt.Errorf("failed to analyze card collection: %w", err)
+		return err
 	}
 
 	// Create budget finder options
@@ -92,38 +72,35 @@ func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 		finder.SetEvolutionSlotLimit(slots)
 	}
 
-	// Convert analysis.CardAnalysis to deck.CardAnalysis
-	deckCardAnalysis := convertToDeckCardAnalysis(cardAnalysis, player)
-
 	// Find optimal decks
-	result, err := finder.FindOptimalDecks(deckCardAnalysis, player.Tag, player.Name)
+	budgetResult, err := finder.FindOptimalDecks(result.DeckCardAnalysis, result.Player.Tag, result.Player.Name)
 	if err != nil {
 		return fmt.Errorf("failed to find optimal decks: %w", err)
 	}
 
 	// Filter results if requested
 	if quickWinsOnly {
-		result.AllDecks = result.QuickWins
+		budgetResult.AllDecks = budgetResult.QuickWins
 	} else if readyOnly {
-		result.AllDecks = result.ReadyDecks
+		budgetResult.AllDecks = budgetResult.ReadyDecks
 	}
 
 	// Output results
 	if jsonOutput {
-		return outputBudgetResultJSON(result)
+		return outputBudgetResultJSON(budgetResult)
 	}
 
-	displayBudgetResult(result, player, options)
+	displayBudgetResult(budgetResult, options)
 
 	// Save results if requested
 	if saveData {
 		if verbose {
 			printf("\nSaving budget analysis to: %s\n", dataDir)
 		}
-		if savedPath, err := saveBudgetResult(dataDir, result); err != nil {
+		if err := saveBudgetResult(dataDir, budgetResult); err != nil {
 			printf("Warning: Failed to save budget analysis: %v\n", err)
 		} else {
-			printf("\nBudget analysis saved to: %s\n", savedPath)
+			printf("\nBudget analysis saved to file\n")
 		}
 	}
 
@@ -151,7 +128,7 @@ func parseSortCriteria(s string) budget.SortCriteria {
 }
 
 // displayBudgetResult displays budget analysis results in a formatted way
-func displayBudgetResult(result *budget.BudgetFinderResult, player *clashroyale.Player, options budget.BudgetFinderOptions) {
+func displayBudgetResult(result *budget.BudgetFinderResult, options budget.BudgetFinderOptions) {
 	printf("\n╔══════════════════════════════════════════════════════════════════════╗\n")
 	printf("║                   BUDGET-OPTIMIZED DECK FINDER                     ║\n")
 	printf("╚══════════════════════════════════════════════════════════════════════╝\n\n")
@@ -277,17 +254,28 @@ func outputBudgetResultJSON(result *budget.BudgetFinderResult) error {
 }
 
 // saveBudgetResult saves budget analysis to a JSON file
-func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) (string, error) {
+func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
+	// Create budget directory if it doesn't exist
 	budgetDir := filepath.Join(dataDir, "budget")
+	if err := os.MkdirAll(budgetDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create budget directory: %w", err)
+	}
 
 	// Generate filename with timestamp
 	timestamp := time.Now().Format("20060102_150405")
 	cleanTag := strings.TrimPrefix(result.PlayerTag, "#")
 	filename := filepath.Join(budgetDir, fmt.Sprintf("%s_budget_%s.json", timestamp, cleanTag))
 
-	if err := storage.WriteJSON(filename, result); err != nil {
-		return "", fmt.Errorf("failed to write budget file: %w", err)
+	// Save as JSON
+	data, err := json.MarshalIndent(result, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal budget result: %w", err)
 	}
 
-	return filename, nil
+	if err := os.WriteFile(filename, data, 0o644); err != nil {
+		return fmt.Errorf("failed to write budget file: %w", err)
+	}
+
+	printf("Budget analysis saved to: %s\n", filename)
+	return nil
 }
