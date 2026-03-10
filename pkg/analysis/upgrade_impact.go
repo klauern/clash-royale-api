@@ -7,6 +7,8 @@ import (
 	"slices"
 	"sort"
 	"time"
+
+	"github.com/klauer/clash-royale-api/go/internal/config"
 )
 
 // UpgradeImpactAnalysis represents the complete upgrade impact analysis result
@@ -654,38 +656,37 @@ func (a *UpgradeImpactAnalyzer) calculateSummary(
 
 // Helper functions
 
+var upgradeImpactRoleOverrides = map[string]config.CardRole{
+	// Preserve historical upgrade-impact behavior for drill/bait archetypes.
+	"Goblin Drill": config.RoleWinCondition,
+}
+
+var upgradeImpactRolePrecedence = []config.CardRole{
+	config.RoleWinCondition,
+	config.RoleBuilding,
+	config.RoleSpellBig,
+	config.RoleSpellSmall,
+	config.RoleSupport,
+	config.RoleCycle,
+}
+
 func (a *UpgradeImpactAnalyzer) inferRole(cardName string) string {
-	// Expanded win conditions list for 28+ archetypes
-	winConditions := []string{
-		"Royal Giant", "Hog Rider", "Giant", "P.E.K.K.A", "Giant Skeleton",
-		"Goblin Barrel", "Mortar", "X-Bow", "Royal Hogs",
-		"Golem", "Lava Hound", "Electro Giant", "Balloon",
-		"Miner", "Graveyard", "Three Musketeers", "Mega Knight",
-		"Royal Ghost", "Goblin Drill", "Skeleton King",
-	}
-	if slices.Contains(winConditions, cardName) {
-		return "win_conditions"
+	if override, exists := upgradeImpactRoleOverrides[cardName]; exists {
+		return override.String()
 	}
 
-	buildings := []string{
-		"Cannon", "Goblin Cage", "Inferno Tower", "Bomb Tower", "Tombstone",
-		"Goblin Hut", "Barbarian Hut", "Tesla", "Furnace",
-	}
-	if slices.Contains(buildings, cardName) {
-		return "buildings"
+	for _, role := range upgradeImpactRolePrecedence {
+		if slices.Contains(config.GetRoleCards(role), cardName) {
+			return role.String()
+		}
 	}
 
-	bigSpells := []string{"Fireball", "Poison", "Lightning", "Rocket", "Earthquake"}
-	if slices.Contains(bigSpells, cardName) {
-		return "spells_big"
+	// Alias fallback (for example "The Log" -> "Log").
+	if role := config.GetCardRole(cardName); role != "" {
+		return role.String()
 	}
 
-	smallSpells := []string{"Zap", "Arrows", "Giant Snowball", "Barbarian Barrel", "Freeze", "Log", "Tornado"}
-	if slices.Contains(smallSpells, cardName) {
-		return "spells_small"
-	}
-
-	return "support"
+	return config.RoleSupport.String()
 }
 
 func (a *UpgradeImpactAnalyzer) getRoleImportance(cardName string) float64 {
@@ -699,6 +700,8 @@ func (a *UpgradeImpactAnalyzer) getRoleImportance(cardName string) float64 {
 		return 0.6
 	case "spells_small":
 		return 0.5
+	case "cycle":
+		return 0.4
 	default:
 		return 0.4
 	}
