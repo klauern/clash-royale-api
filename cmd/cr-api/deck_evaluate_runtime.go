@@ -403,7 +403,7 @@ func calculateDeckCardUpgrades(deckCardNames []string, cardAnalysis deck.CardAna
 
 func upgradeUnlocksNewArchetype(cardName string, cardData deck.CardLevelData, targetLevel int) bool {
 	// Win conditions crossing level 11 usually unlock more viable deck archetypes.
-	if deck.IsWinCondition(cardName) && cardData.Level < 11 && targetLevel >= 11 {
+	if config.GetCardRole(cardName) == config.RoleWinCondition && cardData.Level < 11 && targetLevel >= 11 {
 		return true
 	}
 
