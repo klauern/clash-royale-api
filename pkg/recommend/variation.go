@@ -5,6 +5,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
@@ -178,18 +179,20 @@ func (vg *VariationGenerator) findBetterAlternatives(
 			score += 0.2
 		}
 
-		// Bonus for same role (maintains deck balance)
-		// Classify the card to get its role
-		cardRole := deck.ClassifyCard(cardName, cardData.Elixir)
-		if weakCard.Role != "" && cardRole != nil && string(*cardRole) == weakCard.Role {
+		// Bonus for same role (maintains deck balance).
+		cardRole := config.GetCardRole(cardName)
+		// Preserve elixir-based fallback for cards not covered by shared role mapping.
+		if cardRole == "" {
+			if fallback := deck.ClassifyCard(cardName, cardData.Elixir); fallback != nil {
+				cardRole = config.CardRole(*fallback)
+			}
+		}
+		if weakCard.Role != "" && cardRole != "" && string(cardRole) == weakCard.Role {
 			score += 0.1
 		}
 
-		// Convert role to string for storage
-		roleStr := ""
-		if cardRole != nil {
-			roleStr = string(*cardRole)
-		}
+		// Convert role to string for storage.
+		roleStr := string(cardRole)
 
 		alternatives = append(alternatives, CardAlternative{
 			Name:       cardName,

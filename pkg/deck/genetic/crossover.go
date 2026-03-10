@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sort"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
@@ -198,7 +199,7 @@ func (g *DeckGenome) ensureWinCondition(cards []string, used map[string]bool, ca
 func (g *DeckGenome) isWinCondition(card string, candidateMap map[string]*deck.CardCandidate) bool {
 	candidate, ok := candidateMap[card]
 	if !ok || candidate.Role == nil {
-		return deck.IsWinCondition(card)
+		return config.GetCardRole(card) == deck.RoleWinCondition
 	}
 	return *candidate.Role == deck.RoleWinCondition
 }
