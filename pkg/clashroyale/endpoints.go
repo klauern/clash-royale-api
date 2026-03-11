@@ -22,7 +22,7 @@ func makeAPIRequest[T any](ctx context.Context, c *Client, endpoint, errorMsg st
 	if err != nil {
 		return nil, err
 	}
-	defer closeutil.CloseWithLog("clashroyale", resp.Body, "response body")
+	defer closeutil.WithLog("clashroyale", resp.Body, "response body")
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, APIError{

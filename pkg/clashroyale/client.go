@@ -67,6 +67,7 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 
 	var resp *http.Response
 	var err error
+	var lastRetryErr error
 
 	// Simple retry loop
 	for attempt := range 3 {
@@ -87,9 +88,11 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 
 		// Check for rate limit (429) or server errors (5xx) - retry these
 		if resp.StatusCode == 429 || (resp.StatusCode >= 500 && resp.StatusCode < 600) {
+			lastRetryErr = fmt.Errorf("retryable response status %d", resp.StatusCode)
 			if resp.StatusCode == 429 {
 				delay := retryAfterDelay(resp, attempt)
-				closeutil.CloseWithLog("clashroyale", resp.Body, "response body")
+				closeutil.WithLog("clashroyale", resp.Body, "response body")
+				resp = nil
 				select {
 				case <-req.Context().Done():
 					return nil, req.Context().Err()
@@ -97,7 +100,8 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 				}
 				continue
 			}
-			closeutil.CloseWithLog("clashroyale", resp.Body, "response body")
+			closeutil.WithLog("clashroyale", resp.Body, "response body")
+			resp = nil
 			continue
 		}
 
@@ -111,10 +115,13 @@ func (c *Client) Do(req *http.Request) (*http.Response, error) {
 	}
 
 	// All retries exhausted
-	if resp != nil {
-		closeutil.CloseWithLog("clashroyale", resp.Body, "response body")
+	if err != nil {
+		return nil, fmt.Errorf("max retries exceeded: %w", err)
 	}
-	return nil, fmt.Errorf("max retries exceeded: %w", err)
+	if lastRetryErr != nil {
+		return nil, fmt.Errorf("max retries exceeded: %w", lastRetryErr)
+	}
+	return nil, fmt.Errorf("max retries exceeded")
 }
 
 func retryAfterDelay(resp *http.Response, attempt int) time.Duration {
@@ -130,7 +137,7 @@ func retryAfterDelay(resp *http.Response, attempt int) time.Duration {
 }
 
 func parseAPIError(resp *http.Response) APIError {
-	defer closeutil.CloseWithLog("clashroyale", resp.Body, "response body")
+	defer closeutil.WithLog("clashroyale", resp.Body, "response body")
 	payload := struct {
 		Reason  string `json:"reason"`
 		Message string `json:"message"`
