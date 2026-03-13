@@ -3,18 +3,18 @@ package taxonomy
 import "testing"
 
 func TestSharedGroupsContainExpectedCards(t *testing.T) {
-		tests := []struct {
-			name  string
-			cards []string
-			want  string
-		}{
-			{name: "beatdown heavy tanks", cards: BeatdownHeavyTanks(), want: "Golem"},
-			{name: "beatdown support", cards: BeatdownSupport(), want: "Baby Dragon"},
-			{name: "control buildings", cards: ControlDefensiveBuildings(), want: "Tesla"},
-			{name: "control big spells", cards: ControlBigSpells(), want: "Poison"},
-			{name: "cycle win conditions", cards: CycleWinConditions(), want: "Hog Rider"},
-			{name: "cycle core cards", cards: CycleCoreCards(), want: "Skeletons"},
-		}
+	tests := []struct {
+		name  string
+		cards []string
+		want  string
+	}{
+		{name: "beatdown heavy tanks", cards: BeatdownHeavyTanks(), want: "Golem"},
+		{name: "beatdown support", cards: BeatdownSupport(), want: "Baby Dragon"},
+		{name: "control buildings", cards: ControlDefensiveBuildings(), want: "Tesla"},
+		{name: "control big spells", cards: ControlBigSpells(), want: "Poison"},
+		{name: "cycle win conditions", cards: CycleWinConditions(), want: "Hog Rider"},
+		{name: "cycle core cards", cards: CycleCoreCards(), want: "Skeletons"},
+	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
