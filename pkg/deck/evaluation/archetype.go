@@ -4,6 +4,7 @@ import (
 	"math"
 	"slices"
 
+	"github.com/klauer/clash-royale-api/go/pkg/archetypes/taxonomy"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
@@ -141,8 +142,8 @@ func findTopArchetype(scores map[Archetype]float64) (Archetype, float64) {
 // Beatdown: Heavy tanks + support troops + big spells
 func scoreBeatdown(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	heavyTanks := []string{"Golem", "Lava Hound", "Electro Giant", "Giant", "Mega Knight"}
-	supportTroops := []string{"Baby Dragon", "Night Witch", "Lumberjack", "Mega Minion", "Witch"}
+	heavyTanks := taxonomy.BeatdownHeavyTanks()
+	supportTroops := taxonomy.BeatdownSupport()
 
 	// Check for heavy tank win conditions (40% of score)
 	tankScore := 0.0
@@ -184,8 +185,8 @@ func scoreBeatdown(deckCards []deck.CardCandidate) float64 {
 func scoreControl(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
 	controlWinCons := []string{"Graveyard"}
-	defensiveBuildings := []string{"Tesla", "Cannon", "Inferno Tower", "Bomb Tower"}
-	bigSpells := []string{"Poison", "Fireball", "Lightning", "Rocket"}
+	defensiveBuildings := taxonomy.ControlDefensiveBuildings()
+	bigSpells := taxonomy.ControlBigSpells()
 
 	// Check for control win conditions (35% of score)
 	winConScore := 0.0
@@ -230,8 +231,8 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 // Cycle: Low elixir + fast rotation + cycle cards
 func scoreCycle(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	cycleWinCons := []string{"Hog Rider", "Royal Giant", "Royal Hogs"}
-	cycleCards := []string{"Skeletons", "Ice Spirit", "Ice Golem", "Electro Spirit"}
+	cycleWinCons := taxonomy.CycleWinConditions()
+	cycleCards := taxonomy.CycleCoreCards()
 
 	// Check for cycle win conditions (30% of score)
 	winConScore := 0.0

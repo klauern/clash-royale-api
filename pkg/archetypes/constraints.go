@@ -3,6 +3,7 @@ package archetypes
 import (
 	"maps"
 
+	"github.com/klauer/clash-royale-api/go/pkg/archetypes/taxonomy"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 )
@@ -13,11 +14,11 @@ var (
 		deck.RoleWinCondition: 1, // Must have heavy tank
 		deck.RoleSupport:      2, // Support troops for tank
 	}
-	beatdownPreferred = []string{
-		"Golem", "Giant", "Lava Hound", "Electro Giant",
-		"Baby Dragon", "Night Witch", "Mega Minion", "Lumberjack",
-		"Lightning", "Tornado", "Arrows",
-	}
+	beatdownPreferred = taxonomy.Merge(
+		taxonomy.BeatdownHeavyTanks(),
+		taxonomy.BeatdownSupport(),
+		[]string{"Lightning", "Tornado", "Arrows"},
+	)
 	beatdownExcluded = []string{
 		"X-Bow", "Mortar", "Hog Rider", "Miner", "Goblin Barrel",
 	}
@@ -27,11 +28,11 @@ var (
 		deck.RoleCycle:        3, // Many cheap cards for fast cycling
 		deck.RoleSpellSmall:   1,
 	}
-	cyclePreferred = []string{
-		"Hog Rider", "Miner", "Skeletons", "Ice Spirit",
-		"Ice Golem", "Cannon", "Musketeer", "Log",
-		"Fireball", "Electro Spirit", "Bats",
-	}
+	cyclePreferred = taxonomy.Merge(
+		taxonomy.CycleWinConditions(),
+		taxonomy.CycleCoreCards(),
+		[]string{"Miner", "Cannon", "Musketeer", "Log", "Fireball", "Bats"},
+	)
 	cycleExcluded = []string{
 		"Golem", "Lava Hound", "Giant", "Electro Giant",
 		"P.E.K.K.A", "Mega Knight",
@@ -42,11 +43,12 @@ var (
 		deck.RoleSpellBig:   1, // Big spell for control
 		deck.RoleSpellSmall: 1,
 	}
-	controlPreferred = []string{
-		"Inferno Tower", "Cannon", "Bomb Tower", "Tesla",
-		"Valkyrie", "Wizard", "Musketeer", "Archers",
-		"Fireball", "Poison", "Log", "Arrows",
-	}
+	controlPreferred = taxonomy.Merge(
+		taxonomy.ControlDefensiveBuildings(),
+		[]string{"Valkyrie", "Wizard", "Musketeer", "Archers"},
+		[]string{"Log", "Arrows"},
+		taxonomy.ControlBigSpells(),
+	)
 	controlExcluded = []string{
 		"Golem", "Giant", "Lava Hound",
 	}
