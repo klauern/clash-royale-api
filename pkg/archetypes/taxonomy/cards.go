@@ -50,6 +50,7 @@ func Clone(cards []string) []string {
 }
 
 // Merge concatenates multiple card groups into one list.
+// It preserves order and does not deduplicate cards.
 func Merge(groups ...[]string) []string {
 	total := 0
 	for _, g := range groups {
