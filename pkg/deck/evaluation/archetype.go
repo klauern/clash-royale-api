@@ -146,23 +146,13 @@ func scoreBeatdown(deckCards []deck.CardCandidate) float64 {
 
 	// Check for heavy tank win conditions (40% of score)
 	tankScore := 0.0
-	for _, card := range deckCards {
-		if slices.Contains(heavyTanks, card.Name) {
-			tankScore = 10.0
-		}
+	if hasAnyNamedCard(deckCards, heavyTanks) {
+		tankScore = 10.0
 	}
 
 	// Check for support troops (30% of score)
-	supportCount := 0
-	for _, card := range deckCards {
-		if slices.Contains(supportTroops, card.Name) {
-			supportCount++
-		}
-	}
-	supportScore := float64(supportCount) * 2.5 // Max 10.0 with 4+ supports
-	if supportScore > 10.0 {
-		supportScore = 10.0
-	}
+	supportCount := countNamedCards(deckCards, supportTroops)
+	supportScore := cappedLinearScore(supportCount, 2.5) // Max 10.0 with 4+ supports
 
 	// Check average elixir (30% of score) - beatdown typically 3.5-4.5
 	avgElixir := calculateAvgElixir(deckCards)
@@ -189,10 +179,8 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 
 	// Check for control win conditions (35% of score)
 	winConScore := 0.0
-	for _, card := range deckCards {
-		if slices.Contains(controlWinCons, card.Name) {
-			winConScore = 10.0
-		}
+	if hasAnyNamedCard(deckCards, controlWinCons) {
+		winConScore = 10.0
 	}
 
 	// Count defensive buildings (35% of score)
@@ -205,22 +193,11 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 			buildingCount++
 		}
 	}
-	buildingScore := float64(buildingCount) * 5.0 // Max 10.0 with 2+ buildings
-	if buildingScore > 10.0 {
-		buildingScore = 10.0
-	}
+	buildingScore := cappedLinearScore(buildingCount, 5.0) // Max 10.0 with 2+ buildings
 
 	// Count big spells (30% of score)
-	spellCount := 0
-	for _, card := range deckCards {
-		if slices.Contains(bigSpells, card.Name) {
-			spellCount++
-		}
-	}
-	spellScore := float64(spellCount) * 5.0 // Max 10.0 with 2+ spells
-	if spellScore > 10.0 {
-		spellScore = 10.0
-	}
+	spellCount := countNamedCards(deckCards, bigSpells)
+	spellScore := cappedLinearScore(spellCount, 5.0) // Max 10.0 with 2+ spells
 
 	score = (winConScore * 0.35) + (buildingScore * 0.35) + (spellScore * 0.30)
 	return score
@@ -235,10 +212,8 @@ func scoreCycle(deckCards []deck.CardCandidate) float64 {
 
 	// Check for cycle win conditions (30% of score)
 	winConScore := 0.0
-	for _, card := range deckCards {
-		if slices.Contains(cycleWinCons, card.Name) {
-			winConScore = 10.0
-		}
+	if hasAnyNamedCard(deckCards, cycleWinCons) {
+		winConScore = 10.0
 	}
 
 	// Count cheap cycle cards 1-2 elixir (40% of score)
@@ -251,10 +226,7 @@ func scoreCycle(deckCards []deck.CardCandidate) float64 {
 			cycleCount++
 		}
 	}
-	cycleCardScore := float64(cycleCount) * 2.0 // Max 10.0 with 5+ cheap cards
-	if cycleCardScore > 10.0 {
-		cycleCardScore = 10.0
-	}
+	cycleCardScore := cappedLinearScore(cycleCount, 2.0) // Max 10.0 with 5+ cheap cards
 
 	// Check average elixir (30% of score) - cycle typically 2.4-3.2
 	avgElixir := calculateAvgElixir(deckCards)
@@ -280,10 +252,8 @@ func scoreBridgeSpam(deckCards []deck.CardCandidate) float64 {
 
 	// Check for bridge spam win conditions (40% of score)
 	winConScore := 0.0
-	for _, card := range deckCards {
-		if slices.Contains(bridgeWinCons, card.Name) {
-			winConScore = 10.0
-		}
+	if hasAnyNamedCard(deckCards, bridgeWinCons) {
+		winConScore = 10.0
 	}
 
 	// Count spam cards (40% of score)
@@ -293,10 +263,7 @@ func scoreBridgeSpam(deckCards []deck.CardCandidate) float64 {
 			spamCount++
 		}
 	}
-	spamScore := float64(spamCount) * 3.0 // Max 10.0 with 3+ spam cards
-	if spamScore > 10.0 {
-		spamScore = 10.0
-	}
+	spamScore := cappedLinearScore(spamCount, 3.0) // Max 10.0 with 3+ spam cards
 
 	// Check average elixir (20% of score) - bridge spam typically 3.0-4.0
 	avgElixir := calculateAvgElixir(deckCards)
@@ -320,10 +287,8 @@ func scoreSiege(deckCards []deck.CardCandidate) float64 {
 
 	// Check for siege win conditions (60% of score) - critical for siege
 	winConScore := 0.0
-	for _, card := range deckCards {
-		if slices.Contains(siegeWinCons, card.Name) {
-			winConScore = 10.0
-		}
+	if hasAnyNamedCard(deckCards, siegeWinCons) {
+		winConScore = 10.0
 	}
 
 	// If no siege win condition, this can't be siege
@@ -338,10 +303,7 @@ func scoreSiege(deckCards []deck.CardCandidate) float64 {
 			defenseCount++
 		}
 	}
-	defenseScore := float64(defenseCount) * 2.5 // Max 10.0 with 4+ defensive cards
-	if defenseScore > 10.0 {
-		defenseScore = 10.0
-	}
+	defenseScore := cappedLinearScore(defenseCount, 2.5) // Max 10.0 with 4+ defensive cards
 
 	score = (winConScore * 0.6) + (defenseScore * 0.4)
 	return score
@@ -380,10 +342,7 @@ func scoreBait(deckCards []deck.CardCandidate) float64 {
 			baitCount++
 		}
 	}
-	baitScore := float64(baitCount) * 2.5 // Max 10.0 with 4+ bait cards
-	if baitScore > 10.0 {
-		baitScore = 10.0
-	}
+	baitScore := cappedLinearScore(baitCount, 2.5) // Max 10.0 with 4+ bait cards
 
 	score = (winConScore * 0.5) + (baitScore * 0.5)
 	return score
@@ -418,10 +377,7 @@ func scoreGraveyard(deckCards []deck.CardCandidate) float64 {
 			supportCount++
 		}
 	}
-	supportScore := float64(supportCount) * 3.0 // Max 10.0 with 3+ supports
-	if supportScore > 10.0 {
-		supportScore = 10.0
-	}
+	supportScore := cappedLinearScore(supportCount, 3.0) // Max 10.0 with 3+ supports
 
 	// Count synergy spells (20% of score)
 	synergyCount := 0
@@ -430,10 +386,7 @@ func scoreGraveyard(deckCards []deck.CardCandidate) float64 {
 			synergyCount++
 		}
 	}
-	synergyScore := float64(synergyCount) * 5.0 // Max 10.0 with 2+ synergies
-	if synergyScore > 10.0 {
-		synergyScore = 10.0
-	}
+	synergyScore := cappedLinearScore(synergyCount, 5.0) // Max 10.0 with 2+ synergies
 
 	score = (winConScore * 0.5) + (supportScore * 0.3) + (synergyScore * 0.2)
 	return score
@@ -467,10 +420,7 @@ func scoreMiner(deckCards []deck.CardCandidate) float64 {
 			supportCount++
 		}
 	}
-	supportScore := float64(supportCount) * 3.0 // Max 10.0 with 3+ supports
-	if supportScore > 10.0 {
-		supportScore = 10.0
-	}
+	supportScore := cappedLinearScore(supportCount, 3.0) // Max 10.0 with 3+ supports
 
 	score = (winConScore * 0.6) + (supportScore * 0.4)
 	return score
@@ -488,4 +438,31 @@ func calculateAvgElixir(deckCards []deck.CardCandidate) float64 {
 	}
 
 	return float64(total) / float64(len(deckCards))
+}
+
+func hasAnyNamedCard(deckCards []deck.CardCandidate, names []string) bool {
+	for _, card := range deckCards {
+		if slices.Contains(names, card.Name) {
+			return true
+		}
+	}
+	return false
+}
+
+func countNamedCards(deckCards []deck.CardCandidate, names []string) int {
+	count := 0
+	for _, card := range deckCards {
+		if slices.Contains(names, card.Name) {
+			count++
+		}
+	}
+	return count
+}
+
+func cappedLinearScore(count int, multiplier float64) float64 {
+	score := float64(count) * multiplier
+	if score > 10.0 {
+		return 10.0
+	}
+	return score
 }
