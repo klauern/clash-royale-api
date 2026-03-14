@@ -142,8 +142,9 @@ func findTopArchetype(scores map[Archetype]float64) (Archetype, float64) {
 // Beatdown: Heavy tanks + support troops + big spells
 func scoreBeatdown(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	heavyTanks := taxonomy.BeatdownHeavyTanks()
-	supportTroops := taxonomy.BeatdownSupport()
+	heavyTanks := append([]string{}, taxonomy.BeatdownCoreWinConditions...)
+	heavyTanks = append(heavyTanks, "Electro Giant", "Mega Knight")
+	supportTroops := []string{"Baby Dragon", "Night Witch", "Lumberjack", "Mega Minion", "Witch"}
 
 	// Check for heavy tank win conditions (40% of score)
 	tankScore := 0.0
@@ -185,8 +186,8 @@ func scoreBeatdown(deckCards []deck.CardCandidate) float64 {
 func scoreControl(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
 	controlWinCons := []string{"Graveyard"}
-	defensiveBuildings := taxonomy.ControlDefensiveBuildings()
-	bigSpells := taxonomy.ControlBigSpells()
+	defensiveBuildings := []string{"Tesla", "Cannon", "Inferno Tower", "Bomb Tower"}
+	bigSpells := []string{"Poison", "Fireball", "Lightning", "Rocket"}
 
 	// Check for control win conditions (35% of score)
 	winConScore := 0.0
@@ -231,8 +232,8 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 // Cycle: Low elixir + fast rotation + cycle cards
 func scoreCycle(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	cycleWinCons := taxonomy.CycleWinConditions()
-	cycleCards := taxonomy.CycleCoreCards()
+	cycleWinCons := []string{"Hog Rider", "Royal Giant", "Royal Hogs"}
+	cycleCards := []string{"Skeletons", "Ice Spirit", "Ice Golem", "Electro Spirit"}
 
 	// Check for cycle win conditions (30% of score)
 	winConScore := 0.0
@@ -276,7 +277,8 @@ func scoreCycle(deckCards []deck.CardCandidate) float64 {
 // Bridge Spam: Fast units + aggressive cards + immediate pressure
 func scoreBridgeSpam(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	bridgeWinCons := []string{"P.E.K.K.A", "Mega Knight", "Royal Ghost", "Battle Ram"}
+	bridgeWinCons := append([]string{}, taxonomy.BridgeSpamCoreWinConds...)
+	bridgeWinCons = append(bridgeWinCons, "P.E.K.K.A", "Mega Knight", "Royal Ghost")
 	spamCards := []string{"Bandit", "Royal Ghost", "Battle Ram", "Wall Breakers", "Prince"}
 
 	// Check for bridge spam win conditions (40% of score)
@@ -316,7 +318,7 @@ func scoreBridgeSpam(deckCards []deck.CardCandidate) float64 {
 // Siege: X-Bow or Mortar + defensive support
 func scoreSiege(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	siegeWinCons := []string{"X-Bow", "Mortar"}
+	siegeWinCons := taxonomy.SiegeWinConditions
 	defensiveCards := []string{"Tesla", "Knight", "Archers", "Cannon"}
 
 	// Check for siege win conditions (60% of score) - critical for siege
