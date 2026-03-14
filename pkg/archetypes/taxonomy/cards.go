@@ -1,5 +1,7 @@
 package taxonomy
 
+import "strings"
+
 // Shared archetype card groups consumed by both scoring and constraints.
 var (
 	beatdownHeavyTanks = []string{"Golem", "Lava Hound", "Electro Giant", "Giant", "Mega Knight"}
@@ -10,6 +12,16 @@ var (
 
 	cycleWinConditions = []string{"Hog Rider", "Royal Giant", "Royal Hogs"}
 	cycleCoreCards     = []string{"Skeletons", "Ice Spirit", "Ice Golem", "Electro Spirit"}
+
+	// Shared canonical card names used in multiple archetype detectors.
+	BeatdownCoreWinConditions = []string{"Golem", "Giant", "Lava Hound"}
+	SiegeWinConditions        = []string{"X-Bow", "Mortar"}
+	BridgeSpamCoreWinConds    = []string{"Battle Ram"}
+
+	// Mulligan-specific substring signals.
+	BeatdownCoreSignals     = []string{"golem", "giant", "lava hound"}
+	SiegeWinConditionTokens = []string{"x-bow", "xbow", "mortar"}
+	BridgeSpamSignals       = []string{"battle ram", "hog rider"}
 )
 
 // BeatdownHeavyTanks returns the shared heavy tank card group.
@@ -61,4 +73,18 @@ func Merge(groups ...[]string) []string {
 		out = append(out, g...)
 	}
 	return out
+}
+
+// ContainsAnySubstringFold returns true when any value contains any signal
+// using case-insensitive matching.
+func ContainsAnySubstringFold(values, signals []string) bool {
+	for _, value := range values {
+		lowerValue := strings.ToLower(value)
+		for _, signal := range signals {
+			if strings.Contains(lowerValue, strings.ToLower(signal)) {
+				return true
+			}
+		}
+	}
+	return false
 }

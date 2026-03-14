@@ -1,8 +1,9 @@
 package mulligan
 
 import (
-	"strings"
 	"time"
+
+	"github.com/klauer/clash-royale-api/go/pkg/archetypes/taxonomy"
 )
 
 // Generator creates mulligan guides for decks
@@ -169,16 +170,7 @@ func isBeatdownDeck(avgElixir float64, winConditions []string, profile deckProfi
 
 // hasHeavyWinCondition checks for beatdown-style win conditions
 func hasHeavyWinCondition(winConditions []string) bool {
-	heavyWinCons := []string{"golem", "giant", "lava hound"}
-	for _, winCon := range winConditions {
-		lowerWinCon := strings.ToLower(winCon)
-		for _, heavy := range heavyWinCons {
-			if strings.Contains(lowerWinCon, heavy) {
-				return true
-			}
-		}
-	}
-	return false
+	return taxonomy.ContainsAnySubstringFold(winConditions, taxonomy.BeatdownCoreSignals)
 }
 
 // isCycleDeck checks if deck matches cycle archetype
@@ -205,16 +197,7 @@ func checkDefensiveDeckType(defensive []string, defCount int) Archetype {
 
 // hasSiegeBuilding checks for siege-specific buildings
 func hasSiegeBuilding(defensive []string) bool {
-	siegeBuildings := []string{"xbow", "mortar"}
-	for _, def := range defensive {
-		lowerDef := strings.ToLower(def)
-		for _, siege := range siegeBuildings {
-			if strings.Contains(lowerDef, siege) {
-				return true
-			}
-		}
-	}
-	return false
+	return taxonomy.ContainsAnySubstringFold(defensive, taxonomy.SiegeWinConditionTokens)
 }
 
 // isBridgeSpamDeck checks if deck matches bridge spam archetype
@@ -227,16 +210,7 @@ func isBridgeSpamDeck(avgElixir float64, winConditions []string, profile deckPro
 
 // hasBridgeSpamWinCondition checks for bridge spam win conditions
 func hasBridgeSpamWinCondition(winConditions []string) bool {
-	bridgeSpamCards := []string{"battle ram", "hog rider"}
-	for _, winCon := range winConditions {
-		lowerWinCon := strings.ToLower(winCon)
-		for _, spam := range bridgeSpamCards {
-			if strings.Contains(lowerWinCon, spam) {
-				return true
-			}
-		}
-	}
-	return false
+	return taxonomy.ContainsAnySubstringFold(winConditions, taxonomy.BridgeSpamSignals)
 }
 
 // generatePrinciples creates general opening principles based on archetype
