@@ -142,12 +142,6 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 }
 
 // Formatting helpers for upgrade impact display
-func formatGoldDisplay(gold int) string {
-	if gold < 1000 {
-		return fmt.Sprintf("%d", gold)
-	}
-	return fmt.Sprintf("%dk", gold/1000)
-}
 
 func getUnlockStatusSymbol(viability string) string {
 	switch viability {
@@ -214,7 +208,7 @@ func displayTopImpactCards(impacts []analysis.CardUpgradeImpact, showAll bool) {
 			impact.UpgradedLevel,
 			impact.Rarity,
 			impact.ImpactScore,
-			formatGoldDisplay(impact.GoldCost),
+			formatGoldCompact(impact.GoldCost),
 			impact.ValuePerGold,
 			impact.UnlockPotential,
 		)
@@ -254,7 +248,7 @@ func displayArchetypeUnlockTree(unlocks []analysis.ArchetypeUnlockInfo) {
 	for _, unlock := range unlocks {
 		goldStr := "-"
 		if unlock.EstimatedGold > 0 {
-			goldStr = formatGoldDisplay(unlock.EstimatedGold)
+			goldStr = formatGoldCompact(unlock.EstimatedGold)
 		}
 
 		fprintf(w, "%s\t%s\t%s\t%s\n",

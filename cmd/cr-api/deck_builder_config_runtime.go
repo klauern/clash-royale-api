@@ -509,11 +509,6 @@ func displayUpgradeRecommendations(upgrades *deck.UpgradeRecommendations) {
 	fprintf(w, "─\t────\t\t─────\t\t──────\t\t──────\t────\t\t────────\n")
 
 	for i, rec := range upgrades.Recommendations {
-		goldDisplay := fmt.Sprintf("%dk", rec.GoldCost/1000)
-		if rec.GoldCost < 1000 {
-			goldDisplay = fmt.Sprintf("%d", rec.GoldCost)
-		}
-
 		fprintf(w, "%d\t%s\t\t%d->%d\t\t%s\t\t%.1f\t%s\t\t%.2f\n",
 			i+1,
 			rec.CardName,
@@ -521,7 +516,7 @@ func displayUpgradeRecommendations(upgrades *deck.UpgradeRecommendations) {
 			rec.TargetLevel,
 			rec.Rarity,
 			rec.ImpactScore,
-			goldDisplay,
+			formatGoldCompact(rec.GoldCost),
 			rec.ValuePerGold,
 		)
 	}
