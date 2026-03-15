@@ -9,26 +9,34 @@ import (
 
 func sampleCompareResults() ([]string, []evaluation.EvaluationResult) {
 	names := []string{"Deck One", "Deck Two Long Name"}
+	deckOneScores := []evaluation.CategoryScore{
+		{Score: 8.1, Rating: "Strong", Assessment: "Great pressure", Stars: 2},
+		{Score: 7.2, Rating: "Good", Assessment: "Solid defense", Stars: 2},
+		{Score: 7.4, Rating: "Good", Assessment: "Reliable pairs", Stars: 2},
+		{Score: 7.0, Rating: "Good", Assessment: "Flexible", Stars: 2},
+		{Score: 8.4, Rating: "Great", Assessment: "Cheap upgrades", Stars: 3},
+		{Score: 8.6, Rating: "Great", Assessment: "Fully leveled", Stars: 3},
+	}
+	deckTwoScores := []evaluation.CategoryScore{
+		{Score: 7.0, Rating: "Good", Assessment: "Heavy pushes", Stars: 2},
+		{Score: 6.5, Rating: "Okay", Assessment: "Can be outcycled", Stars: 1},
+		{Score: 7.2, Rating: "Good", Assessment: "Good combos", Stars: 2},
+		{Score: 6.0, Rating: "Okay", Assessment: "Matchup dependent", Stars: 1},
+		{Score: 5.8, Rating: "Mediocre", Assessment: "Expensive core", Stars: 1},
+		{Score: 4.8, Rating: "Weak", Assessment: "Underleveled cards", Stars: 0},
+	}
 	results := []evaluation.EvaluationResult{
 		makeResult(
 			[]string{"Knight", "Musketeer", "Hog Rider", "Fireball", "Cannon", "Ice Spirit", "Skeletons", "The Log"},
 			7.8, "Strong", 3.1, "Cycle",
-			evaluation.CategoryScore{Score: 8.1, Rating: "Strong", Assessment: "Great pressure", Stars: 2},
-			evaluation.CategoryScore{Score: 7.2, Rating: "Good", Assessment: "Solid defense", Stars: 2},
-			evaluation.CategoryScore{Score: 7.4, Rating: "Good", Assessment: "Reliable pairs", Stars: 2},
-			evaluation.CategoryScore{Score: 7.0, Rating: "Good", Assessment: "Flexible", Stars: 2},
-			evaluation.CategoryScore{Score: 8.4, Rating: "Great", Assessment: "Cheap upgrades", Stars: 3},
-			evaluation.CategoryScore{Score: 8.6, Rating: "Great", Assessment: "Fully levelled", Stars: 3},
+			deckOneScores[0], deckOneScores[1], deckOneScores[2],
+			deckOneScores[3], deckOneScores[4], deckOneScores[5],
 		),
 		makeResult(
 			[]string{"Golem", "Night Witch", "Baby Dragon", "Tornado", "Lightning", "Lumberjack", "Barbarian Barrel", "Electro Dragon"},
 			6.9, "Good", 4.3, "Beatdown",
-			evaluation.CategoryScore{Score: 7.0, Rating: "Good", Assessment: "Heavy pushes", Stars: 2},
-			evaluation.CategoryScore{Score: 6.5, Rating: "Okay", Assessment: "Can be outcycled", Stars: 1},
-			evaluation.CategoryScore{Score: 7.2, Rating: "Good", Assessment: "Good combos", Stars: 2},
-			evaluation.CategoryScore{Score: 6.0, Rating: "Okay", Assessment: "Matchup dependent", Stars: 1},
-			evaluation.CategoryScore{Score: 5.8, Rating: "Mediocre", Assessment: "Expensive core", Stars: 1},
-			evaluation.CategoryScore{Score: 4.8, Rating: "Weak", Assessment: "Underlevelled cards", Stars: 0},
+			deckTwoScores[0], deckTwoScores[1], deckTwoScores[2],
+			deckTwoScores[3], deckTwoScores[4], deckTwoScores[5],
 		),
 	}
 

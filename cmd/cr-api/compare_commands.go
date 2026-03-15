@@ -210,7 +210,7 @@ func formatDeckComparisonOutput(format string, deckNames []string, results []eva
 		}
 		return output, nil
 	case compareFormatCSV:
-		return formatComparisonCSV(deckNames, results), nil
+		return formatComparisonCSV(deckNames, results)
 	case compareFormatMarkdown, compareFormatMD:
 		return formatComparisonMarkdown(deckNames, results, verbose), nil
 	default:
