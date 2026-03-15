@@ -582,7 +582,7 @@ func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCard
 			keyMarker = " ⭐"
 		}
 
-		goldDisplay := formatGoldCost(upgrade.GoldCost)
+		goldDisplay := formatGoldCompact(upgrade.GoldCost)
 		fprintf(w, "%d\t%s%s\t%d->%d\t\t%s\t\t%.1f\t%s\t\t%d\n",
 			i+1,
 			upgrade.CardName,
@@ -600,14 +600,6 @@ func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCard
 	printf("\n")
 	printf("💡 Tip: Focus on upgrading cards with the highest impact score first.\n")
 	printf("   Win conditions and Legendary/Champion cards typically provide the best ROI.\n")
-}
-
-// formatGoldCost formats a gold cost for display
-func formatGoldCost(gold int) string {
-	if gold >= 1000 {
-		return fmt.Sprintf("%dk", gold/1000)
-	}
-	return fmt.Sprintf("%d", gold)
 }
 
 // convertToCardCandidates converts card names to CardCandidate structs with inferred data

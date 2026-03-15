@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"maps"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -230,15 +231,44 @@ func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile
 		printf("Building deck from offline analysis for player %s\n", tag)
 	}
 
-	loadedAnalysis, err := loadOfflineAnalysisFromFlags(builder, tag, dataDir, analysisDir, analysisFile, verbose)
-	if err != nil {
-		return nil, err
+	// Default analysis dir to data/analysis if not specified
+	if analysisDir == "" {
+		analysisDir = filepath.Join(dataDir, "analysis")
+	}
+
+	var loadedAnalysis *deck.CardAnalysis
+	var err error
+
+	if analysisFile != "" {
+		// Load from explicit file path
+		loadedAnalysis, err = builder.LoadAnalysis(analysisFile)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load analysis file %s: %w", analysisFile, err)
+		}
+		if verbose {
+			printf("Loaded analysis from: %s\n", analysisFile)
+		}
+	} else {
+		// Load latest analysis for player tag
+		loadedAnalysis, err = builder.LoadLatestAnalysis(tag, analysisDir)
+		if err != nil {
+			return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+		}
+		if verbose {
+			printf("Loaded latest analysis from: %s\n", analysisDir)
+		}
+	}
+
+	// Use player name from analysis if available, fallback to tag
+	playerName := loadedAnalysis.PlayerName
+	if playerName == "" {
+		playerName = tag
 	}
 
 	return &playerDataLoadResult{
-		CardAnalysis: loadedAnalysis.CardAnalysis,
-		PlayerName:   loadedAnalysis.PlayerName,
-		PlayerTag:    loadedAnalysis.PlayerTag,
+		CardAnalysis: *loadedAnalysis,
+		PlayerName:   playerName,
+		PlayerTag:    tag,
 	}, nil
 }
 
@@ -484,11 +514,6 @@ func displayUpgradeRecommendations(upgrades *deck.UpgradeRecommendations) {
 	fprintf(w, "─\t────\t\t─────\t\t──────\t\t──────\t────\t\t────────\n")
 
 	for i, rec := range upgrades.Recommendations {
-		goldDisplay := fmt.Sprintf("%dk", rec.GoldCost/1000)
-		if rec.GoldCost < 1000 {
-			goldDisplay = fmt.Sprintf("%d", rec.GoldCost)
-		}
-
 		fprintf(w, "%d\t%s\t\t%d->%d\t\t%s\t\t%.1f\t%s\t\t%.2f\n",
 			i+1,
 			rec.CardName,
@@ -496,7 +521,7 @@ func displayUpgradeRecommendations(upgrades *deck.UpgradeRecommendations) {
 			rec.TargetLevel,
 			rec.Rarity,
 			rec.ImpactScore,
-			goldDisplay,
+			formatGoldCompact(rec.GoldCost),
 			rec.ValuePerGold,
 		)
 	}

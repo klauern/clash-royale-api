@@ -1,12 +1,11 @@
 package main
 
 import (
+	"encoding/csv"
 	"fmt"
 	"io"
 	"log"
 	"os"
-
-	"github.com/klauer/clash-royale-api/go/internal/csvutil"
 )
 
 func printf(format string, args ...any) {
@@ -50,5 +49,29 @@ func setEnv(key, value string) {
 }
 
 func writeCSVDocument(w io.Writer, header []string, rows [][]string) error {
-	return csvutil.WriteTo(w, header, rows)
+	csvWriter := csv.NewWriter(w)
+	if err := csvWriter.Write(header); err != nil {
+		return fmt.Errorf("failed to write CSV header: %w", err)
+	}
+
+	for i, row := range rows {
+		if err := csvWriter.Write(row); err != nil {
+			return fmt.Errorf("failed to write CSV row %d: %w", i+1, err)
+		}
+	}
+
+	csvWriter.Flush()
+	if err := csvWriter.Error(); err != nil {
+		return fmt.Errorf("failed to flush CSV writer: %w", err)
+	}
+
+	return nil
+}
+
+// formatGoldCompact renders large gold values in "k" notation for table output.
+func formatGoldCompact(gold int) string {
+	if gold >= 1000 {
+		return fmt.Sprintf("%dk", gold/1000)
+	}
+	return fmt.Sprintf("%d", gold)
 }
