@@ -27,6 +27,31 @@ type simpleEvaluator struct {
 	playerTag    string
 }
 
+func sanitizeDiscoverTag(playerTag string) (string, error) {
+	return deck.SanitizePlayerTag(playerTag)
+}
+
+func discoverStateDir() string {
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		homeDir = "."
+	}
+
+	return filepath.Join(homeDir, ".cr-api", "discover")
+}
+
+func discoverCheckpointPath(sanitizedTag string) string {
+	return filepath.Join(discoverStateDir(), fmt.Sprintf("%s.json", sanitizedTag))
+}
+
+func discoverPIDPath(sanitizedTag string) string {
+	return filepath.Join(discoverStateDir(), fmt.Sprintf("%s.pid", sanitizedTag))
+}
+
+func discoverLogPath(sanitizedTag string) string {
+	return filepath.Join(discoverStateDir(), fmt.Sprintf("%s.log", sanitizedTag))
+}
+
 func (e *simpleEvaluator) Evaluate(deckCards []string) (*leaderboard.DeckEntry, error) {
 	// Convert card names to candidates
 	candidates, err := e.resolveCandidates(deckCards)
@@ -332,12 +357,12 @@ func addDiscoverCommands() *cli.Command {
 
 func deckDiscoverStatusCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
-	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
 	if err != nil {
 		return err
 	}
 
-	checkpointPath := deck.DiscoveryCheckpointPath(deck.DefaultDiscoveryCheckpointDir(), sanitizedTag)
+	checkpointPath := discoverCheckpointPath(sanitizedTag)
 	checkpoint, err := deck.LoadDiscoveryCheckpoint(checkpointPath)
 	if err != nil {
 		if errors.Is(err, deck.ErrNoCheckpoint) {
@@ -567,12 +592,12 @@ func attemptResume(runner *deck.DiscoveryRunner, resume, verbose bool) {
 
 // warnExistingCheckpoint checks for and warns about existing checkpoints when starting fresh
 func warnExistingCheckpoint(playerTag string) {
-	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
 	if err != nil {
 		return
 	}
 
-	checkpointPath := deck.DiscoveryCheckpointPath(deck.DefaultDiscoveryCheckpointDir(), sanitizedTag)
+	checkpointPath := discoverCheckpointPath(sanitizedTag)
 	if _, err := os.Stat(checkpointPath); err == nil {
 		fprintf(os.Stderr, "Warning: Existing checkpoint found. Use --resume or 'cr-api deck discover resume' to continue.\n")
 		fprintf(os.Stderr, "Starting fresh will clear the existing checkpoint.\n")
@@ -584,7 +609,7 @@ func warnExistingCheckpoint(playerTag string) {
 //nolint:gocyclo,funlen // Command setup/teardown has many required branches.
 func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
 	rawPlayerTag := cmd.String("tag")
-	sanitizedTag, err := deck.SanitizePlayerTag(rawPlayerTag)
+	sanitizedTag, err := sanitizeDiscoverTag(rawPlayerTag)
 	if err != nil {
 		return err
 	}
@@ -692,16 +717,16 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (er
 // deckDiscoverStopCommand stops a running discovery session
 func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
-	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
 	if err != nil {
 		return err
 	}
 
 	// Check for PID file
-	pidFile := deck.DiscoveryPIDPathForTag(sanitizedTag)
+	pidFile := discoverPIDPath(sanitizedTag)
 	if _, err := os.Stat(pidFile); os.IsNotExist(err) {
 		// Check if there's a checkpoint (might be foreground process)
-		checkpointPath := deck.DiscoveryCheckpointPath(deck.DefaultDiscoveryCheckpointDir(), sanitizedTag)
+		checkpointPath := discoverCheckpointPath(sanitizedTag)
 		if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
 			return fmt.Errorf("no active discovery session found for player #%s", playerTag)
 		}
@@ -744,12 +769,12 @@ func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
 	verbose := cmd.Bool("verbose")
 	background := cmd.Bool("background")
-	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
 	if err != nil {
 		return err
 	}
 
-	checkpointPath := deck.DiscoveryCheckpointPath(deck.DefaultDiscoveryCheckpointDir(), sanitizedTag)
+	checkpointPath := discoverCheckpointPath(sanitizedTag)
 	checkpoint, err := deck.LoadDiscoveryCheckpoint(checkpointPath)
 	if err != nil {
 		if errors.Is(err, deck.ErrNoCheckpoint) {
@@ -778,12 +803,12 @@ func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 // deckDiscoverStatsCommand shows detailed session statistics
 func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
-	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
 	if err != nil {
 		return err
 	}
 
-	checkpointPath := deck.DiscoveryCheckpointPath(deck.DefaultDiscoveryCheckpointDir(), sanitizedTag)
+	checkpointPath := discoverCheckpointPath(sanitizedTag)
 	checkpoint, err := deck.LoadDiscoveryCheckpoint(checkpointPath)
 	if err != nil {
 		if errors.Is(err, deck.ErrNoCheckpoint) {
@@ -854,13 +879,13 @@ func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 //nolint:funlen,gocognit,gocyclo // Process management and flag forwarding require explicit control flow.
 func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
 	playerTag := cmd.String("tag")
-	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
 	if err != nil {
 		return err
 	}
 
 	// Check for already running process
-	pidFile := deck.DiscoveryPIDPathForTag(sanitizedTag)
+	pidFile := discoverPIDPath(sanitizedTag)
 	if _, err := os.Stat(pidFile); err == nil {
 		pidData, readErr := os.ReadFile(pidFile)
 		if readErr != nil {
@@ -933,7 +958,7 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	}
 
 	// Redirect output to log file
-	logFile := deck.DiscoveryLogPathForTag(sanitizedTag)
+	logFile := discoverLogPath(sanitizedTag)
 	logHandle, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %w", err)
