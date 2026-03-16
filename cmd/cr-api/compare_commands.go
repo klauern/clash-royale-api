@@ -272,7 +272,7 @@ func formatTableOverviewSection(sb *strings.Builder, names []string, results []e
 	sb.WriteString(fmt.Sprintf("%-15s", "Overall Score"))
 	for _, r := range results {
 		stars := calculateStars(r.OverallScore)
-		rating := formatStarsDisplay(stars)
+		rating := formatStars(stars)
 		sb.WriteString(fmt.Sprintf(" | %.2f %s %-13s", r.OverallScore, rating, r.OverallRating))
 	}
 	sb.WriteString("\n")
@@ -309,7 +309,7 @@ func formatTableCategoryScoresSection(sb *strings.Builder, names []string, resul
 		sb.WriteString(fmt.Sprintf("%-15s", cat.name))
 		for _, r := range results {
 			score := cat.get(r)
-			rating := formatStarsDisplay(score.Stars)
+			rating := formatStars(score.Stars)
 			sb.WriteString(fmt.Sprintf(" | %.1f %s %-14s", score.Score, rating, score.Rating))
 		}
 		sb.WriteString("\n")
@@ -482,17 +482,6 @@ func truncate(s string, maxLen int) string {
 	return s[:maxLen-3] + "..."
 }
 
-// formatStarsDisplay converts star count (0-3) to visual star representation
-func formatStarsDisplay(count int) string {
-	filled := "★"
-	empty := "☆"
-
-	stars := strings.Repeat(filled, count)
-	stars += strings.Repeat(empty, 3-count)
-
-	return stars
-}
-
 // loadDecksFromEvaluations loads decks from evaluation batch result JSON files
 func loadDecksFromEvaluations(evalFiles []string, autoSelectTop int) ([]string, []evaluation.EvaluationResult, error) {
 	type batchResultFile struct {
@@ -589,7 +578,7 @@ func formatMarkdownOverviewSection(sb *strings.Builder, names []string, results 
 
 	for i, name := range names {
 		r := results[i]
-		stars := formatStarsDisplay(calculateStars(r.OverallScore))
+		stars := formatStars(calculateStars(r.OverallScore))
 		sb.WriteString(fmt.Sprintf("| %s | %.2f %s | %s | %.2f | %s |\n",
 			name, r.OverallScore, stars, r.OverallRating, r.AvgElixir, r.DetectedArchetype))
 	}
@@ -615,7 +604,7 @@ func formatMarkdownCategoryScoresSection(sb *strings.Builder, names []string, re
 		sb.WriteString(fmt.Sprintf("| **%s** | ", cat.name))
 		for _, r := range results {
 			score := cat.get(r)
-			stars := formatStarsDisplay(score.Stars)
+			stars := formatStars(score.Stars)
 			sb.WriteString(fmt.Sprintf("%.1f %s | ", score.Score, stars))
 		}
 		sb.WriteString("\n")
@@ -790,7 +779,7 @@ func formatReportDetailedScoreComparison(sb *strings.Builder, names []string, re
 	// Overall
 	sb.WriteString("| **Overall** | ")
 	for _, r := range results {
-		sb.WriteString(fmt.Sprintf("%.2f %s | ", r.OverallScore, formatStarsDisplay(calculateStars(r.OverallScore))))
+		sb.WriteString(fmt.Sprintf("%.2f %s | ", r.OverallScore, formatStars(calculateStars(r.OverallScore))))
 	}
 	sb.WriteString("\n")
 
@@ -800,7 +789,7 @@ func formatReportDetailedScoreComparison(sb *strings.Builder, names []string, re
 		sb.WriteString(fmt.Sprintf("| %s | ", cat.name))
 		for _, r := range results {
 			score := cat.get(r)
-			sb.WriteString(fmt.Sprintf("%.1f %s | ", score.Score, formatStarsDisplay(score.Stars)))
+			sb.WriteString(fmt.Sprintf("%.1f %s | ", score.Score, formatStars(score.Stars)))
 		}
 		sb.WriteString("\n")
 	}
