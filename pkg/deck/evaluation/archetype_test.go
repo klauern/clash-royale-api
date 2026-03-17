@@ -247,6 +247,36 @@ func TestArchetypeScoreFunctions(t *testing.T) {
 		}
 	})
 
+	t.Run("scoreControl_GraveyardFreezeBoundary", func(t *testing.T) {
+		freezeDeck := []deck.CardCandidate{
+			{Name: "Graveyard", Elixir: 5},
+			{Name: "Freeze", Elixir: 4},
+			{Name: "Tornado", Elixir: 3},
+			{Name: "Knight", Elixir: 3},
+			{Name: "Ice Wizard", Elixir: 3},
+			{Name: "Baby Dragon", Elixir: 4},
+			{Name: "Skeletons", Elixir: 1},
+			{Name: "Log", Elixir: 2},
+		}
+		poisonDeck := []deck.CardCandidate{
+			{Name: "Graveyard", Elixir: 5},
+			{Name: "Poison", Elixir: 4},
+			{Name: "Tornado", Elixir: 3},
+			{Name: "Knight", Elixir: 3},
+			{Name: "Ice Wizard", Elixir: 3},
+			{Name: "Baby Dragon", Elixir: 4},
+			{Name: "Skeletons", Elixir: 1},
+			{Name: "Log", Elixir: 2},
+		}
+
+		freezeScore := scoreControl(freezeDeck)
+		poisonScore := scoreControl(poisonDeck)
+
+		if poisonScore <= freezeScore {
+			t.Fatalf("expected Poison variant to outscore Freeze for control: poison=%.2f freeze=%.2f", poisonScore, freezeScore)
+		}
+	})
+
 	t.Run("scoreCycle", func(t *testing.T) {
 		cycleDeck := []deck.CardCandidate{
 			{Name: "Hog Rider", Elixir: 4},
@@ -320,6 +350,27 @@ func TestArchetypeScoreFunctions(t *testing.T) {
 			t.Errorf("scoreMiner() = %.2f, want >= 6.0 for deck with Miner", score)
 		}
 	})
+}
+
+func TestIsControlBigSpell(t *testing.T) {
+	tests := []struct {
+		cardName string
+		want     bool
+	}{
+		{cardName: "Poison", want: true},
+		{cardName: "Rocket", want: true},
+		{cardName: "Freeze", want: false},
+		{cardName: "Earthquake", want: false},
+		{cardName: "Clone", want: false},
+		{cardName: "Rage", want: false},
+		{cardName: "Tornado", want: false},
+	}
+
+	for _, tt := range tests {
+		if got := isControlBigSpell(tt.cardName); got != tt.want {
+			t.Errorf("isControlBigSpell(%q) = %v, want %v", tt.cardName, got, tt.want)
+		}
+	}
 }
 
 func TestCalculateAvgElixir(t *testing.T) {

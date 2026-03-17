@@ -4,7 +4,7 @@ import (
 	"math"
 	"slices"
 
-	"github.com/klauer/clash-royale-api/go/pkg/archetypes/taxonomy"
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
@@ -142,8 +142,7 @@ func findTopArchetype(scores map[Archetype]float64) (Archetype, float64) {
 // Beatdown: Heavy tanks + support troops + big spells
 func scoreBeatdown(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	heavyTanks := append([]string{}, taxonomy.BeatdownCoreWinConditions...)
-	heavyTanks = append(heavyTanks, "Electro Giant", "Mega Knight")
+	heavyTanks := []string{"Golem", "Lava Hound", "Electro Giant", "Giant", "Mega Knight"}
 	supportTroops := []string{"Baby Dragon", "Night Witch", "Lumberjack", "Mega Minion", "Witch"}
 
 	// Check for heavy tank win conditions (40% of score)
@@ -187,7 +186,6 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
 	controlWinCons := []string{"Graveyard"}
 	defensiveBuildings := []string{"Tesla", "Cannon", "Inferno Tower", "Bomb Tower"}
-	bigSpells := []string{"Poison", "Fireball", "Lightning", "Rocket"}
 
 	// Check for control win conditions (35% of score)
 	winConScore := 0.0
@@ -215,7 +213,7 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 	// Count big spells (30% of score)
 	spellCount := 0
 	for _, card := range deckCards {
-		if slices.Contains(bigSpells, card.Name) {
+		if isControlBigSpell(card.Name) {
 			spellCount++
 		}
 	}
@@ -226,6 +224,23 @@ func scoreControl(deckCards []deck.CardCandidate) float64 {
 
 	score = (winConScore * 0.35) + (buildingScore * 0.35) + (spellScore * 0.30)
 	return score
+}
+
+// isControlBigSpell returns true for heavyweight removal spells that
+// currently contribute to control scoring. It intentionally excludes utility
+// big spells (for example Freeze) to preserve established classification
+// behavior such as Graveyard Freeze remaining graveyard-primary.
+func isControlBigSpell(cardName string) bool {
+	if config.GetCardRole(cardName) != config.RoleSpellBig {
+		return false
+	}
+
+	switch cardName {
+	case "Freeze", "Earthquake", "Clone", "Rage":
+		return false
+	default:
+		return true
+	}
 }
 
 // scoreCycle scores a deck's fit for cycle archetype (0-10 scale)
@@ -277,8 +292,7 @@ func scoreCycle(deckCards []deck.CardCandidate) float64 {
 // Bridge Spam: Fast units + aggressive cards + immediate pressure
 func scoreBridgeSpam(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	bridgeWinCons := append([]string{}, taxonomy.BridgeSpamCoreWinConds...)
-	bridgeWinCons = append(bridgeWinCons, "P.E.K.K.A", "Mega Knight", "Royal Ghost")
+	bridgeWinCons := []string{"P.E.K.K.A", "Mega Knight", "Royal Ghost", "Battle Ram"}
 	spamCards := []string{"Bandit", "Royal Ghost", "Battle Ram", "Wall Breakers", "Prince"}
 
 	// Check for bridge spam win conditions (40% of score)
@@ -318,7 +332,7 @@ func scoreBridgeSpam(deckCards []deck.CardCandidate) float64 {
 // Siege: X-Bow or Mortar + defensive support
 func scoreSiege(deckCards []deck.CardCandidate) float64 {
 	score := 0.0
-	siegeWinCons := taxonomy.SiegeWinConditions
+	siegeWinCons := []string{"X-Bow", "Mortar"}
 	defensiveCards := []string{"Tesla", "Knight", "Archers", "Cannon"}
 
 	// Check for siege win conditions (60% of score) - critical for siege
