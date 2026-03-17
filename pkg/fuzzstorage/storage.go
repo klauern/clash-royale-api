@@ -4,21 +4,27 @@
 package fuzzstorage
 
 import (
-	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 	"time"
 
-	"github.com/klauer/clash-royale-api/go/internal/closeutil"
+	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
 const defaultDBName = "fuzz_top_decks.db"
+
+func closeWithLog(closer io.Closer, resourceName string) {
+	if err := closer.Close(); err != nil {
+		log.Printf("Warning: failed to close %s: %v", resourceName, err)
+	}
+}
 
 // Storage provides persistent storage for top decks from fuzzing runs
 type Storage struct {
@@ -57,7 +63,7 @@ func NewStorage(dbPath string) (*Storage, error) {
 
 	// Initialize schema
 	if err := storage.initSchema(); err != nil {
-		closeutil.WithLog("fuzzstorage", db, "fuzz storage database")
+		closeWithLog(db, "fuzz storage database")
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -141,7 +147,7 @@ func (s *Storage) SaveTopDecks(decks []DeckEntry) (int, error) {
 // Returns the deck ID and whether it was a new insert (true) or update (false)
 func (s *Storage) InsertDeck(entry *DeckEntry) (int, bool, error) {
 	// Compute deck hash for deduplication
-	deckHash := computeDeckHash(entry.Cards)
+	deckHash := deckhash.Compute(entry.Cards)
 
 	// Serialize cards to JSON
 	cardsJSON, err := json.Marshal(entry.Cards)
@@ -248,7 +254,7 @@ func (s *Storage) GetTopN(n int) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query top decks: %w", err)
 	}
-	defer closeutil.WithLog("fuzzstorage", rows, "top decks rows")
+	defer closeWithLog(rows, "top decks rows")
 
 	return s.scanRows(rows)
 }
@@ -268,7 +274,7 @@ func (s *Storage) GetByArchetype(archetype string, limit int) ([]DeckEntry, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to query by archetype: %w", err)
 	}
-	defer closeutil.WithLog("fuzzstorage", rows, "deck rows by archetype")
+	defer closeWithLog(rows, "deck rows by archetype")
 
 	return s.scanRows(rows)
 }
@@ -363,7 +369,7 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
-	defer closeutil.WithLog("fuzzstorage", rows, "deck rows")
+	defer closeWithLog(rows, "stats rows")
 
 	return s.scanRows(rows)
 }
@@ -434,7 +440,7 @@ func (s *Storage) ArchetypeHistogram(opts QueryOptions) (map[string]int, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query archetype histogram: %w", err)
 	}
-	defer closeutil.WithLog("fuzzstorage", rows, "archetype histogram rows")
+	defer closeWithLog(rows, "archetype histogram rows")
 
 	histogram := make(map[string]int)
 	for rows.Next() {
@@ -515,17 +521,4 @@ func (s *Storage) Count() (int, error) {
 		return 0, fmt.Errorf("failed to count decks: %w", err)
 	}
 	return count, nil
-}
-
-// computeDeckHash computes a SHA256 hash of the sorted card names for deduplication
-func computeDeckHash(cards []string) string {
-	// Sort cards to ensure consistent hash regardless of order
-	sorted := make([]string, len(cards))
-	copy(sorted, cards)
-	sort.Strings(sorted)
-
-	// Compute SHA256 hash
-	data := strings.Join(sorted, "|")
-	hash := sha256.Sum256([]byte(data))
-	return fmt.Sprintf("%x", hash)
 }
