@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,6 +15,12 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
+
+func closeWithLog(closer io.Closer, resourceName string) {
+	if err := closer.Close(); err != nil {
+		log.Printf("Warning: failed to close %s: %v", resourceName, err)
+	}
+}
 
 // Storage provides persistent storage for deck leaderboards using SQLite
 type Storage struct {

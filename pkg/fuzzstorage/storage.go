@@ -7,6 +7,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -17,6 +19,12 @@ import (
 )
 
 const defaultDBName = "fuzz_top_decks.db"
+
+func closeWithLog(closer io.Closer, resourceName string) {
+	if err := closer.Close(); err != nil {
+		log.Printf("Warning: failed to close %s: %v", resourceName, err)
+	}
+}
 
 // Storage provides persistent storage for top decks from fuzzing runs
 type Storage struct {
