@@ -241,9 +241,9 @@ func TestComputeDeckHash_Consistency(t *testing.T) {
 	cards2 := []string{"Ice Spirit", "Giant", "Wizard", "Mini P.E.K.K.A", "Musketeer", "Arrows", "Fireball", "Goblin Gang"}
 	cards3 := []string{"Giant", "Wizard", "Mini P.E.K.K.A", "Musketeer", "Arrows", "Fireball", "Goblin Gang", "Skeleton Army"} // Different deck
 
-	hash1 := deckhash.DeckHash(cards1)
-	hash2 := deckhash.DeckHash(cards2)
-	hash3 := deckhash.DeckHash(cards3)
+	hash1 := deckhash.Compute(cards1)
+	hash2 := deckhash.Compute(cards2)
+	hash3 := deckhash.Compute(cards3)
 
 	if hash1 != hash2 {
 		t.Errorf("expected same hash for same cards in different order")
