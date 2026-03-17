@@ -49,6 +49,7 @@
 {"created_at":"2025-12-18T01:02:28Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-p9u","issue_id":"clash-royale-api-71o","metadata":"{}","type":"blocks"}
 {"created_at":"2025-12-18T01:04:42Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-q2s","issue_id":"clash-royale-api-71o","metadata":"{}","type":"parent-child"}
 {"created_at":"2025-12-13T22:27:32Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-5du","issue_id":"clash-royale-api-7c6","metadata":"{}","type":"blocks"}
+{"created_at":"2026-03-14T00:03:15Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-91pv","issue_id":"clash-royale-api-83l2","metadata":"{}","type":"discovered-from"}
 {"created_at":"2025-12-17T23:02:20Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-32v","issue_id":"clash-royale-api-8ts","metadata":"{}","type":"blocks"}
 {"created_at":"2025-12-18T01:03:14Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-p9u","issue_id":"clash-royale-api-a17","metadata":"{}","type":"blocks"}
 {"created_at":"2025-12-18T01:05:20Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-q2s","issue_id":"clash-royale-api-a17","metadata":"{}","type":"parent-child"}
@@ -230,6 +231,7 @@
 {"created_at":"2026-01-05T00:37:04Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-dh2v","issue_id":"clash-royale-api-xk1d","metadata":"{}","type":"blocks"}
 {"created_at":"2026-01-05T00:37:04Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-khb7","issue_id":"clash-royale-api-xk1d","metadata":"{}","type":"blocks"}
 {"created_at":"2025-12-12T18:52:54Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-3m7","issue_id":"clash-royale-api-yz8","metadata":"{}","type":"blocks"}
+{"created_at":"2026-03-14T00:03:15Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-91pv","issue_id":"clash-royale-api-z0yx","metadata":"{}","type":"discovered-from"}
 {"created_at":"2025-12-28T20:39:49Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-zac","issue_id":"clash-royale-api-zac.1","metadata":"{}","type":"parent-child"}
 {"created_at":"2025-12-28T20:54:47Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-zac","issue_id":"clash-royale-api-zac.10","metadata":"{}","type":"parent-child"}
 {"created_at":"2025-12-28T20:39:54Z","created_by":"Nick Klauer","depends_on_id":"clash-royale-api-zac","issue_id":"clash-royale-api-zac.2","metadata":"{}","type":"parent-child"}
