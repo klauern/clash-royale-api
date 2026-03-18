@@ -165,14 +165,6 @@ func getComparatorForCriteria(sortBy string) evaluationComparator {
 // Formatting Helper Functions - Text Utilities
 // ============================================================================
 
-// truncateWithEllipsis truncates a string to maxLen and adds "..." if truncated
-func truncateWithEllipsis(s string, maxLen int) string {
-	if len(s) > maxLen {
-		return s[:maxLen-3] + "..."
-	}
-	return s
-}
-
 // formatScoreWithRating formats a score and rating in a consistent format
 //
 //nolint:unused // Shared formatter candidate retained for follow-up display refactor.
@@ -225,9 +217,9 @@ func writeSummaryTable[T batchEvaluationRow](buf *strings.Builder, results []T) 
 			continue
 		}
 		displayRank++
-		name = truncateWithEllipsis(name, 28)
+		name = truncate(name, 28)
 		result := r.BatchResult()
-		archetype := truncateWithEllipsis(string(result.DetectedArchetype), 12)
+		archetype := truncate(string(result.DetectedArchetype), 12)
 
 		fmt.Fprintf(buf, "│ %3d │ %-28s │  %5.2f  │  %5.2f │  %5.2f │  %5.2f │ %-12s │\n",
 			displayRank, name,
