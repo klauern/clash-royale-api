@@ -35,15 +35,16 @@ type comparisonViewModel struct {
 }
 
 func buildComparisonViewModel(names []string, results []evaluation.EvaluationResult) comparisonViewModel {
+	n := min(len(names), len(results))
 	vm := comparisonViewModel{
-		Decks:       make([]comparisonDeckView, len(names)),
+		Decks:       make([]comparisonDeckView, n),
 		Categories:  make([]comparisonCategoryView, 0, len(getEvaluationCategories())),
-		RankedDecks: make([]int, len(results)),
+		RankedDecks: make([]int, n),
 	}
 
 	bestOverallIdx := 0
 	bestOverallScore := -1.0
-	for i := range names {
+	for i := 0; i < n; i++ {
 		r := results[i]
 		vm.Decks[i] = comparisonDeckView{
 			Name:            names[i],
@@ -65,11 +66,12 @@ func buildComparisonViewModel(names []string, results []evaluation.EvaluationRes
 	for _, category := range getEvaluationCategories() {
 		view := comparisonCategoryView{
 			Name:          category.name,
-			Scores:        make([]evaluation.CategoryScore, len(results)),
+			Scores:        make([]evaluation.CategoryScore, n),
 			BestDeckIndex: 0,
 		}
 		bestCategoryScore := -1.0
-		for i, result := range results {
+		for i := 0; i < n; i++ {
+			result := results[i]
 			score := category.get(result)
 			view.Scores[i] = score
 			if score.Score > bestCategoryScore {
@@ -80,7 +82,7 @@ func buildComparisonViewModel(names []string, results []evaluation.EvaluationRes
 		vm.Categories = append(vm.Categories, view)
 	}
 
-	sort.Slice(vm.RankedDecks, func(i, j int) bool {
+	sort.SliceStable(vm.RankedDecks, func(i, j int) bool {
 		return vm.Decks[vm.RankedDecks[i]].Result.OverallScore > vm.Decks[vm.RankedDecks[j]].Result.OverallScore
 	})
 
