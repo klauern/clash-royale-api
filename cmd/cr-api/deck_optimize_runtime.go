@@ -144,23 +144,23 @@ func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	// Display current category scores
 	fmt.Println("Current Category Scores:")
 	printf("  ⚔️  Attack:        %s  %.1f/10 - %s\n",
-		formatStars(currentResult.Attack.Stars),
+		formatStarsDisplay(currentResult.Attack.Stars),
 		currentResult.Attack.Score,
 		currentResult.Attack.Rating)
 	printf("  🛡️  Defense:       %s  %.1f/10 - %s\n",
-		formatStars(currentResult.Defense.Stars),
+		formatStarsDisplay(currentResult.Defense.Stars),
 		currentResult.Defense.Score,
 		currentResult.Defense.Rating)
 	printf("  🔗 Synergy:       %s  %.1f/10 - %s\n",
-		formatStars(currentResult.Synergy.Stars),
+		formatStarsDisplay(currentResult.Synergy.Stars),
 		currentResult.Synergy.Score,
 		currentResult.Synergy.Rating)
 	printf("  🎭 Versatility:   %s  %.1f/10 - %s\n",
-		formatStars(currentResult.Versatility.Stars),
+		formatStarsDisplay(currentResult.Versatility.Stars),
 		currentResult.Versatility.Score,
 		currentResult.Versatility.Rating)
 	printf("  💰 F2P Friendly:  %s  %.1f/10 - %s\n",
-		formatStars(currentResult.F2PFriendly.Stars),
+		formatStarsDisplay(currentResult.F2PFriendly.Stars),
 		currentResult.F2PFriendly.Score,
 		currentResult.F2PFriendly.Rating)
 	fmt.Println()
