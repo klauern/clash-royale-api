@@ -139,6 +139,55 @@ func TestFormatScoreTransition(t *testing.T) {
 	})
 }
 
+func TestFormatFuzzDuration(t *testing.T) {
+	testCases := []struct {
+		name     string
+		seconds  float64
+		rounding durationRoundingMode
+		want     string
+	}{
+		{
+			name:     "nearest rounds up sub-minute durations",
+			seconds:  59.6,
+			rounding: durationRoundingNearest,
+			want:     "1m",
+		},
+		{
+			name:     "nearest rounds half-second ties to the next second",
+			seconds:  59.5,
+			rounding: durationRoundingNearest,
+			want:     "1m",
+		},
+		{
+			name:     "nearest keeps minute and second breakdown",
+			seconds:  61.4,
+			rounding: durationRoundingNearest,
+			want:     "1m 1s",
+		},
+		{
+			name:     "floor rounds down sub-minute durations",
+			seconds:  59.9,
+			rounding: durationRoundingFloor,
+			want:     "59s",
+		},
+		{
+			name:     "floor rounds down minute and second breakdown",
+			seconds:  119.9,
+			rounding: durationRoundingFloor,
+			want:     "1m 59s",
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			got := formatFuzzDuration(tc.seconds, tc.rounding)
+			if got != tc.want {
+				t.Fatalf("formatFuzzDuration(%v, %v) = %q, want %q", tc.seconds, tc.rounding, got, tc.want)
+			}
+		})
+	}
+}
+
 func TestSelectGAFitnessEvaluator(t *testing.T) {
 	t.Run("archetype-free mode uses composite fitness evaluator", func(t *testing.T) {
 		evaluator, mode := selectGAFitnessEvaluator(false)

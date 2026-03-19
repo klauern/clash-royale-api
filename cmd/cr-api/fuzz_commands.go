@@ -460,7 +460,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 						rate := float64(gens) / elapsed.Seconds()
 						remaining := max(totalGens-gens, 0)
 						if rate > 0 {
-							etaStr = formatDurationFloor(float64(remaining) / rate)
+							etaStr = formatFuzzDuration(float64(remaining)/rate, durationRoundingFloor)
 						}
 					}
 					evalsDone := int64(gens) * int64(totalPop)
@@ -474,7 +474,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 							evalsDone,
 							progress.BestFitness,
 							progress.AvgFitness,
-							formatDurationFloor(elapsed.Seconds()),
+							formatFuzzDuration(elapsed.Seconds(), durationRoundingFloor),
 							etaStr,
 						)
 					} else {
@@ -486,7 +486,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 							evalsDone,
 							progress.BestFitness,
 							progress.AvgFitness,
-							formatDurationFloor(elapsed.Seconds()),
+							formatFuzzDuration(elapsed.Seconds(), durationRoundingFloor),
 							etaStr,
 						)
 					}
@@ -573,7 +573,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 				fprintf(os.Stderr, "Warning: could not estimate runtime: %v\n", err)
 				// Continue anyway, estimation is optional
 			} else {
-				formattedTime := formatDuration(estimate.totalSeconds)
+				formattedTime := formatFuzzDuration(estimate.totalSeconds, durationRoundingNearest)
 				decksPerSec := int(estimate.decksPerSec)
 				fprintf(os.Stderr, "Estimated time: ~%s for %d decks (~%d decks/sec)\n",
 					formattedTime, count, decksPerSec)
@@ -647,9 +647,9 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 
 						// Only print if progress has been made
 						if currentCount > lastCount {
-							eta := time.Duration(float64(count-currentCount)/rate) * time.Second
-							fprintf(os.Stderr, "\rGenerating... %d/%d decks (%.1f decks/sec, ETA: %v) ",
-								currentCount, count, rate, eta.Round(time.Second))
+							etaSeconds := float64(count-currentCount) / rate
+							fprintf(os.Stderr, "\rGenerating... %d/%d decks (%.1f decks/sec, ETA: %s) ",
+								currentCount, count, rate, formatFuzzDuration(etaSeconds, durationRoundingFloor))
 							lastCount = currentCount
 						}
 					}
@@ -2535,29 +2535,33 @@ func estimateRuntime(fuzzer *deck.DeckFuzzer, targetCount, sampleSize int) (*run
 	}, nil
 }
 
-// formatDuration formats a duration in seconds to a human-readable string
-func formatDuration(seconds float64) string {
-	if seconds < 60 {
-		return fmt.Sprintf("%.0fs", seconds)
+type durationRoundingMode int
+
+const (
+	durationRoundingNearest durationRoundingMode = iota
+	durationRoundingFloor
+)
+
+func formatFuzzDuration(seconds float64, rounding durationRoundingMode) string {
+	roundedSeconds := roundDurationSeconds(seconds, rounding)
+	if roundedSeconds < 60 {
+		return fmt.Sprintf("%ds", roundedSeconds)
 	}
-	minutes := int(seconds / 60)
-	secs := int(seconds) % 60
+	minutes := roundedSeconds / 60
+	secs := roundedSeconds % 60
 	if secs == 0 {
 		return fmt.Sprintf("%dm", minutes)
 	}
 	return fmt.Sprintf("%dm %ds", minutes, secs)
 }
 
-func formatDurationFloor(seconds float64) string {
-	if seconds < 60 {
-		return fmt.Sprintf("%ds", int(seconds))
+func roundDurationSeconds(seconds float64, rounding durationRoundingMode) int {
+	switch rounding {
+	case durationRoundingFloor:
+		return int(math.Floor(seconds))
+	default:
+		return int(math.Round(seconds))
 	}
-	minutes := int(seconds / 60)
-	secs := int(seconds) % 60
-	if secs == 0 {
-		return fmt.Sprintf("%dm", minutes)
-	}
-	return fmt.Sprintf("%dm %ds", minutes, secs)
 }
 
 // confirmAction prompts the user to confirm before proceeding
