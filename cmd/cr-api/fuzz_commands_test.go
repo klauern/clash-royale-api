@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +13,54 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
 )
+
+func captureStdout(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+
+	original := os.Stdout
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatalf("pipe: %v", err)
+	}
+	os.Stdout = w
+	defer func() {
+		os.Stdout = original
+	}()
+
+	readResultCh := make(chan struct {
+		data []byte
+		err  error
+	}, 1)
+	go func() {
+		defer close(readResultCh)
+		defer r.Close()
+		data, readErr := io.ReadAll(r)
+		readResultCh <- struct {
+			data []byte
+			err  error
+		}{data: data, err: readErr}
+	}()
+
+	var panicValue any
+	runErr := func() (err error) {
+		defer func() {
+			panicValue = recover()
+		}()
+		return fn()
+	}()
+	if closeErr := w.Close(); closeErr != nil {
+		t.Fatalf("close writer: %v", closeErr)
+	}
+
+	readResult := <-readResultCh
+	if readResult.err != nil {
+		t.Fatalf("read stdout: %v", readResult.err)
+	}
+	if panicValue != nil {
+		runErr = fmt.Errorf("captured function panicked: %v", panicValue)
+	}
+	return string(readResult.data), runErr
+}
 
 func TestGetElixirBucket(t *testing.T) {
 	testCases := []struct {
@@ -139,52 +189,107 @@ func TestFormatScoreTransition(t *testing.T) {
 	})
 }
 
-func TestFormatFuzzDuration(t *testing.T) {
-	testCases := []struct {
-		name     string
-		seconds  float64
-		rounding durationRoundingMode
-		want     string
-	}{
+func TestFormatListResultsCSV_WithTheoreticalScores(t *testing.T) {
+	decks := []fuzzstorage.DeckEntry{
 		{
-			name:     "nearest rounds up sub-minute durations",
-			seconds:  59.6,
-			rounding: durationRoundingNearest,
-			want:     "1m",
+			ID:               7,
+			Cards:            []string{"Knight", "Archers", "Fireball", "Zap", "Cannon", "Skeletons", "Ice Spirit", "The Log"},
+			OverallScore:     8.40,
+			AttackScore:      8.20,
+			DefenseScore:     8.10,
+			SynergyScore:     8.00,
+			VersatilityScore: 7.90,
+			AvgElixir:        3.10,
+			Archetype:        "cycle",
 		},
-		{
-			name:     "nearest rounds half-second ties to the next second",
-			seconds:  59.5,
-			rounding: durationRoundingNearest,
-			want:     "1m",
-		},
-		{
-			name:     "nearest keeps minute and second breakdown",
-			seconds:  61.4,
-			rounding: durationRoundingNearest,
-			want:     "1m 1s",
-		},
-		{
-			name:     "floor rounds down sub-minute durations",
-			seconds:  59.9,
-			rounding: durationRoundingFloor,
-			want:     "59s",
-		},
-		{
-			name:     "floor rounds down minute and second breakdown",
-			seconds:  119.9,
-			rounding: durationRoundingFloor,
-			want:     "1m 59s",
+	}
+	theoretical := map[int]fuzzstorage.DeckEntry{
+		7: {
+			ID:           7,
+			OverallScore: 7.80,
+			AttackScore:  7.60,
+			DefenseScore: 7.50,
+			SynergyScore: 7.40,
 		},
 	}
 
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := formatFuzzDuration(tc.seconds, tc.rounding)
-			if got != tc.want {
-				t.Fatalf("formatFuzzDuration(%v, %v) = %q, want %q", tc.seconds, tc.rounding, got, tc.want)
-			}
-		})
+	output, err := captureStdout(t, func() error { return formatListResultsCSV(decks, theoretical) })
+	if err != nil {
+		t.Fatalf("formatListResultsCSV returned error: %v", err)
+	}
+
+	for _, want := range []string{
+		"StoredOverall,PlayerOverall",
+		"StoredAttack,PlayerAttack",
+		"StoredDefense,PlayerDefense",
+		"StoredSynergy,PlayerSynergy",
+		"7.80,8.40,7.60,8.20,7.50,8.10,7.40,8.00",
+	} {
+		if !strings.Contains(output, want) {
+			t.Fatalf("expected %q in output, got:\n%s", want, output)
+		}
+	}
+}
+
+func TestFormatListResultsCSV_WithoutTheoreticalScores(t *testing.T) {
+	decks := []fuzzstorage.DeckEntry{
+		{
+			ID:               11,
+			Cards:            []string{"Giant", "Mini P.E.K.K.A", "Musketeer", "Bomber", "Arrows", "Zap", "Minions", "Spear Goblins"},
+			OverallScore:     6.25,
+			AttackScore:      6.50,
+			DefenseScore:     5.75,
+			SynergyScore:     6.10,
+			VersatilityScore: 5.90,
+			AvgElixir:        3.60,
+			Archetype:        "beatdown",
+		},
+	}
+
+	output, err := captureStdout(t, func() error { return formatListResultsCSV(decks, nil) })
+	if err != nil {
+		t.Fatalf("formatListResultsCSV returned error: %v", err)
+	}
+
+	if !strings.Contains(output, "Rank,Deck,Overall,Attack,Defense,Synergy,Versatility,AvgElixir,Archetype") {
+		t.Fatalf("expected standard header in output, got:\n%s", output)
+	}
+	if strings.Contains(output, "StoredOverall") {
+		t.Fatalf("did not expect theoretical columns in output, got:\n%s", output)
+	}
+}
+
+func TestFormatListResultsCSV_MissingTheoreticalEntryLeavesStoredColumnsBlank(t *testing.T) {
+	decks := []fuzzstorage.DeckEntry{
+		{
+			ID:               21,
+			Cards:            []string{"Knight"},
+			OverallScore:     5.50,
+			AttackScore:      5.40,
+			DefenseScore:     5.30,
+			SynergyScore:     5.20,
+			VersatilityScore: 5.10,
+			AvgElixir:        3.30,
+			Archetype:        "cycle",
+		},
+	}
+	theoretical := map[int]fuzzstorage.DeckEntry{
+		99: {
+			ID:           99,
+			OverallScore: 9.90,
+			AttackScore:  9.80,
+			DefenseScore: 9.70,
+			SynergyScore: 9.60,
+		},
+	}
+
+	output, err := captureStdout(t, func() error { return formatListResultsCSV(decks, theoretical) })
+	if err != nil {
+		t.Fatalf("formatListResultsCSV returned error: %v", err)
+	}
+
+	if !strings.Contains(output, "1,Knight,,5.50,,5.40,,5.30,,5.20,5.10,3.30,cycle") {
+		t.Fatalf("expected blank stored columns when theoretical entry missing, got:\n%s", output)
 	}
 }
 
