@@ -2535,23 +2535,23 @@ func estimateRuntime(fuzzer *deck.DeckFuzzer, targetCount, sampleSize int) (*run
 	}, nil
 }
 
-// formatDuration formats a duration in seconds to a human-readable string
+// formatDuration formats a duration in seconds to a human-readable string.
 func formatDuration(seconds float64) string {
-	if seconds < 60 {
-		return fmt.Sprintf("%.0fs", seconds)
-	}
-	minutes := int(seconds / 60)
-	secs := int(seconds) % 60
-	if secs == 0 {
-		return fmt.Sprintf("%dm", minutes)
-	}
-	return fmt.Sprintf("%dm %ds", minutes, secs)
+	return formatDurationWithSubMinuteRounding(seconds, true)
 }
 
 func formatDurationFloor(seconds float64) string {
+	return formatDurationWithSubMinuteRounding(seconds, false)
+}
+
+func formatDurationWithSubMinuteRounding(seconds float64, roundSubMinute bool) string {
 	if seconds < 60 {
+		if roundSubMinute {
+			return fmt.Sprintf("%ds", int(math.Round(seconds)))
+		}
 		return fmt.Sprintf("%ds", int(seconds))
 	}
+
 	minutes := int(seconds / 60)
 	secs := int(seconds) % 60
 	if secs == 0 {
