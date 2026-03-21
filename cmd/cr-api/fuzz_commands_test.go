@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -22,19 +23,43 @@ func captureStdout(t *testing.T, fn func() error) (string, error) {
 		t.Fatalf("pipe: %v", err)
 	}
 	os.Stdout = w
+	defer func() {
+		os.Stdout = original
+	}()
 
-	runErr := fn()
-	closeErr := w.Close()
-	os.Stdout = original
-	if closeErr != nil {
+	readResultCh := make(chan struct {
+		data []byte
+		err  error
+	}, 1)
+	go func() {
+		defer close(readResultCh)
+		defer r.Close()
+		data, readErr := io.ReadAll(r)
+		readResultCh <- struct {
+			data []byte
+			err  error
+		}{data: data, err: readErr}
+	}()
+
+	var panicValue any
+	runErr := func() (err error) {
+		defer func() {
+			panicValue = recover()
+		}()
+		return fn()
+	}()
+	if closeErr := w.Close(); closeErr != nil {
 		t.Fatalf("close writer: %v", closeErr)
 	}
 
-	data, readErr := io.ReadAll(r)
-	if readErr != nil {
-		t.Fatalf("read stdout: %v", readErr)
+	readResult := <-readResultCh
+	if readResult.err != nil {
+		t.Fatalf("read stdout: %v", readResult.err)
 	}
-	return string(data), runErr
+	if panicValue != nil {
+		runErr = fmt.Errorf("captured function panicked: %v", panicValue)
+	}
+	return string(readResult.data), runErr
 }
 
 func TestGetElixirBucket(t *testing.T) {
@@ -231,6 +256,40 @@ func TestFormatListResultsCSV_WithoutTheoreticalScores(t *testing.T) {
 	}
 	if strings.Contains(output, "StoredOverall") {
 		t.Fatalf("did not expect theoretical columns in output, got:\n%s", output)
+	}
+}
+
+func TestFormatListResultsCSV_MissingTheoreticalEntryLeavesStoredColumnsBlank(t *testing.T) {
+	decks := []fuzzstorage.DeckEntry{
+		{
+			ID:               21,
+			Cards:            []string{"Knight"},
+			OverallScore:     5.50,
+			AttackScore:      5.40,
+			DefenseScore:     5.30,
+			SynergyScore:     5.20,
+			VersatilityScore: 5.10,
+			AvgElixir:        3.30,
+			Archetype:        "cycle",
+		},
+	}
+	theoretical := map[int]fuzzstorage.DeckEntry{
+		99: {
+			ID:           99,
+			OverallScore: 9.90,
+			AttackScore:  9.80,
+			DefenseScore: 9.70,
+			SynergyScore: 9.60,
+		},
+	}
+
+	output, err := captureStdout(t, func() error { return formatListResultsCSV(decks, theoretical) })
+	if err != nil {
+		t.Fatalf("formatListResultsCSV returned error: %v", err)
+	}
+
+	if !strings.Contains(output, "1,Knight,,5.50,,5.40,,5.30,,5.20,5.10,3.30,cycle") {
+		t.Fatalf("expected blank stored columns when theoretical entry missing, got:\n%s", output)
 	}
 }
 

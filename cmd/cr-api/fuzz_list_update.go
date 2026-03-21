@@ -248,20 +248,35 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int
 			deckStr,
 		}
 		if theoreticalByID != nil {
-			theoretical := theoreticalByID[deck.ID]
-			row = append(row,
-				fmt.Sprintf("%.2f", theoretical.OverallScore),
-				fmt.Sprintf("%.2f", deck.OverallScore),
-				fmt.Sprintf("%.2f", theoretical.AttackScore),
-				fmt.Sprintf("%.2f", deck.AttackScore),
-				fmt.Sprintf("%.2f", theoretical.DefenseScore),
-				fmt.Sprintf("%.2f", deck.DefenseScore),
-				fmt.Sprintf("%.2f", theoretical.SynergyScore),
-				fmt.Sprintf("%.2f", deck.SynergyScore),
-				fmt.Sprintf("%.2f", deck.VersatilityScore),
-				fmt.Sprintf("%.2f", deck.AvgElixir),
-				deck.Archetype,
-			)
+			if theoretical, ok := theoreticalByID[deck.ID]; ok {
+				row = append(row,
+					fmt.Sprintf("%.2f", theoretical.OverallScore),
+					fmt.Sprintf("%.2f", deck.OverallScore),
+					fmt.Sprintf("%.2f", theoretical.AttackScore),
+					fmt.Sprintf("%.2f", deck.AttackScore),
+					fmt.Sprintf("%.2f", theoretical.DefenseScore),
+					fmt.Sprintf("%.2f", deck.DefenseScore),
+					fmt.Sprintf("%.2f", theoretical.SynergyScore),
+					fmt.Sprintf("%.2f", deck.SynergyScore),
+					fmt.Sprintf("%.2f", deck.VersatilityScore),
+					fmt.Sprintf("%.2f", deck.AvgElixir),
+					deck.Archetype,
+				)
+			} else {
+				row = append(row,
+					"",
+					fmt.Sprintf("%.2f", deck.OverallScore),
+					"",
+					fmt.Sprintf("%.2f", deck.AttackScore),
+					"",
+					fmt.Sprintf("%.2f", deck.DefenseScore),
+					"",
+					fmt.Sprintf("%.2f", deck.SynergyScore),
+					fmt.Sprintf("%.2f", deck.VersatilityScore),
+					fmt.Sprintf("%.2f", deck.AvgElixir),
+					deck.Archetype,
+				)
+			}
 		} else {
 			row = append(row,
 				fmt.Sprintf("%.2f", deck.OverallScore),
