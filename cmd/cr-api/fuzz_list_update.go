@@ -247,50 +247,58 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int
 			strconv.Itoa(i + 1),
 			deckStr,
 		}
-		if theoreticalByID != nil {
-			if theoretical, ok := theoreticalByID[deck.ID]; ok {
-				row = append(row,
-					fmt.Sprintf("%.2f", theoretical.OverallScore),
-					fmt.Sprintf("%.2f", deck.OverallScore),
-					fmt.Sprintf("%.2f", theoretical.AttackScore),
-					fmt.Sprintf("%.2f", deck.AttackScore),
-					fmt.Sprintf("%.2f", theoretical.DefenseScore),
-					fmt.Sprintf("%.2f", deck.DefenseScore),
-					fmt.Sprintf("%.2f", theoretical.SynergyScore),
-					fmt.Sprintf("%.2f", deck.SynergyScore),
-					fmt.Sprintf("%.2f", deck.VersatilityScore),
-					fmt.Sprintf("%.2f", deck.AvgElixir),
-					deck.Archetype,
-				)
-			} else {
-				row = append(row,
-					"",
-					fmt.Sprintf("%.2f", deck.OverallScore),
-					"",
-					fmt.Sprintf("%.2f", deck.AttackScore),
-					"",
-					fmt.Sprintf("%.2f", deck.DefenseScore),
-					"",
-					fmt.Sprintf("%.2f", deck.SynergyScore),
-					fmt.Sprintf("%.2f", deck.VersatilityScore),
-					fmt.Sprintf("%.2f", deck.AvgElixir),
-					deck.Archetype,
-				)
-			}
-		} else {
-			row = append(row,
-				fmt.Sprintf("%.2f", deck.OverallScore),
-				fmt.Sprintf("%.2f", deck.AttackScore),
-				fmt.Sprintf("%.2f", deck.DefenseScore),
-				fmt.Sprintf("%.2f", deck.SynergyScore),
-				fmt.Sprintf("%.2f", deck.VersatilityScore),
-				fmt.Sprintf("%.2f", deck.AvgElixir),
-				deck.Archetype,
-			)
-		}
+		row = appendCSVScoreColumns(row, deck, theoreticalByID)
 		rows = append(rows, row)
 	}
 	return writeCSVDocument(os.Stdout, header, rows)
+}
+
+func appendCSVScoreColumns(
+	row []string,
+	deck fuzzstorage.DeckEntry,
+	theoreticalByID map[int]fuzzstorage.DeckEntry,
+) []string {
+	if theoreticalByID == nil {
+		return append(row,
+			fmt.Sprintf("%.2f", deck.OverallScore),
+			fmt.Sprintf("%.2f", deck.AttackScore),
+			fmt.Sprintf("%.2f", deck.DefenseScore),
+			fmt.Sprintf("%.2f", deck.SynergyScore),
+			fmt.Sprintf("%.2f", deck.VersatilityScore),
+			fmt.Sprintf("%.2f", deck.AvgElixir),
+			deck.Archetype,
+		)
+	}
+
+	if theoretical, ok := theoreticalByID[deck.ID]; ok {
+		return append(row,
+			fmt.Sprintf("%.2f", theoretical.OverallScore),
+			fmt.Sprintf("%.2f", deck.OverallScore),
+			fmt.Sprintf("%.2f", theoretical.AttackScore),
+			fmt.Sprintf("%.2f", deck.AttackScore),
+			fmt.Sprintf("%.2f", theoretical.DefenseScore),
+			fmt.Sprintf("%.2f", deck.DefenseScore),
+			fmt.Sprintf("%.2f", theoretical.SynergyScore),
+			fmt.Sprintf("%.2f", deck.SynergyScore),
+			fmt.Sprintf("%.2f", deck.VersatilityScore),
+			fmt.Sprintf("%.2f", deck.AvgElixir),
+			deck.Archetype,
+		)
+	}
+
+	return append(row,
+		"",
+		fmt.Sprintf("%.2f", deck.OverallScore),
+		"",
+		fmt.Sprintf("%.2f", deck.AttackScore),
+		"",
+		fmt.Sprintf("%.2f", deck.DefenseScore),
+		"",
+		fmt.Sprintf("%.2f", deck.SynergyScore),
+		fmt.Sprintf("%.2f", deck.VersatilityScore),
+		fmt.Sprintf("%.2f", deck.AvgElixir),
+		deck.Archetype,
+	)
 }
 
 // formatListResultsDetailed formats list results in detailed format
