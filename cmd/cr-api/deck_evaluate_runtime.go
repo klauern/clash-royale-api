@@ -778,17 +778,3 @@ func loadDeckCandidatesFromFile(filePath string) ([]deck.CardCandidate, bool, er
 }
 
 // formatStars formats a star rating as visual stars
-func formatStars(stars int) string {
-	const filledStar = "★"
-	const emptyStar = "☆"
-
-	var result strings.Builder
-	for i := range 3 {
-		if i < stars {
-			result.WriteString(filledStar)
-		} else {
-			result.WriteString(emptyStar)
-		}
-	}
-	return result.String()
-}
