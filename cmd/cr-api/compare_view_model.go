@@ -35,16 +35,19 @@ type comparisonViewModel struct {
 }
 
 func buildComparisonViewModel(names []string, results []evaluation.EvaluationResult) comparisonViewModel {
-	n := min(len(names), len(results))
+	if len(names) == 0 || len(names) != len(results) {
+		return comparisonViewModel{}
+	}
+
 	vm := comparisonViewModel{
-		Decks:       make([]comparisonDeckView, n),
+		Decks:       make([]comparisonDeckView, len(names)),
 		Categories:  make([]comparisonCategoryView, 0, len(getEvaluationCategories())),
-		RankedDecks: make([]int, n),
+		RankedDecks: make([]int, len(results)),
 	}
 
 	bestOverallIdx := 0
 	bestOverallScore := -1.0
-	for i := 0; i < n; i++ {
+	for i := range names {
 		r := results[i]
 		vm.Decks[i] = comparisonDeckView{
 			Name:            names[i],
@@ -66,12 +69,11 @@ func buildComparisonViewModel(names []string, results []evaluation.EvaluationRes
 	for _, category := range getEvaluationCategories() {
 		view := comparisonCategoryView{
 			Name:          category.name,
-			Scores:        make([]evaluation.CategoryScore, n),
+			Scores:        make([]evaluation.CategoryScore, len(results)),
 			BestDeckIndex: 0,
 		}
 		bestCategoryScore := -1.0
-		for i := 0; i < n; i++ {
-			result := results[i]
+		for i, result := range results {
 			score := category.get(result)
 			view.Scores[i] = score
 			if score.Score > bestCategoryScore {

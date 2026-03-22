@@ -34,7 +34,7 @@ func formatComparisonCSV(names []string, results []evaluation.EvaluationResult) 
 		header = append(header, deck.Name)
 	}
 	if err := w.Write(header); err != nil {
-		return "", fmt.Errorf("write comparison csv header: %w", err)
+		return "", err
 	}
 
 	overallRow := []string{"Overall Score"}
@@ -42,7 +42,7 @@ func formatComparisonCSV(names []string, results []evaluation.EvaluationResult) 
 		overallRow = append(overallRow, fmt.Sprintf("%.2f", deck.Result.OverallScore))
 	}
 	if err := w.Write(overallRow); err != nil {
-		return "", fmt.Errorf("write comparison csv overall score row: %w", err)
+		return "", err
 	}
 
 	elixirRow := []string{"Avg Elixir"}
@@ -50,7 +50,7 @@ func formatComparisonCSV(names []string, results []evaluation.EvaluationResult) 
 		elixirRow = append(elixirRow, fmt.Sprintf("%.2f", deck.Result.AvgElixir))
 	}
 	if err := w.Write(elixirRow); err != nil {
-		return "", fmt.Errorf("write comparison csv avg elixir row: %w", err)
+		return "", err
 	}
 
 	for _, category := range vm.Categories {
@@ -59,7 +59,7 @@ func formatComparisonCSV(names []string, results []evaluation.EvaluationResult) 
 			row = append(row, fmt.Sprintf("%.1f", score.Score))
 		}
 		if err := w.Write(row); err != nil {
-			return "", fmt.Errorf("write comparison csv category row %q: %w", category.Name, err)
+			return "", err
 		}
 	}
 
@@ -68,12 +68,12 @@ func formatComparisonCSV(names []string, results []evaluation.EvaluationResult) 
 		archetypeRow = append(archetypeRow, string(deck.Result.DetectedArchetype))
 	}
 	if err := w.Write(archetypeRow); err != nil {
-		return "", fmt.Errorf("write comparison csv archetype row: %w", err)
+		return "", err
 	}
 
 	w.Flush()
 	if err := w.Error(); err != nil {
-		return "", fmt.Errorf("flush comparison csv writer: %w", err)
+		return "", err
 	}
 	return sb.String(), nil
 }
