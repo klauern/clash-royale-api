@@ -111,3 +111,18 @@ func TestFormatReportDetailedScoreComparison(t *testing.T) {
 		}
 	}
 }
+
+func TestComputeCategoryWinners(t *testing.T) {
+	names, results := sampleCompareResults()
+
+	winners := computeCategoryWinners(names, results)
+	if len(winners) != len(getEvaluationCategories()) {
+		t.Fatalf("expected %d winners, got %d", len(getEvaluationCategories()), len(winners))
+	}
+
+	for _, winner := range winners {
+		if winner.deckName != "Deck One" {
+			t.Fatalf("expected Deck One to win all sample categories, got %s for %s", winner.deckName, winner.name)
+		}
+	}
+}

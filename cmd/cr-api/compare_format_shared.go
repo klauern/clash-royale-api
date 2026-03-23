@@ -6,6 +6,12 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 )
 
+type categoryWinner struct {
+	name     string
+	score    evaluation.CategoryScore
+	deckName string
+}
+
 func getEvaluationCategories() []struct {
 	name string
 	get  func(evaluation.EvaluationResult) evaluation.CategoryScore
@@ -76,4 +82,20 @@ func calculateStars(score float64) int {
 	default:
 		return 0
 	}
+}
+
+func computeCategoryWinners(names []string, results []evaluation.EvaluationResult) []categoryWinner {
+	categories := getEvaluationCategories()
+	winners := make([]categoryWinner, 0, len(categories))
+
+	for _, cat := range categories {
+		bestIdx := findBestDeckIndex(results, cat.get)
+		winners = append(winners, categoryWinner{
+			name:     cat.name,
+			score:    cat.get(results[bestIdx]),
+			deckName: names[bestIdx],
+		})
+	}
+
+	return winners
 }

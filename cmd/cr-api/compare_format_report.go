@@ -113,13 +113,10 @@ func formatReportDetailedScoreComparison(sb *strings.Builder, names []string, re
 
 func formatReportCategoryChampions(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## Category Champions\n\n")
-	categories := getEvaluationCategories()
-
-	for _, cat := range categories {
-		bestIdx := findBestDeckIndex(results, cat.get)
-		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", cat.name, names[bestIdx]))
-		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n", cat.get(results[bestIdx]).Score, cat.get(results[bestIdx]).Rating))
-		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", cat.get(results[bestIdx]).Assessment))
+	for _, winner := range computeCategoryWinners(names, results) {
+		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", winner.name, winner.deckName))
+		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n", winner.score.Score, winner.score.Rating))
+		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", winner.score.Assessment))
 	}
 
 	sb.WriteString("---\n\n")
