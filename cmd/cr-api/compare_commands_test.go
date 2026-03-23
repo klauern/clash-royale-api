@@ -30,3 +30,38 @@ func TestFormatReportRankingsSortsByOverallScore(t *testing.T) {
 		t.Fatalf("expected medal ordering by descending score, got:\n%s", report)
 	}
 }
+
+func TestBuildComparisonViewModelInvalidInputReturnsExplicitEmptyModel(t *testing.T) {
+	vm := buildComparisonViewModel(nil, nil)
+	if vm.BestOverallIndex != -1 {
+		t.Fatalf("expected BestOverallIndex=-1 for empty input, got %d", vm.BestOverallIndex)
+	}
+	if len(vm.Decks) != 0 || len(vm.Categories) != 0 || len(vm.RankedDecks) != 0 {
+		t.Fatalf("expected empty slices for empty input, got decks=%d categories=%d ranked=%d", len(vm.Decks), len(vm.Categories), len(vm.RankedDecks))
+	}
+
+	vm = buildComparisonViewModel([]string{"A"}, nil)
+	if vm.BestOverallIndex != -1 {
+		t.Fatalf("expected BestOverallIndex=-1 for mismatched input, got %d", vm.BestOverallIndex)
+	}
+	if len(vm.Decks) != 0 || len(vm.Categories) != 0 || len(vm.RankedDecks) != 0 {
+		t.Fatalf("expected empty slices for mismatched input, got decks=%d categories=%d ranked=%d", len(vm.Decks), len(vm.Categories), len(vm.RankedDecks))
+	}
+}
+
+func TestCompareFormattersHandleEmptyInput(t *testing.T) {
+	report := generateComparisonReport(nil, nil)
+	if !strings.Contains(report, "No decks to compare.") {
+		t.Fatalf("expected empty-report notice, got:\n%s", report)
+	}
+
+	table := formatComparisonTable(nil, nil, false, false)
+	if !strings.Contains(table, "No decks to compare.") {
+		t.Fatalf("expected empty-table notice, got:\n%s", table)
+	}
+
+	markdown := formatComparisonMarkdown(nil, nil, false)
+	if !strings.Contains(markdown, "*Comparing 0 decks*") {
+		t.Fatalf("expected markdown to report zero decks, got:\n%s", markdown)
+	}
+}
