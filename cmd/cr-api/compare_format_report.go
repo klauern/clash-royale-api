@@ -31,6 +31,10 @@ func generateComparisonReport(names []string, results []evaluation.EvaluationRes
 
 func formatReportExecutiveSummary(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("## Executive Summary\n\n")
+	if len(vm.Decks) == 0 || vm.BestOverallIndex < 0 || vm.BestOverallIndex >= len(vm.Decks) {
+		sb.WriteString("No decks to compare.\n\n---\n\n")
+		return
+	}
 
 	best := vm.Decks[vm.BestOverallIndex]
 	sb.WriteString(fmt.Sprintf("### 🏆 Recommended Deck: **%s**\n\n", best.Name))
@@ -107,6 +111,9 @@ func formatReportDetailedScoreComparison(sb *strings.Builder, vm comparisonViewM
 func formatReportCategoryChampions(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("## Category Champions\n\n")
 	for _, category := range vm.Categories {
+		if category.BestDeckIndex < 0 || category.BestDeckIndex >= len(vm.Decks) || category.BestDeckIndex >= len(category.Scores) {
+			continue
+		}
 		best := vm.Decks[category.BestDeckIndex]
 		bestScore := category.Scores[category.BestDeckIndex]
 		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", category.Name, best.Name))
@@ -206,6 +213,11 @@ func formatDeckAnalysis(sb *strings.Builder, r evaluation.EvaluationResult) {
 
 func formatReportRecommendations(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("## Recommendations\n\n")
+	if len(vm.Decks) == 0 || vm.BestOverallIndex < 0 || vm.BestOverallIndex >= len(vm.Decks) {
+		sb.WriteString("No recommendations available because no decks were compared.\n\n")
+		return
+	}
+
 	best := vm.Decks[vm.BestOverallIndex]
 	sb.WriteString(fmt.Sprintf("Based on the analysis, **%s** is the strongest deck overall with a score of %.2f/10.0.\n\n", best.Name, best.Result.OverallScore))
 

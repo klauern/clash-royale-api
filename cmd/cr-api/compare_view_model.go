@@ -34,15 +34,25 @@ type comparisonViewModel struct {
 	RankedDecks      []int
 }
 
+func emptyComparisonViewModel() comparisonViewModel {
+	return comparisonViewModel{
+		Decks:            []comparisonDeckView{},
+		Categories:       []comparisonCategoryView{},
+		BestOverallIndex: -1,
+		RankedDecks:      []int{},
+	}
+}
+
 func buildComparisonViewModel(names []string, results []evaluation.EvaluationResult) comparisonViewModel {
-	if len(names) == 0 || len(names) != len(results) {
-		return comparisonViewModel{}
+	deckCount := len(names)
+	if deckCount == 0 || deckCount != len(results) {
+		return emptyComparisonViewModel()
 	}
 
 	vm := comparisonViewModel{
-		Decks:       make([]comparisonDeckView, len(names)),
+		Decks:       make([]comparisonDeckView, deckCount),
 		Categories:  make([]comparisonCategoryView, 0, len(getEvaluationCategories())),
-		RankedDecks: make([]int, len(results)),
+		RankedDecks: make([]int, deckCount),
 	}
 
 	bestOverallIdx := 0
@@ -69,7 +79,7 @@ func buildComparisonViewModel(names []string, results []evaluation.EvaluationRes
 	for _, category := range getEvaluationCategories() {
 		view := comparisonCategoryView{
 			Name:          category.name,
-			Scores:        make([]evaluation.CategoryScore, len(results)),
+			Scores:        make([]evaluation.CategoryScore, deckCount),
 			BestDeckIndex: 0,
 		}
 		bestCategoryScore := -1.0

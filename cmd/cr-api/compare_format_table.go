@@ -85,11 +85,18 @@ func formatTableCategoryScoresSection(sb *strings.Builder, vm comparisonViewMode
 func formatTableBestInCategorySection(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("🏆 BEST IN CATEGORY\n")
 	sb.WriteString("══════════════════\n\n")
+	if len(vm.Decks) == 0 || vm.BestOverallIndex < 0 || vm.BestOverallIndex >= len(vm.Decks) {
+		sb.WriteString("No decks to compare.\n\n")
+		return
+	}
 
 	bestOverall := vm.Decks[vm.BestOverallIndex]
 	sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", "Overall", bestOverall.Name, bestOverall.Result.OverallScore))
 
 	for _, category := range vm.Categories {
+		if category.BestDeckIndex < 0 || category.BestDeckIndex >= len(vm.Decks) || category.BestDeckIndex >= len(category.Scores) {
+			continue
+		}
 		best := vm.Decks[category.BestDeckIndex]
 		bestScore := category.Scores[category.BestDeckIndex].Score
 		sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", category.Name, best.Name, bestScore))

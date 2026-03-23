@@ -66,6 +66,9 @@ func formatMarkdownCategoryScoresSection(sb *strings.Builder, vm comparisonViewM
 func formatMarkdownBestInCategorySection(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("## 🏆 Best in Category\n\n")
 	for _, category := range vm.Categories {
+		if category.BestDeckIndex < 0 || category.BestDeckIndex >= len(vm.Decks) || category.BestDeckIndex >= len(category.Scores) {
+			continue
+		}
 		best := vm.Decks[category.BestDeckIndex]
 		bestScore := category.Scores[category.BestDeckIndex].Score
 		sb.WriteString(fmt.Sprintf("- **%s**: %s (%.2f)\n", category.Name, best.Name, bestScore))
