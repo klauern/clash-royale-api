@@ -1,14 +1,10 @@
 package deckhash
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"strings"
 )
 
-// Compute returns the canonical deck hash for deduplication.
-//
-// Deprecated: prefer DeckHash directly in new call sites.
+// Compute returns a deterministic hash for a deck card list, independent of card order.
 func Compute(cards []string) string {
 	return DeckHash(cards)
 }
@@ -17,16 +13,11 @@ func Compute(cards []string) string {
 //
 // This is retained only for migration and compatibility checks.
 func LegacyCompute(cards []string) string {
-	sorted := sortedCardsCopy(cards)
-	sum := sha256.Sum256([]byte(strings.Join(sorted, "|")))
-	return hex.EncodeToString(sum[:])
+	data := strings.Join(sortedCards(cards), "|")
+	return sha256HexString([]byte(data))
 }
 
 // IsLegacyHash reports whether hash matches the historical Compute semantics.
 func IsLegacyHash(cards []string, hash string) bool {
-	return legacyPipeJoinedHash(cards) == strings.ToLower(hash)
-}
-
-func legacyPipeJoinedHash(cards []string) string {
-	return LegacyCompute(cards)
+	return LegacyCompute(cards) == strings.ToLower(hash)
 }

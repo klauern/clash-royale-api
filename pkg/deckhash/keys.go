@@ -1,23 +1,13 @@
 package deckhash
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
-	"sort"
 	"strconv"
 	"strings"
 )
 
-func sortedCardsCopy(cards []string) []string {
-	sorted := make([]string, len(cards))
-	copy(sorted, cards)
-	sort.Strings(sorted)
-	return sorted
-}
-
 // CanonicalDeckKey returns a deterministic key for a deck independent of card order.
 func CanonicalDeckKey(cards []string) string {
-	sorted := sortedCardsCopy(cards)
+	sorted := sortedCards(cards)
 
 	var b strings.Builder
 	for _, card := range sorted {
@@ -34,6 +24,5 @@ func CanonicalDeckKey(cards []string) string {
 // DeckHash returns a SHA256 hash of the canonical deck key for deduplication.
 func DeckHash(cards []string) string {
 	key := CanonicalDeckKey(cards)
-	hash := sha256.Sum256([]byte(key))
-	return hex.EncodeToString(hash[:])
+	return sha256HexString([]byte(key))
 }
