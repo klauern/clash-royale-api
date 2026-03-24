@@ -13,7 +13,7 @@ func sortedCards(cards []string) []string {
 	return sorted
 }
 
-func sha256HexString(input string) string {
-	sum := sha256.Sum256([]byte(input))
+func sha256HexString(data []byte) string {
+	sum := sha256.Sum256(data)
 	return hex.EncodeToString(sum[:])
 }
