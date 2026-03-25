@@ -13,47 +13,42 @@ import (
 //nolint:staticcheck // Keep explicit builder writes for formatter readability and parity.
 func generateComparisonReport(names []string, results []evaluation.EvaluationResult) string {
 	var sb strings.Builder
+	vm := buildComparisonViewModel(names, results)
 
 	sb.WriteString("# Deck Comparison Report\n\n")
 	sb.WriteString(fmt.Sprintf("**Generated**: %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
-	sb.WriteString(fmt.Sprintf("**Decks Compared**: %d\n\n", len(names)))
+	sb.WriteString(fmt.Sprintf("**Decks Compared**: %d\n\n", len(vm.Decks)))
 	sb.WriteString("---\n\n")
 
-	bestIdx := findBestOverallDeck(results)
-	formatReportExecutiveSummary(&sb, names, results, bestIdx)
-	formatReportDetailedScoreComparison(&sb, names, results)
-	formatReportCategoryChampions(&sb, names, results)
-	formatReportDeckDetails(&sb, names, results)
-	formatReportRecommendations(&sb, names, results, bestIdx)
+	formatReportExecutiveSummary(&sb, vm)
+	formatReportDetailedScoreComparison(&sb, vm)
+	formatReportCategoryChampions(&sb, vm)
+	formatReportDeckDetails(&sb, vm)
+	formatReportRecommendations(&sb, vm)
 
 	return sb.String()
 }
 
-func formatReportExecutiveSummary(sb *strings.Builder, names []string, results []evaluation.EvaluationResult, bestIdx int) {
+func formatReportExecutiveSummary(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("## Executive Summary\n\n")
 
-	sb.WriteString(fmt.Sprintf("### 🏆 Recommended Deck: **%s**\n\n", names[bestIdx]))
-	sb.WriteString(fmt.Sprintf("- **Overall Score**: %.2f/10.0 (%s)\n", results[bestIdx].OverallScore, results[bestIdx].OverallRating))
-	sb.WriteString(fmt.Sprintf("- **Archetype**: %s\n", results[bestIdx].DetectedArchetype))
-	sb.WriteString(fmt.Sprintf("- **Average Elixir**: %.2f\n\n", results[bestIdx].AvgElixir))
+	best := vm.Decks[vm.BestOverallIndex]
+	sb.WriteString(fmt.Sprintf("### 🏆 Recommended Deck: **%s**\n\n", best.Name))
+	sb.WriteString(fmt.Sprintf("- **Overall Score**: %.2f/10.0 (%s)\n", best.Result.OverallScore, best.Result.OverallRating))
+	sb.WriteString(fmt.Sprintf("- **Archetype**: %s\n", best.Result.DetectedArchetype))
+	sb.WriteString(fmt.Sprintf("- **Average Elixir**: %.2f\n\n", best.Result.AvgElixir))
 
-	formatReportRankings(sb, names, results)
+	formatReportRankings(sb, vm)
 	sb.WriteString("\n---\n\n")
 }
 
-func formatReportRankings(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatReportRankings(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("### Overall Rankings\n\n")
-	indices := make([]int, len(names))
-	for i := range indices {
-		indices[i] = i
-	}
-	sort.Slice(indices, func(i, j int) bool {
-		return results[indices[i]].OverallScore > results[indices[j]].OverallScore
-	})
 
-	for rank, idx := range indices {
+	for rank, idx := range vm.RankedDecks {
 		emoji := getRankingEmoji(rank + 1)
-		sb.WriteString(fmt.Sprintf("%s **%s** - %.2f/10.0 (%s)\n", emoji, names[idx], results[idx].OverallScore, results[idx].OverallRating))
+		deck := vm.Decks[idx]
+		sb.WriteString(fmt.Sprintf("%s **%s** - %.2f/10.0 (%s)\n", emoji, deck.Name, deck.Result.OverallScore, deck.Result.OverallRating))
 	}
 }
 
@@ -70,66 +65,63 @@ func getRankingEmoji(rank int) string {
 	}
 }
 
-func formatReportDetailedScoreComparison(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatReportDetailedScoreComparison(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("## Detailed Score Comparison\n\n")
 	sb.WriteString("| Metric | ")
-	for _, name := range names {
-		sb.WriteString(fmt.Sprintf("%s | ", truncate(name, 18)))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf("%s | ", deck.TruncatedName18))
 	}
 	sb.WriteString("\n|--------|")
-	for range names {
+	for range vm.Decks {
 		sb.WriteString("--------------------|")
 	}
 	sb.WriteString("\n")
 
 	sb.WriteString("| **Overall** | ")
-	for _, r := range results {
-		sb.WriteString(fmt.Sprintf("%.2f %s | ", r.OverallScore, formatStarsDisplay(calculateStars(r.OverallScore))))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf("%.2f %s | ", deck.Result.OverallScore, deck.OverallStars))
 	}
 	sb.WriteString("\n")
 
-	categories := getEvaluationCategories()
-	for _, cat := range categories {
-		sb.WriteString(fmt.Sprintf("| %s | ", cat.name))
-		for _, r := range results {
-			score := cat.get(r)
+	for _, category := range vm.Categories {
+		sb.WriteString(fmt.Sprintf("| %s | ", category.Name))
+		for _, score := range category.Scores {
 			sb.WriteString(fmt.Sprintf("%.1f %s | ", score.Score, formatStarsDisplay(score.Stars)))
 		}
 		sb.WriteString("\n")
 	}
 
 	sb.WriteString("| Avg Elixir | ")
-	for _, r := range results {
-		sb.WriteString(fmt.Sprintf("%.2f | ", r.AvgElixir))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf("%.2f | ", deck.Result.AvgElixir))
 	}
 	sb.WriteString("\n")
 
 	sb.WriteString("| Archetype | ")
-	for _, r := range results {
-		sb.WriteString(fmt.Sprintf("%s | ", r.DetectedArchetype))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf("%s | ", deck.Result.DetectedArchetype))
 	}
 	sb.WriteString("\n\n---\n\n")
 }
 
-func formatReportCategoryChampions(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatReportCategoryChampions(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("## Category Champions\n\n")
-	categories := getEvaluationCategories()
-
-	for _, cat := range categories {
-		bestIdx := findBestDeckIndex(results, cat.get)
-		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", cat.name, names[bestIdx]))
-		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n", cat.get(results[bestIdx]).Score, cat.get(results[bestIdx]).Rating))
-		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", cat.get(results[bestIdx]).Assessment))
+	for _, category := range vm.Categories {
+		best := vm.Decks[category.BestDeckIndex]
+		bestScore := category.Scores[category.BestDeckIndex]
+		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", category.Name, best.Name))
+		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n", bestScore.Score, bestScore.Rating))
+		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", bestScore.Assessment))
 	}
 
 	sb.WriteString("---\n\n")
 }
 
-func formatReportDeckDetails(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatReportDeckDetails(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("## Deck Details\n\n")
-	for i, name := range names {
-		r := results[i]
-		sb.WriteString(fmt.Sprintf("### %d. %s\n\n", i+1, name))
+	for i, deck := range vm.Decks {
+		r := deck.Result
+		sb.WriteString(fmt.Sprintf("### %d. %s\n\n", i+1, deck.Name))
 
 		sb.WriteString("**Cards**:\n```\n")
 		for j, card := range r.Deck {
@@ -212,14 +204,15 @@ func formatDeckAnalysis(sb *strings.Builder, r evaluation.EvaluationResult) {
 	}
 }
 
-func formatReportRecommendations(sb *strings.Builder, names []string, results []evaluation.EvaluationResult, bestIdx int) {
+func formatReportRecommendations(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("## Recommendations\n\n")
-	sb.WriteString(fmt.Sprintf("Based on the analysis, **%s** is the strongest deck overall with a score of %.2f/10.0.\n\n", names[bestIdx], results[bestIdx].OverallScore))
+	best := vm.Decks[vm.BestOverallIndex]
+	sb.WriteString(fmt.Sprintf("Based on the analysis, **%s** is the strongest deck overall with a score of %.2f/10.0.\n\n", best.Name, best.Result.OverallScore))
 
 	sb.WriteString("### When to Use Each Deck\n\n")
-	for i, name := range names {
-		r := results[i]
-		sb.WriteString(fmt.Sprintf("**%s** (%s archetype):\n", name, r.DetectedArchetype))
+	for _, deck := range vm.Decks {
+		r := deck.Result
+		sb.WriteString(fmt.Sprintf("**%s** (%s archetype):\n", deck.Name, r.DetectedArchetype))
 
 		switch {
 		case r.Attack.Score > r.Defense.Score:
