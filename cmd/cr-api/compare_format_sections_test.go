@@ -98,6 +98,25 @@ func TestFormatMarkdownBestInCategorySection(t *testing.T) {
 	}
 }
 
+func TestComputeCategoryWinners(t *testing.T) {
+	names, results := sampleCompareResults()
+	winners := computeCategoryWinners(names, results)
+	if len(winners) != len(getEvaluationCategories()) {
+		t.Fatalf("expected %d winners, got %d", len(getEvaluationCategories()), len(winners))
+	}
+
+	attack := winners[0]
+	if attack.categoryName != "Attack" {
+		t.Fatalf("expected first category Attack, got %q", attack.categoryName)
+	}
+	if attack.deckIndex != 0 || attack.deckName != "Deck One" {
+		t.Fatalf("expected Deck One to win Attack, got index=%d name=%q", attack.deckIndex, attack.deckName)
+	}
+	if attack.score.Score != results[0].Attack.Score {
+		t.Fatalf("expected attack score %.1f, got %.1f", results[0].Attack.Score, attack.score.Score)
+	}
+}
+
 func TestFormatReportDetailedScoreComparison(t *testing.T) {
 	names, results := sampleCompareResults()
 	var sb strings.Builder

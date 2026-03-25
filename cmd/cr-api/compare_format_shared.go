@@ -23,6 +23,28 @@ func getEvaluationCategories() []struct {
 	}
 }
 
+type categoryWinner struct {
+	categoryName string
+	deckIndex    int
+	deckName     string
+	score        evaluation.CategoryScore
+}
+
+func computeCategoryWinners(names []string, results []evaluation.EvaluationResult) []categoryWinner {
+	categories := getEvaluationCategories()
+	winners := make([]categoryWinner, 0, len(categories))
+	for _, cat := range categories {
+		bestIdx := findBestDeckIndex(results, cat.get)
+		winners = append(winners, categoryWinner{
+			categoryName: cat.name,
+			deckIndex:    bestIdx,
+			deckName:     names[bestIdx],
+			score:        cat.get(results[bestIdx]),
+		})
+	}
+	return winners
+}
+
 func findBestDeckIndex(results []evaluation.EvaluationResult, getScore func(evaluation.EvaluationResult) evaluation.CategoryScore) int {
 	bestIdx := 0
 	bestScore := -1.0
