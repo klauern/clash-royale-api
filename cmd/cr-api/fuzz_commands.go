@@ -797,7 +797,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Sort results
-	sortFuzzingResults(dedupedResults, sortBy)
+	sortFuzzingResultsImpl(dedupedResults, sortBy)
 
 	// Ensure archetype coverage if requested
 	if ensureArchetypes && mode != "genetic" {
@@ -808,16 +808,16 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Get top N results
-	topResults := getTopResults(dedupedResults, top)
+	topResults := getTopResultsImpl(dedupedResults, top)
 
 	// Format and output results
-	if err := formatFuzzingResults(topResults, format, playerName, playerTag, fuzzerCfg, mode, generationTime, &stats, len(dedupedResults)); err != nil {
+	if err := formatFuzzingResultsImpl(topResults, format, playerName, playerTag, fuzzerCfg, mode, generationTime, &stats, len(dedupedResults)); err != nil {
 		return fmt.Errorf("failed to format results: %w", err)
 	}
 
 	// Save to file if output-dir specified
 	if outputDir != "" {
-		if err := saveResultsToFile(topResults, outputDir, format, playerTag); err != nil {
+		if err := saveResultsToFileImpl(topResults, outputDir, format, playerTag); err != nil {
 			return fmt.Errorf("failed to save results: %w", err)
 		}
 		if verbose {
@@ -1540,78 +1540,6 @@ func deduplicateResults(results []FuzzingResult) []FuzzingResult {
 // deckKeyForResult creates a unique key for a deck based on canonicalized card names.
 func deckKeyForResult(result FuzzingResult) string {
 	return deck.CanonicalDeckKey(result.Deck)
-}
-
-// sortFuzzingResults sorts fuzzing results by the specified field
-func sortFuzzingResults(results []FuzzingResult, sortBy string) {
-	sortFuzzingResultsImpl(results, sortBy)
-}
-
-// getTopResults returns the top N results
-func getTopResults(results []FuzzingResult, top int) []FuzzingResult {
-	return getTopResultsImpl(results, top)
-}
-
-// formatFuzzingResults formats and outputs fuzzing results
-func formatFuzzingResults(
-	results []FuzzingResult,
-	format string,
-	playerName string,
-	playerTag string,
-	fuzzerConfig *deck.FuzzingConfig,
-	mode string,
-	generationTime time.Duration,
-	stats *deck.FuzzingStats,
-	totalFiltered int,
-) error {
-	return formatFuzzingResultsImpl(results, format, playerName, playerTag, fuzzerConfig, mode, generationTime, stats, totalFiltered)
-}
-
-// formatResultsSummary outputs results in summary format
-func formatResultsSummary(
-	results []FuzzingResult,
-	playerName string,
-	playerTag string,
-	fuzzerConfig *deck.FuzzingConfig,
-	mode string,
-	generationTime time.Duration,
-	stats *deck.FuzzingStats,
-	totalFiltered int,
-) error {
-	return formatResultsSummaryImpl(results, playerName, playerTag, fuzzerConfig, mode, generationTime, stats, totalFiltered)
-}
-
-// formatResultsJSON outputs results in JSON format
-func formatResultsJSON(
-	results []FuzzingResult,
-	playerName string,
-	playerTag string,
-	fuzzerConfig *deck.FuzzingConfig,
-	mode string,
-	generationTime time.Duration,
-	stats *deck.FuzzingStats,
-	totalFiltered int,
-) error {
-	return formatResultsJSONImpl(results, playerName, playerTag, fuzzerConfig, mode, generationTime, stats, totalFiltered)
-}
-
-// formatResultsCSV outputs results in CSV format
-func formatResultsCSV(results []FuzzingResult) error {
-	return formatResultsCSVImpl(results)
-}
-
-// formatResultsDetailed outputs results in detailed format with full evaluation
-func formatResultsDetailed(
-	results []FuzzingResult,
-	playerName string,
-	playerTag string,
-) error {
-	return formatResultsDetailedImpl(results, playerName, playerTag)
-}
-
-// saveResultsToFile saves results to a file in the specified format
-func saveResultsToFile(results []FuzzingResult, outputDir, format, playerTag string) error {
-	return saveResultsToFileImpl(results, outputDir, format, playerTag)
 }
 
 // loadPlayerFromAnalysis loads player data from an existing analysis file
