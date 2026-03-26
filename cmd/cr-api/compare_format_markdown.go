@@ -11,13 +11,14 @@ import (
 //nolint:staticcheck // Keep explicit builder writes for formatter readability and parity.
 func formatComparisonMarkdown(names []string, results []evaluation.EvaluationResult, verbose bool) string {
 	var sb strings.Builder
+	model := buildComparisonRenderModel(names, results)
 
 	sb.WriteString("# Deck Comparison\n\n")
-	sb.WriteString(fmt.Sprintf("*Comparing %d decks*\n\n", len(names)))
+	sb.WriteString(fmt.Sprintf("*Comparing %d decks*\n\n", len(model.Names)))
 
 	formatMarkdownOverviewSection(&sb, names, results)
-	formatMarkdownCategoryScoresSection(&sb, names, results)
-	formatMarkdownBestInCategorySection(&sb, names, results)
+	formatMarkdownCategoryScoresSectionWithModel(&sb, model)
+	formatMarkdownBestInCategorySectionWithModel(&sb, model)
 	formatMarkdownDeckCompositionsSection(&sb, names, results)
 
 	if verbose {
@@ -42,22 +43,24 @@ func formatMarkdownOverviewSection(sb *strings.Builder, names []string, results 
 }
 
 func formatMarkdownCategoryScoresSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+	formatMarkdownCategoryScoresSectionWithModel(sb, buildComparisonRenderModel(names, results))
+}
+
+func formatMarkdownCategoryScoresSectionWithModel(sb *strings.Builder, model comparisonRenderModel) {
 	sb.WriteString("## Category Scores\n\n")
 	sb.WriteString("| Category | ")
-	for _, name := range names {
+	for _, name := range model.Names {
 		sb.WriteString(fmt.Sprintf("%s | ", name))
 	}
 	sb.WriteString("\n|----------|")
-	for range names {
+	for range model.Names {
 		sb.WriteString("---------|")
 	}
 	sb.WriteString("\n")
 
-	categories := getEvaluationCategories()
-	for _, cat := range categories {
-		sb.WriteString(fmt.Sprintf("| **%s** | ", cat.name))
-		for _, r := range results {
-			score := cat.get(r)
+	for _, category := range model.Categories {
+		sb.WriteString(fmt.Sprintf("| **%s** | ", category.Name))
+		for _, score := range category.Scores {
 			stars := formatStarsDisplay(score.Stars)
 			sb.WriteString(fmt.Sprintf("%.1f %s | ", score.Score, stars))
 		}
@@ -67,13 +70,14 @@ func formatMarkdownCategoryScoresSection(sb *strings.Builder, names []string, re
 }
 
 func formatMarkdownBestInCategorySection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
-	sb.WriteString("## 🏆 Best in Category\n\n")
-	categories := getEvaluationCategories()
+	formatMarkdownBestInCategorySectionWithModel(sb, buildComparisonRenderModel(names, results))
+}
 
-	for _, cat := range categories {
-		bestIdx := findBestDeckIndex(results, cat.get)
-		bestScore := cat.get(results[bestIdx]).Score
-		sb.WriteString(fmt.Sprintf("- **%s**: %s (%.2f)\n", cat.name, names[bestIdx], bestScore))
+func formatMarkdownBestInCategorySectionWithModel(sb *strings.Builder, model comparisonRenderModel) {
+	sb.WriteString("## 🏆 Best in Category\n\n")
+	for _, category := range model.Categories {
+		bestScore := category.Scores[category.BestDeckIdx].Score
+		sb.WriteString(fmt.Sprintf("- **%s**: %s (%.2f)\n", category.Name, category.BestDeckName, bestScore))
 	}
 	sb.WriteString("\n")
 }

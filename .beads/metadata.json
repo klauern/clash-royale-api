@@ -3,6 +3,6 @@
   "backend": "dolt",
   "dolt_mode": "server",
   "dolt_server_port": 3308,
-  "dolt_database": "beads_clash-royale-api",
+  "dolt_database": "dolt",
   "project_id": "8120fc6a-ed34-414a-b041-625c0219ae7b"
 }

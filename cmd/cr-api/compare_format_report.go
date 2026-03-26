@@ -13,31 +13,36 @@ import (
 //nolint:staticcheck // Keep explicit builder writes for formatter readability and parity.
 func generateComparisonReport(names []string, results []evaluation.EvaluationResult) string {
 	var sb strings.Builder
+	model := buildComparisonRenderModel(names, results)
 
 	sb.WriteString("# Deck Comparison Report\n\n")
 	sb.WriteString(fmt.Sprintf("**Generated**: %s\n\n", time.Now().Format("2006-01-02 15:04:05")))
-	sb.WriteString(fmt.Sprintf("**Decks Compared**: %d\n\n", len(names)))
+	sb.WriteString(fmt.Sprintf("**Decks Compared**: %d\n\n", len(model.Names)))
 	sb.WriteString("---\n\n")
 
-	bestIdx := findBestOverallDeck(results)
-	formatReportExecutiveSummary(&sb, names, results, bestIdx)
-	formatReportDetailedScoreComparison(&sb, names, results)
-	formatReportCategoryChampions(&sb, names, results)
+	formatReportExecutiveSummaryWithModel(&sb, model)
+	formatReportDetailedScoreComparisonWithModel(&sb, model)
+	formatReportCategoryChampionsWithModel(&sb, model)
 	formatReportDeckDetails(&sb, names, results)
-	formatReportRecommendations(&sb, names, results, bestIdx)
+	formatReportRecommendations(&sb, names, results, model.BestOverallIx)
 
 	return sb.String()
 }
 
 func formatReportExecutiveSummary(sb *strings.Builder, names []string, results []evaluation.EvaluationResult, bestIdx int) {
+	model := buildComparisonRenderModel(names, results)
+	formatReportExecutiveSummaryWithModel(sb, model)
+}
+
+func formatReportExecutiveSummaryWithModel(sb *strings.Builder, model comparisonRenderModel) {
 	sb.WriteString("## Executive Summary\n\n")
 
-	sb.WriteString(fmt.Sprintf("### 🏆 Recommended Deck: **%s**\n\n", names[bestIdx]))
-	sb.WriteString(fmt.Sprintf("- **Overall Score**: %.2f/10.0 (%s)\n", results[bestIdx].OverallScore, results[bestIdx].OverallRating))
-	sb.WriteString(fmt.Sprintf("- **Archetype**: %s\n", results[bestIdx].DetectedArchetype))
-	sb.WriteString(fmt.Sprintf("- **Average Elixir**: %.2f\n\n", results[bestIdx].AvgElixir))
+	sb.WriteString(fmt.Sprintf("### 🏆 Recommended Deck: **%s**\n\n", model.Names[model.BestOverallIx]))
+	sb.WriteString(fmt.Sprintf("- **Overall Score**: %.2f/10.0 (%s)\n", model.Results[model.BestOverallIx].OverallScore, model.Results[model.BestOverallIx].OverallRating))
+	sb.WriteString(fmt.Sprintf("- **Archetype**: %s\n", model.Results[model.BestOverallIx].DetectedArchetype))
+	sb.WriteString(fmt.Sprintf("- **Average Elixir**: %.2f\n\n", model.Results[model.BestOverallIx].AvgElixir))
 
-	formatReportRankings(sb, names, results)
+	formatReportRankings(sb, model.Names, model.Results)
 	sb.WriteString("\n---\n\n")
 }
 
@@ -71,55 +76,60 @@ func getRankingEmoji(rank int) string {
 }
 
 func formatReportDetailedScoreComparison(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+	formatReportDetailedScoreComparisonWithModel(sb, buildComparisonRenderModel(names, results))
+}
+
+func formatReportDetailedScoreComparisonWithModel(sb *strings.Builder, model comparisonRenderModel) {
 	sb.WriteString("## Detailed Score Comparison\n\n")
 	sb.WriteString("| Metric | ")
-	for _, name := range names {
+	for _, name := range model.Names {
 		sb.WriteString(fmt.Sprintf("%s | ", truncate(name, 18)))
 	}
 	sb.WriteString("\n|--------|")
-	for range names {
+	for range model.Names {
 		sb.WriteString("--------------------|")
 	}
 	sb.WriteString("\n")
 
 	sb.WriteString("| **Overall** | ")
-	for _, r := range results {
+	for _, r := range model.Results {
 		sb.WriteString(fmt.Sprintf("%.2f %s | ", r.OverallScore, formatStarsDisplay(calculateStars(r.OverallScore))))
 	}
 	sb.WriteString("\n")
 
-	categories := getEvaluationCategories()
-	for _, cat := range categories {
-		sb.WriteString(fmt.Sprintf("| %s | ", cat.name))
-		for _, r := range results {
-			score := cat.get(r)
+	for _, category := range model.Categories {
+		sb.WriteString(fmt.Sprintf("| %s | ", category.Name))
+		for _, score := range category.Scores {
 			sb.WriteString(fmt.Sprintf("%.1f %s | ", score.Score, formatStarsDisplay(score.Stars)))
 		}
 		sb.WriteString("\n")
 	}
 
 	sb.WriteString("| Avg Elixir | ")
-	for _, r := range results {
+	for _, r := range model.Results {
 		sb.WriteString(fmt.Sprintf("%.2f | ", r.AvgElixir))
 	}
 	sb.WriteString("\n")
 
 	sb.WriteString("| Archetype | ")
-	for _, r := range results {
+	for _, r := range model.Results {
 		sb.WriteString(fmt.Sprintf("%s | ", r.DetectedArchetype))
 	}
 	sb.WriteString("\n\n---\n\n")
 }
 
 func formatReportCategoryChampions(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
-	sb.WriteString("## Category Champions\n\n")
-	categories := getEvaluationCategories()
+	formatReportCategoryChampionsWithModel(sb, buildComparisonRenderModel(names, results))
+}
 
-	for _, cat := range categories {
-		bestIdx := findBestDeckIndex(results, cat.get)
-		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", cat.name, names[bestIdx]))
-		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n", cat.get(results[bestIdx]).Score, cat.get(results[bestIdx]).Rating))
-		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", cat.get(results[bestIdx]).Assessment))
+func formatReportCategoryChampionsWithModel(sb *strings.Builder, model comparisonRenderModel) {
+	sb.WriteString("## Category Champions\n\n")
+
+	for _, category := range model.Categories {
+		bestScore := category.Scores[category.BestDeckIdx]
+		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", category.Name, category.BestDeckName))
+		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n", bestScore.Score, bestScore.Rating))
+		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", bestScore.Assessment))
 	}
 
 	sb.WriteString("---\n\n")
