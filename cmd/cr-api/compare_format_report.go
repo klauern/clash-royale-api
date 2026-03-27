@@ -132,12 +132,7 @@ func formatReportDeckDetails(sb *strings.Builder, names []string, results []eval
 		sb.WriteString(fmt.Sprintf("### %d. %s\n\n", i+1, name))
 
 		sb.WriteString("**Cards**:\n```\n")
-		for j, card := range r.Deck {
-			sb.WriteString(fmt.Sprintf("%-20s", card))
-			if (j+1)%4 == 0 {
-				sb.WriteString("\n")
-			}
-		}
+		sb.WriteString(formatDeckCardGrid(r.Deck, 20, 4, ""))
 		sb.WriteString("```\n\n")
 
 		sb.WriteString("**Key Statistics**:\n")

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
@@ -76,4 +77,18 @@ func calculateStars(score float64) int {
 	default:
 		return 0
 	}
+}
+
+func formatDeckCardGrid(deck []string, cardWidth, cardsPerRow int, cardPrefix string) string {
+	var sb strings.Builder
+
+	for i, card := range deck {
+		if i > 0 && i%cardsPerRow == 0 {
+			sb.WriteString("\n")
+		}
+		sb.WriteString(cardPrefix)
+		sb.WriteString(fmt.Sprintf("%-*s", cardWidth, card))
+	}
+
+	return sb.String()
 }

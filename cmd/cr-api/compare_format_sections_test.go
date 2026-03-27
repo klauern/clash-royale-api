@@ -111,3 +111,18 @@ func TestFormatReportDetailedScoreComparison(t *testing.T) {
 		}
 	}
 }
+
+func TestFormatDeckCardGrid(t *testing.T) {
+	deck := []string{"Knight", "Musketeer", "Hog Rider", "Fireball", "Cannon"}
+	got := formatDeckCardGrid(deck, 10, 4, "  ")
+
+	want := "  Knight      " +
+		"  Musketeer   " +
+		"  Hog Rider   " +
+		"  Fireball    \n" +
+		"  Cannon    "
+
+	if got != want {
+		t.Fatalf("unexpected deck grid output:\nwant:\n%q\n\ngot:\n%q", want, got)
+	}
+}

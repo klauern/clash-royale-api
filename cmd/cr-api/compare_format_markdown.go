@@ -83,12 +83,7 @@ func formatMarkdownDeckCompositionsSection(sb *strings.Builder, names []string, 
 	for i, name := range names {
 		sb.WriteString(fmt.Sprintf("### %s\n\n", name))
 		sb.WriteString("```\n")
-		for j, card := range results[i].Deck {
-			sb.WriteString(fmt.Sprintf("%-18s", card))
-			if (j+1)%4 == 0 {
-				sb.WriteString("\n")
-			}
-		}
+		sb.WriteString(formatDeckCardGrid(results[i].Deck, 18, 4, ""))
 		sb.WriteString("```\n\n")
 	}
 }

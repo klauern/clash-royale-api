@@ -123,12 +123,7 @@ func formatTableDeckCompositionSection(sb *strings.Builder, names []string, resu
 	sb.WriteString("══════════════════\n\n")
 	for i, r := range results {
 		sb.WriteString(fmt.Sprintf("%s:\n", names[i]))
-		for j, card := range r.Deck {
-			if j > 0 && j%4 == 0 {
-				sb.WriteString("\n")
-			}
-			sb.WriteString(fmt.Sprintf("  %-18s", card))
-		}
+		sb.WriteString(formatDeckCardGrid(r.Deck, 18, 4, "  "))
 		sb.WriteString("\n\n")
 	}
 }
