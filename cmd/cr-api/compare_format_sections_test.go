@@ -111,3 +111,25 @@ func TestFormatReportDetailedScoreComparison(t *testing.T) {
 		}
 	}
 }
+
+func TestBuildComparisonRenderModel(t *testing.T) {
+	names, results := sampleCompareResults()
+
+	model := buildComparisonRenderModel(names, results)
+
+	if model.BestOverallIx != 0 {
+		t.Fatalf("expected best overall index 0, got %d", model.BestOverallIx)
+	}
+	if len(model.Categories) != 6 {
+		t.Fatalf("expected 6 categories, got %d", len(model.Categories))
+	}
+	if model.Categories[0].Name != "Attack" {
+		t.Fatalf("expected first category Attack, got %q", model.Categories[0].Name)
+	}
+	if model.Categories[0].BestDeckName != "Deck One" {
+		t.Fatalf("expected Deck One to win Attack, got %q", model.Categories[0].BestDeckName)
+	}
+	if len(model.Categories[0].Scores) != len(results) {
+		t.Fatalf("expected %d attack scores, got %d", len(results), len(model.Categories[0].Scores))
+	}
+}

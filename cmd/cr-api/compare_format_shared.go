@@ -6,6 +6,20 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 )
 
+type comparisonCategoryResult struct {
+	Name         string
+	Scores       []evaluation.CategoryScore
+	BestDeckIdx  int
+	BestDeckName string
+}
+
+type comparisonRenderModel struct {
+	Names         []string
+	Results       []evaluation.EvaluationResult
+	BestOverallIx int
+	Categories    []comparisonCategoryResult
+}
+
 func getEvaluationCategories() []struct {
 	name string
 	get  func(evaluation.EvaluationResult) evaluation.CategoryScore
@@ -21,6 +35,32 @@ func getEvaluationCategories() []struct {
 		{"F2P Friendly", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.F2PFriendly }},
 		{"Playability", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Playability }},
 	}
+}
+
+func buildComparisonRenderModel(names []string, results []evaluation.EvaluationResult) comparisonRenderModel {
+	model := comparisonRenderModel{
+		Names:         names,
+		Results:       results,
+		BestOverallIx: findBestOverallDeck(results),
+		Categories:    make([]comparisonCategoryResult, 0, len(getEvaluationCategories())),
+	}
+
+	for _, category := range getEvaluationCategories() {
+		bestIdx := findBestDeckIndex(results, category.get)
+		scores := make([]evaluation.CategoryScore, len(results))
+		for i, result := range results {
+			scores[i] = category.get(result)
+		}
+
+		model.Categories = append(model.Categories, comparisonCategoryResult{
+			Name:         category.name,
+			Scores:       scores,
+			BestDeckIdx:  bestIdx,
+			BestDeckName: names[bestIdx],
+		})
+	}
+
+	return model
 }
 
 func findBestDeckIndex(results []evaluation.EvaluationResult, getScore func(evaluation.EvaluationResult) evaluation.CategoryScore) int {
