@@ -68,9 +68,10 @@ func makeResult(
 
 func TestFormatTableCategoryScoresSection(t *testing.T) {
 	names, results := sampleCompareResults()
+	model := buildComparisonRenderModel(names, results)
 	var sb strings.Builder
 
-	formatTableCategoryScoresSection(&sb, names, results)
+	formatTableCategoryScoresSection(&sb, model)
 	output := sb.String()
 
 	for _, want := range []string{"CATEGORY SCORES", "Deck One", "Attack", "F2P Friendly", "Playability"} {
@@ -82,9 +83,10 @@ func TestFormatTableCategoryScoresSection(t *testing.T) {
 
 func TestFormatMarkdownBestInCategorySection(t *testing.T) {
 	names, results := sampleCompareResults()
+	model := buildComparisonRenderModel(names, results)
 	var sb strings.Builder
 
-	formatMarkdownBestInCategorySection(&sb, names, results)
+	formatMarkdownBestInCategorySection(&sb, model)
 	output := sb.String()
 
 	if !strings.Contains(output, "**Attack**: Deck One (8.10)") {
@@ -100,14 +102,36 @@ func TestFormatMarkdownBestInCategorySection(t *testing.T) {
 
 func TestFormatReportDetailedScoreComparison(t *testing.T) {
 	names, results := sampleCompareResults()
+	model := buildComparisonRenderModel(names, results)
 	var sb strings.Builder
 
-	formatReportDetailedScoreComparison(&sb, names, results)
+	formatReportDetailedScoreComparison(&sb, model)
 	output := sb.String()
 
 	for _, want := range []string{"Detailed Score Comparison", "| **Overall** |", "| Avg Elixir |", "| Archetype |", "Deck Two Long Name"} {
 		if !strings.Contains(output, want) {
 			t.Fatalf("expected %q in output, got:\n%s", want, output)
 		}
+	}
+}
+
+func TestBuildComparisonRenderModel(t *testing.T) {
+	names, results := sampleCompareResults()
+	model := buildComparisonRenderModel(names, results)
+
+	if got, want := len(model.Decks), len(names); got != want {
+		t.Fatalf("expected %d decks, got %d", want, got)
+	}
+	if model.BestOverallIdx != 0 {
+		t.Fatalf("expected best overall deck index 0, got %d", model.BestOverallIdx)
+	}
+	if got, want := len(model.Categories), 6; got != want {
+		t.Fatalf("expected %d categories, got %d", want, got)
+	}
+	if model.Categories[0].Name != "Attack" {
+		t.Fatalf("expected first category to be Attack, got %q", model.Categories[0].Name)
+	}
+	if model.Categories[0].WinnerIdx != 0 {
+		t.Fatalf("expected Deck One to win Attack category, got idx %d", model.Categories[0].WinnerIdx)
 	}
 }

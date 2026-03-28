@@ -6,14 +6,30 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 )
 
-func getEvaluationCategories() []struct {
+type evaluationCategory struct {
 	name string
 	get  func(evaluation.EvaluationResult) evaluation.CategoryScore
-} {
-	return []struct {
-		name string
-		get  func(evaluation.EvaluationResult) evaluation.CategoryScore
-	}{
+}
+
+type comparisonDeckRender struct {
+	Name   string
+	Result evaluation.EvaluationResult
+}
+
+type comparisonCategoryRender struct {
+	Name      string
+	Scores    []evaluation.CategoryScore
+	WinnerIdx int
+}
+
+type comparisonRenderModel struct {
+	Decks          []comparisonDeckRender
+	Categories     []comparisonCategoryRender
+	BestOverallIdx int
+}
+
+func getEvaluationCategories() []evaluationCategory {
+	return []evaluationCategory{
 		{"Attack", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Attack }},
 		{"Defense", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Defense }},
 		{"Synergy", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Synergy }},
@@ -46,6 +62,44 @@ func findBestOverallDeck(results []evaluation.EvaluationResult) int {
 		}
 	}
 	return bestIdx
+}
+
+func buildComparisonRenderModel(names []string, results []evaluation.EvaluationResult) comparisonRenderModel {
+	decks := make([]comparisonDeckRender, len(results))
+	for i, result := range results {
+		decks[i] = comparisonDeckRender{
+			Name:   names[i],
+			Result: result,
+		}
+	}
+
+	categoryDefs := getEvaluationCategories()
+	categories := make([]comparisonCategoryRender, 0, len(categoryDefs))
+	for _, category := range categoryDefs {
+		categoryScores := make([]evaluation.CategoryScore, len(results))
+		bestIdx := 0
+		bestScore := -1.0
+		for i, result := range results {
+			score := category.get(result)
+			categoryScores[i] = score
+			if score.Score > bestScore {
+				bestScore = score.Score
+				bestIdx = i
+			}
+		}
+
+		categories = append(categories, comparisonCategoryRender{
+			Name:      category.name,
+			Scores:    categoryScores,
+			WinnerIdx: bestIdx,
+		})
+	}
+
+	return comparisonRenderModel{
+		Decks:          decks,
+		Categories:     categories,
+		BestOverallIdx: findBestOverallDeck(results),
+	}
 }
 
 func truncate(s string, maxLen int) string {

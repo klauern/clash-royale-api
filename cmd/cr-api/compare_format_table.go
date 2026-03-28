@@ -12,38 +12,40 @@ import (
 //nolint:staticcheck // Keep explicit builder writes for formatter readability and parity.
 func formatComparisonTable(names []string, results []evaluation.EvaluationResult, verbose, showWinRate bool) string {
 	var sb strings.Builder
+	model := buildComparisonRenderModel(names, results)
 
 	sb.WriteString("╔════════════════════════════════════════════════════════════════════╗\n")
 	sb.WriteString("║                       DECK COMPARISON                                ║\n")
 	sb.WriteString("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
-	formatTableOverviewSection(&sb, names, results)
-	formatTableCategoryScoresSection(&sb, names, results)
-	formatTableBestInCategorySection(&sb, names, results)
+	formatTableOverviewSection(&sb, model)
+	formatTableCategoryScoresSection(&sb, model)
+	formatTableBestInCategorySection(&sb, model)
 	if showWinRate {
-		formatTableWinRateSection(&sb, names, results)
+		formatTableWinRateSection(&sb, model)
 	}
-	formatTableDeckCompositionSection(&sb, names, results)
+	formatTableDeckCompositionSection(&sb, model)
 
 	if verbose {
-		formatTableVerboseAnalysisSection(&sb, names, results)
+		formatTableVerboseAnalysisSection(&sb, model)
 	}
 
 	return sb.String()
 }
 
-func formatTableOverviewSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableOverviewSection(sb *strings.Builder, model comparisonRenderModel) {
 	sb.WriteString("📊 OVERVIEW\n")
 	sb.WriteString("════════════\n\n")
 	sb.WriteString(fmt.Sprintf("%-15s", "Deck"))
-	for _, name := range names {
-		sb.WriteString(fmt.Sprintf(" | %-20s", truncate(name, 20)))
+	for _, deck := range model.Decks {
+		sb.WriteString(fmt.Sprintf(" | %-20s", truncate(deck.Name, 20)))
 	}
 	sb.WriteString("\n")
-	sb.WriteString(strings.Repeat("─", 15+23*len(names)) + "\n")
+	sb.WriteString(strings.Repeat("─", 15+23*len(model.Decks)) + "\n")
 
 	sb.WriteString(fmt.Sprintf("%-15s", "Overall Score"))
-	for _, r := range results {
+	for _, deck := range model.Decks {
+		r := deck.Result
 		stars := calculateStars(r.OverallScore)
 		rating := formatStarsDisplay(stars)
 		sb.WriteString(fmt.Sprintf(" | %.2f %s %-13s", r.OverallScore, rating, r.OverallRating))
@@ -51,33 +53,33 @@ func formatTableOverviewSection(sb *strings.Builder, names []string, results []e
 	sb.WriteString("\n")
 
 	sb.WriteString(fmt.Sprintf("%-15s", "Avg Elixir"))
-	for _, r := range results {
+	for _, deck := range model.Decks {
+		r := deck.Result
 		sb.WriteString(fmt.Sprintf(" | %-20.2f", r.AvgElixir))
 	}
 	sb.WriteString("\n")
 
 	sb.WriteString(fmt.Sprintf("%-15s", "Archetype"))
-	for _, r := range results {
+	for _, deck := range model.Decks {
+		r := deck.Result
 		sb.WriteString(fmt.Sprintf(" | %-20s", r.DetectedArchetype))
 	}
 	sb.WriteString("\n\n")
 }
 
-func formatTableCategoryScoresSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableCategoryScoresSection(sb *strings.Builder, model comparisonRenderModel) {
 	sb.WriteString("📈 CATEGORY SCORES\n")
 	sb.WriteString("══════════════════\n\n")
 	sb.WriteString(fmt.Sprintf("%-15s", "Category"))
-	for _, name := range names {
-		sb.WriteString(fmt.Sprintf(" | %-20s", truncate(name, 20)))
+	for _, deck := range model.Decks {
+		sb.WriteString(fmt.Sprintf(" | %-20s", truncate(deck.Name, 20)))
 	}
 	sb.WriteString("\n")
-	sb.WriteString(strings.Repeat("─", 15+23*len(names)) + "\n")
+	sb.WriteString(strings.Repeat("─", 15+23*len(model.Decks)) + "\n")
 
-	categories := getEvaluationCategories()
-	for _, cat := range categories {
-		sb.WriteString(fmt.Sprintf("%-15s", cat.name))
-		for _, r := range results {
-			score := cat.get(r)
+	for _, category := range model.Categories {
+		sb.WriteString(fmt.Sprintf("%-15s", category.Name))
+		for _, score := range category.Scores {
 			rating := formatStarsDisplay(score.Stars)
 			sb.WriteString(fmt.Sprintf(" | %.1f %s %-14s", score.Score, rating, score.Rating))
 		}
@@ -86,29 +88,28 @@ func formatTableCategoryScoresSection(sb *strings.Builder, names []string, resul
 	sb.WriteString("\n")
 }
 
-func formatTableBestInCategorySection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableBestInCategorySection(sb *strings.Builder, model comparisonRenderModel) {
 	sb.WriteString("🏆 BEST IN CATEGORY\n")
 	sb.WriteString("══════════════════\n\n")
 
-	bestOverallIdx := findBestOverallDeck(results)
-	sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", "Overall", names[bestOverallIdx], results[bestOverallIdx].OverallScore))
+	bestOverall := model.Decks[model.BestOverallIdx]
+	sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", "Overall", bestOverall.Name, bestOverall.Result.OverallScore))
 
-	categories := getEvaluationCategories()
-
-	for _, cat := range categories {
-		bestIdx := findBestDeckIndex(results, cat.get)
-		bestScore := cat.get(results[bestIdx]).Score
-		sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", cat.name, names[bestIdx], bestScore))
+	for _, category := range model.Categories {
+		winner := model.Decks[category.WinnerIdx]
+		bestScore := category.Scores[category.WinnerIdx].Score
+		sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", category.Name, winner.Name, bestScore))
 	}
 	sb.WriteString("\n")
 }
 
-func formatTableWinRateSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableWinRateSection(sb *strings.Builder, model comparisonRenderModel) {
 	sb.WriteString("🎯 PREDICTED WIN RATE (score-based estimate)\n")
 	sb.WriteString("═════════════════════════════════════════════\n\n")
-	for i, r := range results {
+	for _, deck := range model.Decks {
+		r := deck.Result
 		predicted := estimateWinRateFromScore(r.OverallScore)
-		sb.WriteString(fmt.Sprintf("%-20s: %5.1f%%\n", truncate(names[i], 20), predicted))
+		sb.WriteString(fmt.Sprintf("%-20s: %5.1f%%\n", truncate(deck.Name, 20), predicted))
 	}
 	sb.WriteString("\n")
 }
@@ -118,11 +119,12 @@ func estimateWinRateFromScore(score float64) float64 {
 	return math.Max(30.0, math.Min(70.0, estimated))
 }
 
-func formatTableDeckCompositionSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableDeckCompositionSection(sb *strings.Builder, model comparisonRenderModel) {
 	sb.WriteString("🃏 DECK COMPOSITION\n")
 	sb.WriteString("══════════════════\n\n")
-	for i, r := range results {
-		sb.WriteString(fmt.Sprintf("%s:\n", names[i]))
+	for _, deck := range model.Decks {
+		r := deck.Result
+		sb.WriteString(fmt.Sprintf("%s:\n", deck.Name))
 		for j, card := range r.Deck {
 			if j > 0 && j%4 == 0 {
 				sb.WriteString("\n")
@@ -133,12 +135,13 @@ func formatTableDeckCompositionSection(sb *strings.Builder, names []string, resu
 	}
 }
 
-func formatTableVerboseAnalysisSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableVerboseAnalysisSection(sb *strings.Builder, model comparisonRenderModel) {
 	sb.WriteString("📋 DETAILED ANALYSIS\n")
 	sb.WriteString("════════════════════\n\n")
 
-	for i, r := range results {
-		fmt.Fprintf(sb, "═══ %s ═══\n\n", names[i])
+	for _, deck := range model.Decks {
+		r := deck.Result
+		fmt.Fprintf(sb, "═══ %s ═══\n\n", deck.Name)
 
 		fmt.Fprintf(sb, "Defense (%.1f/10.0): %s\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating)
 		for _, detail := range r.DefenseAnalysis.Details {

@@ -14,9 +14,10 @@ func TestFormatReportRankingsSortsByOverallScore(t *testing.T) {
 		{OverallScore: 8.9, OverallRating: "Excellent"},
 		{OverallScore: 7.2, OverallRating: "Strong"},
 	}
+	model := buildComparisonRenderModel(names, results)
 
 	var sb strings.Builder
-	formatReportRankings(&sb, names, results)
+	formatReportRankings(&sb, model)
 	report := sb.String()
 
 	first := strings.Index(report, "🥇 **Deck B**")
