@@ -93,12 +93,8 @@ func formatTableBestInCategorySection(sb *strings.Builder, names []string, resul
 	bestOverallIdx := findBestOverallDeck(results)
 	sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", "Overall", names[bestOverallIdx], results[bestOverallIdx].OverallScore))
 
-	categories := getEvaluationCategories()
-
-	for _, cat := range categories {
-		bestIdx := findBestDeckIndex(results, cat.get)
-		bestScore := cat.get(results[bestIdx]).Score
-		sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", cat.name, names[bestIdx], bestScore))
+	for _, winner := range computeCategoryWinners(results) {
+		sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", winner.category, names[winner.bestIdx], winner.score.Score))
 	}
 	sb.WriteString("\n")
 }

@@ -111,3 +111,18 @@ func TestFormatReportDetailedScoreComparison(t *testing.T) {
 		}
 	}
 }
+
+func TestComputeCategoryWinners(t *testing.T) {
+	_, results := sampleCompareResults()
+	winners := computeCategoryWinners(results)
+
+	if len(winners) != len(getEvaluationCategories()) {
+		t.Fatalf("expected %d winners, got %d", len(getEvaluationCategories()), len(winners))
+	}
+
+	for _, winner := range winners {
+		if winner.bestIdx != 0 {
+			t.Fatalf("expected deck 0 to win category %q, got %d", winner.category, winner.bestIdx)
+		}
+	}
+}

@@ -68,12 +68,8 @@ func formatMarkdownCategoryScoresSection(sb *strings.Builder, names []string, re
 
 func formatMarkdownBestInCategorySection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## 🏆 Best in Category\n\n")
-	categories := getEvaluationCategories()
-
-	for _, cat := range categories {
-		bestIdx := findBestDeckIndex(results, cat.get)
-		bestScore := cat.get(results[bestIdx]).Score
-		sb.WriteString(fmt.Sprintf("- **%s**: %s (%.2f)\n", cat.name, names[bestIdx], bestScore))
+	for _, winner := range computeCategoryWinners(results) {
+		sb.WriteString(fmt.Sprintf("- **%s**: %s (%.2f)\n", winner.category, names[winner.bestIdx], winner.score.Score))
 	}
 	sb.WriteString("\n")
 }
