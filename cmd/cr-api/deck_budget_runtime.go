@@ -15,7 +15,7 @@ import (
 	"github.com/urfave/cli/v3"
 )
 
-//nolint:gocyclo,funlen // CLI orchestration path retained pending modular decomposition in clash-royale-api-sb3q.
+//nolint:gocyclo,funlen // CLI orchestration path retained pending modular decomposition in clash-royale-api-ar0w.
 func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	maxCards := cmd.Int("max-cards")

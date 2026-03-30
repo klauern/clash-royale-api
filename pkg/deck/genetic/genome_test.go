@@ -389,7 +389,7 @@ func TestDeckGenomeMutate(t *testing.T) {
 	t.Run("note: effectiveness tests deferred", func(t *testing.T) {
 		// Tests for mutation quality (synergy preservation, etc.)
 		// are deferred until fitness evaluation is implemented
-		t.Skip("Mutation quality tests depend on fitness function (task clash-royale-api-hj9j.2)")
+		t.Skip("Mutation quality tests depend on fitness function (task clash-royale-api-qrbf)")
 	})
 }
 

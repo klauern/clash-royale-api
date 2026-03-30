@@ -520,7 +520,7 @@ func sortUpgradeImpactsByScore(impacts []DeckCardUpgrade) {
 
 // displayDeckUpgradeImpactAnalysis displays the upgrade impact analysis for deck cards
 //
-//nolint:funlen // Output formatting block kept cohesive; broader extraction tracked in clash-royale-api-sb3q.
+//nolint:funlen // Output formatting block kept cohesive; broader extraction tracked in clash-royale-api-ar0w.
 func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCardUpgrade, topN int, playerName, playerTag string) {
 	printf("\n")
 	printf("╔══════════════════════════════════════════════════════════════════════╗\n")
