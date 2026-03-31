@@ -1,0 +1,2 @@
+{"id":"int-18c3cf67","kind":"field_change","created_at":"2026-03-31T05:02:01.268185Z","actor":"Nick Klauer","issue_id":"clash-royale-api-8sr","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
+{"id":"int-a05cb212","kind":"field_change","created_at":"2026-03-31T05:03:32.331004Z","actor":"Nick Klauer","issue_id":"clash-royale-api-8sr","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Completed: runtime loaders now reuse loadOfflineAnalysisFromFlags in suite and builder paths"}}

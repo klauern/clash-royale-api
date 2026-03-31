@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -124,23 +123,14 @@ func loadSuitePlayerDataFromAnalysis(builder *deck.Builder, tag, dataDir string,
 	if verbose {
 		printf("Building deck suite from offline analysis for player %s\n", tag)
 	}
-	analysisDir := filepath.Join(dataDir, "analysis")
-	loadedAnalysis, err := builder.LoadLatestAnalysis(tag, analysisDir)
+	loaded, err := loadOfflineAnalysisFromFlags(builder, tag, dataDir, "", "", verbose)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
-	}
-	playerName := loadedAnalysis.PlayerName
-	if playerName == "" {
-		playerName = tag
-	}
-	playerTag := loadedAnalysis.PlayerTag
-	if playerTag == "" {
-		playerTag = tag
+		return nil, err
 	}
 	return &suitePlayerData{
-		CardAnalysis: *loadedAnalysis,
-		PlayerName:   playerName,
-		PlayerTag:    playerTag,
+		CardAnalysis: loaded.CardAnalysis,
+		PlayerName:   loaded.PlayerName,
+		PlayerTag:    loaded.PlayerTag,
 	}, nil
 }
 
