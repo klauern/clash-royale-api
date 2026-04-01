@@ -86,7 +86,7 @@ func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, cons
 
 // runPhase1BuildDeckVariations builds deck variations for the analysis suite
 //
-//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
+//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-2nl.
 func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string, boostedLevelOverrides map[string]int) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
 	decksDir := filepath.Join(outputDir, "decks")
 	if err := os.MkdirAll(decksDir, 0o755); err != nil {
@@ -202,20 +202,20 @@ func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, st
 func toSuiteDeckSummaries(builtDecks []suiteDeckInfo) []deck.SuiteDeckSummary {
 	summaries := make([]deck.SuiteDeckSummary, 0, len(builtDecks))
 	for _, builtDeck := range builtDecks {
-		summaries = append(summaries, deck.SuiteDeckSummary{
-			Strategy:  builtDeck.Strategy,
-			Variation: builtDeck.Variation,
-			Cards:     builtDeck.Cards,
-			AvgElixir: builtDeck.AvgElixir,
-			FilePath:  builtDeck.FilePath,
-		})
+		summaries = append(summaries, newSuiteDeckSummary(
+			builtDeck.Strategy,
+			builtDeck.Variation,
+			builtDeck.Cards,
+			builtDeck.AvgElixir,
+			builtDeck.FilePath,
+		))
 	}
 	return summaries
 }
 
 // runPhase2EvaluateAllDecks evaluates all built decks for the analysis suite
 //
-//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
+//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-2nl.
 func runPhase2EvaluateAllDecks(ctx context.Context, builtDecks []suiteDeckInfo, playerData *suitePlayerData, outputDir, tag, apiToken string, fromAnalysis, verbose bool, timestamp string, boostedLevelOverrides map[string]int) ([]suiteEvalResult, string, error) {
 	evaluationsDir := filepath.Join(outputDir, "evaluations")
 	if err := os.MkdirAll(evaluationsDir, 0o755); err != nil {
@@ -449,7 +449,7 @@ func runPhase3CompareTopPerformers(results []suiteEvalResult, topN int, outputDi
 // (3) Compare top performers using compare logic
 // (4) Generate comprehensive markdown report
 //
-//nolint:funlen,gocognit,gocyclo,gocritic,dupl // Legacy orchestration path pending extraction in clash-royale-api-1g1r.
+//nolint:funlen,gocognit,gocyclo,gocritic,dupl // Legacy orchestration path pending extraction in clash-royale-api-2nl.
 func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Extract flags
 	tag := cmd.String("tag")
