@@ -43,16 +43,14 @@ func battleLogHeaders() []string {
 
 // battleLogExport exports battle log data to CSV.
 func battleLogExport(dataDir string, data any) error {
-	battles, ok := data.([]clashroyale.Battle)
-	if !ok {
-		return fmt.Errorf("expected []Battle type, got %T", data)
+	battles, err := assertCSVExportType[[]clashroyale.Battle](data, "[]Battle")
+	if err != nil {
+		return err
 	}
 
 	rows := makeBattleLogRows(battles)
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "battle_log.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVBattlesSubdir, battleLogHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVBattlesSubdir, "battle_log.csv", battleLogHeaders(), rows)
 }
 
 func makeBattleLogRows(battles []clashroyale.Battle) [][]string {
@@ -133,9 +131,9 @@ func battleSummaryHeaders() []string {
 
 // battleSummaryExport exports battle summary statistics to CSV.
 func battleSummaryExport(dataDir string, data any) error {
-	battles, ok := data.([]clashroyale.Battle)
-	if !ok {
-		return fmt.Errorf("expected []Battle type, got %T", data)
+	battles, err := assertCSVExportType[[]clashroyale.Battle](data, "[]Battle")
+	if err != nil {
+		return err
 	}
 
 	// If no battles, return early
@@ -146,12 +144,9 @@ func battleSummaryExport(dataDir string, data any) error {
 	stats := summarizeBattles(battles)
 	row := stats.toCSVRow()
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "battle_summary.csv"}
-
 	// Create a single-row CSV
 	rows := [][]string{row}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVBattlesSubdir, battleSummaryHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVBattlesSubdir, "battle_summary.csv", battleSummaryHeaders(), rows)
 }
 
 type battleSummaryStats struct {
