@@ -35,9 +35,9 @@ func archetypeHeaders() []string {
 
 // archetypeExport exports archetype analysis to CSV
 func archetypeExport(dataDir string, data any) error {
-	result, ok := data.(*archetypes.ArchetypeAnalysisResult)
-	if !ok {
-		return fmt.Errorf("expected ArchetypeAnalysisResult, got %T", data)
+	result, err := assertCSVExportType[*archetypes.ArchetypeAnalysisResult](data, "ArchetypeAnalysisResult")
+	if err != nil {
+		return err
 	}
 
 	var rows [][]string
@@ -60,9 +60,7 @@ func archetypeExport(dataDir string, data any) error {
 		rows = append(rows, row)
 	}
 
-	exporter := &BaseExporter{FilenameBase: "archetype_comparison.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVArchetypesSubdir)
-	return exporter.writeCSV(filePath, archetypeHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVArchetypesSubdir, "archetype_comparison.csv", archetypeHeaders(), rows)
 }
 
 // NewArchetypeDetailsExporter creates per-card upgrade details exporter
@@ -91,9 +89,9 @@ func archetypeDetailsHeaders() []string {
 
 // archetypeDetailsExport exports per-card upgrade details
 func archetypeDetailsExport(dataDir string, data any) error {
-	result, ok := data.(*archetypes.ArchetypeAnalysisResult)
-	if !ok {
-		return fmt.Errorf("expected ArchetypeAnalysisResult, got %T", data)
+	result, err := assertCSVExportType[*archetypes.ArchetypeAnalysisResult](data, "ArchetypeAnalysisResult")
+	if err != nil {
+		return err
 	}
 
 	var rows [][]string
@@ -115,9 +113,7 @@ func archetypeDetailsExport(dataDir string, data any) error {
 		}
 	}
 
-	exporter := &BaseExporter{FilenameBase: "archetype_upgrade_details.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVArchetypesSubdir)
-	return exporter.writeCSV(filePath, archetypeDetailsHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVArchetypesSubdir, "archetype_upgrade_details.csv", archetypeDetailsHeaders(), rows)
 }
 
 // formatDeckCSV formats deck cards as comma-separated string

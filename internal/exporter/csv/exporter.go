@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/klauer/clash-royale-api/go/internal/csvutil"
@@ -25,6 +26,22 @@ func (e *BaseExporter) csvFilePath(dataDir, subdir string) string {
 // writeCSVInSubdir writes CSV data to the export file under the given CSV subdirectory.
 func (e *BaseExporter) writeCSVInSubdir(dataDir, subdir string, headers []string, rows [][]string) error {
 	return e.writeCSV(e.csvFilePath(dataDir, subdir), headers, rows)
+}
+
+// assertCSVExportType validates and type-asserts CSV exporter input payloads.
+func assertCSVExportType[T any](data any, expectedType string) (T, error) {
+	typedData, ok := data.(T)
+	if !ok {
+		var zero T
+		return zero, fmt.Errorf("expected %s type, got %T", expectedType, data)
+	}
+	return typedData, nil
+}
+
+// writeCSVRows creates a one-off exporter and writes rows into the target subdirectory.
+func writeCSVRows(dataDir, subdir, filename string, headers []string, rows [][]string) error {
+	exporter := &BaseExporter{FilenameBase: filename}
+	return exporter.writeCSVInSubdir(dataDir, subdir, headers, rows)
 }
 
 // CSVExporter wraps a BaseExporter to implement the exporter.Exporter interface

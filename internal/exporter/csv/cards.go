@@ -32,9 +32,9 @@ func cardsHeaders() []string {
 
 // cardsExport exports card data to CSV
 func cardsExport(dataDir string, data any) error {
-	cards, ok := data.([]clashroyale.Card)
-	if !ok {
-		return fmt.Errorf("expected []Card type, got %T", data)
+	cards, err := assertCSVExportType[[]clashroyale.Card](data, "[]Card")
+	if err != nil {
+		return err
 	}
 
 	// Prepare CSV rows
@@ -53,8 +53,5 @@ func cardsExport(dataDir string, data any) error {
 		rows = append(rows, row)
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "cards.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVReferenceSubdir)
-	return exporter.writeCSV(filePath, cardsHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVReferenceSubdir, "cards.csv", cardsHeaders(), rows)
 }
