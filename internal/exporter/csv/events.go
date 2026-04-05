@@ -23,9 +23,9 @@ func eventDeckHeaders() []string {
 
 // eventDeckExport exports event deck data to CSV
 func eventDeckExport(dataDir string, data any) error {
-	collection, ok := data.(*events.EventDeckCollection)
-	if !ok {
-		return fmt.Errorf("expected EventDeckCollection type, got %T", data)
+	collection, err := assertCSVExportType[*events.EventDeckCollection](data)
+	if err != nil {
+		return err
 	}
 
 	// Prepare CSV rows
@@ -35,9 +35,7 @@ func eventDeckExport(dataDir string, data any) error {
 		rows = append(rows, events.EventDeckCSVRow(deck))
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "event_decks.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVEventsSubdir, eventDeckHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVEventsSubdir, "event_decks.csv", eventDeckHeaders(), rows)
 }
 
 // NewEventBattlesExporter creates a new event battles CSV exporter
@@ -71,9 +69,9 @@ func eventBattlesHeaders() []string {
 
 // eventBattlesExport exports event battle data to CSV
 func eventBattlesExport(dataDir string, data any) error {
-	collection, ok := data.(*events.EventDeckCollection)
-	if !ok {
-		return fmt.Errorf("expected EventDeckCollection type, got %T", data)
+	collection, err := assertCSVExportType[*events.EventDeckCollection](data)
+	if err != nil {
+		return err
 	}
 
 	// Prepare CSV rows
@@ -107,7 +105,5 @@ func eventBattlesExport(dataDir string, data any) error {
 		}
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "event_battles.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVEventsSubdir, eventBattlesHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVEventsSubdir, "event_battles.csv", eventBattlesHeaders(), rows)
 }
