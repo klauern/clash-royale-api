@@ -213,37 +213,22 @@ func TestCSVExporter_Export_Error(t *testing.T) {
 	}
 }
 
-func TestAssertCSVExportType(t *testing.T) {
-	t.Run("matching type", func(t *testing.T) {
-		got, err := assertCSVExportType[[]int]([]int{1, 2, 3})
-		if err != nil {
-			t.Fatalf("assertCSVExportType() unexpected error: %v", err)
-		}
-		if len(got) != 3 {
-			t.Fatalf("assertCSVExportType() length = %d, want 3", len(got))
-		}
-	})
+func TestCSVTypeMismatchError(t *testing.T) {
+	err := csvTypeMismatchError(reflect.TypeOf([]int(nil)), "wrong type")
 
-	t.Run("mismatch type returns typed error", func(t *testing.T) {
-		_, err := assertCSVExportType[[]int]("wrong type")
-		if err == nil {
-			t.Fatal("assertCSVExportType() expected error, got nil")
-		}
+	var mismatchErr CSVTypeMismatchError
+	if !errors.As(err, &mismatchErr) {
+		t.Fatalf("csvTypeMismatchError() error %T is not CSVTypeMismatchError", err)
+	}
 
-		var mismatchErr CSVTypeMismatchError
-		if !errors.As(err, &mismatchErr) {
-			t.Fatalf("assertCSVExportType() error %T is not CSVTypeMismatchError", err)
-		}
-
-		expected := reflect.TypeOf([]int(nil))
-		actual := reflect.TypeOf("wrong type")
-		if mismatchErr.Expected != expected {
-			t.Fatalf("Expected type = %v, want %v", mismatchErr.Expected, expected)
-		}
-		if mismatchErr.Actual != actual {
-			t.Fatalf("Actual type = %v, want %v", mismatchErr.Actual, actual)
-		}
-	})
+	expected := reflect.TypeOf([]int(nil))
+	actual := reflect.TypeOf("wrong type")
+	if mismatchErr.Expected != expected {
+		t.Fatalf("Expected type = %v, want %v", mismatchErr.Expected, expected)
+	}
+	if mismatchErr.Actual != actual {
+		t.Fatalf("Actual type = %v, want %v", mismatchErr.Actual, actual)
+	}
 }
 
 // Helper function to compare string slices

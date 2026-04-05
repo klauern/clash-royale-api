@@ -75,16 +75,9 @@ func typeString(t reflect.Type) string {
 	return t.String()
 }
 
-//nolint:ireturn // Generic helper intentionally returns the concrete caller-requested type parameter.
-func assertCSVExportType[T any](data any) (T, error) { //nolint:ireturn
-	typed, ok := data.(T)
-	if ok {
-		return typed, nil
-	}
-
-	var zero T
-	return zero, CSVTypeMismatchError{
-		Expected: reflect.TypeOf(zero),
+func csvTypeMismatchError(expected reflect.Type, data any) error {
+	return CSVTypeMismatchError{
+		Expected: expected,
 		Actual:   reflect.TypeOf(data),
 	}
 }

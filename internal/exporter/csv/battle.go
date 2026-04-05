@@ -2,6 +2,7 @@ package csv
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
@@ -43,9 +44,9 @@ func battleLogHeaders() []string {
 
 // battleLogExport exports battle log data to CSV.
 func battleLogExport(dataDir string, data any) error {
-	battles, err := assertCSVExportType[[]clashroyale.Battle](data)
-	if err != nil {
-		return err
+	battles, ok := data.([]clashroyale.Battle)
+	if !ok {
+		return csvTypeMismatchError(reflect.TypeOf([]clashroyale.Battle(nil)), data)
 	}
 
 	rows := makeBattleLogRows(battles)
@@ -130,9 +131,9 @@ func battleSummaryHeaders() []string {
 
 // battleSummaryExport exports battle summary statistics to CSV.
 func battleSummaryExport(dataDir string, data any) error {
-	battles, err := assertCSVExportType[[]clashroyale.Battle](data)
-	if err != nil {
-		return err
+	battles, ok := data.([]clashroyale.Battle)
+	if !ok {
+		return csvTypeMismatchError(reflect.TypeOf([]clashroyale.Battle(nil)), data)
 	}
 
 	// If no battles, return early

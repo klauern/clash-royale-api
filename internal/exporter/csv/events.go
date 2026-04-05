@@ -2,6 +2,7 @@ package csv
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/events"
@@ -23,9 +24,9 @@ func eventDeckHeaders() []string {
 
 // eventDeckExport exports event deck data to CSV
 func eventDeckExport(dataDir string, data any) error {
-	collection, err := assertCSVExportType[*events.EventDeckCollection](data)
-	if err != nil {
-		return err
+	collection, ok := data.(*events.EventDeckCollection)
+	if !ok {
+		return csvTypeMismatchError(reflect.TypeOf((*events.EventDeckCollection)(nil)), data)
 	}
 
 	// Prepare CSV rows
@@ -69,9 +70,9 @@ func eventBattlesHeaders() []string {
 
 // eventBattlesExport exports event battle data to CSV
 func eventBattlesExport(dataDir string, data any) error {
-	collection, err := assertCSVExportType[*events.EventDeckCollection](data)
-	if err != nil {
-		return err
+	collection, ok := data.(*events.EventDeckCollection)
+	if !ok {
+		return csvTypeMismatchError(reflect.TypeOf((*events.EventDeckCollection)(nil)), data)
 	}
 
 	// Prepare CSV rows

@@ -2,6 +2,7 @@ package csv
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
@@ -66,9 +67,9 @@ func playerHeaders() []string {
 
 // playerExport exports player data to CSV.
 func playerExport(dataDir string, data any) error {
-	player, err := assertCSVExportType[*clashroyale.Player](data)
-	if err != nil {
-		return err
+	player, ok := data.(*clashroyale.Player)
+	if !ok {
+		return csvTypeMismatchError(reflect.TypeOf((*clashroyale.Player)(nil)), data)
 	}
 	rows := [][]string{playerCSVRow(player)}
 
@@ -167,9 +168,9 @@ func playerCardsHeaders() []string {
 
 // playerCardsExport exports detailed player card information to CSV
 func playerCardsExport(dataDir string, data any) error {
-	player, err := assertCSVExportType[*clashroyale.Player](data)
-	if err != nil {
-		return err
+	player, ok := data.(*clashroyale.Player)
+	if !ok {
+		return csvTypeMismatchError(reflect.TypeOf((*clashroyale.Player)(nil)), data)
 	}
 
 	// Prepare CSV rows
