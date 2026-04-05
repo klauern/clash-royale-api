@@ -1,7 +1,9 @@
 package csv
 
 import (
+	"fmt"
 	"path/filepath"
+	"reflect"
 
 	"github.com/klauer/clash-royale-api/go/internal/csvutil"
 	"github.com/klauer/clash-royale-api/go/internal/storage"
@@ -50,4 +52,37 @@ func NewCSVExporter(filename string, headers func() []string, exportFunc func(st
 		Filename:   func() string { return filename },
 		ExportFunc: exportFunc,
 	}
+}
+
+// CSVTypeMismatchError indicates a mismatch between expected and actual export payload type.
+type CSVTypeMismatchError struct {
+	Expected reflect.Type
+	Actual   reflect.Type
+}
+
+func (e CSVTypeMismatchError) Error() string {
+	return fmt.Sprintf(
+		"csv export type mismatch: expected %s, got %s",
+		typeString(e.Expected),
+		typeString(e.Actual),
+	)
+}
+
+func typeString(t reflect.Type) string {
+	if t == nil {
+		return "<nil>"
+	}
+	return t.String()
+}
+
+func csvTypeMismatchError(expected reflect.Type, data any) error {
+	return CSVTypeMismatchError{
+		Expected: expected,
+		Actual:   reflect.TypeOf(data),
+	}
+}
+
+func writeCSVRows(dataDir, subdir, filename string, headers []string, rows [][]string) error {
+	exporter := &BaseExporter{FilenameBase: filename}
+	return exporter.writeCSVInSubdir(dataDir, subdir, headers, rows)
 }

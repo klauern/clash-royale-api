@@ -2,6 +2,7 @@ package csv
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/events"
@@ -25,7 +26,7 @@ func eventDeckHeaders() []string {
 func eventDeckExport(dataDir string, data any) error {
 	collection, ok := data.(*events.EventDeckCollection)
 	if !ok {
-		return fmt.Errorf("expected EventDeckCollection type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf((*events.EventDeckCollection)(nil)), data)
 	}
 
 	// Prepare CSV rows
@@ -35,9 +36,7 @@ func eventDeckExport(dataDir string, data any) error {
 		rows = append(rows, events.EventDeckCSVRow(deck))
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "event_decks.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVEventsSubdir, eventDeckHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVEventsSubdir, "event_decks.csv", eventDeckHeaders(), rows)
 }
 
 // NewEventBattlesExporter creates a new event battles CSV exporter
@@ -73,7 +72,7 @@ func eventBattlesHeaders() []string {
 func eventBattlesExport(dataDir string, data any) error {
 	collection, ok := data.(*events.EventDeckCollection)
 	if !ok {
-		return fmt.Errorf("expected EventDeckCollection type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf((*events.EventDeckCollection)(nil)), data)
 	}
 
 	// Prepare CSV rows
@@ -107,7 +106,5 @@ func eventBattlesExport(dataDir string, data any) error {
 		}
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "event_battles.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVEventsSubdir, eventBattlesHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVEventsSubdir, "event_battles.csv", eventBattlesHeaders(), rows)
 }
