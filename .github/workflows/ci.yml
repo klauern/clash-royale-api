@@ -68,6 +68,8 @@ jobs:
         with:
           version: latest
           working-directory: .
+          skip-cache: true
+          skip-save-cache: true
           args: --timeout=10m --output.json.path=lint-report.json --output.html.path=lint-report.html
 
       - name: Upload lint reports
