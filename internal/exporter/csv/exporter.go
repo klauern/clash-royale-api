@@ -3,6 +3,7 @@ package csv
 import (
 	"fmt"
 	"path/filepath"
+	"reflect"
 
 	"github.com/klauer/clash-royale-api/go/internal/csvutil"
 	"github.com/klauer/clash-royale-api/go/internal/storage"
@@ -53,6 +54,28 @@ func NewCSVExporter(filename string, headers func() []string, exportFunc func(st
 	}
 }
 
+// CSVTypeMismatchError indicates a mismatch between expected and actual export payload type.
+type CSVTypeMismatchError struct {
+	Expected reflect.Type
+	Actual   reflect.Type
+}
+
+func (e CSVTypeMismatchError) Error() string {
+	return fmt.Sprintf(
+		"csv export type mismatch: expected %s, got %s",
+		typeString(e.Expected),
+		typeString(e.Actual),
+	)
+}
+
+func typeString(t reflect.Type) string {
+	if t == nil {
+		return "<nil>"
+	}
+	return t.String()
+}
+
+//nolint:ireturn // Generic helper intentionally returns the concrete caller-requested type parameter.
 func assertCSVExportType[T any](data any) (T, error) {
 	typed, ok := data.(T)
 	if ok {
@@ -60,7 +83,10 @@ func assertCSVExportType[T any](data any) (T, error) {
 	}
 
 	var zero T
-	return zero, fmt.Errorf("expected %T type, got %T", zero, data)
+	return zero, CSVTypeMismatchError{
+		Expected: reflect.TypeOf(zero),
+		Actual:   reflect.TypeOf(data),
+	}
 }
 
 func writeCSVRows(dataDir, subdir, filename string, headers []string, rows [][]string) error {
