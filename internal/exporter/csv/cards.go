@@ -7,10 +7,12 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
+const cardsFilename = "cards.csv"
+
 // NewCardsExporter creates a new cards CSV exporter
 func NewCardsExporter() *CSVExporter {
 	return NewCSVExporter(
-		"cards.csv",
+		cardsFilename,
 		cardsHeaders,
 		cardsExport,
 	)
@@ -32,7 +34,7 @@ func cardsHeaders() []string {
 
 // cardsExport exports card data to CSV
 func cardsExport(dataDir string, data any) error {
-	cards, err := assertCSVExportType[[]clashroyale.Card](data, "[]Card type")
+	cards, err := assertCSVExportType[[]clashroyale.Card](data)
 	if err != nil {
 		return err
 	}
@@ -54,5 +56,5 @@ func cardsExport(dataDir string, data any) error {
 	}
 
 	// Create exporter and write to file
-	return writeCSVRows(dataDir, storage.CSVReferenceSubdir, "cards.csv", cardsHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVReferenceSubdir, cardsFilename, cardsHeaders(), rows)
 }

@@ -53,11 +53,25 @@ func NewCSVExporter(filename string, headers func() []string, exportFunc func(st
 	}
 }
 
-func assertCSVExportType[T any](data any, expected string) (T, error) {
+// CSVTypeMismatchError indicates a value passed to an exporter had an unexpected type.
+type CSVTypeMismatchError struct {
+	Expected string
+	Actual   string
+}
+
+func (e *CSVTypeMismatchError) Error() string {
+	return fmt.Sprintf("expected %s, got %s", e.Expected, e.Actual)
+}
+
+//nolint:ireturn // Generic helper returns concrete caller-requested type parameter.
+func assertCSVExportType[T any](data any) (T, error) {
 	typed, ok := data.(T)
 	if !ok {
 		var zero T
-		return zero, fmt.Errorf("expected %s, got %T", expected, data)
+		return zero, &CSVTypeMismatchError{
+			Expected: fmt.Sprintf("%T", zero),
+			Actual:   fmt.Sprintf("%T", data),
+		}
 	}
 
 	return typed, nil

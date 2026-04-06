@@ -8,10 +8,17 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 )
 
+const (
+	cardAnalysisFilename      = "card_analysis.csv"
+	cardLevelsFilename        = "card_levels.csv"
+	upgradePrioritiesFilename = "upgrade_priorities.csv"
+	rarityBreakdownFilename   = "rarity_breakdown.csv"
+)
+
 // NewAnalysisExporter creates a new analysis CSV exporter
 func NewAnalysisExporter() *CSVExporter {
 	return NewCSVExporter(
-		"card_analysis.csv",
+		cardAnalysisFilename,
 		analysisHeaders,
 		analysisExport,
 	)
@@ -34,7 +41,7 @@ func analysisHeaders() []string {
 
 // analysisExport exports card analysis summary to CSV
 func analysisExport(dataDir string, data any) error {
-	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data, "CardAnalysis type")
+	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data)
 	if err != nil {
 		return err
 	}
@@ -55,13 +62,13 @@ func analysisExport(dataDir string, data any) error {
 	}
 
 	// Create exporter and write to file
-	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "card_analysis.csv", analysisHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, cardAnalysisFilename, analysisHeaders(), rows)
 }
 
 // NewCardLevelsExporter creates a new card levels CSV exporter
 func NewCardLevelsExporter() *CSVExporter {
 	return NewCSVExporter(
-		"card_levels.csv",
+		cardLevelsFilename,
 		cardLevelsHeaders,
 		cardLevelsExport,
 	)
@@ -89,7 +96,7 @@ func cardLevelsHeaders() []string {
 
 // cardLevelsExport exports detailed card levels to CSV
 func cardLevelsExport(dataDir string, data any) error {
-	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data, "CardAnalysis type")
+	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data)
 	if err != nil {
 		return err
 	}
@@ -123,13 +130,13 @@ func cardLevelsExport(dataDir string, data any) error {
 	}
 
 	// Create exporter and write to file
-	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "card_levels.csv", cardLevelsHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, cardLevelsFilename, cardLevelsHeaders(), rows)
 }
 
 // NewUpgradePrioritiesExporter creates a new upgrade priorities CSV exporter
 func NewUpgradePrioritiesExporter() *CSVExporter {
 	return NewCSVExporter(
-		"upgrade_priorities.csv",
+		upgradePrioritiesFilename,
 		upgradePrioritiesHeaders,
 		upgradePrioritiesExport,
 	)
@@ -155,7 +162,7 @@ func upgradePrioritiesHeaders() []string {
 
 // upgradePrioritiesExport exports upgrade priorities to CSV
 func upgradePrioritiesExport(dataDir string, data any) error {
-	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data, "CardAnalysis type")
+	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data)
 	if err != nil {
 		return err
 	}
@@ -191,13 +198,13 @@ func upgradePrioritiesExport(dataDir string, data any) error {
 	}
 
 	// Create exporter and write to file
-	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "upgrade_priorities.csv", upgradePrioritiesHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, upgradePrioritiesFilename, upgradePrioritiesHeaders(), rows)
 }
 
 // NewRarityBreakdownExporter creates a new rarity breakdown CSV exporter
 func NewRarityBreakdownExporter() *CSVExporter {
 	return NewCSVExporter(
-		"rarity_breakdown.csv",
+		rarityBreakdownFilename,
 		rarityBreakdownHeaders,
 		rarityBreakdownExport,
 	)
@@ -219,7 +226,7 @@ func rarityBreakdownHeaders() []string {
 
 // rarityBreakdownExport exports rarity breakdown to CSV
 func rarityBreakdownExport(dataDir string, data any) error {
-	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data, "CardAnalysis type")
+	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data)
 	if err != nil {
 		return err
 	}
@@ -242,5 +249,5 @@ func rarityBreakdownExport(dataDir string, data any) error {
 	}
 
 	// Create exporter and write to file
-	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "rarity_breakdown.csv", rarityBreakdownHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, rarityBreakdownFilename, rarityBreakdownHeaders(), rows)
 }

@@ -8,10 +8,15 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes"
 )
 
+const (
+	archetypeComparisonFilename     = "archetype_comparison.csv"
+	archetypeUpgradeDetailsFilename = "archetype_upgrade_details.csv"
+)
+
 // NewArchetypeExporter creates archetype comparison CSV exporter
 func NewArchetypeExporter() *CSVExporter {
 	return NewCSVExporter(
-		"archetype_comparison.csv",
+		archetypeComparisonFilename,
 		archetypeHeaders,
 		archetypeExport,
 	)
@@ -35,7 +40,7 @@ func archetypeHeaders() []string {
 
 // archetypeExport exports archetype analysis to CSV
 func archetypeExport(dataDir string, data any) error {
-	result, err := assertCSVExportType[*archetypes.ArchetypeAnalysisResult](data, "ArchetypeAnalysisResult")
+	result, err := assertCSVExportType[*archetypes.ArchetypeAnalysisResult](data)
 	if err != nil {
 		return err
 	}
@@ -60,13 +65,13 @@ func archetypeExport(dataDir string, data any) error {
 		rows = append(rows, row)
 	}
 
-	return writeCSVRows(dataDir, storage.CSVArchetypesSubdir, "archetype_comparison.csv", archetypeHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVArchetypesSubdir, archetypeComparisonFilename, archetypeHeaders(), rows)
 }
 
 // NewArchetypeDetailsExporter creates per-card upgrade details exporter
 func NewArchetypeDetailsExporter() *CSVExporter {
 	return NewCSVExporter(
-		"archetype_upgrade_details.csv",
+		archetypeUpgradeDetailsFilename,
 		archetypeDetailsHeaders,
 		archetypeDetailsExport,
 	)
@@ -89,7 +94,7 @@ func archetypeDetailsHeaders() []string {
 
 // archetypeDetailsExport exports per-card upgrade details
 func archetypeDetailsExport(dataDir string, data any) error {
-	result, err := assertCSVExportType[*archetypes.ArchetypeAnalysisResult](data, "ArchetypeAnalysisResult")
+	result, err := assertCSVExportType[*archetypes.ArchetypeAnalysisResult](data)
 	if err != nil {
 		return err
 	}
@@ -113,7 +118,7 @@ func archetypeDetailsExport(dataDir string, data any) error {
 		}
 	}
 
-	return writeCSVRows(dataDir, storage.CSVArchetypesSubdir, "archetype_upgrade_details.csv", archetypeDetailsHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVArchetypesSubdir, archetypeUpgradeDetailsFilename, archetypeDetailsHeaders(), rows)
 }
 
 // formatDeckCSV formats deck cards as comma-separated string
