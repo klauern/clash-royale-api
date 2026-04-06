@@ -34,9 +34,9 @@ func analysisHeaders() []string {
 
 // analysisExport exports card analysis summary to CSV
 func analysisExport(dataDir string, data any) error {
-	cardAnalysis, ok := data.(*analysis.CardAnalysis)
-	if !ok {
-		return fmt.Errorf("expected CardAnalysis type, got %T", data)
+	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data, "CardAnalysis type")
+	if err != nil {
+		return err
 	}
 
 	// Prepare CSV rows
@@ -55,9 +55,7 @@ func analysisExport(dataDir string, data any) error {
 	}
 
 	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "card_analysis.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
-	return exporter.writeCSV(filePath, analysisHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "card_analysis.csv", analysisHeaders(), rows)
 }
 
 // NewCardLevelsExporter creates a new card levels CSV exporter
@@ -91,9 +89,9 @@ func cardLevelsHeaders() []string {
 
 // cardLevelsExport exports detailed card levels to CSV
 func cardLevelsExport(dataDir string, data any) error {
-	cardAnalysis, ok := data.(*analysis.CardAnalysis)
-	if !ok {
-		return fmt.Errorf("expected CardAnalysis type, got %T", data)
+	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data, "CardAnalysis type")
+	if err != nil {
+		return err
 	}
 
 	// Prepare CSV rows
@@ -125,9 +123,7 @@ func cardLevelsExport(dataDir string, data any) error {
 	}
 
 	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "card_levels.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
-	return exporter.writeCSV(filePath, cardLevelsHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "card_levels.csv", cardLevelsHeaders(), rows)
 }
 
 // NewUpgradePrioritiesExporter creates a new upgrade priorities CSV exporter
@@ -159,9 +155,9 @@ func upgradePrioritiesHeaders() []string {
 
 // upgradePrioritiesExport exports upgrade priorities to CSV
 func upgradePrioritiesExport(dataDir string, data any) error {
-	cardAnalysis, ok := data.(*analysis.CardAnalysis)
-	if !ok {
-		return fmt.Errorf("expected CardAnalysis type, got %T", data)
+	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data, "CardAnalysis type")
+	if err != nil {
+		return err
 	}
 
 	// Prepare CSV rows
@@ -195,9 +191,7 @@ func upgradePrioritiesExport(dataDir string, data any) error {
 	}
 
 	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "upgrade_priorities.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
-	return exporter.writeCSV(filePath, upgradePrioritiesHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "upgrade_priorities.csv", upgradePrioritiesHeaders(), rows)
 }
 
 // NewRarityBreakdownExporter creates a new rarity breakdown CSV exporter
@@ -225,9 +219,9 @@ func rarityBreakdownHeaders() []string {
 
 // rarityBreakdownExport exports rarity breakdown to CSV
 func rarityBreakdownExport(dataDir string, data any) error {
-	cardAnalysis, ok := data.(*analysis.CardAnalysis)
-	if !ok {
-		return fmt.Errorf("expected CardAnalysis type, got %T", data)
+	cardAnalysis, err := assertCSVExportType[*analysis.CardAnalysis](data, "CardAnalysis type")
+	if err != nil {
+		return err
 	}
 
 	// Prepare CSV rows
@@ -248,7 +242,5 @@ func rarityBreakdownExport(dataDir string, data any) error {
 	}
 
 	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "rarity_breakdown.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
-	return exporter.writeCSV(filePath, rarityBreakdownHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "rarity_breakdown.csv", rarityBreakdownHeaders(), rows)
 }

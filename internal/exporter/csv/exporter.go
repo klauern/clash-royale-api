@@ -1,6 +1,7 @@
 package csv
 
 import (
+	"fmt"
 	"path/filepath"
 
 	"github.com/klauer/clash-royale-api/go/internal/csvutil"
@@ -50,4 +51,19 @@ func NewCSVExporter(filename string, headers func() []string, exportFunc func(st
 		Filename:   func() string { return filename },
 		ExportFunc: exportFunc,
 	}
+}
+
+func assertCSVExportType[T any](data any, expected string) (T, error) {
+	typed, ok := data.(T)
+	if !ok {
+		var zero T
+		return zero, fmt.Errorf("expected %s, got %T", expected, data)
+	}
+
+	return typed, nil
+}
+
+func writeCSVRows(dataDir, subdir, filename string, headers []string, rows [][]string) error {
+	exporter := &BaseExporter{FilenameBase: filename}
+	return exporter.writeCSVInSubdir(dataDir, subdir, headers, rows)
 }
