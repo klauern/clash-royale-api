@@ -180,7 +180,15 @@ func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, st
 			Variations:     variations,
 			GenerationTime: buildDuration.String(),
 		},
-		toSuiteDeckSummaries(builtDecks),
+		mapSuiteDeckSummaries(builtDecks, func(builtDeck suiteDeckInfo) (deck.SuiteDeckSummary, bool) {
+			return deck.SuiteDeckSummary{
+				Strategy:  builtDeck.Strategy,
+				Variation: builtDeck.Variation,
+				Cards:     builtDeck.Cards,
+				AvgElixir: builtDeck.AvgElixir,
+				FilePath:  builtDeck.FilePath,
+			}, true
+		}),
 	)
 
 	if err := deck.WriteSuiteSummary(suiteSummaryPath, suiteSummary); err != nil {
@@ -197,20 +205,6 @@ func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, st
 	}
 
 	return builtDecks, playerData, successCount, failCount, suiteSummaryPath, nil
-}
-
-func toSuiteDeckSummaries(builtDecks []suiteDeckInfo) []deck.SuiteDeckSummary {
-	summaries := make([]deck.SuiteDeckSummary, 0, len(builtDecks))
-	for _, builtDeck := range builtDecks {
-		summaries = append(summaries, deck.SuiteDeckSummary{
-			Strategy:  builtDeck.Strategy,
-			Variation: builtDeck.Variation,
-			Cards:     builtDeck.Cards,
-			AvgElixir: builtDeck.AvgElixir,
-			FilePath:  builtDeck.FilePath,
-		})
-	}
-	return summaries
 }
 
 // runPhase2EvaluateAllDecks evaluates all built decks for the analysis suite

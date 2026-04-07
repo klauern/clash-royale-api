@@ -85,6 +85,18 @@ type deckBuildFlags struct {
 	IdealDeck         bool
 }
 
+func mapSuiteDeckSummaries[T any](items []T, mapFn func(T) (deck.SuiteDeckSummary, bool)) []deck.SuiteDeckSummary {
+	summaries := make([]deck.SuiteDeckSummary, 0, len(items))
+	for _, item := range items {
+		summary, ok := mapFn(item)
+		if !ok {
+			continue
+		}
+		summaries = append(summaries, summary)
+	}
+	return summaries
+}
+
 func parseDeckBuildFlags(cmd *cli.Command) deckBuildFlags {
 	return deckBuildFlags{
 		Tag:               cmd.String("tag"),
@@ -313,19 +325,18 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	if saveData && successful > 0 {
 		timestamp := time.Now().Format("20060102_150405")
 		summaryPath := filepath.Join(outputDir, deck.SuiteSummaryFilename(timestamp, playerData.PlayerTag))
-		summaries := make([]deck.SuiteDeckSummary, 0, len(results))
-		for _, result := range results {
+		summaries := mapSuiteDeckSummaries(results, func(result deckResult) (deck.SuiteDeckSummary, bool) {
 			if result.Deck == nil {
-				continue
+				return deck.SuiteDeckSummary{}, false
 			}
-			summaries = append(summaries, deck.SuiteDeckSummary{
+			return deck.SuiteDeckSummary{
 				Strategy:  result.Strategy,
 				Variation: result.Variation,
 				Cards:     result.Deck.Deck,
 				AvgElixir: result.Deck.AvgElixir,
 				FilePath:  result.FilePath,
-			})
-		}
+			}, true
+		})
 		summary := deck.NewSuiteSummary(
 			time.Now().UTC().Format(time.RFC3339),
 			playerData.PlayerName,
