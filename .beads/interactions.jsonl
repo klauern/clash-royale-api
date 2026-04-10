@@ -1,0 +1,2 @@
+{"id":"int-e5591c7c","kind":"field_change","created_at":"2026-04-10T05:01:40.577473Z","actor":"Nick Klauer","issue_id":"clash-royale-api-a02","extra":{"field":"status","new_value":"in_progress","old_value":"open"}}
+{"id":"int-6adde1e5","kind":"field_change","created_at":"2026-04-10T05:06:05.627951Z","actor":"Nick Klauer","issue_id":"clash-royale-api-a02","extra":{"field":"status","new_value":"closed","old_value":"in_progress","reason":"Refactored fuzz list/update and deck reevaluation helpers; lint/test clean"}}
