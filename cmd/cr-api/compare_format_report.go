@@ -113,13 +113,10 @@ func formatReportDetailedScoreComparison(sb *strings.Builder, names []string, re
 
 func formatReportCategoryChampions(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## Category Champions\n\n")
-	categories := getEvaluationCategories()
-
-	for _, cat := range categories {
-		bestIdx := findBestDeckIndex(results, cat.get)
-		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", cat.name, names[bestIdx]))
-		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n", cat.get(results[bestIdx]).Score, cat.get(results[bestIdx]).Rating))
-		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", cat.get(results[bestIdx]).Assessment))
+	for _, winner := range buildBestInCategoryEntries(names, results, false) {
+		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", winner.label, winner.deckName))
+		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n", winner.score, winner.rating))
+		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", winner.assessment))
 	}
 
 	sb.WriteString("---\n\n")
@@ -132,11 +129,11 @@ func formatReportDeckDetails(sb *strings.Builder, names []string, results []eval
 		sb.WriteString(fmt.Sprintf("### %d. %s\n\n", i+1, name))
 
 		sb.WriteString("**Cards**:\n```\n")
-		for j, card := range r.Deck {
-			sb.WriteString(fmt.Sprintf("%-20s", card))
-			if (j+1)%4 == 0 {
-				sb.WriteString("\n")
+		for _, row := range groupDeckCards(r.Deck, 4) {
+			for _, card := range row {
+				sb.WriteString(fmt.Sprintf("%-20s", card))
 			}
+			sb.WriteString("\n")
 		}
 		sb.WriteString("```\n\n")
 
@@ -191,17 +188,12 @@ func formatDeckStrengthsAndWeaknesses(sb *strings.Builder, r evaluation.Evaluati
 }
 
 func formatDeckAnalysis(sb *strings.Builder, r evaluation.EvaluationResult) {
-	if len(r.DefenseAnalysis.Details) > 0 {
-		fmt.Fprintf(sb, "**Defense Analysis** (%.1f/10.0):\n", r.DefenseAnalysis.Score)
-		for _, detail := range r.DefenseAnalysis.Details {
-			fmt.Fprintf(sb, "- %s\n", detail)
+	for _, section := range buildCoreAnalysisSections(r) {
+		if len(section.details) == 0 {
+			continue
 		}
-		sb.WriteString("\n")
-	}
-
-	if len(r.AttackAnalysis.Details) > 0 {
-		fmt.Fprintf(sb, "**Attack Analysis** (%.1f/10.0):\n", r.AttackAnalysis.Score)
-		for _, detail := range r.AttackAnalysis.Details {
+		fmt.Fprintf(sb, "**%s Analysis** (%.1f/10.0):\n", section.label, section.score)
+		for _, detail := range section.details {
 			fmt.Fprintf(sb, "- %s\n", detail)
 		}
 		sb.WriteString("\n")

@@ -68,12 +68,8 @@ func formatMarkdownCategoryScoresSection(sb *strings.Builder, names []string, re
 
 func formatMarkdownBestInCategorySection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
 	sb.WriteString("## 🏆 Best in Category\n\n")
-	categories := getEvaluationCategories()
-
-	for _, cat := range categories {
-		bestIdx := findBestDeckIndex(results, cat.get)
-		bestScore := cat.get(results[bestIdx]).Score
-		sb.WriteString(fmt.Sprintf("- **%s**: %s (%.2f)\n", cat.name, names[bestIdx], bestScore))
+	for _, winner := range buildBestInCategoryEntries(names, results, false) {
+		sb.WriteString(fmt.Sprintf("- **%s**: %s (%.2f)\n", winner.label, winner.deckName, winner.score))
 	}
 	sb.WriteString("\n")
 }
@@ -83,11 +79,11 @@ func formatMarkdownDeckCompositionsSection(sb *strings.Builder, names []string, 
 	for i, name := range names {
 		sb.WriteString(fmt.Sprintf("### %s\n\n", name))
 		sb.WriteString("```\n")
-		for j, card := range results[i].Deck {
-			sb.WriteString(fmt.Sprintf("%-18s", card))
-			if (j+1)%4 == 0 {
-				sb.WriteString("\n")
+		for _, row := range groupDeckCards(results[i].Deck, 4) {
+			for _, card := range row {
+				sb.WriteString(fmt.Sprintf("%-18s", card))
 			}
+			sb.WriteString("\n")
 		}
 		sb.WriteString("```\n\n")
 	}
@@ -99,17 +95,13 @@ func formatMarkdownVerboseAnalysisSection(sb *strings.Builder, names []string, r
 		r := results[i]
 		fmt.Fprintf(sb, "### %s\n\n", name)
 
-		fmt.Fprintf(sb, "**Defense** (%.1f/10.0): %s\n\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating)
-		for _, detail := range r.DefenseAnalysis.Details {
-			fmt.Fprintf(sb, "- %s\n", detail)
+		for _, section := range buildCoreAnalysisSections(r) {
+			fmt.Fprintf(sb, "**%s** (%.1f/10.0): %s\n\n", section.label, section.score, section.rating)
+			for _, detail := range section.details {
+				fmt.Fprintf(sb, "- %s\n", detail)
+			}
+			sb.WriteString("\n")
 		}
-		sb.WriteString("\n")
-
-		fmt.Fprintf(sb, "**Attack** (%.1f/10.0): %s\n\n", r.AttackAnalysis.Score, r.AttackAnalysis.Rating)
-		for _, detail := range r.AttackAnalysis.Details {
-			fmt.Fprintf(sb, "- %s\n", detail)
-		}
-		sb.WriteString("\n")
 
 		if r.SynergyMatrix.PairCount > 0 {
 			fmt.Fprintf(sb, "**Synergy**: %d pairs found (%.1f%% coverage)\n\n", r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage)
