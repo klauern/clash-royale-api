@@ -64,7 +64,8 @@ func findBestOverallDeck(results []evaluation.EvaluationResult) int {
 }
 
 func buildBestInCategoryEntries(names []string, results []evaluation.EvaluationResult, includeOverall bool) []compareCategoryWinner {
-	entries := make([]compareCategoryWinner, 0, len(getEvaluationCategories())+1)
+	categories := getEvaluationCategories()
+	entries := make([]compareCategoryWinner, 0, len(categories)+1)
 	if includeOverall {
 		bestOverallIdx := findBestOverallDeck(results)
 		entries = append(entries, compareCategoryWinner{
@@ -75,7 +76,7 @@ func buildBestInCategoryEntries(names []string, results []evaluation.EvaluationR
 		})
 	}
 
-	for _, cat := range getEvaluationCategories() {
+	for _, cat := range categories {
 		bestIdx := findBestDeckIndex(results, cat.get)
 		bestScore := cat.get(results[bestIdx])
 		entries = append(entries, compareCategoryWinner{
