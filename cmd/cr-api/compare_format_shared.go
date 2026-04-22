@@ -6,21 +6,6 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 )
 
-type compareCategoryWinner struct {
-	label      string
-	deckName   string
-	score      float64
-	rating     string
-	assessment string
-}
-
-type compareAnalysisSection struct {
-	label   string
-	score   float64
-	rating  string
-	details []string
-}
-
 func getEvaluationCategories() []struct {
 	name string
 	get  func(evaluation.EvaluationResult) evaluation.CategoryScore
@@ -61,63 +46,6 @@ func findBestOverallDeck(results []evaluation.EvaluationResult) int {
 		}
 	}
 	return bestIdx
-}
-
-func buildBestInCategoryEntries(names []string, results []evaluation.EvaluationResult, includeOverall bool) []compareCategoryWinner {
-	categories := getEvaluationCategories()
-	entries := make([]compareCategoryWinner, 0, len(categories)+1)
-	if includeOverall {
-		bestOverallIdx := findBestOverallDeck(results)
-		entries = append(entries, compareCategoryWinner{
-			label:    "Overall",
-			deckName: names[bestOverallIdx],
-			score:    results[bestOverallIdx].OverallScore,
-			rating:   string(results[bestOverallIdx].OverallRating),
-		})
-	}
-
-	for _, cat := range categories {
-		bestIdx := findBestDeckIndex(results, cat.get)
-		bestScore := cat.get(results[bestIdx])
-		entries = append(entries, compareCategoryWinner{
-			label:      cat.name,
-			deckName:   names[bestIdx],
-			score:      bestScore.Score,
-			rating:     string(bestScore.Rating),
-			assessment: bestScore.Assessment,
-		})
-	}
-
-	return entries
-}
-
-func groupDeckCards(deck []string, cardsPerRow int) [][]string {
-	if cardsPerRow <= 0 {
-		return nil
-	}
-	rows := make([][]string, 0, (len(deck)+cardsPerRow-1)/cardsPerRow)
-	for i := 0; i < len(deck); i += cardsPerRow {
-		end := min(i+cardsPerRow, len(deck))
-		rows = append(rows, deck[i:end])
-	}
-	return rows
-}
-
-func buildCoreAnalysisSections(result evaluation.EvaluationResult) []compareAnalysisSection {
-	return []compareAnalysisSection{
-		{
-			label:   "Defense",
-			score:   result.DefenseAnalysis.Score,
-			rating:  string(result.DefenseAnalysis.Rating),
-			details: result.DefenseAnalysis.Details,
-		},
-		{
-			label:   "Attack",
-			score:   result.AttackAnalysis.Score,
-			rating:  string(result.AttackAnalysis.Rating),
-			details: result.AttackAnalysis.Details,
-		},
-	}
 }
 
 func truncate(s string, maxLen int) string {
