@@ -2,6 +2,7 @@ package csv
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
@@ -45,14 +46,11 @@ func battleLogHeaders() []string {
 func battleLogExport(dataDir string, data any) error {
 	battles, ok := data.([]clashroyale.Battle)
 	if !ok {
-		return fmt.Errorf("expected []Battle type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf([]clashroyale.Battle(nil)), data)
 	}
 
 	rows := makeBattleLogRows(battles)
-
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "battle_log.csv"}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVBattlesSubdir, battleLogHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVBattlesSubdir, "battle_log.csv", battleLogHeaders(), rows)
 }
 
 func makeBattleLogRows(battles []clashroyale.Battle) [][]string {
@@ -135,7 +133,7 @@ func battleSummaryHeaders() []string {
 func battleSummaryExport(dataDir string, data any) error {
 	battles, ok := data.([]clashroyale.Battle)
 	if !ok {
-		return fmt.Errorf("expected []Battle type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf([]clashroyale.Battle(nil)), data)
 	}
 
 	// If no battles, return early
@@ -146,12 +144,8 @@ func battleSummaryExport(dataDir string, data any) error {
 	stats := summarizeBattles(battles)
 	row := stats.toCSVRow()
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "battle_summary.csv"}
-
-	// Create a single-row CSV
 	rows := [][]string{row}
-	return exporter.writeCSVInSubdir(dataDir, storage.CSVBattlesSubdir, battleSummaryHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVBattlesSubdir, "battle_summary.csv", battleSummaryHeaders(), rows)
 }
 
 type battleSummaryStats struct {

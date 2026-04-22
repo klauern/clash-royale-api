@@ -3,7 +3,6 @@ package main
 
 import (
 	"fmt"
-	"math"
 	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
@@ -12,72 +11,69 @@ import (
 //nolint:staticcheck // Keep explicit builder writes for formatter readability and parity.
 func formatComparisonTable(names []string, results []evaluation.EvaluationResult, verbose, showWinRate bool) string {
 	var sb strings.Builder
+	vm := buildComparisonViewModel(names, results)
 
 	sb.WriteString("╔════════════════════════════════════════════════════════════════════╗\n")
 	sb.WriteString("║                       DECK COMPARISON                                ║\n")
 	sb.WriteString("╚════════════════════════════════════════════════════════════════════╝\n\n")
 
-	formatTableOverviewSection(&sb, names, results)
-	formatTableCategoryScoresSection(&sb, names, results)
-	formatTableBestInCategorySection(&sb, names, results)
+	formatTableOverviewSection(&sb, vm)
+	formatTableCategoryScoresSection(&sb, vm)
+	formatTableBestInCategorySection(&sb, vm)
 	if showWinRate {
-		formatTableWinRateSection(&sb, names, results)
+		formatTableWinRateSection(&sb, vm)
 	}
-	formatTableDeckCompositionSection(&sb, names, results)
+	formatTableDeckCompositionSection(&sb, vm)
 
 	if verbose {
-		formatTableVerboseAnalysisSection(&sb, names, results)
+		formatTableVerboseAnalysisSection(&sb, vm)
 	}
 
 	return sb.String()
 }
 
-func formatTableOverviewSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableOverviewSection(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("📊 OVERVIEW\n")
 	sb.WriteString("════════════\n\n")
 	sb.WriteString(fmt.Sprintf("%-15s", "Deck"))
-	for _, name := range names {
-		sb.WriteString(fmt.Sprintf(" | %-20s", truncate(name, 20)))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf(" | %-20s", deck.TruncatedName20))
 	}
 	sb.WriteString("\n")
-	sb.WriteString(strings.Repeat("─", 15+23*len(names)) + "\n")
+	sb.WriteString(strings.Repeat("─", 15+23*len(vm.Decks)) + "\n")
 
 	sb.WriteString(fmt.Sprintf("%-15s", "Overall Score"))
-	for _, r := range results {
-		stars := calculateStars(r.OverallScore)
-		rating := formatStarsDisplay(stars)
-		sb.WriteString(fmt.Sprintf(" | %.2f %s %-13s", r.OverallScore, rating, r.OverallRating))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf(" | %.2f %s %-13s", deck.Result.OverallScore, deck.OverallStars, deck.Result.OverallRating))
 	}
 	sb.WriteString("\n")
 
 	sb.WriteString(fmt.Sprintf("%-15s", "Avg Elixir"))
-	for _, r := range results {
-		sb.WriteString(fmt.Sprintf(" | %-20.2f", r.AvgElixir))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf(" | %-20.2f", deck.Result.AvgElixir))
 	}
 	sb.WriteString("\n")
 
 	sb.WriteString(fmt.Sprintf("%-15s", "Archetype"))
-	for _, r := range results {
-		sb.WriteString(fmt.Sprintf(" | %-20s", r.DetectedArchetype))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf(" | %-20s", deck.Result.DetectedArchetype))
 	}
 	sb.WriteString("\n\n")
 }
 
-func formatTableCategoryScoresSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableCategoryScoresSection(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("📈 CATEGORY SCORES\n")
 	sb.WriteString("══════════════════\n\n")
 	sb.WriteString(fmt.Sprintf("%-15s", "Category"))
-	for _, name := range names {
-		sb.WriteString(fmt.Sprintf(" | %-20s", truncate(name, 20)))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf(" | %-20s", deck.TruncatedName20))
 	}
 	sb.WriteString("\n")
-	sb.WriteString(strings.Repeat("─", 15+23*len(names)) + "\n")
+	sb.WriteString(strings.Repeat("─", 15+23*len(vm.Decks)) + "\n")
 
-	categories := getEvaluationCategories()
-	for _, cat := range categories {
-		sb.WriteString(fmt.Sprintf("%-15s", cat.name))
-		for _, r := range results {
-			score := cat.get(r)
+	for _, category := range vm.Categories {
+		sb.WriteString(fmt.Sprintf("%-15s", category.Name))
+		for _, score := range category.Scores {
 			rating := formatStarsDisplay(score.Stars)
 			sb.WriteString(fmt.Sprintf(" | %.1f %s %-14s", score.Score, rating, score.Rating))
 		}
@@ -86,58 +82,71 @@ func formatTableCategoryScoresSection(sb *strings.Builder, names []string, resul
 	sb.WriteString("\n")
 }
 
-func formatTableBestInCategorySection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableBestInCategorySection(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("🏆 BEST IN CATEGORY\n")
 	sb.WriteString("══════════════════\n\n")
-	for _, winner := range buildBestInCategoryEntries(names, results, true) {
-		sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", winner.label, winner.deckName, winner.score))
+	if len(vm.Decks) == 0 || vm.BestOverallIndex < 0 || vm.BestOverallIndex >= len(vm.Decks) {
+		sb.WriteString("No decks to compare.\n\n")
+		return
+	}
+
+	bestOverall := vm.Decks[vm.BestOverallIndex]
+	sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", "Overall", bestOverall.Name, bestOverall.Result.OverallScore))
+
+	for _, category := range vm.Categories {
+		if category.BestDeckIndex < 0 || category.BestDeckIndex >= len(vm.Decks) || category.BestDeckIndex >= len(category.Scores) {
+			continue
+		}
+		best := vm.Decks[category.BestDeckIndex]
+		bestScore := category.Scores[category.BestDeckIndex].Score
+		sb.WriteString(fmt.Sprintf("%-15s: %s (%.2f)\n", category.Name, best.Name, bestScore))
 	}
 	sb.WriteString("\n")
 }
 
-func formatTableWinRateSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableWinRateSection(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("🎯 PREDICTED WIN RATE (score-based estimate)\n")
 	sb.WriteString("═════════════════════════════════════════════\n\n")
-	for i, r := range results {
-		predicted := estimateWinRateFromScore(r.OverallScore)
-		sb.WriteString(fmt.Sprintf("%-20s: %5.1f%%\n", truncate(names[i], 20), predicted))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf("%-20s: %5.1f%%\n", deck.TruncatedName20, deck.PredictedWinPct))
 	}
 	sb.WriteString("\n")
 }
 
-func estimateWinRateFromScore(score float64) float64 {
-	estimated := 50.0 + (score-5.0)*4.0
-	return math.Max(30.0, math.Min(70.0, estimated))
-}
-
-func formatTableDeckCompositionSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableDeckCompositionSection(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("🃏 DECK COMPOSITION\n")
 	sb.WriteString("══════════════════\n\n")
-	for i, r := range results {
-		sb.WriteString(fmt.Sprintf("%s:\n", names[i]))
-		for _, row := range groupDeckCards(r.Deck, 4) {
-			for _, card := range row {
-				sb.WriteString(fmt.Sprintf("  %-18s", card))
+	for _, deck := range vm.Decks {
+		sb.WriteString(fmt.Sprintf("%s:\n", deck.Name))
+		for j, card := range deck.Result.Deck {
+			if j > 0 && j%4 == 0 {
+				sb.WriteString("\n")
 			}
-			sb.WriteString("\n")
+			sb.WriteString(fmt.Sprintf("  %-18s", card))
 		}
 		sb.WriteString("\n\n")
 	}
 }
 
-func formatTableVerboseAnalysisSection(sb *strings.Builder, names []string, results []evaluation.EvaluationResult) {
+func formatTableVerboseAnalysisSection(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("📋 DETAILED ANALYSIS\n")
 	sb.WriteString("════════════════════\n\n")
 
-	for i, r := range results {
-		fmt.Fprintf(sb, "═══ %s ═══\n\n", names[i])
-		for _, section := range buildCoreAnalysisSections(r) {
-			fmt.Fprintf(sb, "%s (%.1f/10.0): %s\n", section.label, section.score, section.rating)
-			for _, detail := range section.details {
-				fmt.Fprintf(sb, "  • %s\n", detail)
-			}
-			sb.WriteString("\n")
+	for _, deck := range vm.Decks {
+		r := deck.Result
+		fmt.Fprintf(sb, "═══ %s ═══\n\n", deck.Name)
+
+		fmt.Fprintf(sb, "Defense (%.1f/10.0): %s\n", r.DefenseAnalysis.Score, r.DefenseAnalysis.Rating)
+		for _, detail := range r.DefenseAnalysis.Details {
+			fmt.Fprintf(sb, "  • %s\n", detail)
 		}
+		sb.WriteString("\n")
+
+		fmt.Fprintf(sb, "Attack (%.1f/10.0): %s\n", r.AttackAnalysis.Score, r.AttackAnalysis.Rating)
+		for _, detail := range r.AttackAnalysis.Details {
+			fmt.Fprintf(sb, "  • %s\n", detail)
+		}
+		sb.WriteString("\n")
 
 		if r.SynergyMatrix.PairCount > 0 {
 			fmt.Fprintf(sb, "Synergy: %d pairs found (%.1f%% coverage)\n", r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage)
