@@ -145,17 +145,14 @@ func loadSuitePlayerDataFromAnalysis(builder *deck.Builder, tag, dataDir string,
 }
 
 func loadSuitePlayerDataFromAPI(ctx context.Context, tag, apiToken string, verbose bool) (*suitePlayerData, error) {
-	if verbose {
-		printf("Building deck suite for player %s\n", tag)
-	}
-	result, err := loadOnlinePlayerAnalysis(ctx, tag, apiToken, verbose)
+	data, err := loadOnlineDeckPlayerData(ctx, tag, apiToken, verbose, "Building deck suite for player")
 	if err != nil {
 		return nil, err
 	}
 	return &suitePlayerData{
-		CardAnalysis: result.DeckCardAnalysis,
-		PlayerName:   result.Player.Name,
-		PlayerTag:    result.Player.Tag,
+		CardAnalysis: data.CardAnalysis,
+		PlayerName:   data.PlayerName,
+		PlayerTag:    data.PlayerTag,
 	}, nil
 }
 

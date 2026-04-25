@@ -23,6 +23,12 @@ type onlinePlayerAnalysisResult struct {
 	DeckCardAnalysis deck.CardAnalysis
 }
 
+type onlineDeckPlayerData struct {
+	CardAnalysis deck.CardAnalysis
+	PlayerName   string
+	PlayerTag    string
+}
+
 func loadOnlinePlayerAnalysis(ctx context.Context, tag, apiToken string, verbose bool) (*onlinePlayerAnalysisResult, error) {
 	client, err := newPlayerAPIClient(apiToken, apiClientOptions{offlineAllowed: true})
 	if err != nil {
@@ -56,4 +62,26 @@ func newOnlinePlayerAnalysisResult(player *clashroyale.Player, cardAnalysis *ana
 		CardAnalysis:     cardAnalysis,
 		DeckCardAnalysis: convertToDeckCardAnalysis(cardAnalysis, player),
 	}
+}
+
+func loadOnlineDeckPlayerData(
+	ctx context.Context,
+	tag, apiToken string,
+	verbose bool,
+	verbosePrefix string,
+) (*onlineDeckPlayerData, error) {
+	if verbose {
+		printf("%s %s\n", verbosePrefix, tag)
+	}
+
+	result, err := loadOnlinePlayerAnalysis(ctx, tag, apiToken, verbose)
+	if err != nil {
+		return nil, err
+	}
+
+	return &onlineDeckPlayerData{
+		CardAnalysis: result.DeckCardAnalysis,
+		PlayerName:   result.Player.Name,
+		PlayerTag:    result.Player.Tag,
+	}, nil
 }

@@ -289,21 +289,16 @@ func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile
 }
 
 // loadPlayerDataOnline fetches and analyzes player data from the API
-//
-//nolint:dupl // Shared API loading refactor tracked under clash-royale-api-sg50.
 func loadPlayerDataOnline(ctx context.Context, tag, apiToken string, verbose bool) (*playerDataLoadResult, error) {
-	if verbose {
-		printf("Building deck for player %s\n", tag)
-	}
-	result, err := loadOnlinePlayerAnalysis(ctx, tag, apiToken, verbose)
+	data, err := loadOnlineDeckPlayerData(ctx, tag, apiToken, verbose, "Building deck for player")
 	if err != nil {
 		return nil, &onlinePlayerAnalysisLoadError{Tag: tag, Err: err}
 	}
 
 	return &playerDataLoadResult{
-		CardAnalysis: result.DeckCardAnalysis,
-		PlayerName:   result.Player.Name,
-		PlayerTag:    result.Player.Tag,
+		CardAnalysis: data.CardAnalysis,
+		PlayerName:   data.PlayerName,
+		PlayerTag:    data.PlayerTag,
 	}, nil
 }
 
