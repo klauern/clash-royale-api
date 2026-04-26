@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -92,12 +91,8 @@ func parseStrategies(strategiesStr string) ([]deck.Strategy, error) {
 	return strategies, nil
 }
 
-// suitePlayerData holds player data loaded for suite operations
-type suitePlayerData struct {
-	CardAnalysis deck.CardAnalysis
-	PlayerName   string
-	PlayerTag    string
-}
+// suitePlayerData holds player data loaded for suite operations.
+type suitePlayerData = offlineDeckPlayerData
 
 //nolint:unused // Reserved for phased suite refactor tracked in beads.
 type suiteDeckInfo struct {
@@ -124,24 +119,13 @@ func loadSuitePlayerDataFromAnalysis(builder *deck.Builder, tag, dataDir string,
 	if verbose {
 		printf("Building deck suite from offline analysis for player %s\n", tag)
 	}
-	analysisDir := filepath.Join(dataDir, "analysis")
-	loadedAnalysis, err := builder.LoadLatestAnalysis(tag, analysisDir)
+
+	playerData, err := loadOfflineDeckPlayerData(builder, tag, "", "", dataDir)
 	if err != nil {
-		return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
+		return nil, err
 	}
-	playerName := loadedAnalysis.PlayerName
-	if playerName == "" {
-		playerName = tag
-	}
-	playerTag := loadedAnalysis.PlayerTag
-	if playerTag == "" {
-		playerTag = tag
-	}
-	return &suitePlayerData{
-		CardAnalysis: *loadedAnalysis,
-		PlayerName:   playerName,
-		PlayerTag:    playerTag,
-	}, nil
+
+	return playerData, nil
 }
 
 func loadSuitePlayerDataFromAPI(ctx context.Context, tag, apiToken string, verbose bool) (*suitePlayerData, error) {

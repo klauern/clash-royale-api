@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -247,44 +246,23 @@ func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile
 		printf("Building deck from offline analysis for player %s\n", tag)
 	}
 
-	// Default analysis dir to data/analysis if not specified
-	if analysisDir == "" {
-		analysisDir = filepath.Join(dataDir, "analysis")
+	playerData, err := loadOfflineDeckPlayerData(builder, tag, analysisDir, analysisFile, dataDir)
+	if err != nil {
+		return nil, err
 	}
 
-	var loadedAnalysis *deck.CardAnalysis
-	var err error
-
-	if analysisFile != "" {
-		// Load from explicit file path
-		loadedAnalysis, err = builder.LoadAnalysis(analysisFile)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load analysis file %s: %w", analysisFile, err)
-		}
-		if verbose {
+	if verbose {
+		if analysisFile != "" {
 			printf("Loaded analysis from: %s\n", analysisFile)
+		} else {
+			printf("Loaded latest analysis from: %s\n", playerData.Source)
 		}
-	} else {
-		// Load latest analysis for player tag
-		loadedAnalysis, err = builder.LoadLatestAnalysis(tag, analysisDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
-		}
-		if verbose {
-			printf("Loaded latest analysis from: %s\n", analysisDir)
-		}
-	}
-
-	// Use player name from analysis if available, fallback to tag
-	playerName := loadedAnalysis.PlayerName
-	if playerName == "" {
-		playerName = tag
 	}
 
 	return &playerDataLoadResult{
-		CardAnalysis: *loadedAnalysis,
-		PlayerName:   playerName,
-		PlayerTag:    tag,
+		CardAnalysis: playerData.CardAnalysis,
+		PlayerName:   playerData.PlayerName,
+		PlayerTag:    playerData.PlayerTag,
 	}, nil
 }
 
