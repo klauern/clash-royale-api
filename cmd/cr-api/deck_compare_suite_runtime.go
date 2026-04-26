@@ -91,12 +91,8 @@ func parseStrategies(strategiesStr string) ([]deck.Strategy, error) {
 	return strategies, nil
 }
 
-// suitePlayerData holds player data loaded for suite operations
-type suitePlayerData struct {
-	CardAnalysis deck.CardAnalysis
-	PlayerName   string
-	PlayerTag    string
-}
+// suitePlayerData holds player data loaded for suite operations.
+type suitePlayerData = offlineDeckPlayerData
 
 //nolint:unused // Reserved for phased suite refactor tracked in beads.
 type suiteDeckInfo struct {
@@ -129,11 +125,7 @@ func loadSuitePlayerDataFromAnalysis(builder *deck.Builder, tag, dataDir string,
 		return nil, err
 	}
 
-	return &suitePlayerData{
-		CardAnalysis: playerData.CardAnalysis,
-		PlayerName:   playerData.PlayerName,
-		PlayerTag:    playerData.PlayerTag,
-	}, nil
+	return playerData, nil
 }
 
 func loadSuitePlayerDataFromAPI(ctx context.Context, tag, apiToken string, verbose bool) (*suitePlayerData, error) {

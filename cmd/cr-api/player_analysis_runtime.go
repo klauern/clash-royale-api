@@ -33,6 +33,7 @@ type offlineDeckPlayerData struct {
 	CardAnalysis deck.CardAnalysis
 	PlayerName   string
 	PlayerTag    string
+	Source       string
 }
 
 func loadOfflineDeckPlayerData(loader offlineAnalysisLoader, tag, analysisDir, analysisFile, dataDir string) (*offlineDeckPlayerData, error) {
@@ -54,6 +55,12 @@ func loadOfflineDeckPlayerData(loader offlineAnalysisLoader, tag, analysisDir, a
 			return nil, fmt.Errorf("failed to load analysis for player %s from %s: %w", tag, analysisDir, err)
 		}
 	}
+	if loadedAnalysis == nil {
+		if analysisFile != "" {
+			return nil, fmt.Errorf("loader returned nil analysis for player %s from file %s", tag, analysisFile)
+		}
+		return nil, fmt.Errorf("loader returned nil analysis for player %s from dir %s", tag, analysisDir)
+	}
 
 	playerName := loadedAnalysis.PlayerName
 	if playerName == "" {
@@ -65,10 +72,16 @@ func loadOfflineDeckPlayerData(loader offlineAnalysisLoader, tag, analysisDir, a
 		playerTag = tag
 	}
 
+	source := analysisDir
+	if analysisFile != "" {
+		source = analysisFile
+	}
+
 	return &offlineDeckPlayerData{
 		CardAnalysis: *loadedAnalysis,
 		PlayerName:   playerName,
 		PlayerTag:    playerTag,
+		Source:       source,
 	}, nil
 }
 

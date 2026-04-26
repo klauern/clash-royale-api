@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
@@ -29,6 +30,8 @@ type fakeOfflineAnalysisLoader struct {
 	latestCalls     int
 	analysisCalls   int
 }
+
+const offlineTag = "#POFFLINE"
 
 func (f *fakeOfflineAnalysisLoader) LoadLatestAnalysis(tag, analysisDir string) (*deck.CardAnalysis, error) {
 	f.latestCalls++
@@ -154,7 +157,7 @@ func TestLoadOfflineDeckPlayerDataDefaultsDirAndFallbacks(t *testing.T) {
 		analysis: &deck.CardAnalysis{},
 	}
 
-	result, err := loadOfflineDeckPlayerData(loader, "#POFFLINE", "", "", "testdata")
+	result, err := loadOfflineDeckPlayerData(loader, offlineTag, "", "", "testdata")
 	if err != nil {
 		t.Fatalf("loadOfflineDeckPlayerData returned error: %v", err)
 	}
@@ -165,18 +168,42 @@ func TestLoadOfflineDeckPlayerDataDefaultsDirAndFallbacks(t *testing.T) {
 	if loader.analysisCalls != 0 {
 		t.Fatalf("LoadAnalysis calls=%d, want 0", loader.analysisCalls)
 	}
-	if loader.latestTag != "#POFFLINE" {
-		t.Fatalf("latest tag=%q, want #POFFLINE", loader.latestTag)
+	if loader.latestTag != offlineTag {
+		t.Fatalf("latest tag=%q, want %q", loader.latestTag, offlineTag)
 	}
 	expectedDir := filepath.Join("testdata", "analysis")
 	if loader.latestDir != expectedDir {
 		t.Fatalf("latest dir=%q, want %q", loader.latestDir, expectedDir)
 	}
-	if result.PlayerName != "#POFFLINE" {
-		t.Fatalf("PlayerName=%q, want #POFFLINE", result.PlayerName)
+	if result.PlayerName != offlineTag {
+		t.Fatalf("PlayerName=%q, want %q", result.PlayerName, offlineTag)
 	}
-	if result.PlayerTag != "#POFFLINE" {
-		t.Fatalf("PlayerTag=%q, want #POFFLINE", result.PlayerTag)
+	if result.PlayerTag != offlineTag {
+		t.Fatalf("PlayerTag=%q, want %q", result.PlayerTag, offlineTag)
+	}
+	if result.Source != expectedDir {
+		t.Fatalf("Source=%q, want %q", result.Source, expectedDir)
+	}
+}
+
+func TestLoadOfflineDeckPlayerDataUsesExplicitAnalysisDir(t *testing.T) {
+	loader := &fakeOfflineAnalysisLoader{
+		analysis: &deck.CardAnalysis{},
+	}
+	customDir := "/tmp/custom-analysis"
+
+	result, err := loadOfflineDeckPlayerData(loader, offlineTag, customDir, "", "testdata")
+	if err != nil {
+		t.Fatalf("loadOfflineDeckPlayerData returned error: %v", err)
+	}
+	if loader.latestCalls != 1 {
+		t.Fatalf("LoadLatestAnalysis calls=%d, want 1", loader.latestCalls)
+	}
+	if loader.latestDir != customDir {
+		t.Fatalf("latest dir=%q, want %q", loader.latestDir, customDir)
+	}
+	if result.Source != customDir {
+		t.Fatalf("Source=%q, want %q", result.Source, customDir)
 	}
 }
 
@@ -188,7 +215,7 @@ func TestLoadOfflineDeckPlayerDataUsesExplicitFile(t *testing.T) {
 		},
 	}
 
-	result, err := loadOfflineDeckPlayerData(loader, "#POFFLINE", "", "analysis.json", "testdata")
+	result, err := loadOfflineDeckPlayerData(loader, offlineTag, "", "analysis.json", "testdata")
 	if err != nil {
 		t.Fatalf("loadOfflineDeckPlayerData returned error: %v", err)
 	}
@@ -208,18 +235,25 @@ func TestLoadOfflineDeckPlayerDataUsesExplicitFile(t *testing.T) {
 	if result.PlayerTag != "#OFF" {
 		t.Fatalf("PlayerTag=%q, want #OFF", result.PlayerTag)
 	}
+	if result.Source != "analysis.json" {
+		t.Fatalf("Source=%q, want analysis.json", result.Source)
+	}
 }
 
 func TestLoadOfflineDeckPlayerDataWrapsLoadErrors(t *testing.T) {
+	sentinel := errors.New("boom")
 	loader := &fakeOfflineAnalysisLoader{
-		loadLatestErr: errors.New("boom"),
+		loadLatestErr: sentinel,
 	}
 
-	_, err := loadOfflineDeckPlayerData(loader, "#POFFLINE", "", "", "testdata")
+	_, err := loadOfflineDeckPlayerData(loader, offlineTag, "", "", "testdata")
 	if err == nil {
 		t.Fatal("expected error")
 	}
-	if got := err.Error(); got == "boom" {
-		t.Fatalf("expected wrapped error, got %q", got)
+	if !errors.Is(err, sentinel) {
+		t.Fatalf("expected wrapped sentinel error, got %v", err)
+	}
+	if !strings.Contains(err.Error(), offlineTag) {
+		t.Fatalf("expected error to include player tag, got %q", err.Error())
 	}
 }

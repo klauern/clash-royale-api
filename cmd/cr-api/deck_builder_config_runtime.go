@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"maps"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -256,11 +255,7 @@ func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile
 		if analysisFile != "" {
 			printf("Loaded analysis from: %s\n", analysisFile)
 		} else {
-			resolvedAnalysisDir := analysisDir
-			if resolvedAnalysisDir == "" {
-				resolvedAnalysisDir = filepath.Join(dataDir, "analysis")
-			}
-			printf("Loaded latest analysis from: %s\n", resolvedAnalysisDir)
+			printf("Loaded latest analysis from: %s\n", playerData.Source)
 		}
 	}
 
