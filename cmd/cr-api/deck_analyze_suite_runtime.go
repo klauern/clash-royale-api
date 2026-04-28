@@ -465,7 +465,7 @@ func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	verbose := cmd.Bool("verbose")
 	suggestConstraints := cmd.Bool("suggest-constraints")
 	constraintThreshold := cmd.Float64("constraint-threshold")
-	boostedCardLevels := cmd.StringSlice("boosted-card-level")
+	boostedCardLevels := cmd.StringSlice(boostedCardLevelFlagName)
 
 	// Get global flags
 	apiToken := cmd.String("api-token")
