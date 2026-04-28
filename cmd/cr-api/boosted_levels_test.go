@@ -2,6 +2,18 @@ package main
 
 import "testing"
 
+func TestBoostedCardLevelFlagContract(t *testing.T) {
+	t.Parallel()
+
+	flag := boostedCardLevelFlag()
+	if flag.Name != boostedCardLevelFlagName {
+		t.Fatalf("flag name mismatch: got %q want %q", flag.Name, boostedCardLevelFlagName)
+	}
+	if flag.Usage != boostedCardLevelFlagUsage {
+		t.Fatalf("flag usage mismatch: got %q want %q", flag.Usage, boostedCardLevelFlagUsage)
+	}
+}
+
 func TestParseBoostedCardLevelEntry(t *testing.T) {
 	tests := []struct {
 		name      string

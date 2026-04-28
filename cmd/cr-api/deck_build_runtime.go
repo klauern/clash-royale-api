@@ -93,7 +93,7 @@ func parseDeckBuildFlags(cmd *cli.Command) deckBuildFlags {
 		MaxElixir:         cmd.Float64("max-elixir"),
 		DataDir:           cmd.String("data-dir"),
 		ExcludeCards:      cmd.StringSlice("exclude-cards"),
-		BoostedCardLevels: cmd.StringSlice("boosted-card-level"),
+		BoostedCardLevels: cmd.StringSlice(boostedCardLevelFlagName),
 		NoSuggestUpgrades: cmd.Bool("no-suggest-upgrades"),
 		UpgradeCount:      cmd.Int("upgrade-count"),
 		IdealDeck:         cmd.Bool("ideal-deck"),
@@ -169,7 +169,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	minElixir := cmd.Float64("min-elixir")
 	maxElixir := cmd.Float64("max-elixir")
 	excludeCards := cmd.StringSlice("exclude-cards")
-	boostedCardLevels := cmd.StringSlice("boosted-card-level")
+	boostedCardLevels := cmd.StringSlice(boostedCardLevelFlagName)
 
 	// Determine output directory
 	if outputDir == "" {
