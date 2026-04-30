@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 )
 
 func TestUpdateDeck(t *testing.T) {
@@ -144,5 +146,108 @@ func TestArchetypeHistogram(t *testing.T) {
 	}
 	if histogram["beatdown"] != 1 {
 		t.Fatalf("expected beatdown count 1, got %d", histogram["beatdown"])
+	}
+}
+
+func TestStorageMigratesLegacyDeckHash(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "fuzz_legacy.db")
+	storage, err := NewStorage(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create storage: %v", err)
+	}
+
+	cards := []string{"a", "b|c"}
+	cardsJSON := `["a","b|c"]`
+	legacyHash := deckhash.LegacyCompute(cards)
+	canonicalHash := deckhash.DeckHash(cards)
+
+	if _, err := storage.db.Exec(`
+		INSERT INTO top_decks (
+			deck_hash, cards, overall_score, attack_score, defense_score, synergy_score,
+			versatility_score, avg_elixir, archetype, archetype_conf, evaluated_at, run_id
+		) VALUES (?, ?, 8, 8, 8, 8, 8, 3.0, 'cycle', 0.8, CURRENT_TIMESTAMP, 'seed')
+	`, legacyHash, cardsJSON); err != nil {
+		t.Fatalf("failed to insert legacy row: %v", err)
+	}
+	if _, err := storage.db.Exec("DELETE FROM migrations WHERE name = ?", deckHashMigrationName); err != nil {
+		t.Fatalf("failed to reset migration marker: %v", err)
+	}
+
+	if err := storage.Close(); err != nil {
+		t.Fatalf("failed to close storage: %v", err)
+	}
+
+	reopened, err := NewStorage(dbPath)
+	if err != nil {
+		t.Fatalf("failed to reopen storage: %v", err)
+	}
+	defer reopened.Close()
+
+	var got string
+	if err := reopened.db.QueryRow("SELECT deck_hash FROM top_decks LIMIT 1").Scan(&got); err != nil {
+		t.Fatalf("failed to fetch migrated row: %v", err)
+	}
+	if got != canonicalHash {
+		t.Fatalf("expected canonical hash %q, got %q", canonicalHash, got)
+	}
+}
+
+func TestStorageMigratesLegacyAndCanonicalDuplicates(t *testing.T) {
+	dbPath := filepath.Join(t.TempDir(), "fuzz_legacy_duplicates.db")
+	storage, err := NewStorage(dbPath)
+	if err != nil {
+		t.Fatalf("failed to create storage: %v", err)
+	}
+
+	cards := []string{"a", "b|c"}
+	cardsJSON := `["a","b|c"]`
+	legacyHash := deckhash.LegacyCompute(cards)
+	canonicalHash := deckhash.DeckHash(cards)
+
+	if _, err := storage.db.Exec(`
+		INSERT INTO top_decks (
+			deck_hash, cards, overall_score, attack_score, defense_score, synergy_score,
+			versatility_score, avg_elixir, archetype, archetype_conf, evaluated_at, run_id
+		) VALUES (?, ?, 9, 9, 9, 9, 9, 3.0, 'cycle', 0.9, CURRENT_TIMESTAMP, 'legacy-winner')
+	`, legacyHash, cardsJSON); err != nil {
+		t.Fatalf("failed to insert legacy row: %v", err)
+	}
+
+	if _, err := storage.db.Exec(`
+		INSERT INTO top_decks (
+			deck_hash, cards, overall_score, attack_score, defense_score, synergy_score,
+			versatility_score, avg_elixir, archetype, archetype_conf, evaluated_at, run_id
+		) VALUES (?, ?, 7, 7, 7, 7, 7, 3.0, 'cycle', 0.7, CURRENT_TIMESTAMP, 'canonical-loser')
+	`, canonicalHash, cardsJSON); err != nil {
+		t.Fatalf("failed to insert canonical row: %v", err)
+	}
+	if _, err := storage.db.Exec("DELETE FROM migrations WHERE name = ?", deckHashMigrationName); err != nil {
+		t.Fatalf("failed to reset migration marker: %v", err)
+	}
+
+	if err := storage.Close(); err != nil {
+		t.Fatalf("failed to close storage: %v", err)
+	}
+
+	reopened, err := NewStorage(dbPath)
+	if err != nil {
+		t.Fatalf("failed to reopen storage after duplicate migration: %v", err)
+	}
+	defer reopened.Close()
+
+	var count int
+	if err := reopened.db.QueryRow("SELECT COUNT(*) FROM top_decks").Scan(&count); err != nil {
+		t.Fatalf("failed to count migrated rows: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 deduplicated row, got %d", count)
+	}
+
+	var gotHash string
+	if err := reopened.db.QueryRow("SELECT deck_hash FROM top_decks LIMIT 1").Scan(&gotHash); err != nil {
+		t.Fatalf("failed to fetch migrated hash: %v", err)
+	}
+	if gotHash != canonicalHash {
+		t.Fatalf("expected canonical hash %q, got %q", canonicalHash, gotHash)
 	}
 }

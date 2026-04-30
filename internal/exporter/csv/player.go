@@ -2,6 +2,7 @@ package csv
 
 import (
 	"fmt"
+	"reflect"
 	"strconv"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
@@ -68,14 +69,11 @@ func playerHeaders() []string {
 func playerExport(dataDir string, data any) error {
 	player, ok := data.(*clashroyale.Player)
 	if !ok {
-		return fmt.Errorf("expected Player type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf((*clashroyale.Player)(nil)), data)
 	}
 	rows := [][]string{playerCSVRow(player)}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "players.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVPlayersSubdir)
-	return exporter.writeCSV(filePath, playerHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVPlayersSubdir, "players.csv", playerHeaders(), rows)
 }
 
 func playerCSVRow(player *clashroyale.Player) []string {
@@ -172,7 +170,7 @@ func playerCardsHeaders() []string {
 func playerCardsExport(dataDir string, data any) error {
 	player, ok := data.(*clashroyale.Player)
 	if !ok {
-		return fmt.Errorf("expected Player type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf((*clashroyale.Player)(nil)), data)
 	}
 
 	// Prepare CSV rows
@@ -197,8 +195,5 @@ func playerCardsExport(dataDir string, data any) error {
 		rows = append(rows, row)
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "player_cards.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVPlayersSubdir)
-	return exporter.writeCSV(filePath, playerCardsHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVPlayersSubdir, "player_cards.csv", playerCardsHeaders(), rows)
 }

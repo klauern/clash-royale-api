@@ -3,6 +3,7 @@ package leaderboard
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -15,6 +16,8 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
+
+const deckHashMigrationName = "deck_hash_canonical_v1"
 
 func closeWithLog(closer io.Closer, resourceName string) {
 	if err := closer.Close(); err != nil {
@@ -131,10 +134,188 @@ func (s *Storage) initSchema() error {
 		top_score REAL NOT NULL,
 		avg_score REAL NOT NULL
 	);
+
+	CREATE TABLE IF NOT EXISTS migrations (
+		name TEXT PRIMARY KEY,
+		applied_at DATETIME NOT NULL
+	);
 	`
 
 	_, err := s.db.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return s.maybeMigrateDeckHashes()
+}
+
+func (s *Storage) maybeMigrateDeckHashes() error {
+	applied, err := s.isMigrationApplied(deckHashMigrationName)
+	if err != nil {
+		return err
+	}
+	if applied {
+		return nil
+	}
+
+	if err := s.migrateDeckHashes(); err != nil {
+		return err
+	}
+	if _, err := s.db.Exec(
+		"INSERT INTO migrations (name, applied_at) VALUES (?, CURRENT_TIMESTAMP)",
+		deckHashMigrationName,
+	); err != nil {
+		return fmt.Errorf("failed to record deck hash migration: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Storage) isMigrationApplied(name string) (bool, error) {
+	var exists int
+	err := s.db.QueryRow("SELECT 1 FROM migrations WHERE name = ?", name).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to query migrations table: %w", err)
+	}
+	return true, nil
+}
+
+type deckHashMigrationRow struct {
+	id           int
+	deckHash     string
+	cardsJSON    string
+	overallScore float64
+	canonical    string
+	valid        bool
+}
+
+func (s *Storage) migrateDeckHashes() error {
+	records, winners, err := s.loadDeckHashMigrationRows()
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start deck hash migration transaction: %w", err)
+	}
+	if err := s.applyDeckHashMigration(tx, records, winners); err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("failed to rollback deck hash migration after error %v: %w", err, rollbackErr)
+		}
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit deck hash migration: %w", err)
+	}
+
+	if _, err := s.RecalculateStats(); err != nil {
+		return fmt.Errorf("failed to recalculate leaderboard stats after deck hash migration: %w", err)
+	}
+
+	return nil
+}
+
+type invalidDeckHashMigrationJSONError struct {
+	rowID int
+	err   error
+}
+
+func (e *invalidDeckHashMigrationJSONError) Error() string {
+	return fmt.Sprintf("invalid cards JSON for deck row %d: %v", e.rowID, e.err)
+}
+
+func (e *invalidDeckHashMigrationJSONError) Unwrap() error {
+	return e.err
+}
+
+func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[string]deckHashMigrationRow, error) {
+	rows, err := s.db.Query("SELECT id, deck_hash, cards, overall_score FROM decks")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load deck hash migration rows: %w", err)
+	}
+	defer closeWithLog(rows, "deck hash migration rows")
+
+	records := make([]deckHashMigrationRow, 0)
+	winnerByCanonical := make(map[string]deckHashMigrationRow)
+
+	for rows.Next() {
+		row, err := scanDeckHashMigrationRow(rows)
+		if err != nil {
+			var invalidErr *invalidDeckHashMigrationJSONError
+			if errors.As(err, &invalidErr) {
+				log.Printf("Warning: deck row %d has invalid cards JSON, skipping migration: %v", invalidErr.rowID, invalidErr.err)
+				records = append(records, row)
+				continue
+			}
+			return nil, nil, err
+		}
+
+		if row.valid {
+			current, exists := winnerByCanonical[row.canonical]
+			if !exists || prefersDeckHashMigrationRow(row, current) {
+				winnerByCanonical[row.canonical] = row
+			}
+		}
+		records = append(records, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("failed to iterate deck hash migration rows: %w", err)
+	}
+
+	return records, winnerByCanonical, nil
+}
+
+func scanDeckHashMigrationRow(rows *sql.Rows) (deckHashMigrationRow, error) {
+	var row deckHashMigrationRow
+	if err := rows.Scan(&row.id, &row.deckHash, &row.cardsJSON, &row.overallScore); err != nil {
+		return row, fmt.Errorf("failed to scan deck hash migration row: %w", err)
+	}
+
+	var cards []string
+	if err := json.Unmarshal([]byte(row.cardsJSON), &cards); err != nil {
+		return row, &invalidDeckHashMigrationJSONError{rowID: row.id, err: err}
+	}
+	row.canonical = deckhash.DeckHash(cards)
+	row.valid = true
+
+	return row, nil
+}
+
+func prefersDeckHashMigrationRow(candidate, current deckHashMigrationRow) bool {
+	if candidate.overallScore != current.overallScore {
+		return candidate.overallScore > current.overallScore
+	}
+	return candidate.id < current.id
+}
+
+func (s *Storage) applyDeckHashMigration(tx *sql.Tx, records []deckHashMigrationRow, winners map[string]deckHashMigrationRow) error {
+	for _, row := range records {
+		if !row.valid {
+			continue
+		}
+
+		winner := winners[row.canonical]
+		if row.id != winner.id {
+			if _, err := tx.Exec("DELETE FROM decks WHERE id = ?", row.id); err != nil {
+				return fmt.Errorf("failed to delete duplicate deck row %d: %w", row.id, err)
+			}
+		}
+	}
+
+	for _, winner := range winners {
+		if winner.deckHash == winner.canonical {
+			continue
+		}
+		if _, err := tx.Exec("UPDATE decks SET deck_hash = ? WHERE id = ?", winner.canonical, winner.id); err != nil {
+			return fmt.Errorf("failed to update deck hash for row %d: %w", winner.id, err)
+		}
+	}
+	return nil
 }
 
 // InsertDeck inserts or updates a deck entry in the leaderboard
@@ -142,7 +323,7 @@ func (s *Storage) initSchema() error {
 // Returns the deck ID and whether it was a new insert (true) or update (false)
 func (s *Storage) InsertDeck(entry *DeckEntry) (int, bool, error) {
 	// Compute deck hash for deduplication
-	entry.DeckHash = deckhash.Compute(entry.Cards)
+	entry.DeckHash = deckhash.DeckHash(entry.Cards)
 
 	// Serialize cards to JSON
 	cardsJSON, err := json.Marshal(entry.Cards)

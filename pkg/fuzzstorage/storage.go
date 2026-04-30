@@ -19,6 +19,7 @@ import (
 )
 
 const defaultDBName = "fuzz_top_decks.db"
+const deckHashMigrationName = "deck_hash_canonical_v1"
 
 func closeWithLog(closer io.Closer, resourceName string) {
 	if err := closer.Close(); err != nil {
@@ -102,10 +103,163 @@ func (s *Storage) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_overall_score ON top_decks(overall_score DESC);
 	CREATE INDEX IF NOT EXISTS idx_archetype ON top_decks(archetype);
 	CREATE INDEX IF NOT EXISTS idx_evaluated_at ON top_decks(evaluated_at DESC);
+
+	CREATE TABLE IF NOT EXISTS migrations (
+		name TEXT PRIMARY KEY,
+		applied_at DATETIME NOT NULL
+	);
 	`
 
 	_, err := s.db.Exec(schema)
-	return err
+	if err != nil {
+		return err
+	}
+
+	return s.maybeMigrateDeckHashes()
+}
+
+func (s *Storage) maybeMigrateDeckHashes() error {
+	applied, err := s.isMigrationApplied(deckHashMigrationName)
+	if err != nil {
+		return err
+	}
+	if applied {
+		return nil
+	}
+
+	if err := s.migrateDeckHashes(); err != nil {
+		return err
+	}
+
+	if _, err := s.db.Exec(
+		"INSERT INTO migrations (name, applied_at) VALUES (?, CURRENT_TIMESTAMP)",
+		deckHashMigrationName,
+	); err != nil {
+		return fmt.Errorf("failed to record deck hash migration: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Storage) isMigrationApplied(name string) (bool, error) {
+	var exists int
+	err := s.db.QueryRow("SELECT 1 FROM migrations WHERE name = ?", name).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("failed to query migrations table: %w", err)
+	}
+	return true, nil
+}
+
+type deckHashMigrationRow struct {
+	id           int
+	deckHash     string
+	cardsJSON    string
+	overallScore float64
+	canonical    string
+	valid        bool
+}
+
+func (s *Storage) migrateDeckHashes() error {
+	records, winners, err := s.loadDeckHashMigrationRows()
+	if err != nil {
+		return err
+	}
+
+	tx, err := s.db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start top deck hash migration transaction: %w", err)
+	}
+	if err := s.applyDeckHashMigration(tx, records, winners); err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("failed to rollback top_decks hash migration after error %v: %w", err, rollbackErr)
+		}
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit top deck hash migration: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[string]deckHashMigrationRow, error) {
+	rows, err := s.db.Query("SELECT id, deck_hash, cards, overall_score FROM top_decks")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load deck hash migration rows: %w", err)
+	}
+	defer closeWithLog(rows, "top deck hash migration rows")
+
+	records := make([]deckHashMigrationRow, 0)
+	winnerByCanonical := make(map[string]deckHashMigrationRow)
+
+	for rows.Next() {
+		row, err := scanDeckHashMigrationRow(rows)
+		if err != nil {
+			return nil, nil, err
+		}
+		if row.valid {
+			current, exists := winnerByCanonical[row.canonical]
+			if !exists || prefersDeckHashMigrationRow(row, current) {
+				winnerByCanonical[row.canonical] = row
+			}
+		}
+		records = append(records, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("failed to iterate top deck hash migration rows: %w", err)
+	}
+
+	return records, winnerByCanonical, nil
+}
+
+func scanDeckHashMigrationRow(rows *sql.Rows) (deckHashMigrationRow, error) {
+	var row deckHashMigrationRow
+	if err := rows.Scan(&row.id, &row.deckHash, &row.cardsJSON, &row.overallScore); err != nil {
+		return row, fmt.Errorf("failed to scan top deck hash migration row: %w", err)
+	}
+	var cards []string
+	if err := json.Unmarshal([]byte(row.cardsJSON), &cards); err != nil {
+		return row, fmt.Errorf("invalid cards JSON for top_decks row %d: %w", row.id, err)
+	}
+	row.canonical = deckhash.DeckHash(cards)
+	row.valid = true
+	return row, nil
+}
+
+func prefersDeckHashMigrationRow(candidate, current deckHashMigrationRow) bool {
+	if candidate.overallScore != current.overallScore {
+		return candidate.overallScore > current.overallScore
+	}
+	return candidate.id < current.id
+}
+
+func (s *Storage) applyDeckHashMigration(tx *sql.Tx, records []deckHashMigrationRow, winners map[string]deckHashMigrationRow) error {
+	for _, row := range records {
+		if !row.valid {
+			continue
+		}
+		winner := winners[row.canonical]
+		if row.id == winner.id {
+			continue
+		}
+		if _, err := tx.Exec("DELETE FROM top_decks WHERE id = ?", row.id); err != nil {
+			return fmt.Errorf("failed to delete duplicate top_decks row %d: %w", row.id, err)
+		}
+	}
+
+	for _, winner := range winners {
+		if winner.deckHash == winner.canonical {
+			continue
+		}
+		if _, err := tx.Exec("UPDATE top_decks SET deck_hash = ? WHERE id = ?", winner.canonical, winner.id); err != nil {
+			return fmt.Errorf("failed to update top_decks hash for row %d: %w", winner.id, err)
+		}
+	}
+	return nil
 }
 
 // DeckEntry represents a stored deck from fuzzing
@@ -147,7 +301,7 @@ func (s *Storage) SaveTopDecks(decks []DeckEntry) (int, error) {
 // Returns the deck ID and whether it was a new insert (true) or update (false)
 func (s *Storage) InsertDeck(entry *DeckEntry) (int, bool, error) {
 	// Compute deck hash for deduplication
-	deckHash := deckhash.Compute(entry.Cards)
+	deckHash := deckhash.DeckHash(entry.Cards)
 
 	// Serialize cards to JSON
 	cardsJSON, err := json.Marshal(entry.Cards)
