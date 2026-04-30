@@ -1,21 +1,14 @@
 package events
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
+	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	"slices"
 	"sort"
 	"strings"
 )
 
 func deckHash(cardNames []string) string {
-	normalized := normalizeDeckNames(cardNames)
-	if len(normalized) == 0 {
-		return ""
-	}
-
-	sum := sha256.Sum256([]byte(strings.Join(normalized, "|")))
-	return hex.EncodeToString(sum[:])[:12]
+	return deckhash.ComputeCanonicalShort(cardNames, 12)
 }
 
 func normalizeDeckNames(cardNames []string) []string {
