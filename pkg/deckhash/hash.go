@@ -22,7 +22,7 @@ func IsLegacyHash(cards []string, hash string) bool {
 	return LegacyCompute(cards) == strings.ToLower(hash)
 }
 
-// ComputeCanonical normalizes card names (trim/lowercase), sorts, and hashes.
+// ComputeCanonical normalizes card names (trim/lowercase) and hashes canonically.
 func ComputeCanonical(cards []string) string {
 	normalized := make([]string, 0, len(cards))
 	for _, card := range cards {
@@ -36,10 +36,7 @@ func ComputeCanonical(cards []string) string {
 		return ""
 	}
 
-	sort.Strings(normalized)
-	data := strings.Join(normalized, "|")
-	hash := sha256.Sum256([]byte(data))
-	return fmt.Sprintf("%x", hash)
+	return DeckHash(normalized)
 }
 
 // ComputeCanonicalShort returns a deterministic short hash for normalized decks.
