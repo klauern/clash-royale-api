@@ -1,10 +1,11 @@
 package events
 
 import (
-	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 )
 
 func deckHash(cardNames []string) string {
