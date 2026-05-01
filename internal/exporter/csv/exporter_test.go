@@ -63,6 +63,10 @@ func TestBaseExporter_WriteCSV(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			if test.wantErr && os.Geteuid() == 0 {
+				t.Skip("permission test cannot run as root")
+			}
+
 			// Clean up any existing file
 			_ = os.Remove(test.filePath)
 

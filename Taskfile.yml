@@ -1010,6 +1010,7 @@ tasks:
       Run linter on Go code
       - golangci-lint (comprehensive linting)
       - go vet (built-in vet)
+      - check-stale-beads-refs (detects orphan clash-royale-api-* IDs)
     cmds:
       - echo "Running golangci-lint..."
       - |
@@ -1019,6 +1020,7 @@ tasks:
           echo "golangci-lint not found, running go vet..."
         fi
       - go vet ./...
+      - bash scripts/check-stale-beads-refs.sh
 
   lint-quality:
     desc: Run quality linting (CI hard-fail for new violations)
@@ -1207,7 +1209,7 @@ tasks:
       Run security vulnerability scanning
     cmds:
       - echo "Running security scan..."
-      - cd go && gosec ./... || echo "gosec not found, skipping security scan"
+      - gosec ./... || echo "gosec not found, skipping security scan"
 
   install-goreleaser:
     desc: Install GoReleaser
@@ -1276,7 +1278,6 @@ tasks:
     cmds:
       - echo "Generating shell completion scripts..."
       - |
-        cd go
         mkdir -p dist/completion
 
         # urfave/cli/v3 may not support --completion flags
