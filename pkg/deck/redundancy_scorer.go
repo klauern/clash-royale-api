@@ -2,8 +2,6 @@
 
 // Package deck provides redundancy and versatility scoring research prototypes.
 // This is RESEARCH CODE, not production-ready implementations.
-//
-// Research spike: clash-royale-api-5xb
 package deck
 
 import (

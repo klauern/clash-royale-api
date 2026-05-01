@@ -86,7 +86,7 @@ func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, cons
 
 // runPhase1BuildDeckVariations builds deck variations for the analysis suite
 //
-//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
+//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization.
 func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string, boostedLevelOverrides map[string]int) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
 	decksDir := filepath.Join(outputDir, "decks")
 	if err := os.MkdirAll(decksDir, 0o755); err != nil {
@@ -166,12 +166,8 @@ func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, st
 
 	buildDuration := time.Since(buildStart)
 
-	// Save suite summary
-	suiteSummaryPath := filepath.Join(decksDir, deck.SuiteSummaryFilename(timestamp, playerData.PlayerTag))
-	suiteSummary := deck.NewSuiteSummary(
-		time.Now().UTC().Format(time.RFC3339),
-		playerData.PlayerName,
-		playerData.PlayerTag,
+	suiteSummaryPath, err := writeSuiteSummary(
+		decksDir, timestamp, playerData.PlayerName, playerData.PlayerTag,
 		deck.SuiteBuildInfo{
 			TotalDecks:     len(strategies) * variations,
 			Successful:     successCount,
@@ -182,9 +178,8 @@ func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, st
 		},
 		toSuiteDeckSummaries(builtDecks),
 	)
-
-	if err := deck.WriteSuiteSummary(suiteSummaryPath, suiteSummary); err != nil {
-		return nil, nil, 0, 0, "", fmt.Errorf("failed to save suite summary: %w", err)
+	if err != nil {
+		return nil, nil, 0, 0, "", err
 	}
 
 	fmt.Println()
@@ -215,7 +210,7 @@ func toSuiteDeckSummaries(builtDecks []suiteDeckInfo) []deck.SuiteDeckSummary {
 
 // runPhase2EvaluateAllDecks evaluates all built decks for the analysis suite
 //
-//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization task clash-royale-api-1g1r.
+//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization.
 func runPhase2EvaluateAllDecks(ctx context.Context, builtDecks []suiteDeckInfo, playerData *suitePlayerData, outputDir, tag, apiToken string, fromAnalysis, verbose bool, timestamp string, boostedLevelOverrides map[string]int) ([]suiteEvalResult, string, error) {
 	evaluationsDir := filepath.Join(outputDir, "evaluations")
 	if err := os.MkdirAll(evaluationsDir, 0o755); err != nil {
@@ -449,7 +444,7 @@ func runPhase3CompareTopPerformers(results []suiteEvalResult, topN int, outputDi
 // (3) Compare top performers using compare logic
 // (4) Generate comprehensive markdown report
 //
-//nolint:funlen,gocognit,gocyclo,gocritic,dupl // Legacy orchestration path pending extraction in clash-royale-api-1g1r.
+//nolint:funlen,gocognit,gocyclo,gocritic,dupl // Legacy orchestration path pending extraction.
 func deckAnalyzeSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Extract flags
 	tag := cmd.String("tag")
