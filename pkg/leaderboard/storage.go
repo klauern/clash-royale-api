@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"path/filepath"
@@ -13,17 +12,12 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/playertag"
+	"github.com/klauer/clash-royale-api/go/internal/storageutil"
 	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
 const deckHashMigrationName = "deck_hash_canonical_v1"
-
-func closeWithLog(closer io.Closer, resourceName string) {
-	if err := closer.Close(); err != nil {
-		log.Printf("Warning: failed to close %s: %v", resourceName, err)
-	}
-}
 
 // Storage provides persistent storage for deck leaderboards using SQLite
 type Storage struct {
@@ -68,7 +62,7 @@ func NewStorage(playerTag string) (*Storage, error) {
 
 	// Initialize schema
 	if err := storage.initSchema(); err != nil {
-		closeWithLog(db, "leaderboard database")
+		storageutil.CloseWithLog(db, "leaderboard database")
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -238,7 +232,7 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load deck hash migration rows: %w", err)
 	}
-	defer closeWithLog(rows, "deck hash migration rows")
+	defer storageutil.CloseWithLog(rows, "deck hash migration rows")
 
 	records := make([]deckHashMigrationRow, 0)
 	winnerByCanonical := make(map[string]deckHashMigrationRow)
@@ -398,7 +392,7 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
-	defer closeWithLog(rows, "deck rows")
+	defer storageutil.CloseWithLog(rows, "deck rows")
 
 	entries, err := scanDeckEntries(rows)
 	if err != nil {
@@ -881,7 +875,7 @@ func (s *Storage) GetArchetypeCounts() ([]ArchetypeCount, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query archetype counts: %w", err)
 	}
-	defer closeWithLog(rows, "archetype count rows")
+	defer storageutil.CloseWithLog(rows, "archetype count rows")
 
 	counts := make([]ArchetypeCount, 0)
 	for rows.Next() {
