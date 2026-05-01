@@ -13,7 +13,7 @@ if [[ ! -f .beads/issues.jsonl ]]; then
     exit 2
 fi
 
-valid_ids="$(grep -oE '"id":"clash-royale-api-[a-z0-9]+"' .beads/issues.jsonl \
+valid_ids="$(grep -oE '"id"[[:space:]]*:[[:space:]]*"clash-royale-api-[a-z0-9]+"' .beads/issues.jsonl \
     | sed -E 's/.*"(clash-royale-api-[a-z0-9]+)".*/\1/' \
     | sort -u)"
 

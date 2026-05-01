@@ -1209,7 +1209,12 @@ tasks:
       Run security vulnerability scanning
     cmds:
       - echo "Running security scan..."
-      - gosec ./... || echo "gosec not found, skipping security scan"
+      - |
+        if command -v gosec >/dev/null 2>&1; then
+          gosec ./...
+        else
+          echo "gosec not found, skipping security scan"
+        fi
 
   install-goreleaser:
     desc: Install GoReleaser

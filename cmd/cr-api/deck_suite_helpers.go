@@ -8,6 +8,20 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
+// SuiteSummaryWriteError wraps write failures with the target path.
+type SuiteSummaryWriteError struct {
+	Path string
+	Err  error
+}
+
+func (e *SuiteSummaryWriteError) Error() string {
+	return fmt.Sprintf("write suite summary %q: %v", e.Path, e.Err)
+}
+
+func (e *SuiteSummaryWriteError) Unwrap() error {
+	return e.Err
+}
+
 func saveSuiteDeckFile(
 	outputDir, strategy string,
 	variation int,
@@ -40,7 +54,7 @@ func writeSuiteSummary(
 		summaries,
 	)
 	if err := deck.WriteSuiteSummary(path, summary); err != nil {
-		return "", fmt.Errorf("write suite summary: %w", err)
+		return "", &SuiteSummaryWriteError{Path: path, Err: err}
 	}
 	return path, nil
 }
