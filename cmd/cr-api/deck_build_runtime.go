@@ -155,7 +155,7 @@ func displayUpgradeRecommendationsIfEnabled(
 	return upgrades
 }
 
-//nolint:gocognit,gocyclo,funlen // Legacy suite command path; phased extraction follows in clash-royale-api-sb3q.
+//nolint:gocognit,gocyclo,funlen // Legacy suite command path; phased extraction pending.
 func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	strategiesStr := cmd.String("strategies")
@@ -312,7 +312,6 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Save summary JSON if requested
 	if saveData && successful > 0 {
 		timestamp := time.Now().Format("20060102_150405")
-		summaryPath := filepath.Join(outputDir, deck.SuiteSummaryFilename(timestamp, playerData.PlayerTag))
 		summaries := make([]deck.SuiteDeckSummary, 0, len(results))
 		for _, result := range results {
 			if result.Deck == nil {
@@ -326,10 +325,8 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 				FilePath:  result.FilePath,
 			})
 		}
-		summary := deck.NewSuiteSummary(
-			time.Now().UTC().Format(time.RFC3339),
-			playerData.PlayerName,
-			playerData.PlayerTag,
+		summaryPath, err := writeSuiteSummary(
+			outputDir, timestamp, playerData.PlayerName, playerData.PlayerTag,
 			deck.SuiteBuildInfo{
 				TotalDecks:     len(results),
 				Successful:     successful,
@@ -340,7 +337,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 			},
 			summaries,
 		)
-		if err := deck.WriteSuiteSummary(summaryPath, summary); err != nil {
+		if err != nil {
 			printf("Warning: Failed to write summary file: %v\n", err)
 		} else {
 			printf("Summary saved to: %s\n", summaryPath)

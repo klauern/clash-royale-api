@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -19,4 +20,27 @@ func saveSuiteDeckFile(
 		return "", err
 	}
 	return targetPath, nil
+}
+
+// writeSuiteSummary assembles a SuiteSummary from build results and writes it
+// to outputDir, returning the destination path. Centralizes the
+// NewSuiteSummary + WriteSuiteSummary pair shared by build/analyze suite
+// runtimes.
+func writeSuiteSummary(
+	outputDir, timestamp, playerName, playerTag string,
+	info deck.SuiteBuildInfo,
+	summaries []deck.SuiteDeckSummary,
+) (string, error) {
+	path := filepath.Join(outputDir, deck.SuiteSummaryFilename(timestamp, playerTag))
+	summary := deck.NewSuiteSummary(
+		time.Now().UTC().Format(time.RFC3339),
+		playerName,
+		playerTag,
+		info,
+		summaries,
+	)
+	if err := deck.WriteSuiteSummary(path, summary); err != nil {
+		return "", fmt.Errorf("write suite summary: %w", err)
+	}
+	return path, nil
 }
