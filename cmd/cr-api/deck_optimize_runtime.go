@@ -51,7 +51,7 @@ func deckAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-//nolint:funlen,gocognit,gocyclo // Command flow complexity scheduled for decomposition in clash-royale-api-1g1r.
+//nolint:funlen,gocognit,gocyclo // Command flow complexity scheduled for decomposition.
 func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	deckString := cmd.String("deck")
 	tag := cmd.String("tag")

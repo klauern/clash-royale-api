@@ -12,7 +12,6 @@
 // a migration period, with the goal of replacing V1 once validated.
 //
 // Design document: docs/IMPROVED_SCORING_DESIGN.md
-// Related tasks: clash-royale-api-bwq8 (design), clash-royale-api-33f5 (research)
 package deck
 
 import (
