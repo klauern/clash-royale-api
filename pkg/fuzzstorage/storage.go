@@ -7,25 +7,18 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/storageutil"
 	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
 const defaultDBName = "fuzz_top_decks.db"
 const deckHashMigrationName = "deck_hash_canonical_v1"
-
-func closeWithLog(closer io.Closer, resourceName string) {
-	if err := closer.Close(); err != nil {
-		log.Printf("Warning: failed to close %s: %v", resourceName, err)
-	}
-}
 
 // Storage provides persistent storage for top decks from fuzzing runs
 type Storage struct {
@@ -64,7 +57,7 @@ func NewStorage(dbPath string) (*Storage, error) {
 
 	// Initialize schema
 	if err := storage.initSchema(); err != nil {
-		closeWithLog(db, "fuzz storage database")
+		storageutil.CloseWithLog(db, "fuzz storage database")
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -191,7 +184,7 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load deck hash migration rows: %w", err)
 	}
-	defer closeWithLog(rows, "top deck hash migration rows")
+	defer storageutil.CloseWithLog(rows, "top deck hash migration rows")
 
 	records := make([]deckHashMigrationRow, 0)
 	winnerByCanonical := make(map[string]deckHashMigrationRow)
@@ -408,7 +401,7 @@ func (s *Storage) GetTopN(n int) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query top decks: %w", err)
 	}
-	defer closeWithLog(rows, "top decks rows")
+	defer storageutil.CloseWithLog(rows, "top decks rows")
 
 	return s.scanRows(rows)
 }
@@ -428,7 +421,7 @@ func (s *Storage) GetByArchetype(archetype string, limit int) ([]DeckEntry, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to query by archetype: %w", err)
 	}
-	defer closeWithLog(rows, "deck rows by archetype")
+	defer storageutil.CloseWithLog(rows, "deck rows by archetype")
 
 	return s.scanRows(rows)
 }
@@ -523,7 +516,7 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
-	defer closeWithLog(rows, "stats rows")
+	defer storageutil.CloseWithLog(rows, "stats rows")
 
 	return s.scanRows(rows)
 }
@@ -594,7 +587,7 @@ func (s *Storage) ArchetypeHistogram(opts QueryOptions) (map[string]int, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query archetype histogram: %w", err)
 	}
-	defer closeWithLog(rows, "archetype histogram rows")
+	defer storageutil.CloseWithLog(rows, "archetype histogram rows")
 
 	histogram := make(map[string]int)
 	for rows.Next() {
