@@ -17,8 +17,10 @@ import (
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
-const defaultDBName = "fuzz_top_decks.db"
-const deckHashMigrationName = "deck_hash_canonical_v1"
+const (
+	defaultDBName         = "fuzz_top_decks.db"
+	deckHashMigrationName = "deck_hash_canonical_v1"
+)
 
 // Storage provides persistent storage for top decks from fuzzing runs
 type Storage struct {

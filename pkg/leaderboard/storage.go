@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/klauer/clash-royale-api/go/internal/storageutil"
 	"github.com/klauer/clash-royale-api/go/internal/playertag"
+	"github.com/klauer/clash-royale-api/go/internal/storageutil"
 	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
