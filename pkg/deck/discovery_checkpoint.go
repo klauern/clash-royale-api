@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
@@ -13,11 +12,7 @@ import (
 
 // DefaultDiscoveryCheckpointDir returns the default discovery checkpoint directory.
 func DefaultDiscoveryCheckpointDir() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-	return filepath.Join(homeDir, ".cr-api", "discover")
+	return DiscoverySessionBaseDir()
 }
 
 // DiscoveryCheckpointPath returns the checkpoint file path for a player tag.
