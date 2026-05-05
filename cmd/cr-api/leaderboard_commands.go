@@ -5,12 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"text/tabwriter"
 
-	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/urfave/cli/v3"
 )
@@ -377,16 +375,9 @@ func leaderboardStatsCommand(ctx context.Context, cmd *cli.Command) error {
 		printf("  Avg Score: %.2f\n\n", stats.AvgScore)
 	}
 
-	// Get database file size
-	homeDir, err := os.UserHomeDir()
-	if err == nil {
-		sanitizedTag, sanitizeErr := playertag.Sanitize(playerTag)
-		if sanitizeErr == nil {
-			dbPath := filepath.Join(homeDir, ".cr-api", "leaderboards", fmt.Sprintf("%s.db", sanitizedTag))
-			if info, err := os.Stat(dbPath); err == nil {
-				printf("Database Size: %.2f MB\n", float64(info.Size())/(1024*1024))
-			}
-		}
+	// Get database file size.
+	if info, err := os.Stat(storage.GetDBPath()); err == nil {
+		printf("Database Size: %.2f MB\n", float64(info.Size())/(1024*1024))
 	}
 
 	// Show archetype distribution if requested
