@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/klauer/clash-royale-api/go/pkg/recommend"
@@ -111,5 +112,61 @@ func TestSaveRecommendationsCSVEscapesSpecialCharacters(t *testing.T) {
 	}
 	if records[1][9] != `Use "bait", then punish; High pressure, low risk` {
 		t.Fatalf("unexpected reasons cell: %q", records[1][9])
+	}
+}
+
+func TestDeriveLeagueLabel(t *testing.T) {
+	t.Run("uses league name when present", func(t *testing.T) {
+		p := &clashroyale.Player{
+			League:       clashroyale.League{Name: "Challenger I"},
+			BestTrophies: 7000,
+		}
+		if got := deriveLeagueLabel(p); got != "Challenger I" {
+			t.Errorf("got %q, want %q", got, "Challenger I")
+		}
+	})
+
+	t.Run("falls back to best-trophies bracket when league empty", func(t *testing.T) {
+		// Reproduces the post-season-reset shape from R8QGUQRCV.
+		p := &clashroyale.Player{
+			League:       clashroyale.League{Name: ""},
+			BestTrophies: 6500,
+		}
+		got := deriveLeagueLabel(p)
+		if !strings.Contains(got, "6500") || !strings.Contains(got, "Path of Legends") {
+			t.Errorf("got %q, want best-trophies bracket label", got)
+		}
+	})
+
+	t.Run("returns empty for nil player", func(t *testing.T) {
+		if got := deriveLeagueLabel(nil); got != "" {
+			t.Errorf("got %q, want empty", got)
+		}
+	})
+}
+
+func TestBestTrophiesBracketLabel(t *testing.T) {
+	cases := []struct {
+		trophies int
+		contains string
+	}{
+		{0, ""},
+		{2000, "pre-Path of Legends"},
+		{5000, "lower"},
+		{7000, "mid"},
+		{9500, "upper"},
+		{11000, "Ultimate Champion"},
+	}
+	for _, tc := range cases {
+		got := bestTrophiesBracketLabel(tc.trophies)
+		if tc.contains == "" {
+			if got != "" {
+				t.Errorf("trophies=%d: got %q, want empty", tc.trophies, got)
+			}
+			continue
+		}
+		if !strings.Contains(got, tc.contains) {
+			t.Errorf("trophies=%d: got %q, want substring %q", tc.trophies, got, tc.contains)
+		}
 	}
 }

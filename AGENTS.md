@@ -123,7 +123,7 @@ bd sync               # Commit and push changes
 
 - **Dependencies**: Issues can block other issues. `bd ready` shows only unblocked work.
 - **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog (use numbers, not words)
-- **Types**: task, bug, feature, epic, question, docs
+- **Types**: task, bug, feature, epic, chore, question (note: `docs` is NOT valid — use `task` for doc work)
 - **Blocking**: `bd dep add <issue> <depends-on>` to add dependencies
 
 ### Session Protocol
