@@ -75,15 +75,45 @@ func (s *Scorer) CalculateCompatibility(deckDetail []deck.CardDetail, playerCard
 	return (totalScore / maxScore) * 100.0
 }
 
-// CalculateSynergy measures card pair synergies within a deck (0-100)
-// Uses the existing synergy database to find strong card combinations
+// CalculateSynergy measures card pair synergies within a deck (0-100).
+//
+// Earlier versions returned analysis.TotalScore (rawSum / 28 * 100), which
+// floored most archetype-built decks at 0.0% because the curated synergy DB
+// only captures a small fraction of the 28 possible pairs. We now blend
+// average detected-pair strength with coverage and apply a baseline so the
+// metric is comparable to "deck evaluate"'s synergy column. Mirrors the
+// approach used in pkg/deck/evaluation.ScoreSynergy.
 func (s *Scorer) CalculateSynergy(deckNames []string) float64 {
 	if len(deckNames) == 0 {
 		return 0
 	}
 
 	analysis := s.synergyDB.AnalyzeDeckSynergy(deckNames)
-	return analysis.TotalScore
+
+	// Count detected pairs across all categories.
+	pairCount := 0
+	for _, count := range analysis.CategoryScores {
+		pairCount += count
+	}
+	maxPairs := (len(deckNames) * (len(deckNames) - 1)) / 2
+	coverage := 0.0
+	if maxPairs > 0 {
+		coverage = float64(pairCount) / float64(maxPairs)
+	}
+
+	// 75% synergy strength + 25% coverage, scaled to 0-100.
+	score := ((analysis.AverageScore * 0.75) + (coverage * 0.25)) * 100.0
+
+	// Baseline so archetype decks with no DB-known pairs aren't reported as
+	// 0% — the value still differentiates them from decks with detected
+	// synergies but doesn't claim antisynergy.
+	if pairCount == 0 {
+		score = 25.0
+	}
+	if score > 100.0 {
+		score = 100.0
+	}
+	return score
 }
 
 // CalculateOverallScore combines all scoring factors into a single score (0-100)

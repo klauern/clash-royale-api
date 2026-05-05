@@ -3,6 +3,7 @@ package mulligan
 import (
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes/taxonomy"
 )
 
@@ -66,12 +67,15 @@ func (g *Generator) analyzeDeck(deckCards []string) DeckAnalysis {
 	for _, cardName := range deckCards {
 		cardInfo, exists := g.cardDatabase[cardName]
 		if !exists {
-			// Default handling for unknown cards
+			// Fall back to the global card-role classifier so unknown cards
+			// still get classified into win-cond/spell/support/cycle/etc.
+			// rather than collapsing to a generic support default that the
+			// matchup categorization later ignores.
 			cardInfo = CardInfo{
 				Name:         cardName,
-				Elixir:       4,
-				Type:         "troop",
-				Role:         RoleSupport,
+				Elixir:       config.GetCardElixir(cardName, 4),
+				Type:         inferCardType(cardName),
+				Role:         mapConfigRoleToMulligan(config.GetCardRole(cardName)),
 				OpeningScore: 0.5,
 			}
 		}
@@ -87,11 +91,15 @@ func (g *Generator) analyzeDeck(deckCards []string) DeckAnalysis {
 		}
 		openingCards = append(openingCards, openingCard)
 
-		// Categorize cards
+		// Categorize cards. Support troops are bucketed alongside defensive
+		// cards because, in mulligan terms, they are the answers a player
+		// holds in hand for incoming pushes (Witch, Bowler, Dark Prince,
+		// etc.). Without this, support-heavy decks reported empty
+		// matchup KeyCards (clash-royale-api-gmk).
 		switch cardInfo.Role {
 		case RoleWinCondition:
 			winConditions = append(winConditions, cardName)
-		case RoleDefensive, RoleBuilding:
+		case RoleDefensive, RoleBuilding, RoleSupport:
 			defensiveCards = append(defensiveCards, cardName)
 			if cardInfo.Type == "building" {
 				buildings = append(buildings, cardName)
@@ -267,13 +275,25 @@ func (g *Generator) generatePrinciples(analysis DeckAnalysis) []string {
 
 // generateMatchups creates matchup-specific opening strategies
 func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
+	// preferred returns the first non-empty card list, falling back through
+	// the supplied alternatives. Ensures KeyCards stays meaningful for decks
+	// that lack a particular role (e.g., heavy beatdowns with no cycle).
+	preferred := func(lists ...[]string) []string {
+		for _, l := range lists {
+			if len(l) > 0 {
+				return l
+			}
+		}
+		return nil
+	}
+
 	matchups := []Matchup{
 		{
 			OpponentType: "Beatdown (Giant, Golem, Lava Hound)",
 			OpeningPlay:  g.getBeatdownOpening(analysis),
 			Reason:       "Apply early pressure, force them to defend instead of building",
 			Backup:       "If they ignore pressure, build stronger defense and counter-push",
-			KeyCards:     analysis.DefensiveCards,
+			KeyCards:     preferred(analysis.DefensiveCards, analysis.WinConditions),
 			DangerLevel:  "medium",
 		},
 		{
@@ -281,7 +301,7 @@ func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
 			OpeningPlay:  g.getCycleOpening(analysis),
 			Reason:       "Have defense ready for immediate pressure",
 			Backup:       "Start cycling if they play defensive, maintain pressure",
-			KeyCards:     append(analysis.DefensiveCards, analysis.CycleCards...),
+			KeyCards:     preferred(append(analysis.DefensiveCards, analysis.CycleCards...), analysis.DefensiveCards, analysis.WinConditions),
 			DangerLevel:  "high",
 		},
 		{
@@ -289,7 +309,7 @@ func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
 			OpeningPlay:  g.getBridgeSpamOpening(analysis),
 			Reason:       "Defensive positioning ready for sudden pressure",
 			Backup:       "Use cheap troops to swarm their units",
-			KeyCards:     analysis.CycleCards,
+			KeyCards:     preferred(analysis.CycleCards, analysis.DefensiveCards),
 			DangerLevel:  "high",
 		},
 		{
@@ -297,7 +317,7 @@ func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
 			OpeningPlay:  g.getSiegeOpening(analysis),
 			Reason:       "Prevent siege lock, force defensive play",
 			Backup:       "Apply pressure in opposite lane",
-			KeyCards:     analysis.WinConditions,
+			KeyCards:     preferred(analysis.WinConditions, analysis.DefensiveCards),
 			DangerLevel:  "high",
 		},
 		{
@@ -305,7 +325,7 @@ func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
 			OpeningPlay:  g.getControlOpening(analysis),
 			Reason:       "Cheap cycle to scout their strategy",
 			Backup:       "Mirror their play style, punish overextensions",
-			KeyCards:     analysis.Spells,
+			KeyCards:     preferred(analysis.Spells, analysis.WinConditions),
 			DangerLevel:  "medium",
 		},
 		{
@@ -313,7 +333,7 @@ func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
 			OpeningPlay:  g.getSafeOpening(analysis),
 			Reason:       "Safe play that provides information",
 			Backup:       "React defensively to their first move",
-			KeyCards:     analysis.CycleCards,
+			KeyCards:     preferred(analysis.CycleCards, analysis.DefensiveCards),
 			DangerLevel:  "low",
 		},
 	}
@@ -455,4 +475,37 @@ func (g *Generator) getOpeningReasons(cardInfo CardInfo) []string {
 	}
 
 	return reasons
+}
+
+// mapConfigRoleToMulligan converts internal/config role strings to the
+// mulligan package's CardRole. Returns RoleSupport for unknown inputs.
+func mapConfigRoleToMulligan(role config.CardRole) CardRole {
+	switch role {
+	case config.RoleWinCondition:
+		return RoleWinCondition
+	case config.RoleBuilding:
+		return RoleBuilding
+	case config.RoleSpellBig, config.RoleSpellSmall:
+		return RoleSpell
+	case config.RoleCycle:
+		return RoleCycle
+	case config.RoleSupport:
+		return RoleSupport
+	default:
+		return RoleSupport
+	}
+}
+
+// inferCardType returns "spell", "building", or "troop" based on the card's
+// classification in the global config. Used as a fallback for cards that
+// aren't in mulligan/config/cards.json.
+func inferCardType(cardName string) string {
+	switch config.GetCardRole(cardName) {
+	case config.RoleSpellBig, config.RoleSpellSmall:
+		return "spell"
+	case config.RoleBuilding:
+		return "building"
+	default:
+		return "troop"
+	}
 }
