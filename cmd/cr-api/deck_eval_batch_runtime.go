@@ -618,10 +618,7 @@ func setupEvalBatch(ctx context.Context, cmd *cli.Command, flags *evalBatchFlags
 		playerTag = loadedTag
 	}
 
-	apiToken := cmd.String("api-token")
-	if apiToken == "" {
-		apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
-	}
+	apiToken := resolveAPIToken(cmd.String("api-token"))
 
 	playerContext, loadedName, err := loadEvalPlayerContext(ctx, playerTag, apiToken, flags.Verbose)
 	if err != nil {

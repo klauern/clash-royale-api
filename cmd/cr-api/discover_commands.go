@@ -419,10 +419,9 @@ func initializeDiscoveryResources(ctx context.Context, playerTag string, verbose
 		return nil, err
 	}
 
-	// Get API token
-	apiToken := os.Getenv("CLASH_ROYALE_API_TOKEN")
-	if apiToken == "" {
-		return nil, fmt.Errorf("CLASH_ROYALE_API_TOKEN environment variable required")
+	apiToken, err := requireAPITokenValue("", apiClientOptions{})
+	if err != nil {
+		return nil, err
 	}
 
 	// Fetch player data

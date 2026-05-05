@@ -236,11 +236,11 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	} else {
 		// Load from API
-		if apiToken == "" {
-			apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
-		}
-		if apiToken == "" {
-			return fmt.Errorf("--api-token or CLASH_ROYALE_API_TOKEN environment variable required")
+		apiToken, err = requireAPITokenValue(apiToken, apiClientOptions{
+			missingToken: "--api-token or CLASH_ROYALE_API_TOKEN environment variable required",
+		})
+		if err != nil {
+			return err
 		}
 
 		client := clashroyale.NewClient(apiToken)
@@ -1747,12 +1747,11 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 
 	var theoreticalByID map[int]fuzzstorage.DeckEntry
 	if playerTag != "" && len(decks) > 0 {
-		apiToken := cmd.String("api-token")
-		if apiToken == "" {
-			apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
-		}
-		if apiToken == "" {
-			return fmt.Errorf("API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)")
+		apiToken, err := requireAPITokenValue(cmd.String("api-token"), apiClientOptions{
+			missingToken: "API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)",
+		})
+		if err != nil {
+			return err
 		}
 
 		client := clashroyale.NewClient(apiToken)
@@ -1863,15 +1862,13 @@ func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 	var player *clashroyale.Player
 	var playerContext *evaluation.PlayerContext
 	if playerTag != "" {
-		apiToken := cmd.String("api-token")
-		if apiToken == "" {
-			apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
-		}
-		if apiToken == "" {
-			return fmt.Errorf("API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)")
+		apiToken, err := requireAPITokenValue(cmd.String("api-token"), apiClientOptions{
+			missingToken: "API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)",
+		})
+		if err != nil {
+			return err
 		}
 		client := clashroyale.NewClient(apiToken)
-		var err error
 		player, err = client.GetPlayerWithContext(ctx, playerTag)
 		if err != nil {
 			return fmt.Errorf("failed to load player data for %s: %w", playerTag, err)
