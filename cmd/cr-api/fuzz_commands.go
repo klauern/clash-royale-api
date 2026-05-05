@@ -1747,23 +1747,10 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 
 	var theoreticalByID map[int]fuzzstorage.DeckEntry
 	if playerTag != "" && len(decks) > 0 {
-		apiToken, err := requireAPITokenValue(cmd.String("api-token"), apiClientOptions{
-			missingToken: "API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)",
-		})
+		player, playerContext, err := loadFuzzPlayerContext(ctx, cmd, playerTag, verbose)
 		if err != nil {
 			return err
 		}
-
-		client := clashroyale.NewClient(apiToken)
-		cleanTag, err := playertag.Sanitize(playerTag)
-		if err != nil {
-			return err
-		}
-		player, playerErr := client.GetPlayerWithContext(ctx, cleanTag)
-		if playerErr != nil {
-			return fmt.Errorf("failed to load player data for %s: %w", playerTag, playerErr)
-		}
-		playerContext := evaluation.NewPlayerContextFromPlayer(player)
 
 		theoreticalByID = make(map[int]fuzzstorage.DeckEntry, len(decks))
 		for _, deck := range decks {
@@ -1777,10 +1764,6 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 
 		if maxSameArchetype > 0 {
 			decks = limitArchetypeRepetition(decks, maxSameArchetype)
-		}
-
-		if verbose {
-			printf("Loaded player context for %s (%s)\n", player.Name, player.Tag)
 		}
 	}
 	if maxSameArchetype > 0 {
@@ -1862,20 +1845,10 @@ func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 	var player *clashroyale.Player
 	var playerContext *evaluation.PlayerContext
 	if playerTag != "" {
-		apiToken, err := requireAPITokenValue(cmd.String("api-token"), apiClientOptions{
-			missingToken: "API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)",
-		})
+		var err error
+		player, playerContext, err = loadFuzzPlayerContext(ctx, cmd, playerTag, verbose)
 		if err != nil {
 			return err
-		}
-		client := clashroyale.NewClient(apiToken)
-		player, err = client.GetPlayerWithContext(ctx, playerTag)
-		if err != nil {
-			return fmt.Errorf("failed to load player data for %s: %w", playerTag, err)
-		}
-		playerContext = evaluation.NewPlayerContextFromPlayer(player)
-		if verbose {
-			printf("Loaded player context for %s (%s)\n", player.Name, playerTag)
 		}
 	}
 
@@ -1907,6 +1880,41 @@ type storedDeckWork struct {
 type storedDeckResult struct {
 	index int
 	entry fuzzstorage.DeckEntry
+}
+
+// loadFuzzPlayerContext fetches the player profile and derived
+// PlayerContext used by both `deck fuzz list` and `deck fuzz update`.
+// Caller is responsible for the playerTag != "" guard; this helper assumes
+// a tag is provided. Errors propagate so the caller can fail fast.
+func loadFuzzPlayerContext(
+	ctx context.Context,
+	cmd *cli.Command,
+	playerTag string,
+	verbose bool,
+) (*clashroyale.Player, *evaluation.PlayerContext, error) {
+	apiToken, err := requireAPITokenValue(cmd.String("api-token"), apiClientOptions{
+		missingToken: "API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)",
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	cleanTag, err := playertag.Sanitize(playerTag)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	client := clashroyale.NewClient(apiToken)
+	player, err := client.GetPlayerWithContext(ctx, cleanTag)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to load player data for %s: %w", playerTag, err)
+	}
+
+	playerContext := evaluation.NewPlayerContextFromPlayer(player)
+	if verbose {
+		printf("Loaded player context for %s (%s)\n", player.Name, player.Tag)
+	}
+	return player, playerContext, nil
 }
 
 func formatScoreTransition(
