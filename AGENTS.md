@@ -64,6 +64,28 @@ See [.cursor/rules/beads.mdc](.cursor/rules/beads.mdc) for detailed beads workfl
 - `bd <command> --help` - Show bd command options
 - `./bin/cr-api --help` - Show CLI options
 
+## Common Gotchas
+
+### bd in worktrees: "database not found at 127.0.0.1:3308"
+
+When running `bd ready` (or any `bd` command) from a worktree under
+`~/.codex/worktrees/.../clash-royale-api`, you may see:
+
+```
+database beads_clash-royale-api not found on Dolt server at 127.0.0.1:3308
+```
+
+This is recurring — worktree-local bd is configured to talk to a Dolt
+server that isn't running. Don't try to start the Dolt server. Instead,
+run bd from the canonical repo in embedded mode (bd has no `-C` flag):
+
+```bash
+cd /Users/klauer/dev/clash-royale-api && BD_DOLT_MODE=embedded bd ready
+```
+
+All real beads state lives in `/Users/klauer/dev/clash-royale-api/.beads/`;
+worktree-local `.beads/` is incidental and may be missing the `issues` table.
+
 <!-- bv-agent-instructions-v1 -->
 
 ---
