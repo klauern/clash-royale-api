@@ -1020,6 +1020,16 @@ tasks:
         fi
       - go vet ./...
 
+  lint-beads-refs:
+    desc: Detect stale clash-royale-api-* references in code/docs
+    summary: |
+      Cross-checks every clash-royale-api-<id> mention in source code,
+      tests, scripts, and markdown against the live bd issue list.
+      Fails on stale references when invoked with `--strict` (intended
+      for CI / pre-PR use).
+    cmds:
+      - bash scripts/check-stale-beads-refs.sh {{.CLI_ARGS}}
+
   lint-quality:
     desc: Run quality linting (CI hard-fail for new violations)
     summary: |

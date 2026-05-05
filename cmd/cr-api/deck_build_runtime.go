@@ -155,7 +155,7 @@ func displayUpgradeRecommendationsIfEnabled(
 	return upgrades
 }
 
-//nolint:gocognit,gocyclo,funlen // Legacy suite command path; phased extraction follows in clash-royale-api-sb3q.
+//nolint:gocognit,gocyclo,funlen // Legacy suite command path; phased extraction follows in clash-royale-api-2nl.
 func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	strategiesStr := cmd.String("strategies")
