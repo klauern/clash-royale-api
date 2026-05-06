@@ -27,7 +27,7 @@ referenced=$(rg -o --no-heading -N -I 'clash-royale-api-[a-z0-9]+' \
   --glob '!.beads/issues.jsonl' \
   --glob '!.beads/backup/**' \
   --glob '!.git/**' \
-  -- . 2>/dev/null | sort -u)
+  -- . 2>/dev/null | sort -u || true)
 
 if [[ -z "$referenced" ]]; then
   echo "No clash-royale-api-* references found."
