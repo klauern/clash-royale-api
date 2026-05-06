@@ -32,12 +32,7 @@ func sanitizeDiscoverTag(playerTag string) (string, error) {
 }
 
 func discoverStateDir() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-
-	return filepath.Join(homeDir, ".cr-api", "discover")
+	return deck.DiscoverySessionBaseDir()
 }
 
 func discoverCheckpointPath(sanitizedTag string) string {

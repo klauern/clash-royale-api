@@ -2,9 +2,11 @@ package csv
 
 import (
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 )
 
@@ -61,6 +63,10 @@ func TestBaseExporter_WriteCSV(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
+			if test.wantErr && os.Geteuid() == 0 {
+				t.Skip("permission test cannot run as root")
+			}
+
 			// Clean up any existing file
 			_ = os.Remove(test.filePath)
 
@@ -208,6 +214,24 @@ func TestCSVExporter_Export_Error(t *testing.T) {
 
 	if err != expectedErr {
 		t.Errorf("Export() error = %v, want %v", err, expectedErr)
+	}
+}
+
+func TestCSVTypeMismatchError(t *testing.T) {
+	err := csvTypeMismatchError(reflect.TypeOf([]int(nil)), "wrong type")
+
+	var mismatchErr CSVTypeMismatchError
+	if !errors.As(err, &mismatchErr) {
+		t.Fatalf("csvTypeMismatchError() error %T is not CSVTypeMismatchError", err)
+	}
+
+	expected := reflect.TypeOf([]int(nil))
+	actual := reflect.TypeOf("wrong type")
+	if mismatchErr.Expected != expected {
+		t.Fatalf("Expected type = %v, want %v", mismatchErr.Expected, expected)
+	}
+	if mismatchErr.Actual != actual {
+		t.Fatalf("Actual type = %v, want %v", mismatchErr.Actual, actual)
 	}
 }
 

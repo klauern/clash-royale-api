@@ -1,62 +1,41 @@
 #!/usr/bin/env bash
+# Detect stale beads references in source comments.
 #
-# check-stale-beads-refs.sh
-# Scans the repo for clash-royale-api-<id> references and verifies that each
-# referenced ID still exists as an open or closed beads issue. Exits non-zero
-# (with a list of stale references) when one of them no longer resolves —
-# useful as a pre-PR/CI guard against nolint comments and design notes that
-# rot when an issue is renamed, superseded, or deleted.
-#
-# Usage:
-#   scripts/check-stale-beads-refs.sh           # scan and report
-#   scripts/check-stale-beads-refs.sh --strict  # exit non-zero on stale refs
+# Compares clash-royale-api-* IDs found in cmd/, internal/, pkg/ against the
+# live IDs in .beads/issues.jsonl. Exits 1 if any unknown ID is referenced.
 
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if ! command -v bd >/dev/null 2>&1; then
-  echo "bd CLI not found in PATH; skipping stale-beads-ref check" >&2
-  exit 0
+if [[ ! -f .beads/issues.jsonl ]]; then
+    echo "error: .beads/issues.jsonl not found" >&2
+    exit 2
 fi
 
-# Collect referenced IDs from source code and markdown — skip the issues.jsonl
-# file itself (it's bd's own export and naturally lists every ID).
-# Strip rg's "file:" prefix so the comm comparison sees just the IDs.
-referenced=$(rg -o --no-heading -N -I 'clash-royale-api-[a-z0-9]+' \
-  --glob '!.beads/issues.jsonl' \
-  --glob '!.beads/backup/**' \
-  --glob '!.git/**' \
-  -- . 2>/dev/null | sort -u || true)
+valid_ids="$(grep -oE '"id"[[:space:]]*:[[:space:]]*"clash-royale-api-[a-z0-9]+"' .beads/issues.jsonl \
+    | sed -E 's/.*"(clash-royale-api-[a-z0-9]+)".*/\1/' \
+    | sort -u)"
 
-if [[ -z "$referenced" ]]; then
-  echo "No clash-royale-api-* references found."
-  exit 0
+if [[ -z "$valid_ids" ]]; then
+    echo "error: no beads IDs found in .beads/issues.jsonl" >&2
+    exit 2
 fi
 
-# Pull the live issue list once.
-known=$(BD_DOLT_MODE=embedded bd list --status=all --json 2>/dev/null \
-  | python3 -c 'import json,sys; [print(i["id"]) for i in json.load(sys.stdin)]' \
-  | sort -u)
+stale_found=0
+while IFS=: read -r file line id; do
+    if ! grep -qx "$id" <<<"$valid_ids"; then
+        echo "stale: $file:$line -> $id"
+        stale_found=1
+    fi
+done < <(grep -rEon 'clash-royale-api-[a-z0-9]+' cmd/ internal/ pkg/ 2>/dev/null || true)
 
-stale=$(comm -23 <(printf '%s\n' "$referenced") <(printf '%s\n' "$known"))
-
-if [[ -z "$stale" ]]; then
-  echo "All beads references resolve."
-  exit 0
+if [[ "$stale_found" -ne 0 ]]; then
+    echo
+    echo "Stale beads references found. Update or remove them."
+    echo "Valid IDs:"
+    echo "$valid_ids" | sed 's/^/  /'
+    exit 1
 fi
 
-echo "Stale beads references found (no matching issue in bd):"
-while IFS= read -r id; do
-  echo "  $id"
-  rg -n --no-heading "$id" \
-    --glob '!.beads/issues.jsonl' \
-    --glob '!.beads/backup/**' \
-    --glob '!.git/**' \
-    -- . | sed 's/^/    /'
-done <<< "$stale"
-
-if [[ "${1:-}" == "--strict" ]]; then
-  exit 1
-fi
-exit 0
+echo "no stale beads references"

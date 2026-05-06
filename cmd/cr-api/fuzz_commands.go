@@ -2160,15 +2160,21 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int
 			deckStr,
 		}
 		if theoreticalByID != nil {
-			theoretical := theoreticalByID[deck.ID]
+			theoretical, ok := theoreticalByID[deck.ID]
+			fmtStored := func(v float64) string {
+				if !ok {
+					return ""
+				}
+				return fmt.Sprintf("%.2f", v)
+			}
 			row = append(row,
-				fmt.Sprintf("%.2f", theoretical.OverallScore),
+				fmtStored(theoretical.OverallScore),
 				fmt.Sprintf("%.2f", deck.OverallScore),
-				fmt.Sprintf("%.2f", theoretical.AttackScore),
+				fmtStored(theoretical.AttackScore),
 				fmt.Sprintf("%.2f", deck.AttackScore),
-				fmt.Sprintf("%.2f", theoretical.DefenseScore),
+				fmtStored(theoretical.DefenseScore),
 				fmt.Sprintf("%.2f", deck.DefenseScore),
-				fmt.Sprintf("%.2f", theoretical.SynergyScore),
+				fmtStored(theoretical.SynergyScore),
 				fmt.Sprintf("%.2f", deck.SynergyScore),
 				fmt.Sprintf("%.2f", deck.VersatilityScore),
 				fmt.Sprintf("%.2f", deck.AvgElixir),

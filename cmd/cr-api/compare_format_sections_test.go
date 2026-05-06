@@ -69,8 +69,9 @@ func makeResult(
 func TestFormatTableCategoryScoresSection(t *testing.T) {
 	names, results := sampleCompareResults()
 	var sb strings.Builder
+	vm := buildComparisonViewModel(names, results)
 
-	formatTableCategoryScoresSection(&sb, names, results)
+	formatTableCategoryScoresSection(&sb, vm)
 	output := sb.String()
 
 	for _, want := range []string{"CATEGORY SCORES", "Deck One", "Attack", "F2P Friendly", "Playability"} {
@@ -83,8 +84,9 @@ func TestFormatTableCategoryScoresSection(t *testing.T) {
 func TestFormatMarkdownBestInCategorySection(t *testing.T) {
 	names, results := sampleCompareResults()
 	var sb strings.Builder
+	vm := buildComparisonViewModel(names, results)
 
-	formatMarkdownBestInCategorySection(&sb, names, results)
+	formatMarkdownBestInCategorySection(&sb, vm)
 	output := sb.String()
 
 	if !strings.Contains(output, "**Attack**: Deck One (8.10)") {
@@ -101,8 +103,9 @@ func TestFormatMarkdownBestInCategorySection(t *testing.T) {
 func TestFormatReportDetailedScoreComparison(t *testing.T) {
 	names, results := sampleCompareResults()
 	var sb strings.Builder
+	vm := buildComparisonViewModel(names, results)
 
-	formatReportDetailedScoreComparison(&sb, names, results)
+	formatReportDetailedScoreComparison(&sb, vm)
 	output := sb.String()
 
 	for _, want := range []string{"Detailed Score Comparison", "| **Overall** |", "| Avg Elixir |", "| Archetype |", "Deck Two Long Name"} {

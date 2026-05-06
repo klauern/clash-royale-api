@@ -7,7 +7,20 @@ import (
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
+	"github.com/urfave/cli/v3"
 )
+
+const (
+	boostedCardLevelFlagName  = "boosted-card-level"
+	boostedCardLevelFlagUsage = "Temporarily override card level for scoring/building (format: CardName:Level, repeatable)"
+)
+
+func boostedCardLevelFlag() *cli.StringSliceFlag {
+	return &cli.StringSliceFlag{
+		Name:  boostedCardLevelFlagName,
+		Usage: boostedCardLevelFlagUsage,
+	}
+}
 
 func parseBoostedCardLevels(entries []string) (map[string]int, error) {
 	overrides := make(map[string]int)

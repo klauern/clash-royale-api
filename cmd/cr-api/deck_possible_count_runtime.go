@@ -71,7 +71,7 @@ func deckPossibleCountCommand(ctx context.Context, cmd *cli.Command) error {
 	return nil
 }
 
-//nolint:funlen // Structured output writer retained as a single routine until formatter extraction in clash-royale-api-2nl.
+//nolint:funlen // Structured output writer retained as a single routine until formatter extraction.
 func formatPossibleCountHuman(player *clashroyale.Player, stats *deck.DeckSpaceStats, verbose bool) string {
 	var buf strings.Builder
 

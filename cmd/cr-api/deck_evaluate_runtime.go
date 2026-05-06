@@ -520,7 +520,7 @@ func sortUpgradeImpactsByScore(impacts []DeckCardUpgrade) {
 
 // displayDeckUpgradeImpactAnalysis displays the upgrade impact analysis for deck cards
 //
-//nolint:funlen // Output formatting block kept cohesive; broader extraction tracked in clash-royale-api-2nl.
+//nolint:funlen // Output formatting block kept cohesive; broader extraction pending.
 func displayDeckUpgradeImpactAnalysis(deckCardNames []string, impacts []DeckCardUpgrade, topN int, playerName, playerTag string) {
 	printf("\n")
 	printf("╔══════════════════════════════════════════════════════════════════════╗\n")
@@ -778,17 +778,3 @@ func loadDeckCandidatesFromFile(filePath string) ([]deck.CardCandidate, bool, er
 }
 
 // formatStars formats a star rating as visual stars
-func formatStars(stars int) string {
-	const filledStar = "★"
-	const emptyStar = "☆"
-
-	var result strings.Builder
-	for i := range 3 {
-		if i < stars {
-			result.WriteString(filledStar)
-		} else {
-			result.WriteString(emptyStar)
-		}
-	}
-	return result.String()
-}
