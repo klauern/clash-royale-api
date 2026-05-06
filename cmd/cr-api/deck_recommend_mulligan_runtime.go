@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
 	"github.com/klauer/clash-royale-api/go/pkg/recommend"
@@ -91,6 +92,17 @@ func deckRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 		deckCardAnalysis = result.DeckCardAnalysis
 		playerName = result.Player.Name
 		playerTag = result.Player.Tag
+
+		// Auto-populate arena/league from the fetched profile when the
+		// caller didn't pin them explicitly. Empty league names (e.g.
+		// post-season reset) fall back to a best-trophy bracket so the
+		// output still carries useful context.
+		if arena == "" {
+			arena = result.Player.Arena.Name
+		}
+		if league == "" {
+			league = deriveLeagueLabel(result.Player)
+		}
 	}
 
 	// Create recommender with options
@@ -425,6 +437,39 @@ func sanitizePathComponent(value string) string {
 		return "deck"
 	}
 	return sanitized
+}
+
+// deriveLeagueLabel returns a non-empty league label for the player. When
+// the API reports an empty league (common immediately post-season-reset),
+// fall back to a best-trophies bracket so output still carries context.
+func deriveLeagueLabel(player *clashroyale.Player) string {
+	if player == nil {
+		return ""
+	}
+	if name := strings.TrimSpace(player.League.Name); name != "" {
+		return name
+	}
+	return bestTrophiesBracketLabel(player.BestTrophies)
+}
+
+// bestTrophiesBracketLabel maps a best-trophies number to a coarse league
+// bracket. Used only as a fallback label when the live league is empty —
+// recommender filtering relies on the explicit --arena/--league flags.
+func bestTrophiesBracketLabel(bestTrophies int) string {
+	switch {
+	case bestTrophies <= 0:
+		return ""
+	case bestTrophies < 4000:
+		return fmt.Sprintf("Best %d trophies (pre-Path of Legends)", bestTrophies)
+	case bestTrophies < 6000:
+		return fmt.Sprintf("Best %d trophies (Path of Legends, lower)", bestTrophies)
+	case bestTrophies < 8000:
+		return fmt.Sprintf("Best %d trophies (Path of Legends, mid)", bestTrophies)
+	case bestTrophies < 10000:
+		return fmt.Sprintf("Best %d trophies (Path of Legends, upper)", bestTrophies)
+	default:
+		return fmt.Sprintf("Best %d trophies (Ultimate Champion)", bestTrophies)
+	}
 }
 
 // saveMulliganGuide saves the mulligan guide to a JSON file

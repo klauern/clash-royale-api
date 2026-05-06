@@ -8,10 +8,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/datapath"
 	"github.com/klauer/clash-royale-api/go/internal/storageutil"
 	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
@@ -32,16 +32,18 @@ type Storage struct {
 // The database file is stored at ~/.cr-api/fuzz_top_decks.db by default
 func NewStorage(dbPath string) (*Storage, error) {
 	if dbPath == "" {
-		// Use default path
-		homeDir, err := os.UserHomeDir()
+		var err error
+		dbPath, err = datapath.FuzzStorageDBPath(defaultDBName)
 		if err != nil {
-			return nil, fmt.Errorf("failed to get home directory: %w", err)
+			return nil, err
 		}
-		fuzzDir := filepath.Join(homeDir, ".cr-api")
-		dbPath = filepath.Join(fuzzDir, defaultDBName)
 
 		// Ensure directory exists
-		if err := os.MkdirAll(fuzzDir, 0o755); err != nil {
+		appDir, err := datapath.AppDir()
+		if err != nil {
+			return nil, err
+		}
+		if err := os.MkdirAll(appDir, 0o755); err != nil {
 			return nil, fmt.Errorf("failed to create .cr-api directory: %w", err)
 		}
 	}

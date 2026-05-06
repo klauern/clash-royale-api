@@ -91,12 +91,163 @@ func loadDeckFromFile(filename string) (*DeckAnalysis, error) {
 		return nil, fmt.Errorf("failed to read deck file: %w", err)
 	}
 
-	var deck DeckAnalysis
-	if err := json.Unmarshal(data, &deck); err != nil {
+	// Decode tolerantly: deck files written by pkg/deck.DeckRecommendation use
+	// "deck" (card-name slice) and role-tagged "deck_detail", but lack
+	// deck_name/win_condition/strategy. Unmarshal into a superset and synthesize
+	// the missing metadata.
+	var raw struct {
+		DeckAnalysis
+		DeckCards []string `json:"deck"`
+	}
+	if err := json.Unmarshal(data, &raw); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal deck data: %w", err)
 	}
 
+	deck := raw.DeckAnalysis
+	enrichDeckMetadata(&deck, raw.DeckCards, data)
 	return &deck, nil
+}
+
+// enrichDeckMetadata fills in DeckName, WinCondition, and Strategy when the
+// underlying deck file (written by pkg/deck.DeckRecommendation) doesn't carry
+// them. Inferred from deck_detail roles plus average elixir.
+func enrichDeckMetadata(deck *DeckAnalysis, deckCardNames []string, raw []byte) {
+	// Pull role information from deck_detail (the analysis package's own
+	// CardDeckDetail strips role, so re-parse from raw JSON).
+	roles := parseDeckDetailRoles(raw)
+
+	if deck.WinCondition == "" {
+		deck.WinCondition = inferWinCondition(deck.DeckDetail, roles)
+	}
+	style := classifyDeckStyle(deck.AverageElixir)
+	if deck.DeckName == "" {
+		deck.DeckName = composeDeckName(deck.WinCondition, style)
+	}
+	if deck.Strategy == "" {
+		deck.Strategy = composeDeckStrategy(deck.WinCondition, style, deck.AverageElixir)
+	}
+	if len(deck.Cards) == 0 && len(deck.DeckDetail) > 0 {
+		deck.Cards = make([]clashroyale.Card, len(deck.DeckDetail))
+		for i, d := range deck.DeckDetail {
+			deck.Cards[i] = clashroyale.Card{
+				Name:              d.Name,
+				ElixirCost:        d.Elixir,
+				Level:             d.Level,
+				MaxLevel:          d.MaxLevel,
+				EvolutionLevel:    d.EvolutionLevel,
+				MaxEvolutionLevel: d.MaxEvolutionLevel,
+			}
+		}
+	} else if len(deck.Cards) == 0 && len(deckCardNames) > 0 {
+		deck.Cards = make([]clashroyale.Card, len(deckCardNames))
+		for i, n := range deckCardNames {
+			deck.Cards[i] = clashroyale.Card{Name: n}
+		}
+	}
+}
+
+// parseDeckDetailRoles re-reads deck_detail with the role field preserved so
+// we can infer the win condition. Returns a map keyed by card name.
+func parseDeckDetailRoles(raw []byte) map[string]string {
+	var shell struct {
+		DeckDetail []struct {
+			Name string `json:"name"`
+			Role string `json:"role"`
+		} `json:"deck_detail"`
+	}
+	if err := json.Unmarshal(raw, &shell); err != nil {
+		return nil
+	}
+	roles := make(map[string]string, len(shell.DeckDetail))
+	for _, e := range shell.DeckDetail {
+		if e.Name != "" {
+			roles[e.Name] = e.Role
+		}
+	}
+	return roles
+}
+
+// inferWinCondition picks the most likely win-condition card. Prefers an
+// explicit role tag of "win_conditions"; falls back to a name lookup against
+// known win-condition cards.
+func inferWinCondition(detail []CardDeckDetail, roles map[string]string) string {
+	for _, c := range detail {
+		if roles[c.Name] == "win_conditions" {
+			return c.Name
+		}
+	}
+	for _, c := range detail {
+		if isKnownWinCondition(c.Name) {
+			return c.Name
+		}
+	}
+	return ""
+}
+
+var knownWinConditions = map[string]struct{}{
+	"Hog Rider": {}, "Royal Giant": {}, "Giant": {}, "Golem": {},
+	"Lava Hound": {}, "Battle Ram": {}, "Ram Rider": {}, "Goblin Barrel": {},
+	"Miner": {}, "Graveyard": {}, "X-Bow": {}, "Mortar": {},
+	"Balloon": {}, "Three Musketeers": {}, "Goblin Drill": {},
+	"Sparky": {}, "Goblin Giant": {}, "Elixir Golem": {}, "Wall Breakers": {},
+	"Mega Knight": {}, "Skeleton Barrel": {}, "Royal Hogs": {},
+	"Electro Giant": {}, "Skeleton King": {},
+}
+
+func isKnownWinCondition(name string) bool {
+	_, ok := knownWinConditions[name]
+	return ok
+}
+
+func classifyDeckStyle(avgElixir float64) string {
+	switch {
+	case avgElixir < 3.0:
+		return "Cycle"
+	case avgElixir < 3.6:
+		return "Control"
+	case avgElixir < 4.2:
+		return "Midrange"
+	default:
+		return "Beatdown"
+	}
+}
+
+func composeDeckName(winCond, style string) string {
+	switch {
+	case winCond != "" && style != "":
+		return fmt.Sprintf("%s %s", winCond, style)
+	case winCond != "":
+		return fmt.Sprintf("%s Deck", winCond)
+	case style != "":
+		return style + " Deck"
+	default:
+		return "Recommended Deck"
+	}
+}
+
+func composeDeckStrategy(winCond, style string, avgElixir float64) string {
+	switch style {
+	case "Cycle":
+		if winCond != "" {
+			return fmt.Sprintf("Cycle quickly to %s with %.1f average elixir; lean on cheap cards to recycle the win condition under pressure.", winCond, avgElixir)
+		}
+		return fmt.Sprintf("Fast cycle deck (%.1f elixir) — keep tempo, trade efficiently, and chip damage with repeated pushes.", avgElixir)
+	case "Control":
+		if winCond != "" {
+			return fmt.Sprintf("Defend first, then counter-push with %s. Average elixir %.1f leaves room for support.", winCond, avgElixir)
+		}
+		return fmt.Sprintf("Control deck (%.1f elixir) — defend efficiently and look for positive elixir trades before committing.", avgElixir)
+	case "Midrange":
+		if winCond != "" {
+			return fmt.Sprintf("Balanced %s pushes around %.1f elixir; mix defense and offense based on opponent's commitment.", winCond, avgElixir)
+		}
+		return fmt.Sprintf("Balanced deck (%.1f elixir) — adapt to the matchup, defend on a budget, attack on advantage.", avgElixir)
+	default: // Beatdown
+		if winCond != "" {
+			return fmt.Sprintf("Build big %s pushes from the back. With %.1f average elixir, defense must be efficient to fund the next tank.", winCond, avgElixir)
+		}
+		return fmt.Sprintf("Heavy beatdown deck (%.1f elixir) — outvalue defenses with a single overwhelming push from the back.", avgElixir)
+	}
 }
 
 // createExampleDecks creates some example deck recommendations

@@ -3,6 +3,7 @@ package mulligan
 import (
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes/taxonomy"
 )
 
@@ -57,24 +58,32 @@ func (g *Generator) GenerateGuide(deckCards []string, deckName string) (*Mulliga
 	}, nil
 }
 
+// resolveCardInfo returns the CardInfo for a card, falling back to the
+// global card-role classifier when the card is missing from cardDatabase.
+// Passing 0 (not 4) as the apiElixir arg lets GetCardElixir consult its
+// static fallback table for known-but-unjsoned cards (Ice Golem, Bomber,
+// Electro Spirit, Vines, etc.) instead of returning the generic 4 default.
+func (g *Generator) resolveCardInfo(cardName string) CardInfo {
+	if cardInfo, ok := g.cardDatabase[cardName]; ok {
+		return cardInfo
+	}
+	return CardInfo{
+		Name:         cardName,
+		Elixir:       config.GetCardElixir(cardName, 0),
+		Type:         inferCardType(cardName),
+		Role:         mapConfigRoleToMulligan(config.GetCardRole(cardName)),
+		OpeningScore: 0.5,
+	}
+}
+
 // analyzeDeck performs strategic analysis of the deck
 func (g *Generator) analyzeDeck(deckCards []string) DeckAnalysis {
 	var openingCards []OpeningCard
-	var winConditions, defensiveCards, cycleCards, spells, buildings []string
+	var winConditions, defensiveCards, archetypeDefensive, cycleCards, spells, buildings []string
 	totalElixir := 0
 
 	for _, cardName := range deckCards {
-		cardInfo, exists := g.cardDatabase[cardName]
-		if !exists {
-			// Default handling for unknown cards
-			cardInfo = CardInfo{
-				Name:         cardName,
-				Elixir:       4,
-				Type:         "troop",
-				Role:         RoleSupport,
-				OpeningScore: 0.5,
-			}
-		}
+		cardInfo := g.resolveCardInfo(cardName)
 
 		totalElixir += cardInfo.Elixir
 
@@ -87,15 +96,24 @@ func (g *Generator) analyzeDeck(deckCards []string) DeckAnalysis {
 		}
 		openingCards = append(openingCards, openingCard)
 
-		// Categorize cards
+		// Categorize cards. Support troops are bucketed into DefensiveCards
+		// because, in mulligan terms, they are the answers a player holds
+		// in hand for incoming pushes (Witch, Bowler, Dark Prince, etc.) —
+		// without this, support-heavy decks reported empty matchup KeyCards
+		// (clash-royale-api-gmk). archetypeDefensive is kept separate (no
+		// support) so determineArchetype's defCount doesn't push midrange /
+		// bridge-spam decks into ArchetypeControl.
 		switch cardInfo.Role {
 		case RoleWinCondition:
 			winConditions = append(winConditions, cardName)
 		case RoleDefensive, RoleBuilding:
 			defensiveCards = append(defensiveCards, cardName)
+			archetypeDefensive = append(archetypeDefensive, cardName)
 			if cardInfo.Type == "building" {
 				buildings = append(buildings, cardName)
 			}
+		case RoleSupport:
+			defensiveCards = append(defensiveCards, cardName)
 		case RoleCycle:
 			cycleCards = append(cycleCards, cardName)
 		case RoleSpell:
@@ -104,7 +122,7 @@ func (g *Generator) analyzeDeck(deckCards []string) DeckAnalysis {
 	}
 
 	avgElixir := float64(totalElixir) / float64(len(deckCards))
-	archetype := g.determineArchetype(winConditions, defensiveCards, cycleCards, spells, avgElixir)
+	archetype := g.determineArchetype(winConditions, archetypeDefensive, cycleCards, spells, avgElixir)
 
 	return DeckAnalysis{
 		DeckCards:      deckCards,
@@ -267,13 +285,25 @@ func (g *Generator) generatePrinciples(analysis DeckAnalysis) []string {
 
 // generateMatchups creates matchup-specific opening strategies
 func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
+	// preferred returns the first non-empty card list, falling back through
+	// the supplied alternatives. Ensures KeyCards stays meaningful for decks
+	// that lack a particular role (e.g., heavy beatdowns with no cycle).
+	preferred := func(lists ...[]string) []string {
+		for _, l := range lists {
+			if len(l) > 0 {
+				return l
+			}
+		}
+		return nil
+	}
+
 	matchups := []Matchup{
 		{
 			OpponentType: "Beatdown (Giant, Golem, Lava Hound)",
 			OpeningPlay:  g.getBeatdownOpening(analysis),
 			Reason:       "Apply early pressure, force them to defend instead of building",
 			Backup:       "If they ignore pressure, build stronger defense and counter-push",
-			KeyCards:     analysis.DefensiveCards,
+			KeyCards:     preferred(analysis.DefensiveCards, analysis.WinConditions),
 			DangerLevel:  "medium",
 		},
 		{
@@ -281,7 +311,7 @@ func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
 			OpeningPlay:  g.getCycleOpening(analysis),
 			Reason:       "Have defense ready for immediate pressure",
 			Backup:       "Start cycling if they play defensive, maintain pressure",
-			KeyCards:     append(analysis.DefensiveCards, analysis.CycleCards...),
+			KeyCards:     preferred(append(analysis.DefensiveCards, analysis.CycleCards...), analysis.DefensiveCards, analysis.WinConditions),
 			DangerLevel:  "high",
 		},
 		{
@@ -289,7 +319,7 @@ func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
 			OpeningPlay:  g.getBridgeSpamOpening(analysis),
 			Reason:       "Defensive positioning ready for sudden pressure",
 			Backup:       "Use cheap troops to swarm their units",
-			KeyCards:     analysis.CycleCards,
+			KeyCards:     preferred(analysis.CycleCards, analysis.DefensiveCards),
 			DangerLevel:  "high",
 		},
 		{
@@ -297,7 +327,7 @@ func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
 			OpeningPlay:  g.getSiegeOpening(analysis),
 			Reason:       "Prevent siege lock, force defensive play",
 			Backup:       "Apply pressure in opposite lane",
-			KeyCards:     analysis.WinConditions,
+			KeyCards:     preferred(analysis.WinConditions, analysis.DefensiveCards),
 			DangerLevel:  "high",
 		},
 		{
@@ -305,7 +335,7 @@ func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
 			OpeningPlay:  g.getControlOpening(analysis),
 			Reason:       "Cheap cycle to scout their strategy",
 			Backup:       "Mirror their play style, punish overextensions",
-			KeyCards:     analysis.Spells,
+			KeyCards:     preferred(analysis.Spells, analysis.WinConditions),
 			DangerLevel:  "medium",
 		},
 		{
@@ -313,7 +343,7 @@ func (g *Generator) generateMatchups(analysis DeckAnalysis) []Matchup {
 			OpeningPlay:  g.getSafeOpening(analysis),
 			Reason:       "Safe play that provides information",
 			Backup:       "React defensively to their first move",
-			KeyCards:     analysis.CycleCards,
+			KeyCards:     preferred(analysis.CycleCards, analysis.DefensiveCards),
 			DangerLevel:  "low",
 		},
 	}
@@ -385,7 +415,7 @@ func (g *Generator) identifyBadOpenings(analysis DeckAnalysis) []string {
 
 	for _, spell := range analysis.Spells {
 		// High damage spells shouldn't be opened with
-		cardInfo := g.cardDatabase[spell]
+		cardInfo := g.resolveCardInfo(spell)
 		if cardInfo.Elixir >= 4 {
 			badOpenings = append(badOpenings, spell+" - waste of elixir without targets")
 		}
@@ -393,7 +423,7 @@ func (g *Generator) identifyBadOpenings(analysis DeckAnalysis) []string {
 
 	for _, winCon := range analysis.WinConditions {
 		// Expensive win conditions shouldn't be opened with
-		cardInfo := g.cardDatabase[winCon]
+		cardInfo := g.resolveCardInfo(winCon)
 		if cardInfo.Elixir >= 5 {
 			badOpenings = append(badOpenings, winCon+" - too expensive for opening")
 		}
@@ -413,10 +443,7 @@ func (g *Generator) identifyIdealOpenings(analysis DeckAnalysis) []string {
 
 	// Check all cards for good opening potential
 	for _, card := range analysis.DeckCards {
-		cardInfo, exists := g.cardDatabase[card]
-		if !exists {
-			continue
-		}
+		cardInfo := g.resolveCardInfo(card)
 
 		// Consider card ideal if:
 		// 1. It's cheap (≤3 elixir) AND has decent opening score (≥0.5)
@@ -455,4 +482,37 @@ func (g *Generator) getOpeningReasons(cardInfo CardInfo) []string {
 	}
 
 	return reasons
+}
+
+// mapConfigRoleToMulligan converts internal/config role strings to the
+// mulligan package's CardRole. Returns RoleSupport for unknown inputs.
+func mapConfigRoleToMulligan(role config.CardRole) CardRole {
+	switch role {
+	case config.RoleWinCondition:
+		return RoleWinCondition
+	case config.RoleBuilding:
+		return RoleBuilding
+	case config.RoleSpellBig, config.RoleSpellSmall:
+		return RoleSpell
+	case config.RoleCycle:
+		return RoleCycle
+	case config.RoleSupport:
+		return RoleSupport
+	default:
+		return RoleSupport
+	}
+}
+
+// inferCardType returns "spell", "building", or "troop" based on the card's
+// classification in the global config. Used as a fallback for cards that
+// aren't in mulligan/config/cards.json.
+func inferCardType(cardName string) string {
+	switch config.GetCardRole(cardName) {
+	case config.RoleSpellBig, config.RoleSpellSmall:
+		return "spell"
+	case config.RoleBuilding:
+		return "building"
+	default:
+		return "troop"
+	}
 }

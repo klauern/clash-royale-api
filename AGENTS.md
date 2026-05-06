@@ -64,6 +64,28 @@ See [.cursor/rules/beads.mdc](.cursor/rules/beads.mdc) for detailed beads workfl
 - `bd <command> --help` - Show bd command options
 - `./bin/cr-api --help` - Show CLI options
 
+## Common Gotchas
+
+### bd in worktrees: "database not found at 127.0.0.1:3308"
+
+When running `bd ready` (or any `bd` command) from a worktree under
+`~/.codex/worktrees/.../clash-royale-api`, you may see:
+
+```text
+database beads_clash-royale-api not found on Dolt server at 127.0.0.1:3308
+```
+
+This is recurring — worktree-local bd is configured to talk to a Dolt
+server that isn't running. Don't try to start the Dolt server. Instead,
+run bd from the canonical repo in embedded mode (bd has no `-C` flag):
+
+```bash
+cd "$(git rev-parse --show-toplevel)" && BD_DOLT_MODE=embedded bd ready
+```
+
+All real beads state lives in `<repo-root>/.beads/` of the canonical clone;
+worktree-local `.beads/` is incidental and may be missing the `issues` table.
+
 <!-- bv-agent-instructions-v1 -->
 
 ---
@@ -101,7 +123,7 @@ bd sync               # Commit and push changes
 
 - **Dependencies**: Issues can block other issues. `bd ready` shows only unblocked work.
 - **Priority**: P0=critical, P1=high, P2=medium, P3=low, P4=backlog (use numbers, not words)
-- **Types**: task, bug, feature, epic, question, docs
+- **Types**: task, bug, feature, epic, chore, question (note: `docs` is NOT valid — use `task` for doc work)
 - **Blocking**: `bd dep add <issue> <depends-on>` to add dependencies
 
 ### Session Protocol

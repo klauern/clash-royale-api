@@ -225,6 +225,49 @@ func TestCalculateSynergy_EmptyDeck(t *testing.T) {
 	}
 }
 
+// TestCalculateSynergy_DeckWithKnownPairs verifies that decks containing
+// curated synergy pairs receive substantially better scores than the no-DB
+// baseline. Regression test for clash-royale-api-yde where deck recommend
+// always reported 0.0% synergy due to harsh raw-sum normalization.
+func TestCalculateSynergy_DeckWithKnownPairs(t *testing.T) {
+	scorer := NewScorer()
+
+	// All cards have curated pair entries (Goblin Barrel + Princess +
+	// Goblin Gang etc are bait-archetype synergies).
+	strongDeck := []string{
+		"Goblin Barrel", "Princess", "Goblin Gang", "Dart Goblin",
+		"Inferno Tower", "Knight", "Log", "Ice Spirit",
+	}
+	strongScore := scorer.CalculateSynergy(strongDeck)
+
+	if strongScore <= 25.0 {
+		t.Errorf("strongScore = %.2f, expected > 25 baseline (deck has curated pairs)", strongScore)
+	}
+	if strongScore > 100.0 {
+		t.Errorf("strongScore = %.2f, must be ≤ 100", strongScore)
+	}
+}
+
+// TestCalculateSynergy_BaselineForUnknownPairs verifies that decks without
+// any DB-curated pairs report the baseline (~25%) rather than literal 0%.
+// This is what was broken in clash-royale-api-yde.
+func TestCalculateSynergy_BaselineForUnknownPairs(t *testing.T) {
+	scorer := NewScorer()
+
+	// Use plausibly-named cards that aren't in the curated synergy DB.
+	unknownDeck := []string{
+		"FakeCardA", "FakeCardB", "FakeCardC", "FakeCardD",
+		"FakeCardE", "FakeCardF", "FakeCardG", "FakeCardH",
+	}
+	score := scorer.CalculateSynergy(unknownDeck)
+	if score == 0.0 {
+		t.Error("Score should not be 0 even with no detected pairs (use baseline)")
+	}
+	if score > 50.0 {
+		t.Errorf("Baseline score = %.2f, expected modest (~25)", score)
+	}
+}
+
 // TestCalculateOverallScore tests overall score calculation with known weights
 func TestCalculateOverallScore(t *testing.T) {
 	scorer := NewScorer()

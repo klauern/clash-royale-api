@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/datapath"
 	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/internal/storageutil"
 	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
@@ -34,14 +34,14 @@ func NewStorage(playerTag string) (*Storage, error) {
 		return nil, err
 	}
 
-	// Construct path: ~/.cr-api/leaderboards/<player_tag>.db
-	homeDir, err := os.UserHomeDir()
+	leaderboardDir, err := datapath.LeaderboardsDir()
 	if err != nil {
-		return nil, fmt.Errorf("failed to get home directory: %w", err)
+		return nil, err
 	}
-
-	leaderboardDir := filepath.Join(homeDir, ".cr-api", "leaderboards")
-	dbPath := filepath.Join(leaderboardDir, fmt.Sprintf("%s.db", sanitizedTag))
+	dbPath, err := datapath.LeaderboardDBPath(sanitizedTag)
+	if err != nil {
+		return nil, err
+	}
 
 	// Ensure directory exists
 	if err := os.MkdirAll(leaderboardDir, 0o755); err != nil {

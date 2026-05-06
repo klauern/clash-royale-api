@@ -92,12 +92,9 @@ func deckResearchEvalCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("invalid constraint config: %w", err)
 	}
 
-	apiToken := cmd.String("api-token")
-	if apiToken == "" {
-		apiToken = os.Getenv("CLASH_ROYALE_API_TOKEN")
-	}
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	apiToken, err := requireAPITokenValue(cmd.String("api-token"), apiClientOptions{})
+	if err != nil {
+		return err
 	}
 
 	dataDir := cmd.String("data-dir")
