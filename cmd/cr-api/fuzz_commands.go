@@ -1689,24 +1689,11 @@ func saveTopDecksToStorage(results []FuzzingResult, verbose bool) error {
 
 // deckFuzzListCommand lists saved top decks from storage
 func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
-	top := cmd.Int("top")
-	archetype := cmd.String("archetype")
-	minScore := cmd.Float64("min-score")
-	maxScore := cmd.Float64("max-score")
-	minElixir := cmd.Float64("min-elixir")
-	maxElixir := cmd.Float64("max-elixir")
 	maxSameArchetype := cmd.Int("max-same-archetype")
 	format := cmd.String("format")
 	playerTag := cmd.String("tag")
-	workers := cmd.Int("workers")
 	verbose := cmd.Bool("verbose")
-
-	if workers == 1 && playerTag != "" {
-		workers = runtime.NumCPU()
-		if verbose {
-			fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", runtime.NumCPU(), workers)
-		}
-	}
+	workers := resolveFuzzWorkers(cmd, playerTag != "", verbose)
 
 	storage, err := fuzzstorage.NewStorage("")
 	if err != nil {
@@ -1714,26 +1701,7 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer closeFile(storage)
 
-	// Build query options
-	queryOpts := fuzzstorage.QueryOptions{
-		Limit: top,
-	}
-
-	if archetype != "" {
-		queryOpts.Archetype = archetype
-	}
-	if minScore > 0 {
-		queryOpts.MinScore = minScore
-	}
-	if maxScore > 0 {
-		queryOpts.MaxScore = maxScore
-	}
-	if minElixir > 0 {
-		queryOpts.MinAvgElixir = minElixir
-	}
-	if maxElixir > 0 {
-		queryOpts.MaxAvgElixir = maxElixir
-	}
+	queryOpts := buildFuzzQueryOptions(cmd)
 
 	// Query decks
 	decks, err := storage.Query(queryOpts)
@@ -1747,42 +1715,75 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 
 	var theoreticalByID map[int]fuzzstorage.DeckEntry
 	if playerTag != "" && len(decks) > 0 {
-		player, playerContext, err := loadFuzzPlayerContext(ctx, cmd, playerTag, verbose)
+		var err error
+		decks, theoreticalByID, err = reevaluateForPlayer(ctx, cmd, decks, playerTag, workers, verbose)
 		if err != nil {
 			return err
-		}
-
-		theoreticalByID = make(map[int]fuzzstorage.DeckEntry, len(decks))
-		for _, deck := range decks {
-			theoreticalByID[deck.ID] = deck
-		}
-
-		decks = reevaluateStoredDecks(decks, player, player.Tag, playerContext, workers, verbose)
-		sort.Slice(decks, func(i, j int) bool {
-			return decks[i].OverallScore > decks[j].OverallScore
-		})
-
-		if maxSameArchetype > 0 {
-			decks = limitArchetypeRepetition(decks, maxSameArchetype)
 		}
 	}
 	if maxSameArchetype > 0 {
 		decks = limitArchetypeRepetition(decks, maxSameArchetype)
 	}
 
-	total, _ := storage.Count()
+	total, countErr := storage.Count()
+	if countErr != nil && verbose {
+		fprintf(os.Stderr, "Warning: failed to read deck count: %v\n", countErr)
+	}
 	dbPath := storage.GetDBPath()
 
 	fprintf(os.Stderr, "Top decks from: %s\n", dbPath)
 	fprintf(os.Stderr, "Showing %d of %d total decks\n\n", len(decks), total)
 
-	// Format output
+	return dispatchFuzzListFormatter(format, decks, dbPath, total, histogram, theoreticalByID)
+}
+
+// reevaluateForPlayer re-scores stored decks against a player's card
+// collection, returning the updated entries and a snapshot map of the
+// pre-update theoretical scores keyed by deck ID. The maxSameArchetype cap
+// is applied here so the caller can short-circuit afterward without a
+// second pass when no player tag is set.
+func reevaluateForPlayer(
+	ctx context.Context,
+	cmd *cli.Command,
+	decks []fuzzstorage.DeckEntry,
+	playerTag string,
+	workers int,
+	verbose bool,
+) ([]fuzzstorage.DeckEntry, map[int]fuzzstorage.DeckEntry, error) {
+	player, playerContext, err := loadFuzzPlayerContext(ctx, cmd, playerTag, verbose)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	theoreticalByID := make(map[int]fuzzstorage.DeckEntry, len(decks))
+	for _, deck := range decks {
+		theoreticalByID[deck.ID] = deck
+	}
+
+	decks = reevaluateStoredDecks(decks, player, player.Tag, playerContext, workers, verbose)
+	sort.Slice(decks, func(i, j int) bool {
+		return decks[i].OverallScore > decks[j].OverallScore
+	})
+	return decks, theoreticalByID, nil
+}
+
+// dispatchFuzzListFormatter forwards to the right formatter based on
+// --format. Splitting this out keeps deckFuzzListCommand under the
+// gocyclo threshold by lifting one branch per case out of its body.
+func dispatchFuzzListFormatter(
+	format string,
+	decks []fuzzstorage.DeckEntry,
+	dbPath string,
+	total int,
+	histogram map[string]int,
+	theoreticalByID map[int]fuzzstorage.DeckEntry,
+) error {
 	switch format {
-	case "json":
+	case fuzzOutputJSON:
 		return formatListResultsJSON(decks, dbPath, total, histogram, theoreticalByID)
-	case "csv":
+	case fuzzOutputCSV:
 		return formatListResultsCSV(decks, theoreticalByID)
-	case "detailed":
+	case fuzzOutputDetailed:
 		return formatListResultsDetailed(decks, dbPath, total, histogram, theoreticalByID)
 	default:
 		return formatListResultsSummary(decks, dbPath, total, histogram, theoreticalByID)
@@ -1792,21 +1793,8 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 // deckFuzzUpdateCommand re-evaluates saved decks with current scoring and updates storage.
 func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 	playerTag := cmd.String("tag")
-	top := cmd.Int("top")
-	archetype := cmd.String("archetype")
-	minScore := cmd.Float64("min-score")
-	maxScore := cmd.Float64("max-score")
-	minElixir := cmd.Float64("min-elixir")
-	maxElixir := cmd.Float64("max-elixir")
-	workers := cmd.Int("workers")
 	verbose := cmd.Bool("verbose")
-
-	if workers == 1 {
-		workers = runtime.NumCPU()
-		if verbose {
-			fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", runtime.NumCPU(), workers)
-		}
-	}
+	workers := resolveFuzzWorkers(cmd, true, verbose)
 
 	storage, err := fuzzstorage.NewStorage("")
 	if err != nil {
@@ -1814,24 +1802,7 @@ func deckFuzzUpdateCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 	defer closeFile(storage)
 
-	queryOpts := fuzzstorage.QueryOptions{
-		Limit: top,
-	}
-	if archetype != "" {
-		queryOpts.Archetype = archetype
-	}
-	if minScore > 0 {
-		queryOpts.MinScore = minScore
-	}
-	if maxScore > 0 {
-		queryOpts.MaxScore = maxScore
-	}
-	if minElixir > 0 {
-		queryOpts.MinAvgElixir = minElixir
-	}
-	if maxElixir > 0 {
-		queryOpts.MaxAvgElixir = maxElixir
-	}
+	queryOpts := buildFuzzQueryOptions(cmd)
 
 	entries, err := storage.Query(queryOpts)
 	if err != nil {
@@ -1880,6 +1851,47 @@ type storedDeckWork struct {
 type storedDeckResult struct {
 	index int
 	entry fuzzstorage.DeckEntry
+}
+
+// resolveFuzzWorkers returns the worker count, auto-detecting CPU count
+// when the user accepts the default of 1 and autoSwitch is true. This
+// matches the historical behavior of `deck fuzz list` (auto-detect only
+// when a tag is set, since otherwise no re-evaluation happens) and
+// `deck fuzz update` (always auto-detect since it always re-evaluates).
+func resolveFuzzWorkers(cmd *cli.Command, autoSwitch, verbose bool) int {
+	workers := cmd.Int("workers")
+	if workers != 1 || !autoSwitch {
+		return workers
+	}
+	auto := runtime.NumCPU()
+	if verbose {
+		fprintf(os.Stderr, "Auto-detected %d CPU cores, using %d workers\n", auto, auto)
+	}
+	return auto
+}
+
+// buildFuzzQueryOptions reads the shared filter flags (--top, --archetype,
+// --min/max-score, --min/max-elixir) and turns them into a QueryOptions
+// struct. Used by both `deck fuzz list` and `deck fuzz update` so a flag
+// added in one place applies in both.
+func buildFuzzQueryOptions(cmd *cli.Command) fuzzstorage.QueryOptions {
+	opts := fuzzstorage.QueryOptions{Limit: cmd.Int("top")}
+	if v := cmd.String("archetype"); v != "" {
+		opts.Archetype = v
+	}
+	if v := cmd.Float64("min-score"); v > 0 {
+		opts.MinScore = v
+	}
+	if v := cmd.Float64("max-score"); v > 0 {
+		opts.MaxScore = v
+	}
+	if v := cmd.Float64("min-elixir"); v > 0 {
+		opts.MinAvgElixir = v
+	}
+	if v := cmd.Float64("max-elixir"); v > 0 {
+		opts.MaxAvgElixir = v
+	}
+	return opts
 }
 
 // loadFuzzPlayerContext fetches the player profile and derived
@@ -1943,35 +1955,14 @@ func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, player *clashroyale.
 	resultChan := make(chan storedDeckResult, len(entries))
 	var wg sync.WaitGroup
 
-	var bar *progressbar.ProgressBar
-	if verbose {
-		bar = progressbar.NewOptions(len(entries),
-			progressbar.OptionSetWriter(os.Stderr),
-			progressbar.OptionShowCount(),
-			progressbar.OptionShowIts(),
-			progressbar.OptionSetItsString("decks"),
-			progressbar.OptionOnCompletion(func() {
-				fprintln(os.Stderr)
-			}),
-		)
-	}
+	bar := newReevaluateProgressBar(len(entries), verbose)
 
 	for range workers {
 		wg.Go(func() {
 			synergyDB := deck.NewSynergyDatabase()
-
 			for work := range workChan {
 				result := evaluateSingleDeck(work.entry.Cards, player, playerTag, synergyDB, playerContext)
-				updated := work.entry
-				updated.OverallScore = result.OverallScore
-				updated.AttackScore = result.AttackScore
-				updated.DefenseScore = result.DefenseScore
-				updated.SynergyScore = result.SynergyScore
-				updated.VersatilityScore = result.VersatilityScore
-				updated.AvgElixir = result.AvgElixir
-				updated.Archetype = result.Archetype
-				updated.ArchetypeConf = result.ArchetypeConfidence
-				updated.EvaluatedAt = result.EvaluatedAt
+				updated := applyEvaluationToEntry(work.entry, result)
 				resultChan <- storedDeckResult{index: work.index, entry: updated}
 			}
 		})
@@ -2002,41 +1993,60 @@ func reevaluateStoredDecks(entries []fuzzstorage.DeckEntry, player *clashroyale.
 func reevaluateStoredDecksSequential(entries []fuzzstorage.DeckEntry, player *clashroyale.Player, playerTag string, playerContext *evaluation.PlayerContext, verbose bool) []fuzzstorage.DeckEntry {
 	results := make([]fuzzstorage.DeckEntry, len(entries))
 	synergyDB := deck.NewSynergyDatabase()
-
-	var bar *progressbar.ProgressBar
-	if verbose {
-		bar = progressbar.NewOptions(len(entries),
-			progressbar.OptionSetWriter(os.Stderr),
-			progressbar.OptionShowCount(),
-			progressbar.OptionShowIts(),
-			progressbar.OptionSetItsString("decks"),
-			progressbar.OptionOnCompletion(func() {
-				fprintln(os.Stderr)
-			}),
-		)
-	}
+	bar := newReevaluateProgressBar(len(entries), verbose)
 
 	for i, entry := range entries {
 		result := evaluateSingleDeck(entry.Cards, player, playerTag, synergyDB, playerContext)
-		entry.OverallScore = result.OverallScore
-		entry.AttackScore = result.AttackScore
-		entry.DefenseScore = result.DefenseScore
-		entry.SynergyScore = result.SynergyScore
-		entry.VersatilityScore = result.VersatilityScore
-		entry.AvgElixir = result.AvgElixir
-		entry.Archetype = result.Archetype
-		entry.ArchetypeConf = result.ArchetypeConfidence
-		entry.EvaluatedAt = result.EvaluatedAt
-		results[i] = entry
-
-		if verbose && bar != nil {
-			if err := bar.Add(1); err != nil {
-				fprintf(os.Stderr, "Warning: progress update failed: %v\n", err)
-			}
-		}
+		results[i] = applyEvaluationToEntry(entry, result)
+		advanceReevaluateBar(bar)
 	}
 
 	return results
+}
+
+// newReevaluateProgressBar returns a progress bar for the re-evaluation
+// loops, or nil when not in verbose mode.
+func newReevaluateProgressBar(total int, verbose bool) *progressbar.ProgressBar {
+	if !verbose {
+		return nil
+	}
+	return progressbar.NewOptions(total,
+		progressbar.OptionSetWriter(os.Stderr),
+		progressbar.OptionShowCount(),
+		progressbar.OptionShowIts(),
+		progressbar.OptionSetItsString("decks"),
+		progressbar.OptionOnCompletion(func() {
+			fprintln(os.Stderr)
+		}),
+	)
+}
+
+// advanceReevaluateBar nudges the progress bar by one tick. No-op for nil
+// bars, so callers can use the same code path for verbose and quiet modes.
+func advanceReevaluateBar(bar *progressbar.ProgressBar) {
+	if bar == nil {
+		return
+	}
+	if err := bar.Add(1); err != nil {
+		fprintf(os.Stderr, "Warning: progress update failed: %v\n", err)
+	}
+}
+
+// applyEvaluationToEntry copies the freshly computed scores into a stored
+// deck entry, returning the updated value. Centralizes the field-by-field
+// copy that lived in both the parallel and sequential re-evaluation
+// loops.
+func applyEvaluationToEntry(entry fuzzstorage.DeckEntry, result FuzzingResult) fuzzstorage.DeckEntry {
+	entry.OverallScore = result.OverallScore
+	entry.AttackScore = result.AttackScore
+	entry.DefenseScore = result.DefenseScore
+	entry.SynergyScore = result.SynergyScore
+	entry.VersatilityScore = result.VersatilityScore
+	entry.AvgElixir = result.AvgElixir
+	entry.Archetype = result.Archetype
+	entry.ArchetypeConf = result.ArchetypeConfidence
+	entry.EvaluatedAt = result.EvaluatedAt
+	return entry
 }
 
 // formatListResultsSummary formats list results in summary format
