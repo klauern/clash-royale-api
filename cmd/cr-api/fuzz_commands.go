@@ -2098,6 +2098,7 @@ const (
 	jsonKeyArchetype    = "archetype"
 	jsonKeyResults      = "results"
 	csvHeaderArchetype  = "Archetype"
+	csvHeaderAttack     = "Attack"
 	fuzzModeGenetic     = "genetic"
 )
 
@@ -2150,7 +2151,7 @@ func formatListResultsJSON(
 
 // formatListResultsCSV formats list results in CSV format
 func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int]fuzzstorage.DeckEntry) error {
-	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", csvHeaderArchetype}
+	header := []string{"Rank", "Deck", "Overall", csvHeaderAttack, "Defense", "Synergy", "Versatility", "AvgElixir", csvHeaderArchetype}
 	if theoreticalByID != nil {
 		header = []string{
 			"Rank", "Deck",

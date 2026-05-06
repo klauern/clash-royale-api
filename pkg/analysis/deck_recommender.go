@@ -17,10 +17,12 @@ const (
 	styleControl  = "Control"
 	styleMidrange = "Midrange"
 
-	cardGolem       = "Golem"
-	cardBattleRam   = "Battle Ram"
-	cardGoblinDrill = "Goblin Drill"
-	cardMegaKnight  = "Mega Knight"
+	cardGolem        = "Golem"
+	cardBattleRam    = "Battle Ram"
+	cardGoblinDrill  = "Goblin Drill"
+	cardMegaKnight   = "Mega Knight"
+	cardHogRider     = "Hog Rider"
+	cardGoblinBarrel = "Goblin Barrel"
 )
 
 // DeckRecommendationResult contains recommendation results
@@ -198,8 +200,8 @@ func inferWinCondition(detail []CardDeckDetail, roles map[string]string) string 
 }
 
 var knownWinConditions = map[string]struct{}{
-	"Hog Rider": {}, "Royal Giant": {}, "Giant": {}, cardGolem: {},
-	"Lava Hound": {}, cardBattleRam: {}, "Ram Rider": {}, "Goblin Barrel": {},
+	cardHogRider: {}, "Royal Giant": {}, "Giant": {}, cardGolem: {},
+	"Lava Hound": {}, cardBattleRam: {}, "Ram Rider": {}, cardGoblinBarrel: {},
 	"Miner": {}, "Graveyard": {}, "X-Bow": {}, "Mortar": {},
 	"Balloon": {}, "Three Musketeers": {}, cardGoblinDrill: {},
 	"Sparky": {}, "Goblin Giant": {}, "Elixir Golem": {}, "Wall Breakers": {},
@@ -270,11 +272,11 @@ func createExampleDecks() []*DeckAnalysis {
 	// Hog Cycle Deck
 	hogCycle := &DeckAnalysis{
 		DeckName:      "Hog Cycle Fast Aggression",
-		WinCondition:  "Hog Rider",
+		WinCondition:  cardHogRider,
 		AverageElixir: 2.9,
 		Strategy:      "Cycle through cheap cards while applying constant pressure with Hog Rider. Use Ice Spirit and Skeletons for cheap cycle. Use Zap for support and defense.",
 		Cards: []clashroyale.Card{
-			{Name: "Hog Rider", ElixirCost: 4, Level: 11, MaxLevel: 14},
+			{Name: cardHogRider, ElixirCost: 4, Level: 11, MaxLevel: 14},
 			{Name: "Ice Spirit", ElixirCost: 1, Level: 11, MaxLevel: 14},
 			{Name: "Skeletons", ElixirCost: 1, Level: 11, MaxLevel: 14},
 			{Name: "Zap", ElixirCost: 2, Level: 12, MaxLevel: 14},
@@ -301,7 +303,7 @@ func createExampleDecks() []*DeckAnalysis {
 			{Name: "Zap", ElixirCost: 2, Level: 12, MaxLevel: 14},
 			{Name: "Rascals", ElixirCost: 5, Level: 11, MaxLevel: 14},
 			{Name: "Knight", ElixirCost: 3, Level: 11, MaxLevel: 14},
-			{Name: "Goblin Barrel", ElixirCost: 3, Level: 11, MaxLevel: 14},
+			{Name: cardGoblinBarrel, ElixirCost: 3, Level: 11, MaxLevel: 14},
 		},
 	}
 	battleRamCycle.DeckDetail = convertCardsToDeckDetail(battleRamCycle.Cards)
@@ -310,11 +312,11 @@ func createExampleDecks() []*DeckAnalysis {
 	// Goblin Barrel Bait Deck
 	goblinBarrelBait := &DeckAnalysis{
 		DeckName:      "Goblin Barrel Bait Control",
-		WinCondition:  "Goblin Barrel",
+		WinCondition:  cardGoblinBarrel,
 		AverageElixir: 3.1,
 		Strategy:      "Bait out spells with Princess and Goblin Gang, then punish with Goblin Barrel. Control the game with cheap defensive units.",
 		Cards: []clashroyale.Card{
-			{Name: "Goblin Barrel", ElixirCost: 3, Level: 11, MaxLevel: 14},
+			{Name: cardGoblinBarrel, ElixirCost: 3, Level: 11, MaxLevel: 14},
 			{Name: "Princess", ElixirCost: 3, Level: 11, MaxLevel: 14},
 			{Name: "Goblin Gang", ElixirCost: 3, Level: 11, MaxLevel: 14},
 			{Name: "Inferno Tower", ElixirCost: 5, Level: 11, MaxLevel: 14},
