@@ -1739,9 +1739,9 @@ func deckFuzzListCommand(ctx context.Context, cmd *cli.Command) error {
 
 // reevaluateForPlayer re-scores stored decks against a player's card
 // collection, returning the updated entries and a snapshot map of the
-// pre-update theoretical scores keyed by deck ID. The maxSameArchetype cap
-// is applied here so the caller can short-circuit afterward without a
-// second pass when no player tag is set.
+// pre-update theoretical scores keyed by deck ID. Decks are re-sorted by
+// the freshly computed OverallScore before being returned; the caller is
+// responsible for any post-filtering such as the maxSameArchetype cap.
 func reevaluateForPlayer(
 	ctx context.Context,
 	cmd *cli.Command,
