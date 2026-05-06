@@ -10,6 +10,21 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
+const (
+	roleWinConditions = "win_conditions"
+
+	styleCycle    = "Cycle"
+	styleControl  = "Control"
+	styleMidrange = "Midrange"
+
+	cardGolem        = "Golem"
+	cardBattleRam    = "Battle Ram"
+	cardGoblinDrill  = "Goblin Drill"
+	cardMegaKnight   = "Mega Knight"
+	cardHogRider     = "Hog Rider"
+	cardGoblinBarrel = "Goblin Barrel"
+)
+
 // DeckRecommendationResult contains recommendation results
 type DeckRecommendationResult struct {
 	Recommended  *DeckRecommendation   `json:"recommended"`
@@ -172,7 +187,7 @@ func parseDeckDetailRoles(raw []byte) map[string]string {
 // known win-condition cards.
 func inferWinCondition(detail []CardDeckDetail, roles map[string]string) string {
 	for _, c := range detail {
-		if roles[c.Name] == "win_conditions" {
+		if roles[c.Name] == roleWinConditions {
 			return c.Name
 		}
 	}
@@ -185,12 +200,12 @@ func inferWinCondition(detail []CardDeckDetail, roles map[string]string) string 
 }
 
 var knownWinConditions = map[string]struct{}{
-	"Hog Rider": {}, "Royal Giant": {}, "Giant": {}, "Golem": {},
-	"Lava Hound": {}, "Battle Ram": {}, "Ram Rider": {}, "Goblin Barrel": {},
+	cardHogRider: {}, "Royal Giant": {}, "Giant": {}, cardGolem: {},
+	"Lava Hound": {}, cardBattleRam: {}, "Ram Rider": {}, cardGoblinBarrel: {},
 	"Miner": {}, "Graveyard": {}, "X-Bow": {}, "Mortar": {},
-	"Balloon": {}, "Three Musketeers": {}, "Goblin Drill": {},
+	"Balloon": {}, "Three Musketeers": {}, cardGoblinDrill: {},
 	"Sparky": {}, "Goblin Giant": {}, "Elixir Golem": {}, "Wall Breakers": {},
-	"Mega Knight": {}, "Skeleton Barrel": {}, "Royal Hogs": {},
+	cardMegaKnight: {}, "Skeleton Barrel": {}, "Royal Hogs": {},
 	"Electro Giant": {}, "Skeleton King": {},
 }
 
@@ -202,11 +217,11 @@ func isKnownWinCondition(name string) bool {
 func classifyDeckStyle(avgElixir float64) string {
 	switch {
 	case avgElixir < 3.0:
-		return "Cycle"
+		return styleCycle
 	case avgElixir < 3.6:
-		return "Control"
+		return styleControl
 	case avgElixir < 4.2:
-		return "Midrange"
+		return styleMidrange
 	default:
 		return "Beatdown"
 	}
@@ -227,17 +242,17 @@ func composeDeckName(winCond, style string) string {
 
 func composeDeckStrategy(winCond, style string, avgElixir float64) string {
 	switch style {
-	case "Cycle":
+	case styleCycle:
 		if winCond != "" {
 			return fmt.Sprintf("Cycle quickly to %s with %.1f average elixir; lean on cheap cards to recycle the win condition under pressure.", winCond, avgElixir)
 		}
 		return fmt.Sprintf("Fast cycle deck (%.1f elixir) — keep tempo, trade efficiently, and chip damage with repeated pushes.", avgElixir)
-	case "Control":
+	case styleControl:
 		if winCond != "" {
 			return fmt.Sprintf("Defend first, then counter-push with %s. Average elixir %.1f leaves room for support.", winCond, avgElixir)
 		}
 		return fmt.Sprintf("Control deck (%.1f elixir) — defend efficiently and look for positive elixir trades before committing.", avgElixir)
-	case "Midrange":
+	case styleMidrange:
 		if winCond != "" {
 			return fmt.Sprintf("Balanced %s pushes around %.1f elixir; mix defense and offense based on opponent's commitment.", winCond, avgElixir)
 		}
@@ -257,11 +272,11 @@ func createExampleDecks() []*DeckAnalysis {
 	// Hog Cycle Deck
 	hogCycle := &DeckAnalysis{
 		DeckName:      "Hog Cycle Fast Aggression",
-		WinCondition:  "Hog Rider",
+		WinCondition:  cardHogRider,
 		AverageElixir: 2.9,
 		Strategy:      "Cycle through cheap cards while applying constant pressure with Hog Rider. Use Ice Spirit and Skeletons for cheap cycle. Use Zap for support and defense.",
 		Cards: []clashroyale.Card{
-			{Name: "Hog Rider", ElixirCost: 4, Level: 11, MaxLevel: 14},
+			{Name: cardHogRider, ElixirCost: 4, Level: 11, MaxLevel: 14},
 			{Name: "Ice Spirit", ElixirCost: 1, Level: 11, MaxLevel: 14},
 			{Name: "Skeletons", ElixirCost: 1, Level: 11, MaxLevel: 14},
 			{Name: "Zap", ElixirCost: 2, Level: 12, MaxLevel: 14},
@@ -277,18 +292,18 @@ func createExampleDecks() []*DeckAnalysis {
 	// Battle Ram Cycle Deck
 	battleRamCycle := &DeckAnalysis{
 		DeckName:      "Battle Ram Cycle Balanced Aggression",
-		WinCondition:  "Battle Ram",
+		WinCondition:  cardBattleRam,
 		AverageElixir: 3.3,
 		Strategy:      "Use Battle Ram as primary win condition with support from Bandit and Inferno Dragon. Control the bridge area and apply pressure.",
 		Cards: []clashroyale.Card{
-			{Name: "Battle Ram", ElixirCost: 4, Level: 11, MaxLevel: 14},
+			{Name: cardBattleRam, ElixirCost: 4, Level: 11, MaxLevel: 14},
 			{Name: "Bandit", ElixirCost: 3, Level: 11, MaxLevel: 14},
 			{Name: "Inferno Dragon", ElixirCost: 4, Level: 11, MaxLevel: 14},
 			{Name: "Bats", ElixirCost: 2, Level: 11, MaxLevel: 14},
 			{Name: "Zap", ElixirCost: 2, Level: 12, MaxLevel: 14},
 			{Name: "Rascals", ElixirCost: 5, Level: 11, MaxLevel: 14},
 			{Name: "Knight", ElixirCost: 3, Level: 11, MaxLevel: 14},
-			{Name: "Goblin Barrel", ElixirCost: 3, Level: 11, MaxLevel: 14},
+			{Name: cardGoblinBarrel, ElixirCost: 3, Level: 11, MaxLevel: 14},
 		},
 	}
 	battleRamCycle.DeckDetail = convertCardsToDeckDetail(battleRamCycle.Cards)
@@ -297,11 +312,11 @@ func createExampleDecks() []*DeckAnalysis {
 	// Goblin Barrel Bait Deck
 	goblinBarrelBait := &DeckAnalysis{
 		DeckName:      "Goblin Barrel Bait Control",
-		WinCondition:  "Goblin Barrel",
+		WinCondition:  cardGoblinBarrel,
 		AverageElixir: 3.1,
 		Strategy:      "Bait out spells with Princess and Goblin Gang, then punish with Goblin Barrel. Control the game with cheap defensive units.",
 		Cards: []clashroyale.Card{
-			{Name: "Goblin Barrel", ElixirCost: 3, Level: 11, MaxLevel: 14},
+			{Name: cardGoblinBarrel, ElixirCost: 3, Level: 11, MaxLevel: 14},
 			{Name: "Princess", ElixirCost: 3, Level: 11, MaxLevel: 14},
 			{Name: "Goblin Gang", ElixirCost: 3, Level: 11, MaxLevel: 14},
 			{Name: "Inferno Tower", ElixirCost: 5, Level: 11, MaxLevel: 14},

@@ -157,7 +157,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	if mode == "" {
 		mode = "random"
 	}
-	if mode != "random" && mode != "genetic" {
+	if mode != "random" && mode != fuzzModeGenetic {
 		return fmt.Errorf("invalid --mode value: %s (must be random or genetic)", mode)
 	}
 
@@ -320,7 +320,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	}
 
-	if mode == "genetic" && verbose {
+	if mode == fuzzModeGenetic && verbose {
 		if synergyPairs {
 			fprintf(os.Stderr, "Warning: --synergy-pairs is ignored in genetic mode\n")
 		}
@@ -333,7 +333,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	var generationTime time.Duration
 	var stats deck.FuzzingStats
 
-	if mode == "genetic" {
+	if mode == fuzzModeGenetic {
 		if verbose {
 			fprintf(os.Stderr, "\nStarting deck fuzzing (genetic mode)...\n")
 			if refineRounds > 1 {
@@ -685,7 +685,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		stats = fuzzer.GetStats()
 	}
 
-	if mode != "genetic" {
+	if mode != fuzzModeGenetic {
 		// Handle --from-saved: add mutations of saved decks
 		if fromSaved > 0 && !interrupted.Load() {
 			savedDecks, err := loadSavedDecksForSeeding(fromSaved, player, verbose)
@@ -800,7 +800,7 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 	sortFuzzingResults(dedupedResults, sortBy)
 
 	// Ensure archetype coverage if requested
-	if ensureArchetypes && mode != "genetic" {
+	if ensureArchetypes && mode != fuzzModeGenetic {
 		dedupedResults = ensureArchetypeCoverage(dedupedResults, top, verbose)
 	}
 	if ensureElixirBuckets {
@@ -2092,6 +2092,16 @@ func formatListResultsSummary(
 	return nil
 }
 
+const (
+	jsonKeyCards        = "cards"
+	jsonKeyOverallScore = "overall_score"
+	jsonKeyArchetype    = "archetype"
+	jsonKeyResults      = "results"
+	csvHeaderArchetype  = "Archetype"
+	csvHeaderAttack     = "Attack"
+	fuzzModeGenetic     = "genetic"
+)
+
 // formatListResultsJSON formats list results in JSON format
 func formatListResultsJSON(
 	decks []fuzzstorage.DeckEntry,
@@ -2104,14 +2114,14 @@ func formatListResultsJSON(
 	for _, deck := range decks {
 		result := map[string]any{
 			"id":                deck.ID,
-			"cards":             deck.Cards,
-			"overall_score":     deck.OverallScore,
+			jsonKeyCards:        deck.Cards,
+			jsonKeyOverallScore: deck.OverallScore,
 			"attack_score":      deck.AttackScore,
 			"defense_score":     deck.DefenseScore,
 			"synergy_score":     deck.SynergyScore,
 			"versatility_score": deck.VersatilityScore,
 			"avg_elixir":        deck.AvgElixir,
-			"archetype":         deck.Archetype,
+			jsonKeyArchetype:    deck.Archetype,
 			"archetype_conf":    deck.ArchetypeConf,
 			"evaluated_at":      deck.EvaluatedAt,
 		}
@@ -2130,7 +2140,7 @@ func formatListResultsJSON(
 		"database":            dbPath,
 		"total":               total,
 		"returned":            len(decks),
-		"results":             results,
+		jsonKeyResults:        results,
 		"archetype_histogram": histogram,
 	}
 
@@ -2141,7 +2151,7 @@ func formatListResultsJSON(
 
 // formatListResultsCSV formats list results in CSV format
 func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int]fuzzstorage.DeckEntry) error {
-	header := []string{"Rank", "Deck", "Overall", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
+	header := []string{"Rank", "Deck", "Overall", csvHeaderAttack, "Defense", "Synergy", "Versatility", "AvgElixir", csvHeaderArchetype}
 	if theoreticalByID != nil {
 		header = []string{
 			"Rank", "Deck",
@@ -2149,7 +2159,7 @@ func formatListResultsCSV(decks []fuzzstorage.DeckEntry, theoreticalByID map[int
 			"StoredAttack", "PlayerAttack",
 			"StoredDefense", "PlayerDefense",
 			"StoredSynergy", "PlayerSynergy",
-			"Versatility", "AvgElixir", "Archetype",
+			"Versatility", "AvgElixir", csvHeaderArchetype,
 		}
 	}
 	rows := make([][]string, 0, len(decks))

@@ -73,6 +73,8 @@ linters:
           - staticcheck
           - ireturn
           - depguard
+          - goconst
+          - dupl
 
 formatters:
   enable:

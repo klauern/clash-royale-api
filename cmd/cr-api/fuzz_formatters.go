@@ -197,7 +197,7 @@ func formatResultsJSONImpl(
 }
 
 func formatResultsCSVImpl(results []FuzzingResult) error {
-	header := []string{"Rank", "Deck", "Overall", "Contextual", "Ladder", "Normalized", "LevelRatio", "NormFactor", "Attack", "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
+	header := []string{"Rank", "Deck", "Overall", "Contextual", "Ladder", "Normalized", "LevelRatio", "NormFactor", csvHeaderAttack, "Defense", "Synergy", "Versatility", "AvgElixir", "Archetype"}
 	rows := make([][]string, 0, len(results))
 	for i, result := range results {
 		deckStr := strings.Join(result.Deck, ", ")
