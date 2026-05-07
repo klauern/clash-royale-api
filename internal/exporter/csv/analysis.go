@@ -2,6 +2,7 @@ package csv
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
@@ -36,10 +37,9 @@ func analysisHeaders() []string {
 func analysisExport(dataDir string, data any) error {
 	cardAnalysis, ok := data.(*analysis.CardAnalysis)
 	if !ok {
-		return fmt.Errorf("expected CardAnalysis type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf((*analysis.CardAnalysis)(nil)), data)
 	}
 
-	// Prepare CSV rows
 	rows := [][]string{
 		{
 			cardAnalysis.PlayerTag,
@@ -54,10 +54,7 @@ func analysisExport(dataDir string, data any) error {
 		},
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "card_analysis.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
-	return exporter.writeCSV(filePath, analysisHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "card_analysis.csv", analysisHeaders(), rows)
 }
 
 // NewCardLevelsExporter creates a new card levels CSV exporter
@@ -93,10 +90,9 @@ func cardLevelsHeaders() []string {
 func cardLevelsExport(dataDir string, data any) error {
 	cardAnalysis, ok := data.(*analysis.CardAnalysis)
 	if !ok {
-		return fmt.Errorf("expected CardAnalysis type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf((*analysis.CardAnalysis)(nil)), data)
 	}
 
-	// Prepare CSV rows
 	var rows [][]string
 
 	for _, cardInfo := range cardAnalysis.CardLevels {
@@ -124,10 +120,7 @@ func cardLevelsExport(dataDir string, data any) error {
 		rows = append(rows, row)
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "card_levels.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
-	return exporter.writeCSV(filePath, cardLevelsHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "card_levels.csv", cardLevelsHeaders(), rows)
 }
 
 // NewUpgradePrioritiesExporter creates a new upgrade priorities CSV exporter
@@ -161,10 +154,9 @@ func upgradePrioritiesHeaders() []string {
 func upgradePrioritiesExport(dataDir string, data any) error {
 	cardAnalysis, ok := data.(*analysis.CardAnalysis)
 	if !ok {
-		return fmt.Errorf("expected CardAnalysis type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf((*analysis.CardAnalysis)(nil)), data)
 	}
 
-	// Prepare CSV rows
 	var rows [][]string
 
 	for _, priority := range cardAnalysis.UpgradePriority {
@@ -194,10 +186,7 @@ func upgradePrioritiesExport(dataDir string, data any) error {
 		rows = append(rows, row)
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "upgrade_priorities.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
-	return exporter.writeCSV(filePath, upgradePrioritiesHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "upgrade_priorities.csv", upgradePrioritiesHeaders(), rows)
 }
 
 // NewRarityBreakdownExporter creates a new rarity breakdown CSV exporter
@@ -227,10 +216,9 @@ func rarityBreakdownHeaders() []string {
 func rarityBreakdownExport(dataDir string, data any) error {
 	cardAnalysis, ok := data.(*analysis.CardAnalysis)
 	if !ok {
-		return fmt.Errorf("expected CardAnalysis type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf((*analysis.CardAnalysis)(nil)), data)
 	}
 
-	// Prepare CSV rows
 	var rows [][]string
 
 	for _, stats := range cardAnalysis.RarityBreakdown {
@@ -247,8 +235,5 @@ func rarityBreakdownExport(dataDir string, data any) error {
 		rows = append(rows, row)
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "rarity_breakdown.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVAnalysisSubdir)
-	return exporter.writeCSV(filePath, rarityBreakdownHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVAnalysisSubdir, "rarity_breakdown.csv", rarityBreakdownHeaders(), rows)
 }

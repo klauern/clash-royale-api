@@ -2,6 +2,7 @@ package csv
 
 import (
 	"fmt"
+	"reflect"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
@@ -34,10 +35,9 @@ func cardsHeaders() []string {
 func cardsExport(dataDir string, data any) error {
 	cards, ok := data.([]clashroyale.Card)
 	if !ok {
-		return fmt.Errorf("expected []Card type, got %T", data)
+		return csvTypeMismatchError(reflect.TypeOf([]clashroyale.Card(nil)), data)
 	}
 
-	// Prepare CSV rows
 	var rows [][]string
 	for _, card := range cards {
 		row := []string{
@@ -53,8 +53,5 @@ func cardsExport(dataDir string, data any) error {
 		rows = append(rows, row)
 	}
 
-	// Create exporter and write to file
-	exporter := &BaseExporter{FilenameBase: "cards.csv"}
-	filePath := exporter.csvFilePath(dataDir, storage.CSVReferenceSubdir)
-	return exporter.writeCSV(filePath, cardsHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVReferenceSubdir, "cards.csv", cardsHeaders(), rows)
 }
