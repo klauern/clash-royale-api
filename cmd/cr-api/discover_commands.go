@@ -164,145 +164,13 @@ func addDiscoverCommands() *cli.Command {
 			{
 				Name:  "start",
 				Usage: "Start a new deck discovery evaluation session",
-				Flags: []cli.Flag{
-					playerTagFlag(true),
-					&cli.StringFlag{
-						Name:  "strategy",
-						Value: string(deck.StrategySmartSample),
-						Usage: "Sampling strategy (exhaustive, smart, random, archetype, genetic)",
-					},
-					&cli.IntFlag{
-						Name:  "sample-size",
-						Value: 1000,
-						Usage: "Number of decks to generate (for sampling strategies)",
-					},
-					&cli.IntFlag{
-						Name:  "generations",
-						Value: 200,
-						Usage: "Number of generations for genetic strategy (default: 200)",
-					},
-					&cli.IntFlag{
-						Name:  "population",
-						Value: 100,
-						Usage: "Population size for genetic strategy (default: 100)",
-					},
-					&cli.Float64Flag{
-						Name:  "mutation-rate",
-						Value: 0.1,
-						Usage: "Mutation rate for genetic strategy (0.0-1.0, default: 0.1)",
-					},
-					&cli.Float64Flag{
-						Name:  "crossover-rate",
-						Value: 0.8,
-						Usage: "Crossover rate for genetic strategy (0.0-1.0, default: 0.8)",
-					},
-					&cli.BoolFlag{
-						Name:  "island-model",
-						Usage: "Enable island model with multiple populations (default: false)",
-					},
-					&cli.IntFlag{
-						Name:  "island-count",
-						Value: 4,
-						Usage: "Number of island populations when island-model is enabled (default: 4)",
-					},
-					&cli.IntFlag{
-						Name:  "migration-interval",
-						Value: 15,
-						Usage: "Generations between island migrations when island-model is enabled (default: 15)",
-					},
-					&cli.IntFlag{
-						Name:  "migration-size",
-						Value: 2,
-						Usage: "Number of individuals migrating between islands (default: 2)",
-					},
-					&cli.IntFlag{
-						Name:  "limit",
-						Usage: "Maximum number of decks to evaluate (0 for unlimited)",
-					},
-					&cli.BoolFlag{
-						Name:    "verbose",
-						Aliases: []string{"v"},
-						Usage:   "Show detailed progress",
-					},
-					&cli.BoolFlag{
-						Name:  "background",
-						Usage: "Run discovery in background as daemon process",
-					},
-				},
+				Flags:  discoverRunFlags(false),
 				Action: deckDiscoverStartCommand,
 			},
 			{
 				Name:  "run",
 				Usage: "Run deck discovery evaluation session (alias for start)",
-				Flags: []cli.Flag{
-					playerTagFlag(true),
-					&cli.StringFlag{
-						Name:  "strategy",
-						Value: string(deck.StrategySmartSample),
-						Usage: "Sampling strategy (exhaustive, smart, random, archetype, genetic)",
-					},
-					&cli.IntFlag{
-						Name:  "sample-size",
-						Value: 1000,
-						Usage: "Number of decks to generate (for sampling strategies)",
-					},
-					&cli.IntFlag{
-						Name:  "generations",
-						Value: 200,
-						Usage: "Number of generations for genetic strategy (default: 200)",
-					},
-					&cli.IntFlag{
-						Name:  "population",
-						Value: 100,
-						Usage: "Population size for genetic strategy (default: 100)",
-					},
-					&cli.Float64Flag{
-						Name:  "mutation-rate",
-						Value: 0.1,
-						Usage: "Mutation rate for genetic strategy (0.0-1.0, default: 0.1)",
-					},
-					&cli.Float64Flag{
-						Name:  "crossover-rate",
-						Value: 0.8,
-						Usage: "Crossover rate for genetic strategy (0.0-1.0, default: 0.8)",
-					},
-					&cli.BoolFlag{
-						Name:  "island-model",
-						Usage: "Enable island model with multiple populations (default: false)",
-					},
-					&cli.IntFlag{
-						Name:  "island-count",
-						Value: 4,
-						Usage: "Number of island populations when island-model is enabled (default: 4)",
-					},
-					&cli.IntFlag{
-						Name:  "migration-interval",
-						Value: 15,
-						Usage: "Generations between island migrations when island-model is enabled (default: 15)",
-					},
-					&cli.IntFlag{
-						Name:  "migration-size",
-						Value: 2,
-						Usage: "Number of individuals migrating between islands (default: 2)",
-					},
-					&cli.IntFlag{
-						Name:  "limit",
-						Usage: "Maximum number of decks to evaluate (0 for unlimited)",
-					},
-					&cli.BoolFlag{
-						Name:    "verbose",
-						Aliases: []string{"v"},
-						Usage:   "Show detailed progress",
-					},
-					&cli.BoolFlag{
-						Name:  "resume",
-						Usage: "Resume from last checkpoint if available",
-					},
-					&cli.BoolFlag{
-						Name:  "background",
-						Usage: "Run discovery in background as daemon process",
-					},
-				},
+				Flags:  discoverRunFlags(true),
 				Action: deckDiscoverRunCommand,
 			},
 			{
@@ -348,6 +216,83 @@ func addDiscoverCommands() *cli.Command {
 			},
 		},
 	}
+}
+
+func discoverRunFlags(includeResume bool) []cli.Flag {
+	flags := []cli.Flag{
+		playerTagFlag(true),
+		&cli.StringFlag{
+			Name:  "strategy",
+			Value: string(deck.StrategySmartSample),
+			Usage: "Sampling strategy (exhaustive, smart, random, archetype, genetic)",
+		},
+		&cli.IntFlag{
+			Name:  "sample-size",
+			Value: 1000,
+			Usage: "Number of decks to generate (for sampling strategies)",
+		},
+		&cli.IntFlag{
+			Name:  "generations",
+			Value: 200,
+			Usage: "Number of generations for genetic strategy (default: 200)",
+		},
+		&cli.IntFlag{
+			Name:  "population",
+			Value: 100,
+			Usage: "Population size for genetic strategy (default: 100)",
+		},
+		&cli.Float64Flag{
+			Name:  "mutation-rate",
+			Value: 0.1,
+			Usage: "Mutation rate for genetic strategy (0.0-1.0, default: 0.1)",
+		},
+		&cli.Float64Flag{
+			Name:  "crossover-rate",
+			Value: 0.8,
+			Usage: "Crossover rate for genetic strategy (0.0-1.0, default: 0.8)",
+		},
+		&cli.BoolFlag{
+			Name:  "island-model",
+			Usage: "Enable island model with multiple populations (default: false)",
+		},
+		&cli.IntFlag{
+			Name:  "island-count",
+			Value: 4,
+			Usage: "Number of island populations when island-model is enabled (default: 4)",
+		},
+		&cli.IntFlag{
+			Name:  "migration-interval",
+			Value: 15,
+			Usage: "Generations between island migrations when island-model is enabled (default: 15)",
+		},
+		&cli.IntFlag{
+			Name:  "migration-size",
+			Value: 2,
+			Usage: "Number of individuals migrating between islands (default: 2)",
+		},
+		&cli.IntFlag{
+			Name:  "limit",
+			Usage: "Maximum number of decks to evaluate (0 for unlimited)",
+		},
+		&cli.BoolFlag{
+			Name:    "verbose",
+			Aliases: []string{"v"},
+			Usage:   "Show detailed progress",
+		},
+		&cli.BoolFlag{
+			Name:  "background",
+			Usage: "Run discovery in background as daemon process",
+		},
+	}
+
+	if includeResume {
+		flags = append(flags, &cli.BoolFlag{
+			Name:  "resume",
+			Usage: "Resume from last checkpoint if available",
+		})
+	}
+
+	return flags
 }
 
 func deckDiscoverStatusCommand(ctx context.Context, cmd *cli.Command) error {
@@ -914,42 +859,8 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 		return fmt.Errorf("failed to get executable path: %w", err)
 	}
 
-	// Build command arguments
-	args := []string{"deck", "discover", "run"}
-	if resume {
-		args = append(args, "--resume")
-	}
-
-	// Copy all relevant flags
-	flags := []struct {
-		name  string
-		value string
-	}{
-		{"tag", "#" + sanitizedTag},
-		{"strategy", cmd.String("strategy")},
-		{"sample-size", fmt.Sprintf("%d", cmd.Int("sample-size"))},
-		{"generations", fmt.Sprintf("%d", cmd.Int("generations"))},
-		{"population", fmt.Sprintf("%d", cmd.Int("population"))},
-		{"mutation-rate", fmt.Sprintf("%.2f", cmd.Float64("mutation-rate"))},
-		{"crossover-rate", fmt.Sprintf("%.2f", cmd.Float64("crossover-rate"))},
-		{"island-count", fmt.Sprintf("%d", cmd.Int("island-count"))},
-		{"migration-interval", fmt.Sprintf("%d", cmd.Int("migration-interval"))},
-		{"migration-size", fmt.Sprintf("%d", cmd.Int("migration-size"))},
-	}
-
-	for _, flag := range flags {
-		if flag.value != "" {
-			args = append(args, fmt.Sprintf("--%s=%s", flag.name, flag.value))
-		}
-	}
-
-	if cmd.Bool("verbose") {
-		args = append(args, "--verbose")
-	}
-
-	if cmd.Bool("island-model") {
-		args = append(args, "--island-model")
-	}
+	// Build command arguments.
+	args := buildDiscoverRunArgs(cmd, sanitizedTag, resume)
 
 	// Redirect output to log file
 	logFile := discoverLogPath(sanitizedTag)
@@ -995,4 +906,43 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	printf("  Stats: cr-api deck discover stats --tag %s\n", playerTag)
 
 	return nil
+}
+
+func buildDiscoverRunArgs(cmd *cli.Command, sanitizedTag string, resume bool) []string {
+	args := []string{"deck", "discover", "run"}
+	if resume {
+		args = append(args, "--resume")
+	}
+
+	flags := []struct {
+		name  string
+		value string
+	}{
+		{"tag", "#" + sanitizedTag},
+		{"strategy", cmd.String("strategy")},
+		{"sample-size", fmt.Sprintf("%d", cmd.Int("sample-size"))},
+		{"generations", fmt.Sprintf("%d", cmd.Int("generations"))},
+		{"population", fmt.Sprintf("%d", cmd.Int("population"))},
+		{"mutation-rate", fmt.Sprintf("%.2f", cmd.Float64("mutation-rate"))},
+		{"crossover-rate", fmt.Sprintf("%.2f", cmd.Float64("crossover-rate"))},
+		{"island-count", fmt.Sprintf("%d", cmd.Int("island-count"))},
+		{"migration-interval", fmt.Sprintf("%d", cmd.Int("migration-interval"))},
+		{"migration-size", fmt.Sprintf("%d", cmd.Int("migration-size"))},
+		{"limit", fmt.Sprintf("%d", cmd.Int("limit"))},
+	}
+
+	for _, flag := range flags {
+		if flag.value != "" {
+			args = append(args, fmt.Sprintf("--%s=%s", flag.name, flag.value))
+		}
+	}
+
+	if cmd.Bool("verbose") {
+		args = append(args, "--verbose")
+	}
+	if cmd.Bool("island-model") {
+		args = append(args, "--island-model")
+	}
+
+	return args
 }
