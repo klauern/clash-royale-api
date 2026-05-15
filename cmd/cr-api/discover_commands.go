@@ -157,19 +157,20 @@ func (e *simpleEvaluator) resolveCandidates(cardNames []string) ([]deck.CardCand
 
 // Add discover commands to deck command
 func addDiscoverCommands() *cli.Command {
+	const discoverRunName = "run"
 	return &cli.Command{
 		Name:  "discover",
 		Usage: "Discover optimal deck combinations with resumable evaluation",
 		Commands: []*cli.Command{
 			{
-				Name:  "start",
-				Usage: "Start a new deck discovery evaluation session",
+				Name:   "start",
+				Usage:  "Start a new deck discovery evaluation session",
 				Flags:  discoverRunFlags(false),
 				Action: deckDiscoverStartCommand,
 			},
 			{
-				Name:  "run",
-				Usage: "Run deck discovery evaluation session (alias for start)",
+				Name:   discoverRunName,
+				Usage:  "Run deck discovery evaluation session (alias for start)",
 				Flags:  discoverRunFlags(true),
 				Action: deckDiscoverRunCommand,
 			},
@@ -218,11 +219,17 @@ func addDiscoverCommands() *cli.Command {
 	}
 }
 
+//nolint:funlen // Declarative flag list improves discover CLI readability.
 func discoverRunFlags(includeResume bool) []cli.Flag {
+	const (
+		flagStrategy = "strategy"
+		flagLimit    = "limit"
+	)
+
 	flags := []cli.Flag{
 		playerTagFlag(true),
 		&cli.StringFlag{
-			Name:  "strategy",
+			Name:  flagStrategy,
 			Value: string(deck.StrategySmartSample),
 			Usage: "Sampling strategy (exhaustive, smart, random, archetype, genetic)",
 		},
@@ -271,7 +278,7 @@ func discoverRunFlags(includeResume bool) []cli.Flag {
 			Usage: "Number of individuals migrating between islands (default: 2)",
 		},
 		&cli.IntFlag{
-			Name:  "limit",
+			Name:  flagLimit,
 			Usage: "Maximum number of decks to evaluate (0 for unlimited)",
 		},
 		&cli.BoolFlag{
@@ -908,8 +915,20 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	return nil
 }
 
+//nolint:funlen // Keeps CLI argument forwarding explicit and testable.
 func buildDiscoverRunArgs(cmd *cli.Command, sanitizedTag string, resume bool) []string {
-	args := []string{"deck", "discover", "run"}
+	const (
+		argDeck         = "deck"
+		argDiscover     = "discover"
+		argRun          = "run"
+		flagTag         = "tag"
+		flagStrategy    = "strategy"
+		flagLimit       = "limit"
+		flagSampleSize  = "sample-size"
+		flagGenerations = "generations"
+		flagPopulation  = "population"
+	)
+	args := []string{argDeck, argDiscover, argRun}
 	if resume {
 		args = append(args, "--resume")
 	}
@@ -918,17 +937,51 @@ func buildDiscoverRunArgs(cmd *cli.Command, sanitizedTag string, resume bool) []
 		name  string
 		value string
 	}{
-		{"tag", "#" + sanitizedTag},
-		{"strategy", cmd.String("strategy")},
-		{"sample-size", fmt.Sprintf("%d", cmd.Int("sample-size"))},
-		{"generations", fmt.Sprintf("%d", cmd.Int("generations"))},
-		{"population", fmt.Sprintf("%d", cmd.Int("population"))},
-		{"mutation-rate", fmt.Sprintf("%.2f", cmd.Float64("mutation-rate"))},
-		{"crossover-rate", fmt.Sprintf("%.2f", cmd.Float64("crossover-rate"))},
-		{"island-count", fmt.Sprintf("%d", cmd.Int("island-count"))},
-		{"migration-interval", fmt.Sprintf("%d", cmd.Int("migration-interval"))},
-		{"migration-size", fmt.Sprintf("%d", cmd.Int("migration-size"))},
-		{"limit", fmt.Sprintf("%d", cmd.Int("limit"))},
+		{flagTag, "#" + sanitizedTag},
+	}
+	if !resume {
+		flags = append(flags,
+			struct {
+				name  string
+				value string
+			}{flagStrategy, cmd.String(flagStrategy)},
+			struct {
+				name  string
+				value string
+			}{flagSampleSize, fmt.Sprintf("%d", cmd.Int(flagSampleSize))},
+			struct {
+				name  string
+				value string
+			}{flagGenerations, fmt.Sprintf("%d", cmd.Int(flagGenerations))},
+			struct {
+				name  string
+				value string
+			}{flagPopulation, fmt.Sprintf("%d", cmd.Int(flagPopulation))},
+			struct {
+				name  string
+				value string
+			}{"mutation-rate", fmt.Sprintf("%.2f", cmd.Float64("mutation-rate"))},
+			struct {
+				name  string
+				value string
+			}{"crossover-rate", fmt.Sprintf("%.2f", cmd.Float64("crossover-rate"))},
+			struct {
+				name  string
+				value string
+			}{"island-count", fmt.Sprintf("%d", cmd.Int("island-count"))},
+			struct {
+				name  string
+				value string
+			}{"migration-interval", fmt.Sprintf("%d", cmd.Int("migration-interval"))},
+			struct {
+				name  string
+				value string
+			}{"migration-size", fmt.Sprintf("%d", cmd.Int("migration-size"))},
+			struct {
+				name  string
+				value string
+			}{flagLimit, fmt.Sprintf("%d", cmd.Int(flagLimit))},
+		)
 	}
 
 	for _, flag := range flags {

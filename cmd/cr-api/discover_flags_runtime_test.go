@@ -41,7 +41,7 @@ func TestBuildDiscoverRunArgs(t *testing.T) {
 	cmd := &cli.Command{
 		Flags: discoverRunFlags(true),
 		Action: func(_ context.Context, cmd *cli.Command) error {
-			got = buildDiscoverRunArgs(cmd, "P2ABC", true)
+			got = buildDiscoverRunArgs(cmd, "P2ABC", false)
 			return nil
 		},
 	}
@@ -68,7 +68,6 @@ func TestBuildDiscoverRunArgs(t *testing.T) {
 
 	want := []string{
 		"deck", "discover", "run",
-		"--resume",
 		"--tag=#P2ABC",
 		"--strategy=genetic",
 		"--sample-size=777",
@@ -86,6 +85,39 @@ func TestBuildDiscoverRunArgs(t *testing.T) {
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("buildDiscoverRunArgs mismatch:\n got: %v\nwant: %v", got, want)
+	}
+}
+
+func TestBuildDiscoverRunArgsResumeBackground(t *testing.T) {
+	t.Parallel()
+
+	var got []string
+	cmd := &cli.Command{
+		Flags: discoverRunFlags(false),
+		Action: func(_ context.Context, cmd *cli.Command) error {
+			got = buildDiscoverRunArgs(cmd, "P2ABC", true)
+			return nil
+		},
+	}
+
+	err := cmd.Run(context.Background(), []string{
+		"discover-test",
+		"--tag=P2ABC",
+		"--background",
+		"--verbose",
+	})
+	if err != nil {
+		t.Fatalf("command run failed: %v", err)
+	}
+
+	want := []string{
+		"deck", "discover", "run",
+		"--resume",
+		"--tag=#P2ABC",
+		"--verbose",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("buildDiscoverRunArgs resume mismatch:\n got: %v\nwant: %v", got, want)
 	}
 }
 
