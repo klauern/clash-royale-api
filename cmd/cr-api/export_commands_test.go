@@ -1,9 +1,11 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -70,5 +72,31 @@ func TestExportTargetFilePreservesBattleLogFilename(t *testing.T) {
 	want := filepath.Join("/tmp/battles", "battle_log.csv")
 	if got != want {
 		t.Fatalf("exportTargetFile() = %q, want %q", got, want)
+	}
+}
+
+func TestExportPlayerCommandRequiresAPIToken(t *testing.T) {
+	t.Setenv(apiTokenEnvVar, "")
+
+	cmd := exportPlayerCommand()
+	err := cmd.Run(context.Background(), []string{"export-player", "--tag", "TESTTAG"})
+	if err == nil {
+		t.Fatalf("expected missing token error")
+	}
+	if !strings.Contains(err.Error(), requiredAPITokenMessage) {
+		t.Fatalf("missing token error mismatch: got %q", err.Error())
+	}
+}
+
+func TestDeckWarCommandRequiresAPIToken(t *testing.T) {
+	t.Setenv(apiTokenEnvVar, "")
+
+	cmd := addDeckWarCommand()
+	err := cmd.Run(context.Background(), []string{"war", "--tag", "TESTTAG"})
+	if err == nil {
+		t.Fatalf("expected missing token error")
+	}
+	if !strings.Contains(err.Error(), requiredAPITokenMessage) {
+		t.Fatalf("missing token error mismatch: got %q", err.Error())
 	}
 }
