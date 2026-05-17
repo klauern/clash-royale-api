@@ -29,9 +29,11 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 	combatStatsWeight := cmd.Float64("combat-stats-weight")
 	disableCombatStats := cmd.Bool("disable-combat-stats")
 
-	if apiToken == "" {
-		return fmt.Errorf("API token is required. Set CLASH_ROYALE_API_TOKEN environment variable or use --api-token flag")
+	resolvedToken, err := requireAPITokenValue(apiToken, apiClientOptions{})
+	if err != nil {
+		return err
 	}
+	apiToken = resolvedToken
 
 	if deckCount < 1 {
 		return fmt.Errorf("deck-count must be at least 1")
