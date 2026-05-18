@@ -144,7 +144,7 @@ func (s *Storage) initSchema() error {
 }
 
 func (s *Storage) maybeMigrateDeckHashes() error {
-	applied, err := s.isMigrationApplied(deckHashMigrationName)
+	applied, err := storageutil.IsMigrationApplied(s.db, deckHashMigrationName)
 	if err != nil {
 		return err
 	}
@@ -155,26 +155,11 @@ func (s *Storage) maybeMigrateDeckHashes() error {
 	if err := s.migrateDeckHashes(); err != nil {
 		return err
 	}
-	if _, err := s.db.Exec(
-		"INSERT INTO migrations (name, applied_at) VALUES (?, CURRENT_TIMESTAMP)",
-		deckHashMigrationName,
-	); err != nil {
-		return fmt.Errorf("failed to record deck hash migration: %w", err)
+	if err := storageutil.RecordMigration(s.db, deckHashMigrationName); err != nil {
+		return err
 	}
 
 	return nil
-}
-
-func (s *Storage) isMigrationApplied(name string) (bool, error) {
-	var exists int
-	err := s.db.QueryRow("SELECT 1 FROM migrations WHERE name = ?", name).Scan(&exists)
-	if err == sql.ErrNoRows {
-		return false, nil
-	}
-	if err != nil {
-		return false, fmt.Errorf("failed to query migrations table: %w", err)
-	}
-	return true, nil
 }
 
 type deckHashMigrationRow struct {
