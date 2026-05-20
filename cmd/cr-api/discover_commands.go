@@ -219,6 +219,35 @@ func addDiscoverCommands() *cli.Command {
 	}
 }
 
+const (
+	discoverArgDeck     = "deck"
+	discoverArgDiscover = "discover"
+	discoverArgRun      = "run"
+	discoverFlagTag     = "tag"
+	discoverFlagResume  = "resume"
+)
+
+type discoverForwardedValueFlag struct {
+	name    string
+	format  string
+	builder func(*cli.Command) any
+}
+
+func discoverForwardedValueFlags() []discoverForwardedValueFlag {
+	return []discoverForwardedValueFlag{
+		{name: "strategy", format: "%s", builder: func(cmd *cli.Command) any { return cmd.String("strategy") }},
+		{name: "sample-size", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("sample-size") }},
+		{name: "generations", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("generations") }},
+		{name: "population", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("population") }},
+		{name: "mutation-rate", format: "%.2f", builder: func(cmd *cli.Command) any { return cmd.Float64("mutation-rate") }},
+		{name: "crossover-rate", format: "%.2f", builder: func(cmd *cli.Command) any { return cmd.Float64("crossover-rate") }},
+		{name: "island-count", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("island-count") }},
+		{name: "migration-interval", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("migration-interval") }},
+		{name: "migration-size", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("migration-size") }},
+		{name: "limit", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("limit") }},
+	}
+}
+
 //nolint:funlen // Declarative flag list improves discover CLI readability.
 func discoverRunFlags(includeResume bool) []cli.Flag {
 	const (
@@ -917,71 +946,27 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 
 //nolint:funlen // Keeps CLI argument forwarding explicit and testable.
 func buildDiscoverRunArgs(cmd *cli.Command, sanitizedTag string, resume bool) []string {
-	const (
-		argDeck         = "deck"
-		argDiscover     = "discover"
-		argRun          = "run"
-		flagTag         = "tag"
-		flagStrategy    = "strategy"
-		flagLimit       = "limit"
-		flagSampleSize  = "sample-size"
-		flagGenerations = "generations"
-		flagPopulation  = "population"
-	)
-	args := []string{argDeck, argDiscover, argRun}
+	args := []string{discoverArgDeck, discoverArgDiscover, discoverArgRun}
 	if resume {
-		args = append(args, "--resume")
+		args = append(args, "--"+discoverFlagResume)
 	}
 
 	flags := []struct {
 		name  string
 		value string
 	}{
-		{flagTag, "#" + sanitizedTag},
+		{discoverFlagTag, "#" + sanitizedTag},
 	}
 	if !resume {
-		flags = append(flags,
-			struct {
+		for _, flag := range discoverForwardedValueFlags() {
+			flags = append(flags, struct {
 				name  string
 				value string
-			}{flagStrategy, cmd.String(flagStrategy)},
-			struct {
-				name  string
-				value string
-			}{flagSampleSize, fmt.Sprintf("%d", cmd.Int(flagSampleSize))},
-			struct {
-				name  string
-				value string
-			}{flagGenerations, fmt.Sprintf("%d", cmd.Int(flagGenerations))},
-			struct {
-				name  string
-				value string
-			}{flagPopulation, fmt.Sprintf("%d", cmd.Int(flagPopulation))},
-			struct {
-				name  string
-				value string
-			}{"mutation-rate", fmt.Sprintf("%.2f", cmd.Float64("mutation-rate"))},
-			struct {
-				name  string
-				value string
-			}{"crossover-rate", fmt.Sprintf("%.2f", cmd.Float64("crossover-rate"))},
-			struct {
-				name  string
-				value string
-			}{"island-count", fmt.Sprintf("%d", cmd.Int("island-count"))},
-			struct {
-				name  string
-				value string
-			}{"migration-interval", fmt.Sprintf("%d", cmd.Int("migration-interval"))},
-			struct {
-				name  string
-				value string
-			}{"migration-size", fmt.Sprintf("%d", cmd.Int("migration-size"))},
-			struct {
-				name  string
-				value string
-			}{flagLimit, fmt.Sprintf("%d", cmd.Int(flagLimit))},
-		)
+			}{
+				name:  flag.name,
+				value: fmt.Sprintf(flag.format, flag.builder(cmd)),
+			})
+		}
 	}
 
 	for _, flag := range flags {
