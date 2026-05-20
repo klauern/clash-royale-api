@@ -220,11 +220,14 @@ func addDiscoverCommands() *cli.Command {
 }
 
 const (
-	discoverArgDeck     = "deck"
-	discoverArgDiscover = "discover"
-	discoverArgRun      = "run"
-	discoverFlagTag     = "tag"
-	discoverFlagResume  = "resume"
+	discoverArgDeck      = "deck"
+	discoverArgDiscover  = "discover"
+	discoverArgRun       = "run"
+	discoverFlagStrategy = "strategy"
+	discoverFlagTag      = "tag"
+	discoverFlagResume   = "resume"
+	discoverFlagLimit    = "limit"
+	discoverFormatInt    = "%d"
 )
 
 type discoverForwardedValueFlag struct {
@@ -235,30 +238,25 @@ type discoverForwardedValueFlag struct {
 
 func discoverForwardedValueFlags() []discoverForwardedValueFlag {
 	return []discoverForwardedValueFlag{
-		{name: "strategy", format: "%s", builder: func(cmd *cli.Command) any { return cmd.String("strategy") }},
-		{name: "sample-size", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("sample-size") }},
-		{name: "generations", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("generations") }},
-		{name: "population", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("population") }},
-		{name: "mutation-rate", format: "%.2f", builder: func(cmd *cli.Command) any { return cmd.Float64("mutation-rate") }},
-		{name: "crossover-rate", format: "%.2f", builder: func(cmd *cli.Command) any { return cmd.Float64("crossover-rate") }},
-		{name: "island-count", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("island-count") }},
-		{name: "migration-interval", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("migration-interval") }},
-		{name: "migration-size", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("migration-size") }},
-		{name: "limit", format: "%d", builder: func(cmd *cli.Command) any { return cmd.Int("limit") }},
+		{name: discoverFlagStrategy, format: "%s", builder: func(cmd *cli.Command) any { return cmd.String(discoverFlagStrategy) }},
+		{name: "sample-size", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("sample-size") }},
+		{name: "generations", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("generations") }},
+		{name: "population", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("population") }},
+		{name: "mutation-rate", format: "%g", builder: func(cmd *cli.Command) any { return cmd.Float64("mutation-rate") }},
+		{name: "crossover-rate", format: "%g", builder: func(cmd *cli.Command) any { return cmd.Float64("crossover-rate") }},
+		{name: "island-count", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("island-count") }},
+		{name: "migration-interval", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("migration-interval") }},
+		{name: "migration-size", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("migration-size") }},
+		{name: discoverFlagLimit, format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int(discoverFlagLimit) }},
 	}
 }
 
 //nolint:funlen // Declarative flag list improves discover CLI readability.
 func discoverRunFlags(includeResume bool) []cli.Flag {
-	const (
-		flagStrategy = "strategy"
-		flagLimit    = "limit"
-	)
-
 	flags := []cli.Flag{
 		playerTagFlag(true),
 		&cli.StringFlag{
-			Name:  flagStrategy,
+			Name:  discoverFlagStrategy,
 			Value: string(deck.StrategySmartSample),
 			Usage: "Sampling strategy (exhaustive, smart, random, archetype, genetic)",
 		},
@@ -307,7 +305,7 @@ func discoverRunFlags(includeResume bool) []cli.Flag {
 			Usage: "Number of individuals migrating between islands (default: 2)",
 		},
 		&cli.IntFlag{
-			Name:  flagLimit,
+			Name:  discoverFlagLimit,
 			Usage: "Maximum number of decks to evaluate (0 for unlimited)",
 		},
 		&cli.BoolFlag{
