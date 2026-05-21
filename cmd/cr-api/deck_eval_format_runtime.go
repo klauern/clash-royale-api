@@ -162,17 +162,6 @@ func getComparatorForCriteria(sortBy string) evaluationComparator {
 }
 
 // ============================================================================
-// Formatting Helper Functions - Text Utilities
-// ============================================================================
-
-// formatScoreWithRating formats a score and rating in a consistent format
-//
-//nolint:unused // Shared formatter candidate retained for follow-up display refactor.
-func formatScoreWithRating(score float64, rating string) string {
-	return fmt.Sprintf("%.2f (%s)", score, rating)
-}
-
-// ============================================================================
 // Batch Formatting Functions
 // ============================================================================
 

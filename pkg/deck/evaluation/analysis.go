@@ -36,19 +36,6 @@ func getCounterMatrix() *deck.CounterMatrix {
 // Phase 1: Foundation Helpers - Tier Scoring
 // ============================================================================
 
-// scoreTierThresholds applies tiered scoring based on value thresholds
-// Returns the score for the first threshold met (thresholds checked in order)
-//
-//nolint:unused // Shared helper retained for incremental scoring refactors.
-func scoreTierThresholds(value float64, thresholds, scores []float64) float64 {
-	for i, threshold := range thresholds {
-		if value >= threshold {
-			return scores[i]
-		}
-	}
-	return scores[len(scores)-1]
-}
-
 // ============================================================================
 // Phase 1: Foundation Helpers - Validation
 // ============================================================================
@@ -123,45 +110,6 @@ func filterByAirTargeting(cards []deck.CardCandidate) []deck.CardCandidate {
 // ============================================================================
 // Phase 1: Foundation Helpers - Summary Generation
 // ============================================================================
-
-// generateSummaryFromScore returns summary text based on score thresholds
-//
-//nolint:unused // Shared helper retained for incremental analysis refactors.
-func generateSummaryFromScore(score float64, summaries map[float64]string) string {
-	// Sort thresholds descending
-	type threshold struct {
-		text  string
-		score float64
-	}
-	thresholds := []threshold{}
-	for minScore, text := range summaries {
-		thresholds = append(thresholds, threshold{text, minScore})
-	}
-	sort.Slice(thresholds, func(i, j int) bool {
-		return thresholds[i].score > thresholds[j].score
-	})
-
-	// Find first matching threshold
-	for _, t := range thresholds {
-		if score >= t.score {
-			return t.text
-		}
-	}
-	return thresholds[len(thresholds)-1].text
-}
-
-// ============================================================================
-// Phase 1: Foundation Helpers - Legacy Functions
-// ============================================================================
-
-// countAirTargeters returns cards that can target air units.
-//
-// Deprecated: Use filterByAirTargeting instead.
-//
-//nolint:unused // Deprecated compatibility shim retained for external callers.
-func countAirTargeters(cards []deck.CardCandidate) []deck.CardCandidate {
-	return filterByAirTargeting(cards)
-}
 
 // calculateElixirCurve returns distribution of cards across elixir costs
 func calculateElixirCurve(cards []deck.CardCandidate) map[int]int {
