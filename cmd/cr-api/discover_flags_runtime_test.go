@@ -74,7 +74,7 @@ func TestBuildDiscoverRunArgs(t *testing.T) {
 		"--generations=12",
 		"--population=64",
 		"--mutation-rate=0.25",
-		"--crossover-rate=0.90",
+		"--crossover-rate=0.9",
 		"--island-count=6",
 		"--migration-interval=8",
 		"--migration-size=3",

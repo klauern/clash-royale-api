@@ -219,17 +219,44 @@ func addDiscoverCommands() *cli.Command {
 	}
 }
 
+const (
+	discoverArgDeck      = "deck"
+	discoverArgDiscover  = "discover"
+	discoverArgRun       = "run"
+	discoverFlagStrategy = "strategy"
+	discoverFlagTag      = "tag"
+	discoverFlagResume   = "resume"
+	discoverFlagLimit    = "limit"
+	discoverFormatInt    = "%d"
+)
+
+type discoverForwardedValueFlag struct {
+	name    string
+	format  string
+	builder func(*cli.Command) any
+}
+
+func discoverForwardedValueFlags() []discoverForwardedValueFlag {
+	return []discoverForwardedValueFlag{
+		{name: discoverFlagStrategy, format: "%s", builder: func(cmd *cli.Command) any { return cmd.String(discoverFlagStrategy) }},
+		{name: "sample-size", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("sample-size") }},
+		{name: "generations", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("generations") }},
+		{name: "population", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("population") }},
+		{name: "mutation-rate", format: "%g", builder: func(cmd *cli.Command) any { return cmd.Float64("mutation-rate") }},
+		{name: "crossover-rate", format: "%g", builder: func(cmd *cli.Command) any { return cmd.Float64("crossover-rate") }},
+		{name: "island-count", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("island-count") }},
+		{name: "migration-interval", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("migration-interval") }},
+		{name: "migration-size", format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int("migration-size") }},
+		{name: discoverFlagLimit, format: discoverFormatInt, builder: func(cmd *cli.Command) any { return cmd.Int(discoverFlagLimit) }},
+	}
+}
+
 //nolint:funlen // Declarative flag list improves discover CLI readability.
 func discoverRunFlags(includeResume bool) []cli.Flag {
-	const (
-		flagStrategy = "strategy"
-		flagLimit    = "limit"
-	)
-
 	flags := []cli.Flag{
 		playerTagFlag(true),
 		&cli.StringFlag{
-			Name:  flagStrategy,
+			Name:  discoverFlagStrategy,
 			Value: string(deck.StrategySmartSample),
 			Usage: "Sampling strategy (exhaustive, smart, random, archetype, genetic)",
 		},
@@ -278,7 +305,7 @@ func discoverRunFlags(includeResume bool) []cli.Flag {
 			Usage: "Number of individuals migrating between islands (default: 2)",
 		},
 		&cli.IntFlag{
-			Name:  flagLimit,
+			Name:  discoverFlagLimit,
 			Usage: "Maximum number of decks to evaluate (0 for unlimited)",
 		},
 		&cli.BoolFlag{
@@ -917,71 +944,27 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 
 //nolint:funlen // Keeps CLI argument forwarding explicit and testable.
 func buildDiscoverRunArgs(cmd *cli.Command, sanitizedTag string, resume bool) []string {
-	const (
-		argDeck         = "deck"
-		argDiscover     = "discover"
-		argRun          = "run"
-		flagTag         = "tag"
-		flagStrategy    = "strategy"
-		flagLimit       = "limit"
-		flagSampleSize  = "sample-size"
-		flagGenerations = "generations"
-		flagPopulation  = "population"
-	)
-	args := []string{argDeck, argDiscover, argRun}
+	args := []string{discoverArgDeck, discoverArgDiscover, discoverArgRun}
 	if resume {
-		args = append(args, "--resume")
+		args = append(args, "--"+discoverFlagResume)
 	}
 
 	flags := []struct {
 		name  string
 		value string
 	}{
-		{flagTag, "#" + sanitizedTag},
+		{discoverFlagTag, "#" + sanitizedTag},
 	}
 	if !resume {
-		flags = append(flags,
-			struct {
+		for _, flag := range discoverForwardedValueFlags() {
+			flags = append(flags, struct {
 				name  string
 				value string
-			}{flagStrategy, cmd.String(flagStrategy)},
-			struct {
-				name  string
-				value string
-			}{flagSampleSize, fmt.Sprintf("%d", cmd.Int(flagSampleSize))},
-			struct {
-				name  string
-				value string
-			}{flagGenerations, fmt.Sprintf("%d", cmd.Int(flagGenerations))},
-			struct {
-				name  string
-				value string
-			}{flagPopulation, fmt.Sprintf("%d", cmd.Int(flagPopulation))},
-			struct {
-				name  string
-				value string
-			}{"mutation-rate", fmt.Sprintf("%.2f", cmd.Float64("mutation-rate"))},
-			struct {
-				name  string
-				value string
-			}{"crossover-rate", fmt.Sprintf("%.2f", cmd.Float64("crossover-rate"))},
-			struct {
-				name  string
-				value string
-			}{"island-count", fmt.Sprintf("%d", cmd.Int("island-count"))},
-			struct {
-				name  string
-				value string
-			}{"migration-interval", fmt.Sprintf("%d", cmd.Int("migration-interval"))},
-			struct {
-				name  string
-				value string
-			}{"migration-size", fmt.Sprintf("%d", cmd.Int("migration-size"))},
-			struct {
-				name  string
-				value string
-			}{flagLimit, fmt.Sprintf("%d", cmd.Int(flagLimit))},
-		)
+			}{
+				name:  flag.name,
+				value: fmt.Sprintf(flag.format, flag.builder(cmd)),
+			})
+		}
 	}
 
 	for _, flag := range flags {
