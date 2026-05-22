@@ -10,6 +10,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/budget"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/urfave/cli/v3"
@@ -266,13 +267,7 @@ func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 	cleanTag := strings.TrimPrefix(result.PlayerTag, "#")
 	filename := filepath.Join(budgetDir, fmt.Sprintf("%s_budget_%s.json", timestamp, cleanTag))
 
-	// Save as JSON
-	data, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal budget result: %w", err)
-	}
-
-	if err := os.WriteFile(filename, data, 0o644); err != nil {
+	if err := storage.WriteJSON(filename, result); err != nil {
 		return fmt.Errorf("failed to write budget file: %w", err)
 	}
 
