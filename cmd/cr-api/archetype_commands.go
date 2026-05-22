@@ -14,6 +14,7 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/klauer/clash-royale-api/go/internal/exporter/csv"
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
@@ -309,12 +310,7 @@ func saveArchetypeAnalysis(result *archetypes.ArchetypeAnalysisResult, dataDir s
 	filename := fmt.Sprintf("%s_archetype_analysis_%s.json", timestamp, cleanTag)
 	path := filepath.Join(dir, filename)
 
-	data, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal analysis: %w", err)
-	}
-
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := storage.WriteJSON(path, result); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
@@ -672,12 +668,7 @@ func saveDynamicArchetypeAnalysis(result *analysis.DynamicArchetypeAnalysis, dat
 	filename := fmt.Sprintf("%s_dynamic_archetype_analysis_%s.json", timestamp, cleanTag)
 	path := filepath.Join(dir, filename)
 
-	data, err := json.MarshalIndent(result, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal analysis: %w", err)
-	}
-
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	if err := storage.WriteJSON(path, result); err != nil {
 		return fmt.Errorf("failed to write file: %w", err)
 	}
 
