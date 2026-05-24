@@ -237,7 +237,19 @@ func loadPlayerCardAnalysis(ctx context.Context, cmd *cli.Command, builder *deck
 	}
 
 	// ONLINE MODE
-	return loadPlayerDataOnline(ctx, tag, apiToken, verbose)
+	if verbose {
+		printf("Building deck for player %s\n", tag)
+	}
+	result, err := loadOnlinePlayerAnalysis(ctx, tag, apiToken, verbose)
+	if err != nil {
+		return nil, &onlinePlayerAnalysisLoadError{Tag: tag, Err: err}
+	}
+
+	return &playerDataLoadResult{
+		CardAnalysis: result.DeckCardAnalysis,
+		PlayerName:   result.Player.Name,
+		PlayerTag:    result.Player.Tag,
+	}, nil
 }
 
 // loadPlayerDataOffline loads player data from pre-analyzed JSON files
@@ -263,25 +275,6 @@ func loadPlayerDataOffline(builder *deck.Builder, tag, analysisDir, analysisFile
 		CardAnalysis: playerData.CardAnalysis,
 		PlayerName:   playerData.PlayerName,
 		PlayerTag:    playerData.PlayerTag,
-	}, nil
-}
-
-// loadPlayerDataOnline fetches and analyzes player data from the API
-//
-//nolint:dupl // Shared API loading refactor pending.
-func loadPlayerDataOnline(ctx context.Context, tag, apiToken string, verbose bool) (*playerDataLoadResult, error) {
-	if verbose {
-		printf("Building deck for player %s\n", tag)
-	}
-	result, err := loadOnlinePlayerAnalysis(ctx, tag, apiToken, verbose)
-	if err != nil {
-		return nil, &onlinePlayerAnalysisLoadError{Tag: tag, Err: err}
-	}
-
-	return &playerDataLoadResult{
-		CardAnalysis: result.DeckCardAnalysis,
-		PlayerName:   result.Player.Name,
-		PlayerTag:    result.Player.Tag,
 	}, nil
 }
 
