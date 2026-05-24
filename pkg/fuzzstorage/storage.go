@@ -170,18 +170,11 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 	defer storageutil.CloseWithLog(rows, "top deck hash migration rows")
 
 	records := make([]deckHashMigrationRow, 0)
-	winnerByCanonical := make(map[string]deckHashMigrationRow)
 
 	for rows.Next() {
 		row, err := scanDeckHashMigrationRow(rows)
 		if err != nil {
 			return nil, nil, err
-		}
-		if row.Valid {
-			current, exists := winnerByCanonical[row.Canonical]
-			if !exists || storageutil.PreferDeckHashMigrationWinner(row, current) {
-				winnerByCanonical[row.Canonical] = row
-			}
 		}
 		records = append(records, row)
 	}
@@ -189,7 +182,7 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 		return nil, nil, fmt.Errorf("failed to iterate top deck hash migration rows: %w", err)
 	}
 
-	return records, winnerByCanonical, nil
+	return records, storageutil.SelectDeckHashMigrationWinners(records), nil
 }
 
 func scanDeckHashMigrationRow(rows *sql.Rows) (deckHashMigrationRow, error) {
@@ -209,28 +202,7 @@ func scanDeckHashMigrationRow(rows *sql.Rows) (deckHashMigrationRow, error) {
 }
 
 func (s *Storage) applyDeckHashMigration(tx *sql.Tx, records []deckHashMigrationRow, winners map[string]deckHashMigrationRow) error {
-	for _, row := range records {
-		if !row.Valid {
-			continue
-		}
-		winner := winners[row.Canonical]
-		if row.ID == winner.ID {
-			continue
-		}
-		if _, err := tx.Exec("DELETE FROM top_decks WHERE id = ?", row.ID); err != nil {
-			return fmt.Errorf("failed to delete duplicate top_decks row %d: %w", row.ID, err)
-		}
-	}
-
-	for _, winner := range winners {
-		if winner.DeckHash == winner.Canonical {
-			continue
-		}
-		if _, err := tx.Exec("UPDATE top_decks SET deck_hash = ? WHERE id = ?", winner.Canonical, winner.ID); err != nil {
-			return fmt.Errorf("failed to update top_decks hash for row %d: %w", winner.ID, err)
-		}
-	}
-	return nil
+	return storageutil.ApplyDeckHashMigration(tx, "top_decks", records, winners)
 }
 
 // DeckEntry represents a stored deck from fuzzing

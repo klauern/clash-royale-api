@@ -66,3 +66,46 @@ func PreferDeckHashMigrationWinner(candidate, current DeckHashMigrationRow) bool
 	}
 	return candidate.ID < current.ID
 }
+
+// SelectDeckHashMigrationWinners picks one canonical winner per canonical hash.
+func SelectDeckHashMigrationWinners(records []DeckHashMigrationRow) map[string]DeckHashMigrationRow {
+	winners := make(map[string]DeckHashMigrationRow)
+	for _, row := range records {
+		if !row.Valid {
+			continue
+		}
+		current, exists := winners[row.Canonical]
+		if !exists || PreferDeckHashMigrationWinner(row, current) {
+			winners[row.Canonical] = row
+		}
+	}
+	return winners
+}
+
+// ApplyDeckHashMigration deletes duplicate rows and updates winner hashes to canonical values.
+func ApplyDeckHashMigration(tx *sql.Tx, tableName string, records []DeckHashMigrationRow, winners map[string]DeckHashMigrationRow) error {
+	for _, row := range records {
+		if !row.Valid {
+			continue
+		}
+		winner := winners[row.Canonical]
+		if row.ID == winner.ID {
+			continue
+		}
+		query := fmt.Sprintf("DELETE FROM %s WHERE id = ?", tableName)
+		if _, err := tx.Exec(query, row.ID); err != nil {
+			return fmt.Errorf("failed to delete duplicate %s row %d: %w", tableName, row.ID, err)
+		}
+	}
+
+	for _, winner := range winners {
+		if winner.DeckHash == winner.Canonical {
+			continue
+		}
+		query := fmt.Sprintf("UPDATE %s SET deck_hash = ? WHERE id = ?", tableName)
+		if _, err := tx.Exec(query, winner.Canonical, winner.ID); err != nil {
+			return fmt.Errorf("failed to update %s hash for row %d: %w", tableName, winner.ID, err)
+		}
+	}
+	return nil
+}
