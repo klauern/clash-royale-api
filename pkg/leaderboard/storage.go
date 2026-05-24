@@ -162,14 +162,7 @@ func (s *Storage) maybeMigrateDeckHashes() error {
 	return nil
 }
 
-type deckHashMigrationRow struct {
-	id           int
-	deckHash     string
-	cardsJSON    string
-	overallScore float64
-	canonical    string
-	valid        bool
-}
+type deckHashMigrationRow = storageutil.DeckHashMigrationRow
 
 func (s *Storage) migrateDeckHashes() error {
 	records, winners, err := s.loadDeckHashMigrationRows()
@@ -199,19 +192,6 @@ func (s *Storage) migrateDeckHashes() error {
 	return nil
 }
 
-type invalidDeckHashMigrationJSONError struct {
-	rowID int
-	err   error
-}
-
-func (e *invalidDeckHashMigrationJSONError) Error() string {
-	return fmt.Sprintf("invalid cards JSON for deck row %d: %v", e.rowID, e.err)
-}
-
-func (e *invalidDeckHashMigrationJSONError) Unwrap() error {
-	return e.err
-}
-
 func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[string]deckHashMigrationRow, error) {
 	rows, err := s.db.Query("SELECT id, deck_hash, cards, overall_score FROM decks")
 	if err != nil {
@@ -220,25 +200,22 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 	defer storageutil.CloseWithLog(rows, "deck hash migration rows")
 
 	records := make([]deckHashMigrationRow, 0)
-	winnerByCanonical := make(map[string]deckHashMigrationRow)
-
 	for rows.Next() {
 		row, err := scanDeckHashMigrationRow(rows)
 		if err != nil {
-			var invalidErr *invalidDeckHashMigrationJSONError
-			if errors.As(err, &invalidErr) {
-				log.Printf("Warning: deck row %d has invalid cards JSON, skipping migration: %v", invalidErr.rowID, invalidErr.err)
+			var syntaxErr *json.SyntaxError
+			if errors.As(err, &syntaxErr) {
+				log.Printf("Warning: deck row %d has invalid cards JSON, skipping migration: %v", row.ID, err)
+				records = append(records, row)
+				continue
+			}
+			var unmarshalTypeErr *json.UnmarshalTypeError
+			if errors.As(err, &unmarshalTypeErr) {
+				log.Printf("Warning: deck row %d has invalid cards JSON, skipping migration: %v", row.ID, err)
 				records = append(records, row)
 				continue
 			}
 			return nil, nil, err
-		}
-
-		if row.valid {
-			current, exists := winnerByCanonical[row.canonical]
-			if !exists || prefersDeckHashMigrationRow(row, current) {
-				winnerByCanonical[row.canonical] = row
-			}
 		}
 		records = append(records, row)
 	}
@@ -246,55 +223,27 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 		return nil, nil, fmt.Errorf("failed to iterate deck hash migration rows: %w", err)
 	}
 
-	return records, winnerByCanonical, nil
+	return records, storageutil.SelectDeckHashMigrationWinners(records), nil
 }
 
 func scanDeckHashMigrationRow(rows *sql.Rows) (deckHashMigrationRow, error) {
-	var row deckHashMigrationRow
-	if err := rows.Scan(&row.id, &row.deckHash, &row.cardsJSON, &row.overallScore); err != nil {
+	row, err := storageutil.ParseDeckHashMigrationRow(rows)
+	if err != nil {
+		var syntaxErr *json.SyntaxError
+		if errors.As(err, &syntaxErr) {
+			return row, fmt.Errorf("invalid cards JSON for deck row %d: %w", row.ID, err)
+		}
+		var unmarshalTypeErr *json.UnmarshalTypeError
+		if errors.As(err, &unmarshalTypeErr) {
+			return row, fmt.Errorf("invalid cards JSON for deck row %d: %w", row.ID, err)
+		}
 		return row, fmt.Errorf("failed to scan deck hash migration row: %w", err)
 	}
-
-	var cards []string
-	if err := json.Unmarshal([]byte(row.cardsJSON), &cards); err != nil {
-		return row, &invalidDeckHashMigrationJSONError{rowID: row.id, err: err}
-	}
-	row.canonical = deckhash.DeckHash(cards)
-	row.valid = true
-
 	return row, nil
 }
 
-func prefersDeckHashMigrationRow(candidate, current deckHashMigrationRow) bool {
-	if candidate.overallScore != current.overallScore {
-		return candidate.overallScore > current.overallScore
-	}
-	return candidate.id < current.id
-}
-
 func (s *Storage) applyDeckHashMigration(tx *sql.Tx, records []deckHashMigrationRow, winners map[string]deckHashMigrationRow) error {
-	for _, row := range records {
-		if !row.valid {
-			continue
-		}
-
-		winner := winners[row.canonical]
-		if row.id != winner.id {
-			if _, err := tx.Exec("DELETE FROM decks WHERE id = ?", row.id); err != nil {
-				return fmt.Errorf("failed to delete duplicate deck row %d: %w", row.id, err)
-			}
-		}
-	}
-
-	for _, winner := range winners {
-		if winner.deckHash == winner.canonical {
-			continue
-		}
-		if _, err := tx.Exec("UPDATE decks SET deck_hash = ? WHERE id = ?", winner.canonical, winner.id); err != nil {
-			return fmt.Errorf("failed to update deck hash for row %d: %w", winner.id, err)
-		}
-	}
-	return nil
+	return storageutil.ApplyDeckHashMigration(tx, "decks", records, winners)
 }
 
 // InsertDeck inserts or updates a deck entry in the leaderboard
