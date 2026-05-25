@@ -116,4 +116,8 @@ Combined rating across all dimensions:
 - `./bin/cr-api player get --tag <TAG>` - View player stats
 - `./bin/cr-api deck build` - Build single deck with custom constraints
 - `./bin/cr-api deck analyze-suite` - Full analysis workflow
+- `./bin/cr-api compare --from-evaluations <file> --auto-select-top 5` - Side-by-side deck comparison
+- `./bin/cr-api review --tag <TAG>` - One-shot comprehensive player review (faster alternative)
+- `./bin/cr-api what-if --tag <TAG> --upgrade "Card:ToLevel"` - Simulate upgrade impact
+- `./bin/cr-api upgrade-impact --tag <TAG>` - Rank all upgrades by ROI
 - `task build` - Rebuild binary after code changes

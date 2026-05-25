@@ -179,4 +179,5 @@ If player tag is invalid:
 - Faster than comprehensive analysis for quick deck building
 - Uses same scoring and evaluation as the full deck-analysis skill
 - Evolution configuration is automatically read from `.env`
-- For comprehensive multi-deck analysis, use the `deck-analysis` skill instead
+- For a comprehensive one-shot overview (playstyle + archetype + upgrades + budget + deck delta), use the `player-review` skill instead
+- For multi-deck exploration and comparison, use the `deck-analysis` skill instead

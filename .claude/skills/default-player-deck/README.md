@@ -122,12 +122,15 @@ echo 'DEFAULT_PLAYER_TAG="#YOUR_TAG"' >> .env
 ### Need Full Analysis?
 For comprehensive multi-deck analysis with comparisons, use the `deck-analysis` skill instead and provide your player tag explicitly.
 
-## Differences from deck-analysis Skill
+## Differences from Other Skills
 
-| Feature | default-player-deck | deck-analysis |
-|---------|---------------------|---------------|
-| Player tag | From `.env` | Must specify |
-| Decks generated | 1 optimized deck | 6-18+ decks |
-| Analysis depth | Quick build | Comprehensive |
-| Best for | Quick deck needs | Full meta analysis |
-| Time | Fast | Thorough |
+| Feature | default-player-deck | deck-analysis | player-review |
+|---------|---------------------|---------------|---------------|
+| Player tag | From `.env` | Must specify | Must specify |
+| Decks generated | 1 optimized deck | 6-18+ decks | 0 (analysis only) |
+| Analysis depth | Quick build | Comprehensive deck exploration | Full player overview |
+| Includes upgrade priorities | No | Via evaluate | Yes (cross-archetype) |
+| Deck delta vs current | No | No | Yes |
+| Budget plan | No | No | Yes (next 20k gold) |
+| Best for | Quick deck needs | Meta deck exploration | Player health check |
+| Time | Fast | Thorough | Fast |

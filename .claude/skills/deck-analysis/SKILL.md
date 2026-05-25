@@ -156,6 +156,37 @@ After running the analysis, provide:
 - **splash**: Anti-swarm with area damage focus
 - **spell**: Spell-cycling win conditions
 
+## Post-Analysis: Compare Top Decks
+
+After `analyze-suite` generates evaluations, use `compare` for a side-by-side breakdown:
+
+```bash
+# Auto-select top 5 from evaluation output
+./bin/cr-api compare \
+  --from-evaluations data/analysis/evaluations/<timestamp>_deck_evaluations_<TAG>.json \
+  --auto-select-top 5 \
+  --format table
+
+# Compare two specific decks by card list
+./bin/cr-api compare \
+  --decks "Hog Rider-Musketeer-Cannon-Ice Spirit-Fireball-Skeletons-Ice Golem-Log" \
+  --decks "Giant-Witch-Baby Dragon-Fireball-Tornado-Zap-Musketeer-Cannon" \
+  --names "Hog Cycle" "Giant Witch" \
+  --format markdown --report-output report.md
+```
+
+## When to Use `review` Instead
+
+For a quick *one-shot overview* (not deck exploration), `review` is faster:
+
+```bash
+./bin/cr-api review --tag "<PLAYER_TAG>"
+```
+
+It runs playstyle + archetype detection + upgrade priorities + budget + deck delta in one
+call. Use `deck-analysis` when you want many deck variations to explore; use `review`
+when you want a consolidated verdict.
+
 ## Notes
 
 - Analysis generates 6-18+ decks depending on variation settings
