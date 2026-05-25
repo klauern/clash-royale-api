@@ -307,7 +307,7 @@ func eventListCommand(ctx context.Context, cmd *cli.Command) error {
 	exportCSV := cmd.Bool("export-csv")
 	apiToken := cmd.String("api-token")
 
-	if _, err := requireAPITokenValue(apiToken, apiClientOptions{}); err != nil {
+	if _, err := requireEventAPIToken(apiToken); err != nil {
 		return err
 	}
 
@@ -400,7 +400,7 @@ func eventAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 
-	if _, err := requireAPITokenValue(apiToken, apiClientOptions{}); err != nil {
+	if _, err := requireEventAPIToken(apiToken); err != nil {
 		return err
 	}
 
@@ -475,7 +475,7 @@ func eventCompareCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	apiToken := cmd.String("api-token")
 
-	if _, err := requireAPITokenValue(apiToken, apiClientOptions{}); err != nil {
+	if _, err := requireEventAPIToken(apiToken); err != nil {
 		return err
 	}
 
@@ -496,7 +496,7 @@ func eventDeckStatsCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
 	apiToken := cmd.String("api-token")
 
-	if _, err := requireAPITokenValue(apiToken, apiClientOptions{}); err != nil {
+	if _, err := requireEventAPIToken(apiToken); err != nil {
 		return err
 	}
 
@@ -556,6 +556,10 @@ func displayEventSummary(collection *events.EventDeckCollection) {
 	printf("  Overall Win Rate: %.1f%%\n", overallWinRate*100)
 	printf("  Total Crowns Earned: %d\n", totalCrowns)
 	printf("  Best Win Streak: %d\n", bestStreak)
+}
+
+func requireEventAPIToken(apiToken string) (string, error) {
+	return requireAPITokenValue(apiToken, apiClientOptions{})
 }
 
 func displayEventList(decks []events.EventDeck) {

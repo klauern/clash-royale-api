@@ -6,6 +6,7 @@ const (
 	batchFormatJSON     = "json"
 	batchFormatCSV      = "csv"
 	batchFormatDetailed = "detailed"
+	batchFormatMarkdown = "markdown"
 
 	batchSortOverall     = "overall"
 	batchSortAttack      = "attack"

@@ -66,6 +66,7 @@ func main() {
 			addUpgradeImpactCommands(),
 			addWhatIfCommands(),
 			addOnboardCommand(),
+			addReviewCommand(),
 			addCompareCommands(),
 			addPlayerCommand(),
 			addCardsCommand(),
