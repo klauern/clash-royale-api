@@ -25,6 +25,7 @@ type Builder struct {
 	dataDir                  string
 	unlockedEvolutions       map[string]bool
 	evolutionSlotLimit       int
+	championLimit            int
 	statsRegistry            *clashroyale.CardStatsRegistry
 	strategy                 Strategy
 	strategyConfig           StrategyConfig
@@ -64,6 +65,7 @@ func NewBuilder(dataDir string) *Builder {
 		dataDir:            dataDir,
 		unlockedEvolutions: unlockedEvos,
 		evolutionSlotLimit: 2,
+		championLimit:      1,
 		synergyCache:       make(map[string]float64),
 	}
 
@@ -160,6 +162,10 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	}
 
 	evolutionSlots := b.selectEvolutionSlots(deck)
+
+	// Enforce champion limit: swap out excess champions for highest-scoring non-champions
+	deck = b.enforceChampionLimit(deck, candidates, used)
+
 	recommendation := b.buildRecommendationDetails(deck, analysis.AnalysisTime, evolutionSlots, notes)
 	b.finalizeRecommendation(recommendation)
 
@@ -302,7 +308,26 @@ func (b *Builder) selectCardsByRole(deck, candidates []*CardCandidate, used map[
 // fillRemainingSlots fills remaining deck slots (up to 8) with highest-scoring unused cards
 func (b *Builder) fillRemainingSlots(deck, candidates []*CardCandidate, used map[string]bool) []*CardCandidate {
 	if len(deck) < 8 {
-		remaining := b.getHighestScoreCards(candidates, used, 8-len(deck), deck)
+		// Enforce champion limit: count champions already in deck
+		championCount := 0
+		for _, c := range deck {
+			if c.Rarity == RarityChampion {
+				championCount++
+			}
+		}
+
+		// Filter candidates to exclude champions when at limit
+		filtered := candidates
+		if championCount >= b.championLimit {
+			filtered = make([]*CardCandidate, 0, len(candidates))
+			for _, c := range candidates {
+				if c.Rarity != RarityChampion || used[c.Name] {
+					filtered = append(filtered, c)
+				}
+			}
+		}
+
+		remaining := b.getHighestScoreCards(filtered, used, 8-len(deck), deck)
 		deck = append(deck, remaining...)
 	}
 	// Ensure at most 8 cards.
@@ -310,6 +335,92 @@ func (b *Builder) fillRemainingSlots(deck, candidates []*CardCandidate, used map
 		return deck[:8]
 	}
 	return deck
+}
+
+// enforceChampionLimit ensures the deck has at most championLimit champion cards.
+// If the limit is exceeded, excess champions are replaced with the highest-scoring
+// non-champion candidates not already in the deck.
+func (b *Builder) enforceChampionLimit(deck, candidates []*CardCandidate, used map[string]bool) []*CardCandidate {
+	if b.championLimit <= 0 {
+		return deck
+	}
+
+	excessCount := b.countChampionsInDeck(deck) - b.championLimit
+	if excessCount <= 0 {
+		return deck
+	}
+
+	replacements := b.pickNonChampionReplacements(candidates, used, deck, excessCount)
+	return b.swapExcessChampions(deck, replacements, excessCount, used)
+}
+
+// countChampionsInDeck returns the number of champion-rarity cards in the deck.
+func (b *Builder) countChampionsInDeck(deck []*CardCandidate) int {
+	count := 0
+	for _, c := range deck {
+		if c.Rarity == RarityChampion {
+			count++
+		}
+	}
+	return count
+}
+
+// pickNonChampionReplacements returns up to 'count' non-champion candidates
+// that are not already in the deck and not marked as used.
+func (b *Builder) pickNonChampionReplacements(candidates []*CardCandidate, used map[string]bool, deck []*CardCandidate, count int) []*CardCandidate {
+	deckNames := make(map[string]bool, len(deck))
+	for _, c := range deck {
+		deckNames[c.Name] = true
+	}
+
+	replacements := make([]*CardCandidate, 0, count)
+	for _, c := range candidates {
+		if len(replacements) >= count {
+			break
+		}
+		if c.Rarity == RarityChampion || used[c.Name] || deckNames[c.Name] {
+			continue
+		}
+		replacements = append(replacements, cloneCardCandidate(c))
+	}
+	return replacements
+}
+
+// swapExcessChampions replaces the lowest-scoring excess champions with replacements.
+func (b *Builder) swapExcessChampions(deck, replacements []*CardCandidate, excessCount int, used map[string]bool) []*CardCandidate {
+	type indexedChampion struct {
+		idx   int
+		score float64
+	}
+	var champIdxs []indexedChampion
+	for i, c := range deck {
+		if c.Rarity == RarityChampion {
+			champIdxs = append(champIdxs, indexedChampion{idx: i, score: c.Score})
+		}
+	}
+
+	// Sort ascending — lowest-scoring champions at the front (to be removed)
+	sort.Slice(champIdxs, func(i, j int) bool {
+		return champIdxs[i].score < champIdxs[j].score
+	})
+
+	removeSet := make(map[int]bool, excessCount)
+	for i := range excessCount {
+		removeSet[champIdxs[i].idx] = true
+	}
+
+	result := make([]*CardCandidate, 0, len(deck))
+	ri := 0
+	for i, c := range deck {
+		if removeSet[i] && ri < len(replacements) {
+			result = append(result, replacements[ri])
+			used[replacements[ri].Name] = true
+			ri++
+		} else if !removeSet[i] {
+			result = append(result, c)
+		}
+	}
+	return result
 }
 
 // buildRecommendationDetails builds the DeckRecommendation struct and populates card details

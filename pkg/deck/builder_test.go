@@ -2215,3 +2215,58 @@ func TestBuilder_AutoDetectUnlockedEvolutions(t *testing.T) {
 		}
 	}
 }
+
+// TestBuilder_EnforceChampionLimit verifies the builder enforces at most
+// 1 Champion-rarity card per deck, per Clash Royale game rules.
+func TestBuilder_EnforceChampionLimit(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.SetUnlockedEvolutions([]string{})
+
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			// Three different champions — only 1 should be in the deck
+			"Golden Knight": {Level: 14, MaxLevel: 16, Rarity: "Champion", Elixir: 4},
+			"Skeleton King": {Level: 14, MaxLevel: 16, Rarity: "Champion", Elixir: 4},
+			"Mighty Miner":  {Level: 14, MaxLevel: 16, Rarity: "Champion", Elixir: 4},
+			// Non-champion cards to fill the deck
+			"Knight":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Archers":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Hog Rider":  {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 4},
+			"Musketeer":  {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Log":        {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
+			"Ice Spirit": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Cannon":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Zap":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+			"Fireball":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Valkyrie":   {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Skeletons":  {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	deck, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build deck: %v", err)
+	}
+
+	// Count champions in the built deck
+	championCount := 0
+	var championNames []string
+	for _, detail := range deck.DeckDetail {
+		if detail.Rarity == "Champion" {
+			championCount++
+			championNames = append(championNames, detail.Name)
+		}
+	}
+
+	if championCount > 1 {
+		t.Errorf("Deck has %d champions (max 1 allowed): %v", championCount, championNames)
+	}
+
+	if championCount == 0 {
+		t.Error("Expected exactly 1 champion in deck, but found 0 — champions should still be selectable")
+	}
+
+	t.Logf("Deck champions: %v (count=%d)", championNames, championCount)
+	t.Logf("Deck: %v", deck.Deck)
+}
