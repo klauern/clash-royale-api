@@ -27,6 +27,10 @@ type reviewReport struct {
 
 	// BudgetDecks contains decks within the next-20k-gold budget.
 	BudgetDecks []*budget.DeckBudgetAnalysis
+
+	// SlotAssignments lists the top valid (evo/champion/flex) slot assignments for the current deck.
+	// Empty when the deck contains no evolution or champion cards.
+	SlotAssignments []recommend.SlotAssignment
 }
 
 func runReview(ctx context.Context, cmd *cli.Command) (*reviewReport, error) {
@@ -83,7 +87,22 @@ func runReview(ctx context.Context, cmd *cli.Command) (*reviewReport, error) {
 	}
 	report.DeckDelta = delta
 
+	report.SlotAssignments = runSlotAssignments(result)
+
 	return report, nil
+}
+
+// runSlotAssignments enumerates the top valid evo/champion/flex slot assignments
+// for the player's current deck using DefaultSlotScorer.
+func runSlotAssignments(result *onlinePlayerAnalysisResult) []recommend.SlotAssignment {
+	typeer := recommend.NewCardSlotTyperFromDeckAnalysis(result.DeckCardAnalysis)
+	cards := make([]recommend.CardDetailLike, len(result.Player.CurrentDeck))
+	for i, c := range result.Player.CurrentDeck {
+		cards[i] = recommend.CardDetailLike{CardName: c.Name, Evolved: c.EvolutionLevel > 0}
+	}
+	classified := typeer.ClassifyCards(cards)
+	candidates := recommend.CollectCandidates(classified)
+	return recommend.EnumerateAssignments(candidates, recommend.DefaultPolicy(), recommend.DefaultSlotScorer, 3)
 }
 
 func detectTopArchetypes(_ context.Context, dataDir string, result *onlinePlayerAnalysisResult) (*analysis.DynamicArchetypeAnalysis, error) {

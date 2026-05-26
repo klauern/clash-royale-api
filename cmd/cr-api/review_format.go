@@ -17,6 +17,7 @@ func renderReviewHuman(report *reviewReport) {
 	renderReviewArchetype(report)
 	renderReviewUpgrades(report)
 	renderReviewDelta(report)
+	renderReviewSlots(report)
 	renderReviewBudget(report)
 }
 
@@ -122,6 +123,28 @@ func renderReviewBudget(report *reviewReport) {
 	printf("\n")
 }
 
+func renderReviewSlots(report *reviewReport) {
+	if len(report.SlotAssignments) == 0 {
+		return
+	}
+	printf("── Slot Assignment ─────────────────────────────────────\n")
+	a := report.SlotAssignments[0]
+	evo, champ, flex := "—", "—", "—"
+	if a.EvoSlot != nil {
+		evo = a.EvoSlot.Name
+	}
+	if a.ChampionSlot != nil {
+		champ = a.ChampionSlot.Name
+	}
+	if a.FlexSlot != nil {
+		flex = a.FlexSlot.Name
+	}
+	printf("  Evo slot:       %s\n", evo)
+	printf("  Champion slot:  %s\n", champ)
+	printf("  Flex slot:      %s\n", flex)
+	printf("\n")
+}
+
 func renderReviewJSON(report *reviewReport) error {
 	data, err := json.MarshalIndent(report, "", "  ")
 	if err != nil {
@@ -142,6 +165,7 @@ func renderReviewMarkdown(report *reviewReport) error {
 	reviewMarkdownArchetype(&sb, report)
 	reviewMarkdownUpgrades(&sb, report)
 	reviewMarkdownDelta(&sb, report)
+	reviewMarkdownSlots(&sb, report)
 	reviewMarkdownBudget(&sb, report)
 
 	printf("%s", sb.String())
@@ -230,6 +254,28 @@ func reviewMarkdownDelta(sb *strings.Builder, report *reviewReport) {
 	if len(d.ReplacedCards) > 0 {
 		fmt.Fprintf(sb, "**New cards (%d):** %s\n\n", len(d.ReplacedCards), strings.Join(d.ReplacedCards, ", "))
 	}
+}
+
+func reviewMarkdownSlots(sb *strings.Builder, report *reviewReport) {
+	if len(report.SlotAssignments) == 0 {
+		return
+	}
+	fmt.Fprintf(sb, "## Slot Assignment\n\n")
+	a := report.SlotAssignments[0]
+	evo, champ, flex := "—", "—", "—"
+	if a.EvoSlot != nil {
+		evo = a.EvoSlot.Name
+	}
+	if a.ChampionSlot != nil {
+		champ = a.ChampionSlot.Name
+	}
+	if a.FlexSlot != nil {
+		flex = a.FlexSlot.Name
+	}
+	fmt.Fprintf(sb, "| Slot | Card |\n|------|------|\n")
+	fmt.Fprintf(sb, "| Evo | %s |\n", evo)
+	fmt.Fprintf(sb, "| Champion | %s |\n", champ)
+	fmt.Fprintf(sb, "| Flex | %s |\n\n", flex)
 }
 
 func reviewMarkdownBudget(sb *strings.Builder, report *reviewReport) {

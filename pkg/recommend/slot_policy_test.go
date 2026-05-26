@@ -185,6 +185,52 @@ func TestEnumerateAssignments_TopN(t *testing.T) {
 	}
 }
 
+// TestEnumerateAssignments_ZyLoganDeck verifies the third acceptance criterion:
+// Balloon surfaces in champion slot and Skeleton Army surfaces in evo slot.
+func TestEnumerateAssignments_ZyLoganDeck(t *testing.T) {
+	deck := []CardWithSlotType{
+		card("Balloon", ChampionSlotOnlyEvo),
+		card("Skeleton Army", RegularEvo),
+		card("Witch", RegularEvo),
+		card("Miner", Champion),
+	}
+
+	candidates := CollectCandidates(deck)
+	assignments := EnumerateAssignments(candidates, DefaultPolicy(), DefaultSlotScorer, 0)
+
+	if len(assignments) == 0 {
+		t.Fatal("expected at least one valid assignment for ZyLogan deck")
+	}
+
+	// Balloon must never appear in the evo slot (ChampionSlotOnlyEvo constraint).
+	for _, a := range assignments {
+		if a.EvoSlot != nil && a.EvoSlot.Name == "Balloon" {
+			t.Errorf("Balloon appeared in EvoSlot — violation of ChampionSlotOnlyEvo constraint")
+		}
+	}
+
+	// Top assignment must have Balloon in champion slot.
+	top := assignments[0]
+	if top.ChampionSlot == nil || top.ChampionSlot.Name != "Balloon" {
+		t.Errorf("top assignment champion slot = %v, want Balloon", top.ChampionSlot)
+	}
+
+	// At least one top-scoring assignment must have Skeleton Army in the evo slot.
+	hasSkelArmyInEvo := false
+	topScore := assignments[0].Score
+	for _, a := range assignments {
+		if a.Score < topScore {
+			break
+		}
+		if a.EvoSlot != nil && a.EvoSlot.Name == "Skeleton Army" {
+			hasSkelArmyInEvo = true
+		}
+	}
+	if !hasSkelArmyInEvo {
+		t.Errorf("no top-scoring assignment has Skeleton Army in evo slot")
+	}
+}
+
 func TestEnumerateAssignments_SortedByScore(t *testing.T) {
 	deck := []CardWithSlotType{
 		card("Skeleton Army", RegularEvo),

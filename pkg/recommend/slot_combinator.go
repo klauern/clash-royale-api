@@ -129,6 +129,28 @@ func buildAssignment(
 	return a, true
 }
 
+// DefaultSlotScorer prioritizes assignments where special cards fill their most natural slot:
+//   - ChampionSlotOnlyEvo in champion slot: +3 (only legal home, earns full weight)
+//   - Champion in champion slot or RegularEvo in evo slot: +2
+//   - any special card in flex slot: +1
+func DefaultSlotScorer(a SlotAssignment) float64 {
+	score := 0.0
+	if a.ChampionSlot != nil {
+		if a.ChampionSlot.SlotType == ChampionSlotOnlyEvo {
+			score += 3
+		} else {
+			score += 2
+		}
+	}
+	if a.EvoSlot != nil {
+		score += 2
+	}
+	if a.FlexSlot != nil {
+		score += 1
+	}
+	return score
+}
+
 func assignmentToDeck(a SlotAssignment) []CardWithSlotType {
 	var deck []CardWithSlotType
 	if a.EvoSlot != nil {
