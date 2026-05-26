@@ -2160,3 +2160,58 @@ func TestBuilder_CachedSynergyRetrieval(t *testing.T) {
 		t.Errorf("Expected 1 cache entry, got %d", cacheSize)
 	}
 }
+
+// TestBuilder_AutoDetectUnlockedEvolutions verifies that evolution cards are
+// auto-detected from API data (EvolutionLevel > 0) when no explicit
+// --unlocked-evolutions flag or UNLOCKED_EVOLUTIONS env var is set.
+func TestBuilder_AutoDetectUnlockedEvolutions(t *testing.T) {
+	builder := NewBuilder("testdata")
+	// Simulate "no explicit config" by clearing the map (NewBuilder may
+	// have populated it from UNLOCKED_EVOLUTIONS env var)
+	builder.unlockedEvolutions = make(map[string]bool)
+	builder.SetEvolutionSlotLimit(2)
+
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			// Knight has EvolutionLevel=2 meaning the player HAS this evolution
+			"Knight":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, EvolutionLevel: 2, MaxEvolutionLevel: 3},
+			"Archers":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, MaxEvolutionLevel: 3},
+			"Hog Rider":  {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 4},
+			"Musketeer":  {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Log":        {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
+			"Ice Spirit": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Cannon":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Zap":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	deck, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build deck: %v", err)
+	}
+
+	// Knight (EvolutionLevel=2) should be auto-detected and get an evolution slot
+	if len(deck.EvolutionSlots) == 0 {
+		t.Error("Expected at least 1 evolution slot from auto-detection, got 0")
+	}
+
+	foundKnight := false
+	for _, slot := range deck.EvolutionSlots {
+		if slot == "Knight" {
+			foundKnight = true
+			break
+		}
+	}
+	if !foundKnight {
+		t.Errorf("Expected Knight in evolution slots (auto-detected from EvolutionLevel=2), got: %v", deck.EvolutionSlots)
+	}
+
+	// Archers has MaxEvolutionLevel=3 but EvolutionLevel=0 (not unlocked)
+	// Should NOT be auto-detected as unlocked
+	for _, slot := range deck.EvolutionSlots {
+		if slot == "Archers" {
+			t.Error("Archers should NOT be in evolution slots (EvolutionLevel=0 means not unlocked)")
+		}
+	}
+}

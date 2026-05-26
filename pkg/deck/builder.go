@@ -134,6 +134,18 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	}
 
 	b.clearSynergyCache()
+
+	// Auto-detect unlocked evolutions from API card data when not explicitly
+	// configured via --unlocked-evolutions flag or UNLOCKED_EVOLUTIONS env var.
+	// A card with EvolutionLevel > 0 means the player has unlocked that evolution.
+	if len(b.unlockedEvolutions) == 0 {
+		for name, data := range analysis.CardLevels {
+			if data.EvolutionLevel > 0 {
+				b.unlockedEvolutions[name] = true
+			}
+		}
+	}
+
 	candidates := b.buildCandidates(analysis.CardLevels)
 	candidates = b.filterExcludedCards(candidates)
 
