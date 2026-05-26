@@ -648,7 +648,10 @@ func (b *Builder) scoreCard(name string, level, maxLevel int, rarity string, eli
 	// Use level-scaled evolution bonus
 	evolutionBonus := b.calculateEvolutionBonus(name, level, maxLevel, maxEvolutionLevel)
 
-	return (levelRatio * config.LevelWeightFactor * rarityBoost) + (elixirWeight * config.ElixirWeightFactor) + roleBonus + evolutionBonus
+	// Champion ability bonus: additive bonus for champion cards with known abilities
+	championAbilityBonus := config.GetChampionAbilityBonus(name)
+
+	return (levelRatio * config.LevelWeightFactor * rarityBoost) + (elixirWeight * config.ElixirWeightFactor) + roleBonus + evolutionBonus + championAbilityBonus
 }
 
 // calculateEvolutionBonus returns level-scaled evolution bonus
