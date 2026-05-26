@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/urfave/cli/v3"
 )
@@ -200,7 +201,8 @@ func displayTopImpactCards(impacts []analysis.CardUpgradeImpact, showAll bool) {
 	fprintf(w, "-\t----\t-----\t------\t------\t----\t--------\t-------\n")
 
 	for i, impact := range impacts {
-		fprintf(w, "%d\t%s%s\t%d->%d\t%s\t%.1f\t%s\t%.2f\t%d\n",
+		fprintf(
+			w, "%d\t%s%s\t%d->%d\t%s\t%.1f\t%s\t%.2f\t%d\n",
 			i+1,
 			impact.CardName,
 			getKeyCardMarker(impact.IsKeyCard),
@@ -251,7 +253,8 @@ func displayArchetypeUnlockTree(unlocks []analysis.ArchetypeUnlockInfo) {
 			goldStr = formatGoldCompact(unlock.EstimatedGold)
 		}
 
-		fprintf(w, "%s\t%s\t%s\t%s\n",
+		fprintf(
+			w, "%s\t%s\t%s\t%s\n",
 			unlock.Archetype,
 			getUnlockStatusSymbol(unlock.CurrentViability),
 			unlock.PriorityUpgrade,
@@ -352,24 +355,12 @@ func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) err
 }
 
 func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) error {
-	// Create analysis directory if it doesn't exist
-	analysisDir := filepath.Join(dataDir, "analysis")
-	if err := os.MkdirAll(analysisDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create analysis directory: %w", err)
-	}
-
 	// Generate filename with timestamp
 	timestamp := time.Now().Format("20060102_150405")
-	filename := filepath.Join(analysisDir, fmt.Sprintf("upgrade_impact_%s_%s.json", impactAnalysis.PlayerTag, timestamp))
+	filename := filepath.Join(dataDir, "analysis", fmt.Sprintf("upgrade_impact_%s_%s.json", impactAnalysis.PlayerTag, timestamp))
 
-	// Save as JSON
-	data, err := json.MarshalIndent(impactAnalysis, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal analysis: %w", err)
-	}
-
-	if err := os.WriteFile(filename, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write analysis file: %w", err)
+	if err := storage.WriteJSON(filename, impactAnalysis); err != nil {
+		return fmt.Errorf("failed to save upgrade impact analysis: %w", err)
 	}
 
 	return nil
