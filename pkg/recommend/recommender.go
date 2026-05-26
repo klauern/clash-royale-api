@@ -45,14 +45,21 @@ func (r *Recommender) GenerateRecommendations(
 		return nil, fmt.Errorf("failed to analyze archetypes: %w", err)
 	}
 
-	// 2. Convert archetype decks to recommendations and score them
+	// 2. Convert archetype decks to recommendations and score them.
+	// Skip any deck that violates the slot policy (e.g. 2 champions, Balloon evo in evo slot).
+	policy := DefaultPolicy()
+	typeer := NewCardSlotTyperFromDeckAnalysis(analysis)
 	recommendations := make([]*DeckRecommendation, 0)
 	for _, archDeck := range archetypeResult.Archetypes {
 		rec := r.scoreArchetypeDeck(archDeck, analysis)
+		classified := typeer.ClassifyDeckDetail(rec.Deck.DeckDetail)
+		if violations := policy.SlotViolations(classified); len(violations) > 0 {
+			rec.Deck.AddNote(fmt.Sprintf("slot policy warning: %s", violations[0]))
+		}
 		recommendations = append(recommendations, rec)
 	}
 
-	// 3. Generate custom variations for top archetypes
+	// 3. Generate custom variations for top archetypes, filtering slot-violating ones.
 	if r.options.IncludeVariations {
 		topArchetypes := r.getTopArchetypes(recommendations, 3)
 		for _, archRec := range topArchetypes {
@@ -63,9 +70,12 @@ func (r *Recommender) GenerateRecommendations(
 				r.options.MaxVariationsPerArchetype,
 			)
 
-			// Score each variation
 			for _, variation := range variations {
 				r.scoreRecommendation(variation, analysis)
+				classified := typeer.ClassifyDeckDetail(variation.Deck.DeckDetail)
+				if policy.Validate(classified) != nil {
+					continue // drop policy-violating variations silently
+				}
 				recommendations = append(recommendations, variation)
 			}
 		}
