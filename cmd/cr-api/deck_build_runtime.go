@@ -221,6 +221,25 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 		BuildError error
 	}
 
+	// deckResultsToSuiteSummaries converts build results to suite summary records,
+	// skipping results with nil decks (failed builds).
+	deckResultsToSuiteSummaries := func(results []deckResult) []deck.SuiteDeckSummary {
+		summaries := make([]deck.SuiteDeckSummary, 0, len(results))
+		for _, r := range results {
+			if r.Deck == nil {
+				continue
+			}
+			summaries = append(summaries, deck.SuiteDeckSummary{
+				Strategy:  r.Strategy,
+				Variation: r.Variation,
+				Cards:     r.Deck.Deck,
+				AvgElixir: r.Deck.AvgElixir,
+				FilePath:  r.FilePath,
+			})
+		}
+		return summaries
+	}
+
 	startTime := time.Now()
 	results := []deckResult{}
 
@@ -312,19 +331,7 @@ func deckBuildSuiteCommand(ctx context.Context, cmd *cli.Command) error {
 	// Save summary JSON if requested
 	if saveData && successful > 0 {
 		timestamp := time.Now().Format("20060102_150405")
-		summaries := make([]deck.SuiteDeckSummary, 0, len(results))
-		for _, result := range results {
-			if result.Deck == nil {
-				continue
-			}
-			summaries = append(summaries, deck.SuiteDeckSummary{
-				Strategy:  result.Strategy,
-				Variation: result.Variation,
-				Cards:     result.Deck.Deck,
-				AvgElixir: result.Deck.AvgElixir,
-				FilePath:  result.FilePath,
-			})
-		}
+		summaries := deckResultsToSuiteSummaries(results)
 		summaryPath, err := writeSuiteSummary(
 			outputDir, timestamp, playerData.PlayerName, playerData.PlayerTag,
 			deck.SuiteBuildInfo{
