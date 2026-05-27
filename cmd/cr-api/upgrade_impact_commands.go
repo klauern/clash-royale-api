@@ -132,10 +132,11 @@ func upgradeImpactCommand(ctx context.Context, cmd *cli.Command) error {
 
 	// Save if requested
 	if saveData {
-		if err := saveUpgradeImpactAnalysis(dataDir, impactAnalysis); err != nil {
+		filename, err := saveUpgradeImpactAnalysis(dataDir, impactAnalysis)
+		if err != nil {
 			printf("Warning: Failed to save analysis: %v\n", err)
 		} else {
-			printf("\nAnalysis saved to: %s/analysis/upgrade_impact_%s.json\n", dataDir, impactAnalysis.PlayerTag)
+			printf("\nAnalysis saved to: %s\n", filename)
 		}
 	}
 
@@ -354,14 +355,14 @@ func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) err
 	return nil
 }
 
-func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) error {
+func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) (string, error) {
 	// Generate filename with timestamp
 	timestamp := time.Now().Format("20060102_150405")
 	filename := filepath.Join(dataDir, "analysis", fmt.Sprintf("upgrade_impact_%s_%s.json", impactAnalysis.PlayerTag, timestamp))
 
 	if err := storage.WriteJSON(filename, impactAnalysis); err != nil {
-		return fmt.Errorf("failed to save upgrade impact analysis: %w", err)
+		return "", fmt.Errorf("failed to save upgrade impact analysis: %w", err)
 	}
 
-	return nil
+	return filename, nil
 }

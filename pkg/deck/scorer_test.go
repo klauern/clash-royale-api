@@ -989,11 +989,16 @@ func TestGetTopN_AllScoresNegative(t *testing.T) {
 func TestChampionAbilityBonus(t *testing.T) {
 	winCon := RoleWinCondition
 
-	// Golden Knight is a known champion with ability metadata
-	gkScore := ScoreCardWithEvolution(12, 14, "Champion", 4, &winCon, 0, 0)
+	if _, ok := config.GetChampionAbilityMetadata("Golden Knight"); !ok {
+		t.Fatal("Golden Knight should have champion ability metadata")
+	}
+	if _, ok := config.GetChampionAbilityMetadata("Knight"); ok {
+		t.Fatal("Knight should not have champion ability metadata")
+	}
 
-	// Knight is a Common card with no ability
-	knightScore := ScoreCardWithEvolution(12, 14, "Common", 3, &winCon, 0, 0)
+	// Score through the card-name-aware path so champion ability lookup runs.
+	gkScore := scoreCardWithEvolutionInternal("Golden Knight", 12, 14, "Champion", 4, &winCon, 0, 0, nil)
+	knightScore := scoreCardWithEvolutionInternal("Knight", 12, 14, "Common", 3, &winCon, 0, 0, nil)
 
 	// Both have same level ratio (12/14), same role, similar elixir.
 	// Champion rarity gives 2.5x priority bonus vs Common 1.0x.
@@ -1001,12 +1006,6 @@ func TestChampionAbilityBonus(t *testing.T) {
 	// With ability bonus: champion gets additional additive bonus.
 	// The ability bonus should make champions score higher than rarity alone accounts for.
 
-	// Verify champion ability is looked up (Golden Knight exists in metadata)
-	// Verify non-champion returns no ability metadata
-	// The actual bonus value is tested via the score delta between champion and common
-
-	// Re-score with explicit card name path to verify ability bonus is applied
-	// For now, verify the scores are reasonable and champion > common
 	if gkScore <= knightScore {
 		t.Errorf("Champion (Golden Knight) score %v should exceed Common (Knight) score %v",
 			gkScore, knightScore)

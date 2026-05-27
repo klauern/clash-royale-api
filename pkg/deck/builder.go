@@ -22,26 +22,27 @@ import (
 // Builder handles the construction of balanced Clash Royale decks
 // from player card analysis data.
 type Builder struct {
-	dataDir                  string
-	unlockedEvolutions       map[string]bool
-	evolutionSlotLimit       int
-	championLimit            int
-	statsRegistry            *clashroyale.CardStatsRegistry
-	strategy                 Strategy
-	strategyConfig           StrategyConfig
-	levelCurve               *LevelCurve
-	synergyDB                *SynergyDatabase
-	synergyEnabled           bool
-	synergyWeight            float64
-	synergyCache             map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
-	uniquenessEnabled        bool
-	uniquenessWeight         float64
-	uniquenessScorer         *UniquenessScorer
-	avoidArchetypes          []string                  // Archetypes to avoid when building decks
-	archetypeAvoidanceScorer *ArchetypeAvoidanceScorer // Scorer for archetype avoidance
-	includeCards             []string                  // Cards to force into the deck
-	excludeCards             []string                  // Cards to exclude from consideration
-	fuzzIntegration          *FuzzIntegration          // Fuzz stats integration for data-driven card scoring
+	dataDir                    string
+	unlockedEvolutions         map[string]bool
+	unlockedEvolutionsExplicit bool
+	evolutionSlotLimit         int
+	championLimit              int
+	statsRegistry              *clashroyale.CardStatsRegistry
+	strategy                   Strategy
+	strategyConfig             StrategyConfig
+	levelCurve                 *LevelCurve
+	synergyDB                  *SynergyDatabase
+	synergyEnabled             bool
+	synergyWeight              float64
+	synergyCache               map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
+	uniquenessEnabled          bool
+	uniquenessWeight           float64
+	uniquenessScorer           *UniquenessScorer
+	avoidArchetypes            []string                  // Archetypes to avoid when building decks
+	archetypeAvoidanceScorer   *ArchetypeAvoidanceScorer // Scorer for archetype avoidance
+	includeCards               []string                  // Cards to force into the deck
+	excludeCards               []string                  // Cards to exclude from consideration
+	fuzzIntegration            *FuzzIntegration          // Fuzz stats integration for data-driven card scoring
 }
 
 // NewBuilder creates a new deck builder instance
@@ -52,7 +53,8 @@ func NewBuilder(dataDir string) *Builder {
 
 	// Parse UNLOCKED_EVOLUTIONS environment variable
 	unlockedEvos := make(map[string]bool)
-	if envEvos := os.Getenv("UNLOCKED_EVOLUTIONS"); envEvos != "" {
+	envEvos := os.Getenv("UNLOCKED_EVOLUTIONS")
+	if envEvos != "" {
 		for card := range strings.SplitSeq(envEvos, ",") {
 			cardName := strings.TrimSpace(card)
 			if cardName != "" {
@@ -62,11 +64,12 @@ func NewBuilder(dataDir string) *Builder {
 	}
 
 	builder := &Builder{
-		dataDir:            dataDir,
-		unlockedEvolutions: unlockedEvos,
-		evolutionSlotLimit: 2,
-		championLimit:      1,
-		synergyCache:       make(map[string]float64),
+		dataDir:                    dataDir,
+		unlockedEvolutions:         unlockedEvos,
+		unlockedEvolutionsExplicit: envEvos != "",
+		evolutionSlotLimit:         2,
+		championLimit:              1,
+		synergyCache:               make(map[string]float64),
 	}
 
 	// Try to load combat stats
@@ -137,10 +140,10 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 
 	b.clearSynergyCache()
 
-	// Auto-detect unlocked evolutions from API card data when not explicitly
-	// configured via --unlocked-evolutions flag or UNLOCKED_EVOLUTIONS env var.
-	// A card with EvolutionLevel > 0 means the player has unlocked that evolution.
-	if len(b.unlockedEvolutions) == 0 {
+	if !b.unlockedEvolutionsExplicit {
+		// Auto-detect unlocked evolutions from API card data for this build.
+		// A card with EvolutionLevel > 0 means the player has unlocked that evolution.
+		b.unlockedEvolutions = make(map[string]bool)
 		for name, data := range analysis.CardLevels {
 			if data.EvolutionLevel > 0 {
 				b.unlockedEvolutions[name] = true
@@ -373,8 +376,13 @@ func (b *Builder) pickNonChampionReplacements(candidates []*CardCandidate, used 
 		deckNames[c.Name] = true
 	}
 
+	ordered := slices.Clone(candidates)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return ordered[i].Score > ordered[j].Score
+	})
+
 	replacements := make([]*CardCandidate, 0, count)
-	for _, c := range candidates {
+	for _, c := range ordered {
 		if len(replacements) >= count {
 			break
 		}
@@ -404,8 +412,9 @@ func (b *Builder) swapExcessChampions(deck, replacements []*CardCandidate, exces
 		return champIdxs[i].score < champIdxs[j].score
 	})
 
-	removeSet := make(map[int]bool, excessCount)
-	for i := range excessCount {
+	replacementCount := min(excessCount, len(replacements))
+	removeSet := make(map[int]bool, replacementCount)
+	for i := range replacementCount {
 		removeSet[champIdxs[i].idx] = true
 	}
 
@@ -416,7 +425,7 @@ func (b *Builder) swapExcessChampions(deck, replacements []*CardCandidate, exces
 			result = append(result, replacements[ri])
 			used[replacements[ri].Name] = true
 			ri++
-		} else if !removeSet[i] {
+		} else {
 			result = append(result, c)
 		}
 	}
@@ -1014,6 +1023,7 @@ func (b *Builder) LoadDeckFromFile(deckPath string) (*DeckRecommendation, error)
 // This allows runtime override of the UNLOCKED_EVOLUTIONS environment variable
 func (b *Builder) SetUnlockedEvolutions(cards []string) {
 	b.unlockedEvolutions = make(map[string]bool)
+	b.unlockedEvolutionsExplicit = len(cards) > 0
 	for _, card := range cards {
 		cardName := strings.TrimSpace(card)
 		if cardName != "" {
