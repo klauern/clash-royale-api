@@ -245,10 +245,11 @@ func loadPlayerCardAnalysis(ctx context.Context, cmd *cli.Command, builder *deck
 		return nil, &onlinePlayerAnalysisLoadError{Tag: tag, Err: err}
 	}
 
+	playerData := mapOnlineAnalysisToOfflineDeckPlayerData(result)
 	return &playerDataLoadResult{
-		CardAnalysis: result.DeckCardAnalysis,
-		PlayerName:   result.Player.Name,
-		PlayerTag:    result.Player.Tag,
+		CardAnalysis: playerData.CardAnalysis,
+		PlayerName:   playerData.PlayerName,
+		PlayerTag:    playerData.PlayerTag,
 	}, nil
 }
 

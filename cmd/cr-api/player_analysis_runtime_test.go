@@ -152,6 +152,33 @@ func TestLoadSuitePlayerDataFromAPIUsesSharedDeckAnalysis(t *testing.T) {
 	}
 }
 
+func TestMapOnlineAnalysisToOfflineDeckPlayerData(t *testing.T) {
+	online := &onlinePlayerAnalysisResult{
+		Player: &clashroyale.Player{
+			Name: "Mapper Test",
+			Tag:  "#PMAP",
+		},
+		DeckCardAnalysis: deck.CardAnalysis{
+			PlayerName: "Mapper Test",
+			PlayerTag:  "#PMAP",
+			CardLevels: map[string]deck.CardLevelData{
+				"Knight": {Level: 13},
+			},
+		},
+	}
+
+	mapped := mapOnlineAnalysisToOfflineDeckPlayerData(online)
+	if mapped.PlayerName != "Mapper Test" {
+		t.Fatalf("PlayerName=%q, want Mapper Test", mapped.PlayerName)
+	}
+	if mapped.PlayerTag != "#PMAP" {
+		t.Fatalf("PlayerTag=%q, want #PMAP", mapped.PlayerTag)
+	}
+	if _, ok := mapped.CardAnalysis.CardLevels["Knight"]; !ok {
+		t.Fatalf("expected Knight in mapped card analysis, got %#v", mapped.CardAnalysis.CardLevels)
+	}
+}
+
 func TestLoadOfflineDeckPlayerDataDefaultsDirAndFallbacks(t *testing.T) {
 	loader := &fakeOfflineAnalysisLoader{
 		analysis: &deck.CardAnalysis{},
