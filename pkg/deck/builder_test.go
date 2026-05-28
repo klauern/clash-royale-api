@@ -2216,6 +2216,37 @@ func TestBuilder_AutoDetectUnlockedEvolutions(t *testing.T) {
 	}
 }
 
+// TestBuilder_ExplicitEmptyUnlockedEvolutionsDisablesAutoDetect verifies that
+// callers can opt out of evolution slots even when API data has unlocked cards.
+func TestBuilder_ExplicitEmptyUnlockedEvolutionsDisablesAutoDetect(t *testing.T) {
+	builder := NewBuilder("testdata")
+	builder.SetUnlockedEvolutions([]string{})
+	builder.SetEvolutionSlotLimit(2)
+
+	analysis := CardAnalysis{
+		CardLevels: map[string]CardLevelData{
+			"Knight":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, EvolutionLevel: 2, MaxEvolutionLevel: 3},
+			"Archers":    {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3, EvolutionLevel: 1, MaxEvolutionLevel: 1},
+			"Hog Rider":  {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 4},
+			"Musketeer":  {Level: 14, MaxLevel: 14, Rarity: "Rare", Elixir: 4},
+			"Log":        {Level: 14, MaxLevel: 14, Rarity: "Legendary", Elixir: 5},
+			"Ice Spirit": {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 1},
+			"Cannon":     {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 3},
+			"Zap":        {Level: 14, MaxLevel: 14, Rarity: "Common", Elixir: 2},
+		},
+		AnalysisTime: "2024-01-15T10:30:00Z",
+	}
+
+	deck, err := builder.BuildDeckFromAnalysis(analysis)
+	if err != nil {
+		t.Fatalf("Failed to build deck: %v", err)
+	}
+
+	if len(deck.EvolutionSlots) != 0 {
+		t.Errorf("Expected explicit empty unlocked evolutions to disable auto-detect, got slots: %v", deck.EvolutionSlots)
+	}
+}
+
 // TestBuilder_EnforceChampionLimit verifies the builder enforces at most
 // 1 Champion-rarity card per deck, per Clash Royale game rules.
 func TestBuilder_EnforceChampionLimit(t *testing.T) {

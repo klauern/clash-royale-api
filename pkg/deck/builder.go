@@ -324,7 +324,7 @@ func (b *Builder) fillRemainingSlots(deck, candidates []*CardCandidate, used map
 		if championCount >= b.championLimit {
 			filtered = make([]*CardCandidate, 0, len(candidates))
 			for _, c := range candidates {
-				if c.Rarity != RarityChampion || used[c.Name] {
+				if c.Rarity != RarityChampion {
 					filtered = append(filtered, c)
 				}
 			}
@@ -1023,7 +1023,7 @@ func (b *Builder) LoadDeckFromFile(deckPath string) (*DeckRecommendation, error)
 // This allows runtime override of the UNLOCKED_EVOLUTIONS environment variable
 func (b *Builder) SetUnlockedEvolutions(cards []string) {
 	b.unlockedEvolutions = make(map[string]bool)
-	b.unlockedEvolutionsExplicit = len(cards) > 0
+	b.unlockedEvolutionsExplicit = true
 	for _, card := range cards {
 		cardName := strings.TrimSpace(card)
 		if cardName != "" {
