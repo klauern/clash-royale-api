@@ -36,15 +36,15 @@ func discoverStateDir() string {
 }
 
 func discoverCheckpointPath(sanitizedTag string) string {
-	return filepath.Join(discoverStateDir(), fmt.Sprintf("%s.json", sanitizedTag))
+	return deck.DiscoveryCheckpointPathForTag(sanitizedTag)
 }
 
 func discoverPIDPath(sanitizedTag string) string {
-	return filepath.Join(discoverStateDir(), fmt.Sprintf("%s.pid", sanitizedTag))
+	return deck.DiscoveryPIDPathForTag(sanitizedTag)
 }
 
 func discoverLogPath(sanitizedTag string) string {
-	return filepath.Join(discoverStateDir(), fmt.Sprintf("%s.log", sanitizedTag))
+	return deck.DiscoveryLogPathForTag(sanitizedTag)
 }
 
 func (e *simpleEvaluator) Evaluate(deckCards []string) (*leaderboard.DeckEntry, error) {
