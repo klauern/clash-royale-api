@@ -53,6 +53,11 @@ const (
 	// Formula: baseBonus * (level/maxLevel)^1.5 * (1 + 0.2*(maxEvoLevel-1))
 	// Reduced from 0.25 to 0.12 to prevent over-prioritizing evolution over card levels/rarity
 	EvolutionBaseBonus = 0.12
+
+	// ChampionAbilityBonus is the flat additive bonus for champion cards with known abilities.
+	// Applied on top of the rarity multiplier to model unique champion mechanics
+	// (reset, tunnel, sustain, evasion, combo, reflect) not captured by rarity weights.
+	ChampionAbilityBonus = 0.08
 )
 
 // Deck Recommendation Scoring Weights

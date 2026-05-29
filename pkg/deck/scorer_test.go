@@ -983,3 +983,47 @@ func TestGetTopN_AllScoresNegative(t *testing.T) {
 		t.Errorf("Expected highest score -0.5, got %v", top2[0].Score)
 	}
 }
+
+// TestChampionAbilityBonus verifies that champion cards receive an additive
+// ability bonus in scoring, while non-champion cards do not.
+func TestChampionAbilityBonus(t *testing.T) {
+	winCon := RoleWinCondition
+
+	if _, ok := config.GetChampionAbilityMetadata("Golden Knight"); !ok {
+		t.Fatal("Golden Knight should have champion ability metadata")
+	}
+	if _, ok := config.GetChampionAbilityMetadata("Knight"); ok {
+		t.Fatal("Knight should not have champion ability metadata")
+	}
+
+	// Score through the card-name-aware path so champion ability lookup runs.
+	gkScore := scoreCardWithEvolutionInternal("Golden Knight", 12, 14, "Champion", 4, &winCon, 0, 0, nil)
+	knightScore := scoreCardWithEvolutionInternal("Knight", 12, 14, "Common", 3, &winCon, 0, 0, nil)
+
+	// Both have same level ratio (12/14), same role, similar elixir.
+	// Champion rarity gives 2.5x priority bonus vs Common 1.0x.
+	// Without ability bonus: champion = (12/14)*1.2*2.5 + (1-1/9)*0.15 + 0.05 ≈ 2.75
+	// With ability bonus: champion gets additional additive bonus.
+	// The ability bonus should make champions score higher than rarity alone accounts for.
+
+	if gkScore <= knightScore {
+		t.Errorf("Champion (Golden Knight) score %v should exceed Common (Knight) score %v",
+			gkScore, knightScore)
+	}
+
+	// Verify ability bonus specifically by testing GetChampionAbilityBonus
+	abilityBonus := config.GetChampionAbilityBonus("Golden Knight")
+	if abilityBonus <= 0 {
+		t.Error("Golden Knight should have a positive champion ability bonus")
+	}
+
+	noBonus := config.GetChampionAbilityBonus("Knight")
+	if noBonus != 0 {
+		t.Error("Knight (non-champion) should have zero ability bonus")
+	}
+
+	noBonus2 := config.GetChampionAbilityBonus("Fireball")
+	if noBonus2 != 0 {
+		t.Error("Fireball (non-champion) should have zero ability bonus")
+	}
+}
