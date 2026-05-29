@@ -136,11 +136,7 @@ func loadSuitePlayerDataFromAPI(ctx context.Context, tag, apiToken string, verbo
 	if err != nil {
 		return nil, err
 	}
-	return &suitePlayerData{
-		CardAnalysis: result.DeckCardAnalysis,
-		PlayerName:   result.Player.Name,
-		PlayerTag:    result.Player.Tag,
-	}, nil
+	return mapOnlineAnalysisToOfflineDeckPlayerData(result), nil
 }
 
 func loadSuitePlayerData(ctx context.Context, builder *deck.Builder, tag, apiToken, dataDir string, fromAnalysis, verbose bool) (*suitePlayerData, error) {
