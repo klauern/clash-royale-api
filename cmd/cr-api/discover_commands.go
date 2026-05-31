@@ -709,15 +709,9 @@ func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Read PID
-	pidData, err := os.ReadFile(pidFile)
+	pid, err := readDiscoverPID(pidFile)
 	if err != nil {
-		return fmt.Errorf("failed to read PID file: %w", err)
-	}
-
-	var pid int
-	_, err = fmt.Sscanf(string(pidData), "%d", &pid)
-	if err != nil {
-		return fmt.Errorf("failed to parse PID: %w", err)
+		return err
 	}
 
 	// Send SIGTERM for graceful shutdown
@@ -860,20 +854,13 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	// Check for already running process
 	pidFile := discoverPIDPath(sanitizedTag)
 	if _, err := os.Stat(pidFile); err == nil {
-		pidData, readErr := os.ReadFile(pidFile)
-		if readErr != nil {
-			return fmt.Errorf("failed to read PID file: %w", readErr)
+		pid, pidErr := readDiscoverPID(pidFile)
+		if pidErr != nil {
+			return pidErr
 		}
-		var pid int
-		if _, scanErr := fmt.Sscanf(string(pidData), "%d", &pid); scanErr != nil {
-			return fmt.Errorf("failed to parse PID file: %w", scanErr)
-		}
-		process, err := os.FindProcess(pid)
-		if err == nil {
-			// Try to signal the process to check if it's alive
-			if err := process.Signal(syscall.Signal(0)); err == nil {
-				return fmt.Errorf("discovery already running in background (PID: %d). Use 'stop' command first", pid)
-			}
+		alive, aliveErr := discoverProcessAlive(pid)
+		if aliveErr == nil && alive {
+			return fmt.Errorf("discovery already running in background (PID: %d). Use 'stop' command first", pid)
 		}
 		// Process is dead, clean up PID file
 		if removeErr := os.Remove(pidFile); removeErr != nil && !os.IsNotExist(removeErr) {
