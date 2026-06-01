@@ -9,6 +9,7 @@ import (
 	"text/tabwriter"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -87,7 +88,7 @@ func whatIfCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Output results
-	if err := outputWhatIfResults(scenario, jsonOutput, showDecks, saveData, dataDir, tag); err != nil {
+	if err := outputWhatIfResults(scenario, jsonOutput, showDecks, saveData, dataDir); err != nil {
 		return err
 	}
 
@@ -181,7 +182,7 @@ func runWhatIfAnalysis(cardLevels map[string]deck.CardLevelData, upgrades []what
 }
 
 // outputWhatIfResults handles output formatting and optional saving
-func outputWhatIfResults(scenario *whatif.WhatIfScenario, jsonOutput, showDecks, saveData bool, dataDir, tag string) error {
+func outputWhatIfResults(scenario *whatif.WhatIfScenario, jsonOutput, showDecks, saveData bool, dataDir string) error {
 	if jsonOutput {
 		return outputWhatIfJSON(scenario)
 	}
@@ -189,10 +190,11 @@ func outputWhatIfResults(scenario *whatif.WhatIfScenario, jsonOutput, showDecks,
 	displayWhatIfScenario(scenario, showDecks)
 
 	if saveData {
-		if err := saveWhatIfScenario(dataDir, scenario); err != nil {
+		filename, err := saveWhatIfScenario(dataDir, scenario)
+		if err != nil {
 			printf("Warning: Failed to save scenario: %v\n", err)
 		} else {
-			printf("\nScenario saved to: %s/whatif/%s_%s.json\n", dataDir, tag, time.Now().Format("20060102_150405"))
+			printf("\nScenario saved to: %s\n", filename)
 		}
 	}
 
@@ -323,28 +325,16 @@ func outputWhatIfJSON(scenario *whatif.WhatIfScenario) error {
 	return nil
 }
 
-func saveWhatIfScenario(dataDir string, scenario *whatif.WhatIfScenario) error {
-	// Create whatif directory if it doesn't exist
-	whatifDir := filepath.Join(dataDir, "whatif")
-	if err := os.MkdirAll(whatifDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create whatif directory: %w", err)
-	}
-
+func saveWhatIfScenario(dataDir string, scenario *whatif.WhatIfScenario) (string, error) {
 	// Generate filename with timestamp
 	timestamp := time.Now().Format("20060102_150405")
-	filename := filepath.Join(whatifDir, fmt.Sprintf("scenario_%s.json", timestamp))
+	filename := filepath.Join(dataDir, "whatif", fmt.Sprintf("scenario_%s.json", timestamp))
 
-	// Save as JSON
-	data, err := json.MarshalIndent(scenario, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal scenario: %w", err)
+	if err := storage.WriteJSON(filename, scenario); err != nil {
+		return "", fmt.Errorf("failed to save what-if scenario: %w", err)
 	}
 
-	if err := os.WriteFile(filename, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write scenario file: %w", err)
-	}
-
-	return nil
+	return filename, nil
 }
 
 func loadCardAnalysis(path string) (*analysis.CardAnalysis, error) {

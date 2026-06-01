@@ -22,18 +22,16 @@ type warDeckCandidate struct {
 
 func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 	tag := cmd.String("tag")
-	apiToken := cmd.String("api-token")
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
 	deckCount := cmd.Int("deck-count")
 	combatStatsWeight := cmd.Float64("combat-stats-weight")
 	disableCombatStats := cmd.Bool("disable-combat-stats")
 
-	resolvedToken, err := requireAPITokenValue(apiToken, apiClientOptions{})
+	apiToken, err := requireAPIToken(cmd, apiClientOptions{})
 	if err != nil {
 		return err
 	}
-	apiToken = resolvedToken
 
 	if deckCount < 1 {
 		return fmt.Errorf("deck-count must be at least 1")

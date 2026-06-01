@@ -9,6 +9,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	jsonstore "github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
 	"github.com/urfave/cli/v3"
 )
@@ -329,12 +330,8 @@ func leaderboardExportCommand(ctx context.Context, cmd *cli.Command) error {
 			return fmt.Errorf("failed to write CSV: %w", err)
 		}
 	default: // json
-		data, err := json.MarshalIndent(decks, "", "  ")
-		if err != nil {
-			return fmt.Errorf("failed to marshal JSON: %w", err)
-		}
-		if err := os.WriteFile(outputPath, data, 0o644); err != nil {
-			return fmt.Errorf("failed to write JSON: %w", err)
+		if err := jsonstore.WriteJSON(outputPath, decks); err != nil {
+			return fmt.Errorf("failed to export leaderboard JSON: %w", err)
 		}
 	}
 

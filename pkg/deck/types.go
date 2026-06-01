@@ -16,6 +16,9 @@ import (
 // This is an alias for config.CardRole, which is the single source of truth
 type CardRole = config.CardRole
 
+// RarityChampion is the rarity string for champion cards in Clash Royale.
+const RarityChampion = "Champion"
+
 // Role constants are aliases for config constants for convenience
 const (
 	// RoleWinCondition represents primary tower-damaging cards

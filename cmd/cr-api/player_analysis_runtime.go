@@ -119,3 +119,11 @@ func newOnlinePlayerAnalysisResult(player *clashroyale.Player, cardAnalysis *ana
 		DeckCardAnalysis: convertToDeckCardAnalysis(cardAnalysis, player),
 	}
 }
+
+func mapOnlineAnalysisToOfflineDeckPlayerData(result *onlinePlayerAnalysisResult) *offlineDeckPlayerData {
+	return &offlineDeckPlayerData{
+		CardAnalysis: result.DeckCardAnalysis,
+		PlayerName:   result.Player.Name,
+		PlayerTag:    result.Player.Tag,
+	}
+}

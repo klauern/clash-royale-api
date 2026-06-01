@@ -22,25 +22,27 @@ import (
 // Builder handles the construction of balanced Clash Royale decks
 // from player card analysis data.
 type Builder struct {
-	dataDir                  string
-	unlockedEvolutions       map[string]bool
-	evolutionSlotLimit       int
-	statsRegistry            *clashroyale.CardStatsRegistry
-	strategy                 Strategy
-	strategyConfig           StrategyConfig
-	levelCurve               *LevelCurve
-	synergyDB                *SynergyDatabase
-	synergyEnabled           bool
-	synergyWeight            float64
-	synergyCache             map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
-	uniquenessEnabled        bool
-	uniquenessWeight         float64
-	uniquenessScorer         *UniquenessScorer
-	avoidArchetypes          []string                  // Archetypes to avoid when building decks
-	archetypeAvoidanceScorer *ArchetypeAvoidanceScorer // Scorer for archetype avoidance
-	includeCards             []string                  // Cards to force into the deck
-	excludeCards             []string                  // Cards to exclude from consideration
-	fuzzIntegration          *FuzzIntegration          // Fuzz stats integration for data-driven card scoring
+	dataDir                    string
+	unlockedEvolutions         map[string]bool
+	unlockedEvolutionsExplicit bool
+	evolutionSlotLimit         int
+	championLimit              int
+	statsRegistry              *clashroyale.CardStatsRegistry
+	strategy                   Strategy
+	strategyConfig             StrategyConfig
+	levelCurve                 *LevelCurve
+	synergyDB                  *SynergyDatabase
+	synergyEnabled             bool
+	synergyWeight              float64
+	synergyCache               map[string]float64 // Cache for synergy lookups: "card1|card2" -> score
+	uniquenessEnabled          bool
+	uniquenessWeight           float64
+	uniquenessScorer           *UniquenessScorer
+	avoidArchetypes            []string                  // Archetypes to avoid when building decks
+	archetypeAvoidanceScorer   *ArchetypeAvoidanceScorer // Scorer for archetype avoidance
+	includeCards               []string                  // Cards to force into the deck
+	excludeCards               []string                  // Cards to exclude from consideration
+	fuzzIntegration            *FuzzIntegration          // Fuzz stats integration for data-driven card scoring
 }
 
 // NewBuilder creates a new deck builder instance
@@ -51,7 +53,8 @@ func NewBuilder(dataDir string) *Builder {
 
 	// Parse UNLOCKED_EVOLUTIONS environment variable
 	unlockedEvos := make(map[string]bool)
-	if envEvos := os.Getenv("UNLOCKED_EVOLUTIONS"); envEvos != "" {
+	envEvos := os.Getenv("UNLOCKED_EVOLUTIONS")
+	if envEvos != "" {
 		for card := range strings.SplitSeq(envEvos, ",") {
 			cardName := strings.TrimSpace(card)
 			if cardName != "" {
@@ -61,10 +64,12 @@ func NewBuilder(dataDir string) *Builder {
 	}
 
 	builder := &Builder{
-		dataDir:            dataDir,
-		unlockedEvolutions: unlockedEvos,
-		evolutionSlotLimit: 2,
-		synergyCache:       make(map[string]float64),
+		dataDir:                    dataDir,
+		unlockedEvolutions:         unlockedEvos,
+		unlockedEvolutionsExplicit: envEvos != "",
+		evolutionSlotLimit:         2,
+		championLimit:              1,
+		synergyCache:               make(map[string]float64),
 	}
 
 	// Try to load combat stats
@@ -134,6 +139,18 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	}
 
 	b.clearSynergyCache()
+
+	if !b.unlockedEvolutionsExplicit {
+		// Auto-detect unlocked evolutions from API card data for this build.
+		// A card with EvolutionLevel > 0 means the player has unlocked that evolution.
+		b.unlockedEvolutions = make(map[string]bool)
+		for name, data := range analysis.CardLevels {
+			if data.EvolutionLevel > 0 {
+				b.unlockedEvolutions[name] = true
+			}
+		}
+	}
+
 	candidates := b.buildCandidates(analysis.CardLevels)
 	candidates = b.filterExcludedCards(candidates)
 
@@ -148,6 +165,10 @@ func (b *Builder) BuildDeckFromAnalysis(analysis CardAnalysis) (*DeckRecommendat
 	}
 
 	evolutionSlots := b.selectEvolutionSlots(deck)
+
+	// Enforce champion limit: swap out excess champions for highest-scoring non-champions
+	deck = b.enforceChampionLimit(deck, candidates, used)
+
 	recommendation := b.buildRecommendationDetails(deck, analysis.AnalysisTime, evolutionSlots, notes)
 	b.finalizeRecommendation(recommendation)
 
@@ -290,7 +311,26 @@ func (b *Builder) selectCardsByRole(deck, candidates []*CardCandidate, used map[
 // fillRemainingSlots fills remaining deck slots (up to 8) with highest-scoring unused cards
 func (b *Builder) fillRemainingSlots(deck, candidates []*CardCandidate, used map[string]bool) []*CardCandidate {
 	if len(deck) < 8 {
-		remaining := b.getHighestScoreCards(candidates, used, 8-len(deck), deck)
+		// Enforce champion limit: count champions already in deck
+		championCount := 0
+		for _, c := range deck {
+			if c.Rarity == RarityChampion {
+				championCount++
+			}
+		}
+
+		// Filter candidates to exclude champions when at limit
+		filtered := candidates
+		if championCount >= b.championLimit {
+			filtered = make([]*CardCandidate, 0, len(candidates))
+			for _, c := range candidates {
+				if c.Rarity != RarityChampion {
+					filtered = append(filtered, c)
+				}
+			}
+		}
+
+		remaining := b.getHighestScoreCards(filtered, used, 8-len(deck), deck)
 		deck = append(deck, remaining...)
 	}
 	// Ensure at most 8 cards.
@@ -298,6 +338,98 @@ func (b *Builder) fillRemainingSlots(deck, candidates []*CardCandidate, used map
 		return deck[:8]
 	}
 	return deck
+}
+
+// enforceChampionLimit ensures the deck has at most championLimit champion cards.
+// If the limit is exceeded, excess champions are replaced with the highest-scoring
+// non-champion candidates not already in the deck.
+func (b *Builder) enforceChampionLimit(deck, candidates []*CardCandidate, used map[string]bool) []*CardCandidate {
+	if b.championLimit <= 0 {
+		return deck
+	}
+
+	excessCount := b.countChampionsInDeck(deck) - b.championLimit
+	if excessCount <= 0 {
+		return deck
+	}
+
+	replacements := b.pickNonChampionReplacements(candidates, used, deck, excessCount)
+	return b.swapExcessChampions(deck, replacements, excessCount, used)
+}
+
+// countChampionsInDeck returns the number of champion-rarity cards in the deck.
+func (b *Builder) countChampionsInDeck(deck []*CardCandidate) int {
+	count := 0
+	for _, c := range deck {
+		if c.Rarity == RarityChampion {
+			count++
+		}
+	}
+	return count
+}
+
+// pickNonChampionReplacements returns up to 'count' non-champion candidates
+// that are not already in the deck and not marked as used.
+func (b *Builder) pickNonChampionReplacements(candidates []*CardCandidate, used map[string]bool, deck []*CardCandidate, count int) []*CardCandidate {
+	deckNames := make(map[string]bool, len(deck))
+	for _, c := range deck {
+		deckNames[c.Name] = true
+	}
+
+	ordered := slices.Clone(candidates)
+	sort.SliceStable(ordered, func(i, j int) bool {
+		return ordered[i].Score > ordered[j].Score
+	})
+
+	replacements := make([]*CardCandidate, 0, count)
+	for _, c := range ordered {
+		if len(replacements) >= count {
+			break
+		}
+		if c.Rarity == RarityChampion || used[c.Name] || deckNames[c.Name] {
+			continue
+		}
+		replacements = append(replacements, cloneCardCandidate(c))
+	}
+	return replacements
+}
+
+// swapExcessChampions replaces the lowest-scoring excess champions with replacements.
+func (b *Builder) swapExcessChampions(deck, replacements []*CardCandidate, excessCount int, used map[string]bool) []*CardCandidate {
+	type indexedChampion struct {
+		idx   int
+		score float64
+	}
+	var champIdxs []indexedChampion
+	for i, c := range deck {
+		if c.Rarity == RarityChampion {
+			champIdxs = append(champIdxs, indexedChampion{idx: i, score: c.Score})
+		}
+	}
+
+	// Sort ascending — lowest-scoring champions at the front (to be removed)
+	sort.Slice(champIdxs, func(i, j int) bool {
+		return champIdxs[i].score < champIdxs[j].score
+	})
+
+	replacementCount := min(excessCount, len(replacements))
+	removeSet := make(map[int]bool, replacementCount)
+	for i := range replacementCount {
+		removeSet[champIdxs[i].idx] = true
+	}
+
+	result := make([]*CardCandidate, 0, len(deck))
+	ri := 0
+	for i, c := range deck {
+		if removeSet[i] && ri < len(replacements) {
+			result = append(result, replacements[ri])
+			used[replacements[ri].Name] = true
+			ri++
+		} else {
+			result = append(result, c)
+		}
+	}
+	return result
 }
 
 // buildRecommendationDetails builds the DeckRecommendation struct and populates card details
@@ -525,7 +657,10 @@ func (b *Builder) scoreCard(name string, level, maxLevel int, rarity string, eli
 	// Use level-scaled evolution bonus
 	evolutionBonus := b.calculateEvolutionBonus(name, level, maxLevel, maxEvolutionLevel)
 
-	return (levelRatio * config.LevelWeightFactor * rarityBoost) + (elixirWeight * config.ElixirWeightFactor) + roleBonus + evolutionBonus
+	// Champion ability bonus: additive bonus for champion cards with known abilities
+	championAbilityBonus := config.GetChampionAbilityBonus(name)
+
+	return (levelRatio * config.LevelWeightFactor * rarityBoost) + (elixirWeight * config.ElixirWeightFactor) + roleBonus + evolutionBonus + championAbilityBonus
 }
 
 // calculateEvolutionBonus returns level-scaled evolution bonus
@@ -888,6 +1023,7 @@ func (b *Builder) LoadDeckFromFile(deckPath string) (*DeckRecommendation, error)
 // This allows runtime override of the UNLOCKED_EVOLUTIONS environment variable
 func (b *Builder) SetUnlockedEvolutions(cards []string) {
 	b.unlockedEvolutions = make(map[string]bool)
+	b.unlockedEvolutionsExplicit = true
 	for _, card := range cards {
 		cardName := strings.TrimSpace(card)
 		if cardName != "" {

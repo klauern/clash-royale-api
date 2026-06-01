@@ -130,6 +130,52 @@ var cardRarityByNormalizedName = map[string]string{
 	"elixirgolem":   "Epic",
 }
 
+// ChampionAbilityType represents the unique ability of a champion card.
+type ChampionAbilityType string
+
+const (
+	AbilityReset   ChampionAbilityType = "reset"   // Golden Knight: dash resets Inferno charge
+	AbilityTunnel  ChampionAbilityType = "tunnel"  // Mighty Miner: tunnel ignores ground troops
+	AbilitySustain ChampionAbilityType = "sustain" // Skeleton King: soul collection, self-heal
+	AbilityEvasion ChampionAbilityType = "evasion" // Archer Queen: invisibility dodges spells
+	AbilityCombo   ChampionAbilityType = "combo"   // Little Prince: guard + ranged combo
+	AbilityReflect ChampionAbilityType = "reflect" // Monk: spell reflection
+)
+
+// ChampionAbilityMetadata stores a champion's ability data for scoring.
+type ChampionAbilityMetadata struct {
+	AbilityType    ChampionAbilityType
+	DefensiveBonus float64  // Defense utility value (0-1 scale)
+	OffensiveBonus float64  // Offense utility value (0-1 scale)
+	SynergyTags    []string // Tags for synergy scoring
+}
+
+// championAbilityMetadata maps normalized champion names to their ability metadata.
+var championAbilityMetadata = map[string]ChampionAbilityMetadata{
+	"goldenknight": {AbilityReset, 0.8, 0.4, []string{"inferno_tower", "inferno_dragon"}},
+	"mightyminer":  {AbilityTunnel, 0.2, 0.8, []string{"ground_defense"}},
+	"skeletonking": {AbilitySustain, 0.6, 0.4, []string{"swarm", "graveyard"}},
+	"archerqueen":  {AbilityEvasion, 0.8, 0.4, []string{"spell_bait"}},
+	"littleprince": {AbilityCombo, 0.4, 0.6, []string{"ranged_support"}},
+	"monk":         {AbilityReflect, 0.8, 0.4, []string{"spell_defense"}},
+}
+
+// GetChampionAbilityMetadata returns ability metadata for a champion card.
+func GetChampionAbilityMetadata(cardName string) (ChampionAbilityMetadata, bool) {
+	normalized := normalizeCardNameForLookup(cardName)
+	meta, ok := championAbilityMetadata[normalized]
+	return meta, ok
+}
+
+// GetChampionAbilityBonus returns the additive score bonus for a champion's ability.
+// Returns ChampionAbilityBonus (0.08) if the card is a champion with known ability metadata.
+func GetChampionAbilityBonus(cardName string) float64 {
+	if _, ok := GetChampionAbilityMetadata(cardName); ok {
+		return ChampionAbilityBonus
+	}
+	return 0
+}
+
 // NormalizeRarity ensures rarity strings are in TitleCase for consistent map lookups.
 // It handles case-insensitive input and trims whitespace.
 // Returns empty string if input is empty, otherwise returns TitleCase version.

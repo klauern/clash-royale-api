@@ -10,6 +10,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
@@ -474,25 +475,13 @@ func bestTrophiesBracketLabel(bestTrophies int) string {
 
 // saveMulliganGuide saves the mulligan guide to a JSON file
 func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
-	// Create mulligan directory if it doesn't exist
-	mulliganDir := filepath.Join(dataDir, "mulligan")
-	if err := os.MkdirAll(mulliganDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create mulligan directory: %w", err)
-	}
-
 	// Generate filename with timestamp
 	timestamp := guide.GeneratedAt.Format("20060102_150405")
 	safeDeckName := sanitizePathComponent(guide.DeckName)
-	filename := filepath.Join(mulliganDir, fmt.Sprintf("%s_%s.json", safeDeckName, timestamp))
+	filename := filepath.Join(dataDir, "mulligan", fmt.Sprintf("%s_%s.json", safeDeckName, timestamp))
 
-	// Save as JSON
-	data, err := json.MarshalIndent(guide, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to marshal mulligan guide: %w", err)
-	}
-
-	if err := os.WriteFile(filename, data, 0o644); err != nil {
-		return fmt.Errorf("failed to write mulligan guide file: %w", err)
+	if err := storage.WriteJSON(filename, guide); err != nil {
+		return fmt.Errorf("failed to save mulligan guide: %w", err)
 	}
 
 	return nil

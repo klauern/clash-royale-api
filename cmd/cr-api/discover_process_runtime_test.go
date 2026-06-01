@@ -27,14 +27,21 @@ func TestReadDiscoverPID(t *testing.T) {
 func TestReadDiscoverPIDInvalid(t *testing.T) {
 	t.Parallel()
 
-	tmp := t.TempDir()
-	pidPath := filepath.Join(tmp, "discover.pid")
-	if err := os.WriteFile(pidPath, []byte("not-a-pid"), 0o644); err != nil {
-		t.Fatalf("write pid file: %v", err)
-	}
+	for _, tc := range []string{"not-a-pid", "123abc", "0", "-1"} {
+		tc := tc
+		t.Run(tc, func(t *testing.T) {
+			t.Parallel()
 
-	if _, err := readDiscoverPID(pidPath); err == nil {
-		t.Fatalf("expected parse error for invalid pid file")
+			tmp := t.TempDir()
+			pidPath := filepath.Join(tmp, "discover.pid")
+			if err := os.WriteFile(pidPath, []byte(tc), 0o644); err != nil {
+				t.Fatalf("write pid file: %v", err)
+			}
+
+			if _, err := readDiscoverPID(pidPath); err == nil {
+				t.Fatalf("expected parse error for invalid pid file")
+			}
+		})
 	}
 }
 

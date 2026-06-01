@@ -411,11 +411,15 @@ func scoreCardWithEvolutionInternal(cardName string, level, maxLevel int, rarity
 	// Calculate evolution level bonus
 	evolutionBonus := calculateEvolutionLevelBonus(evolutionLevel, maxEvolutionLevel)
 
+	// Champion ability bonus: additive bonus for champion cards with known abilities
+	championAbilityBonus := config.GetChampionAbilityBonus(cardName)
+
 	// Combine all factors into final score
 	score := (levelRatio * config.LevelWeightFactor * rarityBoost) +
 		(elixirWeight * config.ElixirWeightFactor) +
 		roleBonus +
-		evolutionBonus
+		evolutionBonus +
+		championAbilityBonus
 
 	return score
 }

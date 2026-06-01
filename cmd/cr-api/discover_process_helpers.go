@@ -1,8 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 	"syscall"
 )
 
@@ -12,9 +15,12 @@ func readDiscoverPID(pidFile string) (int, error) {
 		return 0, fmt.Errorf("failed to read PID file: %w", err)
 	}
 
-	var pid int
-	if _, err := fmt.Sscanf(string(pidData), "%d", &pid); err != nil {
+	pid, err := strconv.Atoi(strings.TrimSpace(string(pidData)))
+	if err != nil {
 		return 0, fmt.Errorf("failed to parse PID file: %w", err)
+	}
+	if pid <= 0 {
+		return 0, fmt.Errorf("invalid PID %d", pid)
 	}
 
 	return pid, nil
@@ -26,7 +32,15 @@ func discoverProcessAlive(pid int) (bool, error) {
 		return false, fmt.Errorf("failed to find process: %w", err)
 	}
 
-	return process.Signal(syscall.Signal(0)) == nil, nil
+	if err := process.Signal(syscall.Signal(0)); err == nil {
+		return true, nil
+	} else if errors.Is(err, syscall.EPERM) {
+		return true, nil
+	} else if errors.Is(err, syscall.ESRCH) {
+		return false, nil
+	} else {
+		return false, fmt.Errorf("failed to signal process: %w", err)
+	}
 }
 
 func checkAndCleanupStaleDiscoverPID(pidFile string) (int, bool, error) {
