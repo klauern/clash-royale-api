@@ -326,24 +326,12 @@ func discoverRunFlags(includeResume bool) []cli.Flag {
 }
 
 func deckDiscoverStatusCommand(ctx context.Context, cmd *cli.Command) error {
-	playerTag := cmd.String("tag")
-	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
+	state, err := loadDiscoverCheckpointStateFromCommand(cmd, "No active discovery session found for player #", "")
 	if err != nil {
 		return err
 	}
-
-	checkpointPath := discoverCheckpointPath(sanitizedTag)
-	checkpoint, err := deck.LoadDiscoveryCheckpoint(checkpointPath)
-	if err != nil {
-		if errors.Is(err, deck.ErrNoCheckpoint) {
-			printf("No active discovery session found for player #%s\n", playerTag)
-			return nil
-		}
-		if errors.Is(err, deck.ErrInvalidCheckpoint) {
-			return fmt.Errorf("failed to parse checkpoint: %w", err)
-		}
-		return err
-	}
+	playerTag := state.tag.sanitized
+	checkpoint := state.checkpoint
 
 	// Display status
 	printf("Discovery Session Status for #%s\n", playerTag)
@@ -577,12 +565,11 @@ func warnExistingCheckpoint(playerTag string) {
 //
 //nolint:gocyclo,funlen // Command setup/teardown has many required branches.
 func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
-	rawPlayerTag := cmd.String("tag")
-	sanitizedTag, err := sanitizeDiscoverTag(rawPlayerTag)
+	tag, err := discoverPlayerTagFromCommand(cmd)
 	if err != nil {
 		return err
 	}
-	playerTag := "#" + sanitizedTag
+	playerTag := tag.canonical
 	strategy := deck.GeneratorStrategy(cmd.String("strategy"))
 	sampleSize := cmd.Int("sample-size")
 	limit := cmd.Int("limit")
@@ -685,17 +672,17 @@ func runDiscoveryCommand(ctx context.Context, cmd *cli.Command, resume bool) (er
 
 // deckDiscoverStopCommand stops a running discovery session
 func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
-	playerTag := cmd.String("tag")
-	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
+	tag, err := discoverPlayerTagFromCommand(cmd)
 	if err != nil {
 		return err
 	}
+	playerTag := tag.sanitized
 
 	// Check for PID file
-	pidFile := discoverPIDPath(sanitizedTag)
+	pidFile := discoverPIDPath(tag.sanitized)
 	if _, err := os.Stat(pidFile); os.IsNotExist(err) {
 		// Check if there's a checkpoint (might be foreground process)
-		checkpointPath := discoverCheckpointPath(sanitizedTag)
+		checkpointPath := discoverCheckpointPath(tag.sanitized)
 		if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
 			return fmt.Errorf("no active discovery session found for player #%s", playerTag)
 		}
@@ -729,25 +716,17 @@ func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
 
 // deckDiscoverResumeCommand resumes a discovery session from checkpoint
 func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
-	playerTag := cmd.String("tag")
 	verbose := cmd.Bool("verbose")
 	background := cmd.Bool("background")
-	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
+	state, err := loadDiscoverCheckpointStateFromCommand(
+		cmd,
+		"no checkpoint found for player #",
+		". Use 'cr-api deck discover start' to begin a new session",
+	)
 	if err != nil {
 		return err
 	}
-
-	checkpointPath := discoverCheckpointPath(sanitizedTag)
-	checkpoint, err := deck.LoadDiscoveryCheckpoint(checkpointPath)
-	if err != nil {
-		if errors.Is(err, deck.ErrNoCheckpoint) {
-			return fmt.Errorf("no checkpoint found for player #%s. Use 'cr-api deck discover start' to begin a new session", playerTag)
-		}
-		if errors.Is(err, deck.ErrInvalidCheckpoint) {
-			return fmt.Errorf("failed to parse checkpoint: %w", err)
-		}
-		return err
-	}
+	checkpoint := state.checkpoint
 
 	if verbose {
 		fprintf(os.Stderr, "Resuming session from %s\n", checkpoint.Timestamp.Format(time.RFC3339))
@@ -765,23 +744,12 @@ func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 
 // deckDiscoverStatsCommand shows detailed session statistics
 func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
-	playerTag := cmd.String("tag")
-	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
+	state, err := loadDiscoverCheckpointStateFromCommand(cmd, "no discovery session found for player #", "")
 	if err != nil {
 		return err
 	}
-
-	checkpointPath := discoverCheckpointPath(sanitizedTag)
-	checkpoint, err := deck.LoadDiscoveryCheckpoint(checkpointPath)
-	if err != nil {
-		if errors.Is(err, deck.ErrNoCheckpoint) {
-			return fmt.Errorf("no discovery session found for player #%s", playerTag)
-		}
-		if errors.Is(err, deck.ErrInvalidCheckpoint) {
-			return fmt.Errorf("failed to parse checkpoint: %w", err)
-		}
-		return err
-	}
+	playerTag := state.tag.sanitized
+	checkpoint := state.checkpoint
 
 	// Display detailed statistics
 	printf("\n╔════════════════════════════════════════════════════════════════════╗\n")
@@ -841,14 +809,14 @@ func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
 //
 //nolint:funlen,gocognit,gocyclo // Process management and flag forwarding require explicit control flow.
 func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool) (err error) {
-	playerTag := cmd.String("tag")
-	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
+	tag, err := discoverPlayerTagFromCommand(cmd)
 	if err != nil {
 		return err
 	}
+	playerTag := tag.input
 
 	// Check for already running process
-	pidFile := discoverPIDPath(sanitizedTag)
+	pidFile := discoverPIDPath(tag.sanitized)
 	if _, err := os.Stat(pidFile); err == nil {
 		pid, pidErr := readDiscoverPID(pidFile)
 		if pidErr != nil {
@@ -877,10 +845,10 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 	}
 
 	// Build command arguments.
-	args := buildDiscoverRunArgs(cmd, sanitizedTag, resume)
+	args := buildDiscoverRunArgs(cmd, tag.sanitized, resume)
 
 	// Redirect output to log file
-	logFile := discoverLogPath(sanitizedTag)
+	logFile := discoverLogPath(tag.sanitized)
 	logHandle, err := os.OpenFile(logFile, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
 	if err != nil {
 		return fmt.Errorf("failed to create log file: %w", err)
