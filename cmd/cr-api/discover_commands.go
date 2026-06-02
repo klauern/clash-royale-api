@@ -326,11 +326,11 @@ func discoverRunFlags(includeResume bool) []cli.Flag {
 }
 
 func deckDiscoverStatusCommand(ctx context.Context, cmd *cli.Command) error {
-	state, err := loadDiscoverCheckpointStateFromCommand(cmd, "No active discovery session found for player #%s")
+	state, err := loadDiscoverCheckpointStateFromCommand(cmd, "No active discovery session found for player #", "")
 	if err != nil {
 		return err
 	}
-	playerTag := state.tag.input
+	playerTag := state.tag.sanitized
 	checkpoint := state.checkpoint
 
 	// Display status
@@ -676,7 +676,7 @@ func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
 	if err != nil {
 		return err
 	}
-	playerTag := tag.input
+	playerTag := tag.sanitized
 
 	// Check for PID file
 	pidFile := discoverPIDPath(tag.sanitized)
@@ -718,7 +718,11 @@ func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
 func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 	verbose := cmd.Bool("verbose")
 	background := cmd.Bool("background")
-	state, err := loadDiscoverCheckpointStateFromCommand(cmd, "no checkpoint found for player #%s. Use 'cr-api deck discover start' to begin a new session")
+	state, err := loadDiscoverCheckpointStateFromCommand(
+		cmd,
+		"no checkpoint found for player #",
+		". Use 'cr-api deck discover start' to begin a new session",
+	)
 	if err != nil {
 		return err
 	}
@@ -740,11 +744,11 @@ func deckDiscoverResumeCommand(ctx context.Context, cmd *cli.Command) error {
 
 // deckDiscoverStatsCommand shows detailed session statistics
 func deckDiscoverStatsCommand(ctx context.Context, cmd *cli.Command) error {
-	state, err := loadDiscoverCheckpointStateFromCommand(cmd, "no discovery session found for player #%s")
+	state, err := loadDiscoverCheckpointStateFromCommand(cmd, "no discovery session found for player #", "")
 	if err != nil {
 		return err
 	}
-	playerTag := state.tag.input
+	playerTag := state.tag.sanitized
 	checkpoint := state.checkpoint
 
 	// Display detailed statistics

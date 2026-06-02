@@ -37,7 +37,7 @@ type discoverCheckpointState struct {
 	checkpoint     deck.DiscoveryCheckpoint
 }
 
-func loadDiscoverCheckpointState(playerTag, missingMessage string) (discoverCheckpointState, error) {
+func loadDiscoverCheckpointState(playerTag, missingMessagePrefix, missingMessageSuffix string) (discoverCheckpointState, error) {
 	tag, err := discoverPlayerTagFromValue(playerTag)
 	if err != nil {
 		return discoverCheckpointState{}, err
@@ -47,7 +47,7 @@ func loadDiscoverCheckpointState(playerTag, missingMessage string) (discoverChec
 	checkpoint, err := deck.LoadDiscoveryCheckpoint(checkpointPath)
 	if err != nil {
 		if errors.Is(err, deck.ErrNoCheckpoint) {
-			return discoverCheckpointState{}, fmt.Errorf(missingMessage, tag.input)
+			return discoverCheckpointState{}, errors.New(missingMessagePrefix + tag.sanitized + missingMessageSuffix)
 		}
 		if errors.Is(err, deck.ErrInvalidCheckpoint) {
 			return discoverCheckpointState{}, fmt.Errorf("failed to parse checkpoint: %w", err)
@@ -62,6 +62,10 @@ func loadDiscoverCheckpointState(playerTag, missingMessage string) (discoverChec
 	}, nil
 }
 
-func loadDiscoverCheckpointStateFromCommand(cmd *cli.Command, missingMessage string) (discoverCheckpointState, error) {
-	return loadDiscoverCheckpointState(cmd.String(discoverFlagTag), missingMessage)
+func loadDiscoverCheckpointStateFromCommand(
+	cmd *cli.Command,
+	missingMessagePrefix,
+	missingMessageSuffix string,
+) (discoverCheckpointState, error) {
+	return loadDiscoverCheckpointState(cmd.String(discoverFlagTag), missingMessagePrefix, missingMessageSuffix)
 }

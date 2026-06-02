@@ -52,7 +52,7 @@ func TestLoadDiscoverCheckpointState(t *testing.T) {
 		t.Fatalf("SaveDiscoveryCheckpoint() error = %v", err)
 	}
 
-	got, err := loadDiscoverCheckpointState("P2ABC", "missing %s")
+	got, err := loadDiscoverCheckpointState("P2ABC", "missing ", "")
 	if err != nil {
 		t.Fatalf("loadDiscoverCheckpointState() error = %v", err)
 	}
@@ -74,12 +74,12 @@ func TestLoadDiscoverCheckpointState(t *testing.T) {
 func TestLoadDiscoverCheckpointStateNoCheckpoint(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 
-	_, err := loadDiscoverCheckpointState("P2ABC", "missing player %s")
+	_, err := loadDiscoverCheckpointState("P2ABC", "missing player #", "")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
-	if err.Error() != "missing player P2ABC" {
-		t.Fatalf("error = %q, want %q", err.Error(), "missing player P2ABC")
+	if err.Error() != "missing player #P2ABC" {
+		t.Fatalf("error = %q, want %q", err.Error(), "missing player #P2ABC")
 	}
 }
 
@@ -93,7 +93,7 @@ func TestLoadDiscoverCheckpointStateInvalidCheckpoint(t *testing.T) {
 		t.Fatalf("WriteFile() error = %v", err)
 	}
 
-	_, err := loadDiscoverCheckpointState("P2ABC", "missing %s")
+	_, err := loadDiscoverCheckpointState("P2ABC", "missing ", "")
 	if err == nil {
 		t.Fatal("expected error, got nil")
 	}
