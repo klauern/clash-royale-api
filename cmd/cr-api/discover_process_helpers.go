@@ -32,13 +32,15 @@ func discoverProcessAlive(pid int) (bool, error) {
 		return false, fmt.Errorf("failed to find process: %w", err)
 	}
 
-	if err := process.Signal(syscall.Signal(0)); err == nil {
+	err = process.Signal(syscall.Signal(0))
+	switch {
+	case err == nil:
 		return true, nil
-	} else if errors.Is(err, syscall.EPERM) {
+	case errors.Is(err, syscall.EPERM):
 		return true, nil
-	} else if errors.Is(err, syscall.ESRCH) {
+	case errors.Is(err, syscall.ESRCH), errors.Is(err, os.ErrProcessDone):
 		return false, nil
-	} else {
+	default:
 		return false, fmt.Errorf("failed to signal process: %w", err)
 	}
 }
