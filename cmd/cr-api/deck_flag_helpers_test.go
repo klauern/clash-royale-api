@@ -1,44 +1,60 @@
 package main
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/urfave/cli/v3"
+)
+
+var sharedBuilderFlagNames = []string{
+	unlockedEvolutionsFlagName,
+	"evolution-slots",
+	"combat-stats-weight",
+	"disable-combat-stats",
+	"enable-synergy",
+	"synergy-weight",
+	"prefer-unique",
+	"uniqueness-weight",
+	"avoid-archetype",
+	"fuzz-storage",
+	"fuzz-weight",
+	"fuzz-deck-limit",
+	boostedCardLevelFlagName,
+}
 
 func TestDeckSharedBuilderFlagsContainExpectedNames(t *testing.T) {
-	command := addDeckBuildCommand()
-	declared := commandFlagSet(command)
-
-	for _, name := range []string{
-		unlockedEvolutionsFlagName,
-		"evolution-slots",
-		"combat-stats-weight",
-		"disable-combat-stats",
-		"enable-synergy",
-		"synergy-weight",
-		"prefer-unique",
-		"uniqueness-weight",
-		"avoid-archetype",
-		"fuzz-storage",
-		"fuzz-weight",
-		"fuzz-deck-limit",
-		boostedCardLevelFlagName,
+	for _, tt := range []struct {
+		name    string
+		command *cli.Command
+	}{
+		{name: "addDeckBuildCommand", command: addDeckBuildCommand()},
+		{name: "addDeckBuildSuiteCommand", command: addDeckBuildSuiteCommand()},
+		{name: "addDeckAnalyzeSuiteCommand", command: addDeckAnalyzeSuiteCommand()},
 	} {
-		if _, ok := declared[name]; !ok {
-			t.Fatalf("addDeckBuildCommand() missing shared flag %q", name)
-		}
+		t.Run(tt.name, func(t *testing.T) {
+			assertCommandHasFlags(t, tt.name, tt.command, sharedBuilderFlagNames)
+		})
 	}
 }
 
 func TestDeckWarCommandContainsSharedEvolutionAndCombatFlags(t *testing.T) {
 	command := addDeckWarCommand()
-	declared := commandFlagSet(command)
 
-	for _, name := range []string{
+	assertCommandHasFlags(t, "addDeckWarCommand", command, []string{
 		unlockedEvolutionsFlagName,
 		"evolution-slots",
 		"combat-stats-weight",
 		"disable-combat-stats",
-	} {
+	})
+}
+
+func assertCommandHasFlags(t *testing.T, commandName string, command *cli.Command, names []string) {
+	t.Helper()
+
+	declared := commandFlagSet(command)
+	for _, name := range names {
 		if _, ok := declared[name]; !ok {
-			t.Fatalf("addDeckWarCommand() missing shared flag %q", name)
+			t.Fatalf("%s() missing shared flag %q", commandName, name)
 		}
 	}
 }
