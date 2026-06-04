@@ -678,10 +678,12 @@ func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 	playerTag := tag.sanitized
 
-	// Check for PID file
 	pidFile := discoverPIDPath(tag.sanitized)
-	if _, err := os.Stat(pidFile); os.IsNotExist(err) {
-		// Check if there's a checkpoint (might be foreground process)
+	pid, running, err := checkAndCleanupStaleDiscoverPID(pidFile)
+	if err != nil {
+		return err
+	}
+	if !running {
 		checkpointPath := discoverCheckpointPath(tag.sanitized)
 		if _, err := os.Stat(checkpointPath); os.IsNotExist(err) {
 			return fmt.Errorf("no active discovery session found for player #%s", playerTag)
@@ -689,12 +691,6 @@ func deckDiscoverStopCommand(ctx context.Context, cmd *cli.Command) error {
 		printf("Note: Only checkpoint found. If a foreground discovery is running, use Ctrl+C to stop it.\n")
 		printf("Checkpoint will be saved automatically.\n")
 		return nil
-	}
-
-	// Read PID
-	pid, err := readDiscoverPID(pidFile)
-	if err != nil {
-		return err
 	}
 
 	// Send SIGTERM for graceful shutdown
@@ -817,19 +813,12 @@ func runDiscoveryInBackground(ctx context.Context, cmd *cli.Command, resume bool
 
 	// Check for already running process
 	pidFile := discoverPIDPath(tag.sanitized)
-	if _, err := os.Stat(pidFile); err == nil {
-		pid, pidErr := readDiscoverPID(pidFile)
-		if pidErr != nil {
-			return pidErr
-		}
-		alive, aliveErr := discoverProcessAlive(pid)
-		if aliveErr == nil && alive {
-			return fmt.Errorf("discovery already running in background (PID: %d). Use 'stop' command first", pid)
-		}
-		// Process is dead, clean up PID file
-		if removeErr := os.Remove(pidFile); removeErr != nil && !os.IsNotExist(removeErr) {
-			return fmt.Errorf("failed to remove stale PID file: %w", removeErr)
-		}
+	pid, running, err := checkAndCleanupStaleDiscoverPID(pidFile)
+	if err != nil {
+		return err
+	}
+	if running {
+		return fmt.Errorf("discovery already running in background (PID: %d). Use 'stop' command first", pid)
 	}
 
 	// Ensure PID directory exists
