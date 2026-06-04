@@ -8,13 +8,13 @@ import (
 
 var sharedBuilderFlagNames = []string{
 	unlockedEvolutionsFlagName,
-	"evolution-slots",
-	"combat-stats-weight",
-	"disable-combat-stats",
+	evolutionSlotsFlagName,
+	combatStatsWeightFlagName,
+	disableCombatStatsFlagName,
 	"enable-synergy",
 	"synergy-weight",
 	"prefer-unique",
-	"uniqueness-weight",
+	uniquenessWeightFlagName,
 	"avoid-archetype",
 	"fuzz-storage",
 	"fuzz-weight",
@@ -42,9 +42,9 @@ func TestDeckWarCommandContainsSharedEvolutionAndCombatFlags(t *testing.T) {
 
 	assertCommandHasFlags(t, "addDeckWarCommand", command, []string{
 		unlockedEvolutionsFlagName,
-		"evolution-slots",
-		"combat-stats-weight",
-		"disable-combat-stats",
+		evolutionSlotsFlagName,
+		combatStatsWeightFlagName,
+		disableCombatStatsFlagName,
 	})
 }
 

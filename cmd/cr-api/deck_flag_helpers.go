@@ -3,6 +3,23 @@ package main
 import "github.com/urfave/cli/v3"
 
 const (
+	strategyFlagName           = "strategy"
+	strategiesFlagName         = "strategies"
+	minElixirFlagName          = "min-elixir"
+	maxElixirFlagName          = "max-elixir"
+	includeCardsFlagName       = "include-cards"
+	excludeCardsFlagName       = "exclude-cards"
+	exportCSVFlagName          = "export-csv"
+	saveFlagName               = "save"
+	fromAnalysisFlagName       = "from-analysis"
+	analysisDirFlagName        = "analysis-dir"
+	analysisFileFlagName       = "analysis-file"
+	outputDirFlagName          = "output-dir"
+	topNFlagName               = "top-n"
+	evolutionSlotsFlagName     = "evolution-slots"
+	combatStatsWeightFlagName  = "combat-stats-weight"
+	disableCombatStatsFlagName = "disable-combat-stats"
+	uniquenessWeightFlagName   = "uniqueness-weight"
 	defaultEvolutionSlots      = 2
 	defaultCombatStatsWeight   = 0.25
 	defaultSynergyWeight       = 0.15
@@ -25,14 +42,14 @@ const (
 func deckEvolutionFlags() []cli.Flag {
 	return []cli.Flag{
 		unlockedEvolutionsFlag(),
-		&cli.IntFlag{Name: "evolution-slots", Value: defaultEvolutionSlots, Usage: evolutionSlotsDefaultUsage},
+		&cli.IntFlag{Name: evolutionSlotsFlagName, Value: defaultEvolutionSlots, Usage: evolutionSlotsDefaultUsage},
 	}
 }
 
 func deckCombatFlags() []cli.Flag {
 	return []cli.Flag{
-		&cli.Float64Flag{Name: "combat-stats-weight", Value: defaultCombatStatsWeight, Usage: combatStatsWeightUsage},
-		&cli.BoolFlag{Name: "disable-combat-stats", Usage: disableCombatStatsUsage},
+		&cli.Float64Flag{Name: combatStatsWeightFlagName, Value: defaultCombatStatsWeight, Usage: combatStatsWeightUsage},
+		&cli.BoolFlag{Name: disableCombatStatsFlagName, Usage: disableCombatStatsUsage},
 	}
 }
 
@@ -41,7 +58,7 @@ func deckBuilderScoringFlags() []cli.Flag {
 		&cli.BoolFlag{Name: "enable-synergy", Usage: enableSynergyUsage},
 		&cli.Float64Flag{Name: "synergy-weight", Value: defaultSynergyWeight, Usage: synergyWeightUsage},
 		&cli.BoolFlag{Name: "prefer-unique", Usage: preferUniqueUsage},
-		&cli.Float64Flag{Name: "uniqueness-weight", Value: defaultUniquenessWeight, Usage: uniquenessWeightUsage},
+		&cli.Float64Flag{Name: uniquenessWeightFlagName, Value: defaultUniquenessWeight, Usage: uniquenessWeightUsage},
 		&cli.StringSliceFlag{Name: "avoid-archetype", Usage: avoidArchetypeUsage},
 		&cli.StringFlag{Name: "fuzz-storage", Usage: fuzzStorageUsage},
 		&cli.Float64Flag{Name: "fuzz-weight", Value: defaultFuzzWeight, Usage: fuzzWeightUsage},
