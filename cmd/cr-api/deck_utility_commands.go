@@ -22,8 +22,8 @@ func addDeckWarCommand() *cli.Command {
 				Value: 2,
 				Usage: "Number of evolution slots available (default 2)",
 			},
-			combatStatsFlags()[0],
-			combatStatsFlags()[1],
+			combatStatsWeightFlag,
+			disableCombatStatsFlag,
 		},
 		Action: deckWarCommand,
 	}

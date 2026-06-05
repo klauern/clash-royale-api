@@ -10,16 +10,21 @@ const (
 	defaultCombatStatsWeight    = 0.25
 )
 
+var (
+	combatStatsWeightFlag = &cli.Float64Flag{
+		Name:  combatStatsWeightFlagName,
+		Value: defaultCombatStatsWeight,
+		Usage: combatStatsWeightFlagUsage,
+	}
+	disableCombatStatsFlag = &cli.BoolFlag{
+		Name:  disableCombatStatsFlagName,
+		Usage: disableCombatStatsFlagUsage,
+	}
+)
+
 func combatStatsFlags() []cli.Flag {
 	return []cli.Flag{
-		&cli.Float64Flag{
-			Name:  combatStatsWeightFlagName,
-			Value: defaultCombatStatsWeight,
-			Usage: combatStatsWeightFlagUsage,
-		},
-		&cli.BoolFlag{
-			Name:  disableCombatStatsFlagName,
-			Usage: disableCombatStatsFlagUsage,
-		},
+		combatStatsWeightFlag,
+		disableCombatStatsFlag,
 	}
 }
