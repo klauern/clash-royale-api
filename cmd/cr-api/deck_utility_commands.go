@@ -22,15 +22,8 @@ func addDeckWarCommand() *cli.Command {
 				Value: 2,
 				Usage: "Number of evolution slots available (default 2)",
 			},
-			&cli.Float64Flag{
-				Name:  "combat-stats-weight",
-				Value: 0.25,
-				Usage: "Weight for combat stats in scoring (0.0-1.0, where 0=disabled, 0.25=default, 1.0=combat-only)",
-			},
-			&cli.BoolFlag{
-				Name:  "disable-combat-stats",
-				Usage: "Disable combat stats completely (use traditional scoring only)",
-			},
+			combatStatsFlags()[0],
+			combatStatsFlags()[1],
 		},
 		Action: deckWarCommand,
 	}

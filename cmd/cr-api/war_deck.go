@@ -25,8 +25,6 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 	verbose := cmd.Bool("verbose")
 	dataDir := cmd.String("data-dir")
 	deckCount := cmd.Int("deck-count")
-	combatStatsWeight := cmd.Float64("combat-stats-weight")
-	disableCombatStats := cmd.Bool("disable-combat-stats")
 
 	apiToken, err := requireAPIToken(cmd, apiClientOptions{})
 	if err != nil {
@@ -37,17 +35,8 @@ func deckWarCommand(ctx context.Context, cmd *cli.Command) error {
 		return fmt.Errorf("deck-count must be at least 1")
 	}
 
-	// Configure combat stats weight
-	if disableCombatStats {
-		setEnv("COMBAT_STATS_WEIGHT", "0")
-		if verbose {
-			printf("Combat stats disabled (using traditional scoring only)\n")
-		}
-	} else if combatStatsWeight >= 0 && combatStatsWeight <= 1.0 {
-		setEnv("COMBAT_STATS_WEIGHT", fmt.Sprintf("%.2f", combatStatsWeight))
-		if verbose {
-			printf("Combat stats weight set to: %.2f\n", combatStatsWeight)
-		}
+	if err := configureCombatStats(cmd); err != nil {
+		return err
 	}
 
 	if verbose {
