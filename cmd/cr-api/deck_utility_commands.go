@@ -6,25 +6,20 @@ import (
 
 // addDeckWarCommand adds the deck war command
 func addDeckWarCommand() *cli.Command {
-	return &cli.Command{
-		Name:  "war",
-		Usage: "Build a 4-deck war set with no repeated cards",
-		Flags: []cli.Flag{
-			playerTagFlag(true),
-			&cli.IntFlag{
-				Name:  "deck-count",
-				Value: 4,
-				Usage: "Number of decks to build (default 4)",
-			},
-			unlockedEvolutionsFlag(),
-			&cli.IntFlag{
-				Name:  "evolution-slots",
-				Value: 2,
-				Usage: "Number of evolution slots available (default 2)",
-			},
-			combatStatsWeightFlag,
-			disableCombatStatsFlag,
+	flags := []cli.Flag{
+		playerTagFlag(true),
+		&cli.IntFlag{
+			Name:  "deck-count",
+			Value: 4,
+			Usage: "Number of decks to build (default 4)",
 		},
+	}
+	flags = append(flags, deckEvolutionFlags()...)
+	flags = append(flags, deckCombatFlags()...)
+	return &cli.Command{
+		Name:   "war",
+		Usage:  "Build a 4-deck war set with no repeated cards",
+		Flags:  flags,
 		Action: deckWarCommand,
 	}
 }
