@@ -110,15 +110,10 @@ func formatReportDetailedScoreComparison(sb *strings.Builder, vm comparisonViewM
 
 func formatReportCategoryChampions(sb *strings.Builder, vm comparisonViewModel) {
 	sb.WriteString("## Category Champions\n\n")
-	for _, category := range vm.Categories {
-		if category.BestDeckIndex < 0 || category.BestDeckIndex >= len(vm.Decks) || category.BestDeckIndex >= len(category.Scores) {
-			continue
-		}
-		best := vm.Decks[category.BestDeckIndex]
-		bestScore := category.Scores[category.BestDeckIndex]
-		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", category.Name, best.Name))
-		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n", bestScore.Score, bestScore.Rating))
-		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", bestScore.Assessment))
+	for _, winner := range collectCategoryWinners(vm) {
+		sb.WriteString(fmt.Sprintf("### 🏆 Best %s: **%s**\n\n", winner.CategoryName, winner.DeckName))
+		sb.WriteString(fmt.Sprintf("- **Score**: %.1f/10.0 (%s)\n", winner.Score.Score, winner.Score.Rating))
+		sb.WriteString(fmt.Sprintf("- **Assessment**: %s\n\n", winner.Score.Assessment))
 	}
 
 	sb.WriteString("---\n\n")
@@ -131,12 +126,7 @@ func formatReportDeckDetails(sb *strings.Builder, vm comparisonViewModel) {
 		sb.WriteString(fmt.Sprintf("### %d. %s\n\n", i+1, deck.Name))
 
 		sb.WriteString("**Cards**:\n```\n")
-		for j, card := range r.Deck {
-			sb.WriteString(fmt.Sprintf("%-20s", card))
-			if (j+1)%4 == 0 {
-				sb.WriteString("\n")
-			}
-		}
+		writeDeckCardGrid(sb, r.Deck, 20)
 		sb.WriteString("```\n\n")
 
 		sb.WriteString("**Key Statistics**:\n")
@@ -190,24 +180,20 @@ func formatDeckStrengthsAndWeaknesses(sb *strings.Builder, r evaluation.Evaluati
 }
 
 func formatDeckAnalysis(sb *strings.Builder, r evaluation.EvaluationResult) {
-	if len(r.DefenseAnalysis.Details) > 0 {
-		fmt.Fprintf(sb, "**Defense Analysis** (%.1f/10.0):\n", r.DefenseAnalysis.Score)
-		for _, detail := range r.DefenseAnalysis.Details {
+	for _, section := range collectAnalysisSections(r) {
+		if len(section.Details) == 0 {
+			continue
+		}
+
+		fmt.Fprintf(sb, "**%s Analysis** (%.1f/10.0):\n", section.Label, section.Score)
+		for _, detail := range section.Details {
 			fmt.Fprintf(sb, "- %s\n", detail)
 		}
 		sb.WriteString("\n")
 	}
 
-	if len(r.AttackAnalysis.Details) > 0 {
-		fmt.Fprintf(sb, "**Attack Analysis** (%.1f/10.0):\n", r.AttackAnalysis.Score)
-		for _, detail := range r.AttackAnalysis.Details {
-			fmt.Fprintf(sb, "- %s\n", detail)
-		}
-		sb.WriteString("\n")
-	}
-
-	if r.SynergyMatrix.PairCount > 0 {
-		fmt.Fprintf(sb, "**Synergy**: %d card pairs found (%.1f%% coverage, avg synergy: %.2f)\n\n", r.SynergyMatrix.PairCount, r.SynergyMatrix.SynergyCoverage, r.SynergyMatrix.AverageSynergy)
+	if synergy, ok := getSynergySummary(r); ok {
+		fmt.Fprintf(sb, "**Synergy**: %d card pairs found (%.1f%% coverage, avg synergy: %.2f)\n\n", synergy.PairCount, synergy.Coverage, synergy.AverageSynergy)
 	}
 }
 
