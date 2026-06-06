@@ -34,8 +34,8 @@ func (e *onlinePlayerAnalysisLoadError) Unwrap() error {
 }
 
 func configureCombatStats(cmd *cli.Command) error {
-	combatStatsWeight := cmd.Float64("combat-stats-weight")
-	disableCombatStats := cmd.Bool("disable-combat-stats")
+	combatStatsWeight := cmd.Float64(combatStatsWeightFlagName)
+	disableCombatStats := cmd.Bool(disableCombatStatsFlagName)
 	verbose := cmd.Bool("verbose")
 
 	if disableCombatStats {
@@ -43,7 +43,7 @@ func configureCombatStats(cmd *cli.Command) error {
 		if verbose {
 			printf("Combat stats disabled (using traditional scoring only)\n")
 		}
-	} else if cmd.IsSet("combat-stats-weight") && combatStatsWeight >= 0 && combatStatsWeight <= 1.0 {
+	} else if cmd.IsSet(combatStatsWeightFlagName) && combatStatsWeight >= 0 && combatStatsWeight <= 1.0 {
 		setEnv("COMBAT_STATS_WEIGHT", fmt.Sprintf("%.2f", combatStatsWeight))
 		if verbose {
 			printf("Combat stats weight set to: %.2f\n", combatStatsWeight)
