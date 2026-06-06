@@ -6,6 +6,25 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 )
 
+type comparisonCategoryWinner struct {
+	CategoryName string
+	DeckName     string
+	Score        evaluation.CategoryScore
+}
+
+type comparisonAnalysisSection struct {
+	Label   string
+	Score   float64
+	Rating  evaluation.Rating
+	Details []string
+}
+
+type comparisonSynergySummary struct {
+	PairCount      int
+	Coverage       float64
+	AverageSynergy float64
+}
+
 func getEvaluationCategories() []struct {
 	name string
 	get  func(evaluation.EvaluationResult) evaluation.CategoryScore
@@ -21,31 +40,6 @@ func getEvaluationCategories() []struct {
 		{"F2P Friendly", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.F2PFriendly }},
 		{"Playability", func(r evaluation.EvaluationResult) evaluation.CategoryScore { return r.Playability }},
 	}
-}
-
-func findBestDeckIndex(results []evaluation.EvaluationResult, getScore func(evaluation.EvaluationResult) evaluation.CategoryScore) int {
-	bestIdx := 0
-	bestScore := -1.0
-	for i, r := range results {
-		score := getScore(r).Score
-		if score > bestScore {
-			bestScore = score
-			bestIdx = i
-		}
-	}
-	return bestIdx
-}
-
-func findBestOverallDeck(results []evaluation.EvaluationResult) int {
-	bestIdx := 0
-	bestScore := -1.0
-	for i, r := range results {
-		if r.OverallScore > bestScore {
-			bestScore = r.OverallScore
-			bestIdx = i
-		}
-	}
-	return bestIdx
 }
 
 func truncate(s string, maxLen int) string {
@@ -76,4 +70,77 @@ func calculateStars(score float64) int {
 	default:
 		return 0
 	}
+}
+
+func collectCategoryWinners(vm comparisonViewModel) []comparisonCategoryWinner {
+	winners := make([]comparisonCategoryWinner, 0, len(vm.Categories))
+	for _, category := range vm.Categories {
+		if category.BestDeckIndex < 0 || category.BestDeckIndex >= len(vm.Decks) || category.BestDeckIndex >= len(category.Scores) {
+			continue
+		}
+
+		winners = append(winners, comparisonCategoryWinner{
+			CategoryName: category.Name,
+			DeckName:     vm.Decks[category.BestDeckIndex].Name,
+			Score:        category.Scores[category.BestDeckIndex],
+		})
+	}
+
+	return winners
+}
+
+func writeDeckCardGrid(sb *strings.Builder, cards []string, cardWidth int) {
+	for i, card := range cards {
+		sb.WriteString(padRight(card, cardWidth))
+		if (i+1)%4 == 0 {
+			sb.WriteString("\n")
+		}
+	}
+	if len(cards)%4 != 0 {
+		sb.WriteString("\n")
+	}
+}
+
+func prefixCards(cards []string, prefix string) []string {
+	prefixed := make([]string, len(cards))
+	for i, card := range cards {
+		prefixed[i] = prefix + card
+	}
+	return prefixed
+}
+
+func collectAnalysisSections(r evaluation.EvaluationResult) []comparisonAnalysisSection {
+	return []comparisonAnalysisSection{
+		{
+			Label:   "Defense",
+			Score:   r.DefenseAnalysis.Score,
+			Rating:  r.DefenseAnalysis.Rating,
+			Details: r.DefenseAnalysis.Details,
+		},
+		{
+			Label:   "Attack",
+			Score:   r.AttackAnalysis.Score,
+			Rating:  r.AttackAnalysis.Rating,
+			Details: r.AttackAnalysis.Details,
+		},
+	}
+}
+
+func getSynergySummary(r evaluation.EvaluationResult) (comparisonSynergySummary, bool) {
+	if r.SynergyMatrix.PairCount <= 0 {
+		return comparisonSynergySummary{}, false
+	}
+
+	return comparisonSynergySummary{
+		PairCount:      r.SynergyMatrix.PairCount,
+		Coverage:       r.SynergyMatrix.SynergyCoverage,
+		AverageSynergy: r.SynergyMatrix.AverageSynergy,
+	}, true
+}
+
+func padRight(s string, width int) string {
+	if len(s) >= width {
+		return s
+	}
+	return s + strings.Repeat(" ", width-len(s))
 }
