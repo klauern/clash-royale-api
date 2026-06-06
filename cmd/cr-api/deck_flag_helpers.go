@@ -17,17 +17,12 @@ const (
 	outputDirFlagName          = "output-dir"
 	topNFlagName               = "top-n"
 	evolutionSlotsFlagName     = "evolution-slots"
-	combatStatsWeightFlagName  = "combat-stats-weight"
-	disableCombatStatsFlagName = "disable-combat-stats"
 	uniquenessWeightFlagName   = "uniqueness-weight"
 	defaultEvolutionSlots      = 2
-	defaultCombatStatsWeight   = 0.25
 	defaultSynergyWeight       = 0.15
 	defaultUniquenessWeight    = 0.2
 	defaultFuzzWeight          = 0.10
 	defaultFuzzDeckLimit       = 100
-	combatStatsWeightUsage     = "Weight for combat stats in scoring (0.0-1.0, where 0=disabled, 0.25=default, 1.0=combat-only)"
-	disableCombatStatsUsage    = "Disable combat stats completely (use traditional scoring only)"
 	enableSynergyUsage         = "Enable synergy-based card selection (considers card interactions and combos)"
 	synergyWeightUsage         = "Weight for synergy scoring (0.0-1.0, default 0.15 = 15%)"
 	preferUniqueUsage          = "Enable uniqueness/anti-meta scoring (prefers less common cards)"
