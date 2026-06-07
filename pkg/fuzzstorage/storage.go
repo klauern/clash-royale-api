@@ -6,7 +6,6 @@ package fuzzstorage
 import (
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -172,7 +171,7 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 	records := make([]deckHashMigrationRow, 0)
 
 	for rows.Next() {
-		row, err := scanDeckHashMigrationRow(rows)
+		row, err := storageutil.ParseNamedDeckHashMigrationRow(rows, "top_decks row")
 		if err != nil {
 			return nil, nil, err
 		}
@@ -184,23 +183,6 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 
 	return records, storageutil.SelectDeckHashMigrationWinners(records), nil
 }
-
-func scanDeckHashMigrationRow(rows *sql.Rows) (deckHashMigrationRow, error) {
-	row, err := storageutil.ParseDeckHashMigrationRow(rows)
-	if err != nil {
-		var syntaxErr *json.SyntaxError
-		if errors.As(err, &syntaxErr) {
-			return row, fmt.Errorf("invalid cards JSON for top_decks row %d: %w", row.ID, err)
-		}
-		var unmarshalTypeErr *json.UnmarshalTypeError
-		if errors.As(err, &unmarshalTypeErr) {
-			return row, fmt.Errorf("invalid cards JSON for top_decks row %d: %w", row.ID, err)
-		}
-		return row, fmt.Errorf("failed to scan top deck hash migration row: %w", err)
-	}
-	return row, nil
-}
-
 func (s *Storage) applyDeckHashMigration(tx *sql.Tx, records []deckHashMigrationRow, winners map[string]deckHashMigrationRow) error {
 	return storageutil.ApplyDeckHashMigration(tx, "top_decks", records, winners)
 }
