@@ -71,17 +71,21 @@ func ParseNamedDeckHashMigrationRow(rows *sql.Rows, rowLabel string) (DeckHashMi
 
 // WrapDeckHashMigrationRowError normalizes row parsing errors across storage packages.
 func WrapDeckHashMigrationRowError(row DeckHashMigrationRow, err error, rowLabel string) error {
+	if isDeckHashMigrationJSONError(err) {
+		return fmt.Errorf("invalid cards JSON for %s %d: %w", rowLabel, row.ID, err)
+	}
+
+	return fmt.Errorf("failed to scan %s %d: %w", rowLabel, row.ID, err)
+}
+
+func isDeckHashMigrationJSONError(err error) bool {
 	var syntaxErr *json.SyntaxError
 	if errors.As(err, &syntaxErr) {
-		return fmt.Errorf("invalid cards JSON for %s %d: %w", rowLabel, row.ID, err)
+		return true
 	}
 
 	var unmarshalTypeErr *json.UnmarshalTypeError
-	if errors.As(err, &unmarshalTypeErr) {
-		return fmt.Errorf("invalid cards JSON for %s %d: %w", rowLabel, row.ID, err)
-	}
-
-	return fmt.Errorf("failed to scan %s: %w", rowLabel, err)
+	return errors.As(err, &unmarshalTypeErr)
 }
 
 // PreferDeckHashMigrationWinner determines which row should be kept for a canonical hash.

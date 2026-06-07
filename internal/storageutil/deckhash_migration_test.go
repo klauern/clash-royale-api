@@ -51,10 +51,9 @@ func TestParseNamedDeckHashMigrationRow(t *testing.T) {
 		}
 
 		var typeErr *json.UnmarshalTypeError
-		if errors.As(err, &typeErr) {
-			return
+		if !errors.As(err, &typeErr) {
+			t.Fatalf("expected wrapped json unmarshal type error, got: %T", err)
 		}
-		t.Fatalf("expected wrapped json unmarshal type error, got: %T", err)
 	})
 }
 
