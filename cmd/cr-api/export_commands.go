@@ -18,11 +18,6 @@ import (
 
 // Helper functions for export commands
 
-// createClient creates a new Clash Royale API client
-func createClient(apiToken string) *clashroyale.Client {
-	return clashroyale.NewClient(apiToken)
-}
-
 // exportFunc is a function that performs an export operation
 type exportFunc func(dataDir string, data any) error
 
@@ -123,12 +118,10 @@ func exportPlayerCommand() *cli.Command {
 			types := cmd.StringSlice("types")
 			dataDir := cmd.String("data-dir")
 
-			apiToken, err := requireAPIToken(cmd, apiClientOptions{})
+			client, err := requireAPIClient(cmd, apiClientOptions{})
 			if err != nil {
 				return err
 			}
-
-			client := createClient(apiToken)
 
 			// Get player information
 			player, err := client.GetPlayerWithContext(ctx, tag)
@@ -163,12 +156,10 @@ func exportCardsCommand() *cli.Command {
 		Action: func(ctx context.Context, cmd *cli.Command) error {
 			dataDir := cmd.String("data-dir")
 
-			apiToken, err := requireAPIToken(cmd, apiClientOptions{})
+			client, err := requireAPIClient(cmd, apiClientOptions{})
 			if err != nil {
 				return err
 			}
-
-			client := createClient(apiToken)
 
 			// Get all cards
 			cardList, err := client.GetCardsWithContext(ctx)
@@ -206,12 +197,10 @@ func exportAnalysisCommand() *cli.Command {
 			tag := cmd.String("tag")
 			dataDir := cmd.String("data-dir")
 
-			apiToken, err := requireAPIToken(cmd, apiClientOptions{})
+			client, err := requireAPIClient(cmd, apiClientOptions{})
 			if err != nil {
 				return err
 			}
-
-			client := createClient(apiToken)
 
 			// Get player information and analyze
 			player, err := client.GetPlayerWithContext(ctx, tag)
@@ -261,12 +250,10 @@ func exportBattlesCommand() *cli.Command {
 			dataDir := cmd.String("data-dir")
 			limit := cmd.Int("limit")
 
-			apiToken, err := requireAPIToken(cmd, apiClientOptions{})
+			client, err := requireAPIClient(cmd, apiClientOptions{})
 			if err != nil {
 				return err
 			}
-
-			client := createClient(apiToken)
 
 			// Get battle log
 			battleLog, err := client.GetPlayerBattleLogWithContext(ctx, tag)
@@ -307,12 +294,10 @@ func exportEventsCommand() *cli.Command {
 			tag := cmd.String("tag")
 			dataDir := cmd.String("data-dir")
 
-			apiToken, err := requireAPIToken(cmd, apiClientOptions{})
+			client, err := requireAPIClient(cmd, apiClientOptions{})
 			if err != nil {
 				return err
 			}
-
-			client := createClient(apiToken)
 
 			// Get player's battle logs to extract event data
 			battleLog, err := client.GetPlayerBattleLogWithContext(ctx, tag)
@@ -563,12 +548,10 @@ func exportAllCommand() *cli.Command {
 			dataDir := cmd.String("data-dir")
 			timestamp := timestampValue(cmd.Bool("timestamp"))
 
-			apiToken, err := requireAPIToken(cmd, apiClientOptions{})
+			client, err := requireAPIClient(cmd, apiClientOptions{})
 			if err != nil {
 				return err
 			}
-
-			client := createClient(apiToken)
 
 			printf("Starting full export for player %s...\n\n", tag)
 
