@@ -18,7 +18,9 @@ func (c *testCloser) Close() error {
 	return c.err
 }
 
-func TestCloseWithLogSuccess(t *testing.T) {
+func captureLog(t *testing.T) *bytes.Buffer {
+	t.Helper()
+
 	var buf bytes.Buffer
 	originalWriter := log.Writer()
 	originalFlags := log.Flags()
@@ -31,6 +33,13 @@ func TestCloseWithLogSuccess(t *testing.T) {
 		log.SetFlags(originalFlags)
 		log.SetPrefix(originalPrefix)
 	})
+
+	return &buf
+}
+
+// This test captures global log state, so it must not run in parallel.
+func TestCloseWithLogSuccess(t *testing.T) {
+	buf := captureLog(t)
 
 	closer := &testCloser{}
 	CloseWithLog("closeutil", closer, "resource")
@@ -43,19 +52,9 @@ func TestCloseWithLogSuccess(t *testing.T) {
 	}
 }
 
+// This test captures global log state, so it must not run in parallel.
 func TestCloseWithLogError(t *testing.T) {
-	var buf bytes.Buffer
-	originalWriter := log.Writer()
-	originalFlags := log.Flags()
-	originalPrefix := log.Prefix()
-	log.SetOutput(&buf)
-	log.SetFlags(0)
-	log.SetPrefix("")
-	t.Cleanup(func() {
-		log.SetOutput(originalWriter)
-		log.SetFlags(originalFlags)
-		log.SetPrefix(originalPrefix)
-	})
+	buf := captureLog(t)
 
 	closer := &testCloser{err: errors.New("close failed")}
 	CloseWithLog("closeutil", closer, "resource")
@@ -71,5 +70,7 @@ func TestCloseWithLogError(t *testing.T) {
 }
 
 func TestCloseWithLogNilCloser(t *testing.T) {
+	_ = captureLog(t)
+
 	CloseWithLog("closeutil", nil, "resource")
 }
