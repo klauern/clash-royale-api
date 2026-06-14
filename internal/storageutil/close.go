@@ -2,12 +2,11 @@ package storageutil
 
 import (
 	"io"
-	"log"
+
+	"github.com/klauer/clash-royale-api/go/internal/closeutil"
 )
 
-// CloseWithLog closes a resource and logs any close error as a warning.
+// CloseWithLog closes a resource and logs any close error with storageutil context.
 func CloseWithLog(closer io.Closer, resourceName string) {
-	if err := closer.Close(); err != nil {
-		log.Printf("warning: failed to close %s: %v", resourceName, err)
-	}
+	closeutil.WithLog("storageutil", closer, resourceName)
 }
