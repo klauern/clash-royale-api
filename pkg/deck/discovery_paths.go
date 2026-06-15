@@ -2,17 +2,14 @@ package deck
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
+
+	"github.com/klauer/clash-royale-api/go/internal/datapath"
 )
 
 // DiscoverySessionBaseDir returns the base directory for discovery session artifacts.
 func DiscoverySessionBaseDir() string {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-	return filepath.Join(homeDir, ".cr-api", "discover")
+	return datapath.DiscoveryDirOrFallback()
 }
 
 // DiscoveryCheckpointPathForTag returns the discovery checkpoint path for a sanitized player tag.

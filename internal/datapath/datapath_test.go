@@ -20,12 +20,32 @@ func TestPathsUseCrAPIHome(t *testing.T) {
 		t.Fatalf("unexpected app dir: %s", appDir)
 	}
 
+	if got, want := AppDirOrFallback(), filepath.Join(tmp, ".cr-api"); got != want {
+		t.Fatalf("AppDirOrFallback() = %q, want %q", got, want)
+	}
+
+	appPath, err := AppPath("cards_stats.json")
+	if err != nil {
+		t.Fatalf("AppPath() failed: %v", err)
+	}
+	if appPath != filepath.Join(tmp, ".cr-api", "cards_stats.json") {
+		t.Fatalf("unexpected app path: %s", appPath)
+	}
+
 	leaderboardsDir, err := LeaderboardsDir()
 	if err != nil {
 		t.Fatalf("LeaderboardsDir() failed: %v", err)
 	}
 	if leaderboardsDir != filepath.Join(tmp, ".cr-api", "leaderboards") {
 		t.Fatalf("unexpected leaderboards dir: %s", leaderboardsDir)
+	}
+
+	discoveryDir, err := DiscoveryDir()
+	if err != nil {
+		t.Fatalf("DiscoveryDir() failed: %v", err)
+	}
+	if discoveryDir != filepath.Join(tmp, ".cr-api", "discover") {
+		t.Fatalf("unexpected discovery dir: %s", discoveryDir)
 	}
 
 	leaderboardDB, err := LeaderboardDBPath("ABC123")

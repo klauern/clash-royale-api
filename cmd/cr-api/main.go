@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"text/tabwriter"
 
+	"github.com/klauer/clash-royale-api/go/internal/datapath"
 	"github.com/klauer/clash-royale-api/go/internal/exporter/csv"
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
@@ -24,11 +25,7 @@ var (
 
 func main() {
 	// Get default paths
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-	defaultDataDir := filepath.Join(homeDir, ".cr-api")
+	defaultDataDir := datapath.AppDirOrFallback()
 
 	// Export manager will be created per command as needed
 
