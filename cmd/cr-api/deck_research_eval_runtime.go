@@ -104,7 +104,10 @@ func deckResearchEvalCommand(ctx context.Context, cmd *cli.Command) error {
 		fprintf(os.Stderr, "Warning: failed to load combat stats at %s: %v\n", statsPath, statsErr)
 	}
 
-	client := clashroyale.NewClient(apiToken)
+	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
+	if err != nil {
+		return err
+	}
 	players := make([]research.PlayerInput, 0, len(tags))
 	for _, tag := range tags {
 		player, getErr := client.GetPlayerWithContext(ctx, tag)
