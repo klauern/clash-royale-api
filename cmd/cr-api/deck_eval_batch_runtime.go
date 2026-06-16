@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/leaderboard"
@@ -273,7 +272,10 @@ func loadEvalPlayerContext(ctx context.Context, playerTag, apiToken string, verb
 		return nil, "", nil
 	}
 
-	client := clashroyale.NewClient(apiToken)
+	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
+	if err != nil {
+		return nil, "", nil
+	}
 	player, err := client.GetPlayerWithContext(ctx, playerTag)
 	if err != nil {
 		if verbose {
