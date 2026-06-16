@@ -1842,9 +1842,7 @@ func loadFuzzPlayerContext(
 		return nil, nil, err
 	}
 
-	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{
-		missingToken: "API token is required to load player context (set CLASH_ROYALE_API_TOKEN or use --api-token)",
-	})
+	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
 	if err != nil {
 		return nil, nil, err
 	}
