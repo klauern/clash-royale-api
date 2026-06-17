@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
-	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/events"
@@ -219,12 +218,14 @@ func runPhase2EvaluateAllDecks(ctx context.Context, builtDecks []suiteDeckInfo, 
 
 	// Load player context if available
 	var playerContext *evaluation.PlayerContext
-	if !fromAnalysis && apiToken != "" {
-		client := clashroyale.NewClient(apiToken)
-		player, err := client.GetPlayerWithContext(ctx, tag)
+	if !fromAnalysis && resolveAPIToken(apiToken) != "" {
+		client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
 		if err == nil {
-			playerContext = evaluation.NewPlayerContextFromPlayer(player)
-			applyBoostedLevelsToPlayerContext(playerContext, boostedLevelOverrides)
+			player, err := client.GetPlayerWithContext(ctx, tag)
+			if err == nil {
+				playerContext = evaluation.NewPlayerContextFromPlayer(player)
+				applyBoostedLevelsToPlayerContext(playerContext, boostedLevelOverrides)
+			}
 		}
 	}
 

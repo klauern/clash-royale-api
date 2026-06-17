@@ -236,14 +236,12 @@ func deckFuzzCommand(ctx context.Context, cmd *cli.Command) error {
 		}
 	} else {
 		// Load from API
-		apiToken, err = requireAPITokenValue(apiToken, apiClientOptions{
+		client, err := requireAPIClientFromToken(apiToken, apiClientOptions{
 			missingToken: "--api-token or CLASH_ROYALE_API_TOKEN environment variable required",
 		})
 		if err != nil {
 			return err
 		}
-
-		client := clashroyale.NewClient(apiToken)
 		cleanTag, err := playertag.Sanitize(playerTag)
 		if err != nil {
 			return err
@@ -1844,7 +1842,10 @@ func loadFuzzPlayerContext(
 		return nil, nil, err
 	}
 
-	client := clashroyale.NewClient(apiToken)
+	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
+	if err != nil {
+		return nil, nil, err
+	}
 	player, err := client.GetPlayerWithContext(ctx, cleanTag)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load player data for %s: %w", playerTag, err)

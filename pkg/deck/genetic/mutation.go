@@ -21,6 +21,7 @@ func (g *DeckGenome) Mutate() error {
 		return fmt.Errorf("mutation requires config")
 	}
 
+	originalCards := append([]string(nil), g.Cards...)
 	numToMutate := max(int(float64(8)*g.config.MutationIntensity), 1)
 
 	positions := g.pickMutationPositions(numToMutate)
@@ -71,8 +72,37 @@ func (g *DeckGenome) Mutate() error {
 	}
 
 	g.Cards = g.repairDeck(g.Cards, g)
+	g.ensureMutationChanged(originalCards)
 	g.Fitness = 0
 	return nil
+}
+
+func (g *DeckGenome) ensureMutationChanged(originalCards []string) {
+	if len(originalCards) != len(g.Cards) {
+		return
+	}
+
+	changed := false
+	used := make(map[string]bool, len(g.Cards))
+	for i, card := range g.Cards {
+		used[card] = true
+		if card != originalCards[i] {
+			changed = true
+		}
+	}
+	if changed {
+		return
+	}
+
+	for pos, oldCard := range g.Cards {
+		delete(used, oldCard)
+		replacement := g.singleCardSwap(used)
+		if replacement != "" && replacement != oldCard {
+			g.Cards[pos] = replacement
+			return
+		}
+		used[oldCard] = true
+	}
 }
 
 func (g *DeckGenome) pickMutationPositions(count int) []int {

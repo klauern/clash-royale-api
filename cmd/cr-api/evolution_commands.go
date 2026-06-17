@@ -224,15 +224,16 @@ func loadStaticCards(ctx context.Context, dataDir, apiToken string, verbose bool
 		}
 	}
 
-	if apiToken == "" {
-		return nil, fmt.Errorf("card database not cached; run `cr-api cards` or provide --api-token to fetch")
-	}
-
 	if verbose {
 		printf("Fetching card database for validation...\n")
 	}
 
-	client := clashroyale.NewClient(apiToken)
+	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{
+		missingToken: "card database not cached; run `cr-api cards` or provide --api-token to fetch",
+	})
+	if err != nil {
+		return nil, err
+	}
 	cards, err := client.GetCardsWithContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch card database: %w", err)
@@ -254,7 +255,10 @@ func evolutionRecommendCommand(ctx context.Context, cmd *cli.Command) error {
 	unlockedEvolutions := unlockedEvolutionsFromCommand(cmd)
 
 	// Load player data
-	client := clashroyale.NewClient(apiToken)
+	client, err := requireAPIClient(cmd, apiClientOptions{})
+	if err != nil {
+		return err
+	}
 	if verbose {
 		printf("Fetching player data for %s...\n", playerTag)
 	}

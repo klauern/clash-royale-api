@@ -7,6 +7,8 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/urfave/cli/v3"
 )
 
 func TestExportTargetFileUsesExporterFilename(t *testing.T) {
@@ -85,6 +87,47 @@ func TestExportPlayerCommandRequiresAPIToken(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), requiredAPITokenMessage) {
 		t.Fatalf("missing token error mismatch: got %q", err.Error())
+	}
+}
+
+func TestExportSubcommandResolvesInheritedAPIToken(t *testing.T) {
+	t.Setenv(apiTokenEnvVar, "")
+
+	called := false
+	cmd := &cli.Command{
+		Name: "cr-api",
+		Flags: []cli.Flag{
+			&cli.StringFlag{Name: "api-token"},
+		},
+		Commands: []*cli.Command{
+			{
+				Name: "export",
+				Commands: []*cli.Command{
+					{
+						Name: "probe",
+						Action: func(_ context.Context, cmd *cli.Command) error {
+							called = true
+							client, err := requireAPIClient(cmd, apiClientOptions{})
+							if err != nil {
+								return err
+							}
+							if client == nil {
+								t.Fatal("requireAPIClient returned nil client")
+							}
+							return nil
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := cmd.Run(context.Background(), []string{"cr-api", "--api-token", "test-token", "export", "probe"})
+	if err != nil {
+		t.Fatalf("cmd.Run() error = %v", err)
+	}
+	if !called {
+		t.Fatal("probe action was not called")
 	}
 }
 

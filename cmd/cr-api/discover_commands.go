@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
+	"github.com/klauer/clash-royale-api/go/internal/datapath"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
@@ -386,21 +387,20 @@ func initializeDiscoveryResources(ctx context.Context, playerTag string, verbose
 	if verbose {
 		fprintf(os.Stderr, "Fetching player data for #%s...\n", sanitizedTag)
 	}
-	client := clashroyale.NewClient(apiToken)
+	client, err := requireAPIClientFromToken(apiToken, apiClientOptions{})
+	if err != nil {
+		return nil, err
+	}
 	player, err := client.GetPlayerWithContext(ctx, sanitizedTag)
 	if err != nil {
 		return nil, fmt.Errorf("failed to fetch player: %w", err)
 	}
 
 	// Get data directory
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		homeDir = "."
-	}
-	dataDir := filepath.Join(homeDir, ".cr-api")
+	dataDir := datapath.AppDirOrFallback()
 
 	// Load card stats
-	statsPath := filepath.Join(dataDir, "cards_stats.json")
+	statsPath := datapath.AppPathOrFallback("cards_stats.json")
 	statsRegistry, err := clashroyale.LoadStats(statsPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load card stats: %w", err)
