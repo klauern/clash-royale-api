@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/closeutil"
 	"github.com/klauer/clash-royale-api/go/internal/datapath"
 	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/internal/storageutil"
@@ -62,7 +63,7 @@ func NewStorage(playerTag string) (*Storage, error) {
 
 	// Initialize schema
 	if err := storage.initSchema(); err != nil {
-		storageutil.CloseWithLog(db, "leaderboard database")
+		closeutil.WithLog("leaderboard", db, "database")
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -197,7 +198,7 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load deck hash migration rows: %w", err)
 	}
-	defer storageutil.CloseWithLog(rows, "deck hash migration rows")
+	defer closeutil.WithLog("leaderboard", rows, "deck hash migration rows")
 
 	records := make([]deckHashMigrationRow, 0)
 	for rows.Next() {
@@ -310,7 +311,7 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
-	defer storageutil.CloseWithLog(rows, "deck rows")
+	defer closeutil.WithLog("leaderboard", rows, "deck rows")
 
 	entries, err := scanDeckEntries(rows)
 	if err != nil {
@@ -793,7 +794,7 @@ func (s *Storage) GetArchetypeCounts() ([]ArchetypeCount, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query archetype counts: %w", err)
 	}
-	defer storageutil.CloseWithLog(rows, "archetype count rows")
+	defer closeutil.WithLog("leaderboard", rows, "archetype count rows")
 
 	counts := make([]ArchetypeCount, 0)
 	for rows.Next() {
