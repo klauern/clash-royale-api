@@ -62,7 +62,7 @@ func NewStorage(dbPath string) (*Storage, error) {
 
 	// Initialize schema
 	if err := storage.initSchema(); err != nil {
-		closeutil.CloseWithLog("fuzzstorage", db, "database")
+		closeutil.WithLog("fuzzstorage", db, "database")
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
@@ -167,7 +167,7 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load deck hash migration rows: %w", err)
 	}
-	defer closeutil.CloseWithLog("fuzzstorage", rows, "top deck hash migration rows")
+	defer closeutil.WithLog("fuzzstorage", rows, "top deck hash migration rows")
 
 	records := make([]deckHashMigrationRow, 0)
 
@@ -334,7 +334,7 @@ func (s *Storage) GetTopN(n int) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query top decks: %w", err)
 	}
-	defer closeutil.CloseWithLog("fuzzstorage", rows, "top decks rows")
+	defer closeutil.WithLog("fuzzstorage", rows, "top decks rows")
 
 	return s.scanRows(rows)
 }
@@ -354,7 +354,7 @@ func (s *Storage) GetByArchetype(archetype string, limit int) ([]DeckEntry, erro
 	if err != nil {
 		return nil, fmt.Errorf("failed to query by archetype: %w", err)
 	}
-	defer closeutil.CloseWithLog("fuzzstorage", rows, "deck rows by archetype")
+	defer closeutil.WithLog("fuzzstorage", rows, "deck rows by archetype")
 
 	return s.scanRows(rows)
 }
@@ -449,7 +449,7 @@ func (s *Storage) Query(opts QueryOptions) ([]DeckEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to query decks: %w", err)
 	}
-	defer closeutil.CloseWithLog("fuzzstorage", rows, "stats rows")
+	defer closeutil.WithLog("fuzzstorage", rows, "stats rows")
 
 	return s.scanRows(rows)
 }
@@ -520,7 +520,7 @@ func (s *Storage) ArchetypeHistogram(opts QueryOptions) (map[string]int, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to query archetype histogram: %w", err)
 	}
-	defer closeutil.CloseWithLog("fuzzstorage", rows, "archetype histogram rows")
+	defer closeutil.WithLog("fuzzstorage", rows, "archetype histogram rows")
 
 	histogram := make(map[string]int)
 	for rows.Next() {
