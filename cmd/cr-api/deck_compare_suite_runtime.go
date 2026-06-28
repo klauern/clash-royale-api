@@ -94,7 +94,6 @@ func parseStrategies(strategiesStr string) ([]deck.Strategy, error) {
 // suitePlayerData holds player data loaded for suite operations.
 type suitePlayerData = offlineDeckPlayerData
 
-//nolint:unused // Reserved for phased suite refactor tracked in beads.
 type suiteDeckInfo struct {
 	Strategy  string   `json:"strategy"`
 	Variation int      `json:"variation"`
@@ -103,7 +102,6 @@ type suiteDeckInfo struct {
 	FilePath  string   `json:"file_path"`
 }
 
-//nolint:unused // Reserved for phased suite refactor tracked in beads.
 type suiteEvalResult struct {
 	Name      string                      `json:"name"`
 	Strategy  string                      `json:"strategy"`
