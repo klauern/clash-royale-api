@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/events"
@@ -271,14 +270,7 @@ func runPhase2EvaluateAllDecks(ctx context.Context, builtDecks []suiteDeckInfo, 
 		}
 		if len(deckCards) == 0 {
 			for _, cardName := range deckInf.Cards {
-				deckCards = append(deckCards, deck.CardCandidate{
-					Name: cardName,
-					// Use defaults for evaluation
-					Rarity: inferRarity(cardName),
-					Elixir: config.GetCardElixir(cardName, 0),
-					Role:   inferRole(cardName),
-					Stats:  inferStats(cardName),
-				})
+				deckCards = append(deckCards, newDefaultDeckCandidate(cardName))
 			}
 		}
 		applyBoostedLevelsToDeckCandidates(deckCards, boostedLevelOverrides)
