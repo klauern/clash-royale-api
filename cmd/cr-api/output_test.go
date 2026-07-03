@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"errors"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -42,5 +44,57 @@ func TestWriteCSVRowsWriteError(t *testing.T) {
 	err := writeCSVDocument(failingWriter{}, []string{"A"}, [][]string{{"1"}})
 	if err == nil {
 		t.Fatal("expected error, got nil")
+	}
+}
+
+func TestWriteTextOutputStdout(t *testing.T) {
+	output, err := captureStdout(t, func() error {
+		return writeTextOutput("hello world", "", textOutputOptions{})
+	})
+	if err != nil {
+		t.Fatalf("writeTextOutput returned error: %v", err)
+	}
+	if output != "hello world" {
+		t.Fatalf("stdout output = %q, want %q", output, "hello world")
+	}
+}
+
+func TestWriteTextOutputFileWithSaveMessage(t *testing.T) {
+	outputPath := filepath.Join(t.TempDir(), "out.txt")
+	output, err := captureStdout(t, func() error {
+		return writeTextOutput("saved content", outputPath, textOutputOptions{
+			saveMessage: "Saved to",
+		})
+	})
+	if err != nil {
+		t.Fatalf("writeTextOutput returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	if string(data) != "saved content" {
+		t.Fatalf("file content = %q, want %q", string(data), "saved content")
+	}
+	if output != "Saved to: "+outputPath+"\n" {
+		t.Fatalf("stdout output = %q", output)
+	}
+}
+
+func TestWriteTextOutputVerboseOnlySuppressesSaveMessage(t *testing.T) {
+	outputPath := filepath.Join(t.TempDir(), "out.txt")
+	output, err := captureStdout(t, func() error {
+		return writeTextOutput("saved content", outputPath, textOutputOptions{
+			saveMessage: "Saved to",
+			verboseOnly: true,
+			verbose:     false,
+		})
+	})
+	if err != nil {
+		t.Fatalf("writeTextOutput returned error: %v", err)
+	}
+	if output != "" {
+		t.Fatalf("stdout output = %q, want empty string", output)
 	}
 }
