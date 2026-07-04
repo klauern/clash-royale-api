@@ -219,15 +219,9 @@ func formatDeckComparisonOutput(format string, deckNames []string, results []eva
 }
 
 func writeComparisonOutput(outputFile, content string) error {
-	if outputFile != "" {
-		if err := os.WriteFile(outputFile, []byte(content), 0o644); err != nil {
-			return fmt.Errorf("failed to write output file: %w", err)
-		}
-		printf("Comparison saved to: %s\n", outputFile)
-	} else {
-		fmt.Print(content)
-	}
-	return nil
+	return writeTextOutput(content, outputFile, false, textOutputOptions{
+		saveMessage: "Comparison saved to: %s",
+	})
 }
 
 func loadDecksFromEvaluations(evalFiles []string, autoSelectTop int) ([]string, []evaluation.EvaluationResult, error) {

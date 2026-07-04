@@ -8,6 +8,11 @@ import (
 	"os"
 )
 
+type textOutputOptions struct {
+	saveMessage string
+	verboseOnly bool
+}
+
 func printf(format string, args ...any) {
 	if _, err := fmt.Fprintf(os.Stdout, format, args...); err != nil {
 		log.Printf("stdout write failed: %v", err)
@@ -63,6 +68,23 @@ func writeCSVDocument(w io.Writer, header []string, rows [][]string) error {
 	csvWriter.Flush()
 	if err := csvWriter.Error(); err != nil {
 		return fmt.Errorf("failed to flush CSV writer: %w", err)
+	}
+
+	return nil
+}
+
+func writeTextOutput(output, outputPath string, verbose bool, options textOutputOptions) error {
+	if outputPath == "" {
+		fmt.Print(output)
+		return nil
+	}
+
+	if err := os.WriteFile(outputPath, []byte(output), 0o644); err != nil {
+		return fmt.Errorf("failed to write output file: %w", err)
+	}
+
+	if options.saveMessage != "" && (!options.verboseOnly || verbose) {
+		printf("%s\n", fmt.Sprintf(options.saveMessage, outputPath))
 	}
 
 	return nil

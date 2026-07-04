@@ -575,12 +575,9 @@ func writeEvalBatchOutput(output, outputDir, format, playerTag string, saveAggre
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	if err := os.WriteFile(outputPath, []byte(output), 0o644); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
-	}
-
-	printf("\nEvaluation results saved to: %s\n", outputPath)
-	return nil
+	return writeTextOutput(output, outputPath, false, textOutputOptions{
+		saveMessage: "\nEvaluation results saved to: %s",
+	})
 }
 
 // buildEvalOutputFilename constructs the output filename based on format
