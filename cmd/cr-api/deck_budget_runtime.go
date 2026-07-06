@@ -4,16 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
-	"text/tabwriter"
-	"time"
-
-	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/budget"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/urfave/cli/v3"
+	"os"
+	"strings"
+	"text/tabwriter"
 )
 
 //nolint:gocyclo,funlen // CLI orchestration path retained pending modular decomposition.
@@ -257,18 +253,13 @@ func outputBudgetResultJSON(result *budget.BudgetFinderResult) error {
 // saveBudgetResult saves budget analysis to a JSON file
 func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 	// Create budget directory if it doesn't exist
-	budgetDir := filepath.Join(dataDir, "budget")
-	if err := os.MkdirAll(budgetDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create budget directory: %w", err)
-	}
-
-	// Generate filename with timestamp
-	timestamp := time.Now().Format("20060102_150405")
-	cleanTag := strings.TrimPrefix(result.PlayerTag, "#")
-	filename := filepath.Join(budgetDir, fmt.Sprintf("%s_budget_%s.json", timestamp, cleanTag))
-
-	if err := storage.WriteJSON(filename, result); err != nil {
-		return fmt.Errorf("failed to write budget file: %w", err)
+	filename, err := saveTaggedJSONArtifact(dataDir, result.PlayerTag, result, taggedJSONArtifactOptions{
+		subdir:      "budget",
+		fileStem:    "budget",
+		timestamped: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to save budget result: %w", err)
 	}
 
 	printf("Budget analysis saved to: %s\n", filename)

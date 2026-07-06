@@ -645,7 +645,6 @@ func displayDeckRecommendations(r *analysis.DeckRecommendationResult) {
 }
 
 func savePlaystyleData(dataDir string, p *analysis.PlaystyleAnalysis, r *analysis.DeckRecommendationResult) error {
-	analysisDir := filepath.Join(dataDir, "analysis")
 	saveData := struct {
 		PlaystyleAnalysis   *analysis.PlaystyleAnalysis        `json:"playstyle_analysis"`
 		DeckRecommendations *analysis.DeckRecommendationResult `json:"deck_recommendations,omitempty"`
@@ -657,8 +656,11 @@ func savePlaystyleData(dataDir string, p *analysis.PlaystyleAnalysis, r *analysi
 		saveData.DeckRecommendations = r
 	}
 
-	filename := filepath.Join(analysisDir, fmt.Sprintf("playstyle_%s.json", p.PlayerTag))
-	if err := storage.WriteJSON(filename, saveData); err != nil {
+	_, err := saveTaggedJSONArtifact(dataDir, p.PlayerTag, saveData, taggedJSONArtifactOptions{
+		subdir:   storage.AnalysisDir,
+		fileStem: "playstyle",
+	})
+	if err != nil {
 		return fmt.Errorf("failed to write playstyle file: %w", err)
 	}
 
