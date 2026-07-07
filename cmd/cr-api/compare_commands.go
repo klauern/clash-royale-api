@@ -165,9 +165,9 @@ func loadDecksForComparison(evalFiles, deckStrings, names []string, autoSelectTo
 	deckNames := make([]string, len(deckStrings))
 
 	for i, deckStr := range deckStrings {
-		cardNames := parseDeckString(deckStr)
-		if len(cardNames) != 8 {
-			return nil, nil, fmt.Errorf("deck #%d must contain exactly 8 cards, got %d", i+1, len(cardNames))
+		cardNames, err := parseDeckStringWithLabel(deckStr, fmt.Sprintf("deck #%d", i+1))
+		if err != nil {
+			return nil, nil, err
 		}
 		deckCards[i] = convertToCardCandidates(cardNames)
 

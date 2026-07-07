@@ -47,26 +47,6 @@ func validateEvaluateFlags(deckString, fromAnalysis, playerTag, apiToken string,
 	return nil
 }
 
-// loadDeckCardsFromInput loads deck cards from either deck string or analysis file
-func loadDeckCardsFromInput(deckString, fromAnalysis string) ([]string, error) {
-	var deckCardNames []string
-	if deckString != "" {
-		// Parse deck string (cards separated by dashes)
-		deckCardNames = parseDeckString(deckString)
-		if len(deckCardNames) != 8 {
-			return nil, fmt.Errorf("deck must contain exactly 8 cards, got %d", len(deckCardNames))
-		}
-	} else {
-		// Load deck from analysis file
-		loadedCards, err := loadDeckFromAnalysis(fromAnalysis)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load deck from analysis: %w", err)
-		}
-		deckCardNames = loadedCards
-	}
-	return deckCardNames, nil
-}
-
 // fetchPlayerContextIfNeeded fetches player context from API when available and applies arena overrides.
 func fetchPlayerContextIfNeeded(ctx context.Context, playerTag, apiToken string, arena int, verbose bool) *evaluation.PlayerContext {
 	var playerContext *evaluation.PlayerContext
