@@ -6,6 +6,7 @@ import (
 	"math"
 	"sort"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
@@ -477,38 +478,5 @@ func filterByRarity(original deck.CardAnalysis, rarities []string) deck.CardAnal
 // calculateCardsNeededForLevel returns how many cards are needed to upgrade from currentLevel
 // This is a local implementation to avoid circular import with pkg/analysis
 func calculateCardsNeededForLevel(currentLevel int, rarity string) int {
-	// Upgrade costs by rarity and level (based on Clash Royale card progression)
-	upgradeCosts := map[string]map[int]int{
-		"Common": {
-			1: 2, 2: 4, 3: 10, 4: 20, 5: 50, 6: 100, 7: 200, 8: 400,
-			9: 800, 10: 1000, 11: 2000, 12: 3000, 13: 2500, 14: 3500, 15: 5500,
-		},
-		"Rare": {
-			1: 2, 2: 2, 3: 2, 4: 4, 5: 10, 6: 20, 7: 50, 8: 100,
-			9: 200, 10: 300, 11: 400, 12: 400, 13: 550, 14: 750, 15: 1000,
-		},
-		"Epic": {
-			1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 4, 8: 10,
-			9: 20, 10: 50, 11: 30, 12: 40, 13: 70, 14: 100, 15: 140,
-		},
-		"Legendary": {
-			1: 2, 2: 2, 3: 2, 4: 2, 5: 2, 6: 2, 7: 2, 8: 2,
-			9: 2, 10: 4, 11: 10, 12: 20, 13: 10, 14: 12, 15: 15,
-		},
-		"Champion": {
-			1: 2, 11: 2, 12: 4, 13: 8, 14: 10, 15: 12,
-		},
-	}
-
-	costs, exists := upgradeCosts[rarity]
-	if !exists {
-		return 0
-	}
-
-	cardsNeeded, exists := costs[currentLevel]
-	if !exists {
-		return 2 // Default fallback
-	}
-
-	return cardsNeeded
+	return config.GetUpgradeCost(currentLevel, rarity)
 }

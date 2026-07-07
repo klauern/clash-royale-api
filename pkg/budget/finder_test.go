@@ -3,8 +3,35 @@ package budget
 import (
 	"testing"
 
+	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
+
+func TestCalculateCardsNeededForLevelUsesSharedConfig(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name         string
+		currentLevel int
+		rarity       string
+	}{
+		{name: "common", currentLevel: 10, rarity: "Common"},
+		{name: "epic", currentLevel: 13, rarity: "Epic"},
+		{name: "champion", currentLevel: 12, rarity: "Champion"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := calculateCardsNeededForLevel(tt.currentLevel, tt.rarity)
+			want := config.GetUpgradeCost(tt.currentLevel, tt.rarity)
+			if got != want {
+				t.Fatalf("calculateCardsNeededForLevel(%d, %q) = %d, want %d", tt.currentLevel, tt.rarity, got, want)
+			}
+		})
+	}
+}
 
 // createTestCardAnalysis creates a test card analysis with given card levels
 func createTestCardAnalysis() deck.CardAnalysis {

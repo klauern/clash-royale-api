@@ -1,6 +1,10 @@
 package analysis
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/klauer/clash-royale-api/go/internal/config"
+)
 
 func TestInferRoleUsesSharedConfigRoleMapping(t *testing.T) {
 	analyzer := &UpgradeImpactAnalyzer{}
@@ -53,6 +57,33 @@ func TestGetRoleImportanceByInferredRole(t *testing.T) {
 			got := analyzer.getRoleImportance(tt.cardName)
 			if got != tt.importance {
 				t.Errorf("getRoleImportance(%q) = %v, want %v", tt.cardName, got, tt.importance)
+			}
+		})
+	}
+}
+
+func TestGetGoldForSingleUpgradeUsesSharedConfig(t *testing.T) {
+	t.Parallel()
+
+	analyzer := &UpgradeImpactAnalyzer{}
+	tests := []struct {
+		name         string
+		currentLevel int
+		rarity       string
+	}{
+		{name: "common", currentLevel: 10, rarity: "Common"},
+		{name: "rare", currentLevel: 12, rarity: "Rare"},
+		{name: "legendary", currentLevel: 9, rarity: "Legendary"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := analyzer.getGoldForSingleUpgrade(tt.currentLevel, tt.rarity)
+			want := config.GetGoldCost(tt.currentLevel, tt.rarity)
+			if got != want {
+				t.Fatalf("getGoldForSingleUpgrade(%d, %q) = %d, want %d", tt.currentLevel, tt.rarity, got, want)
 			}
 		})
 	}
