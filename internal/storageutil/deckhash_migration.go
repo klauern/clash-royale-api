@@ -43,6 +43,67 @@ type DeckHashMigrationRow struct {
 	Valid        bool
 }
 
+// DeckHashMigrationConfig defines package-specific behavior for shared migration execution.
+type DeckHashMigrationConfig struct {
+	MigrationName    string
+	TableName        string
+	LoadRows         func() ([]DeckHashMigrationRow, map[string]DeckHashMigrationRow, error)
+	BeginTxError     string
+	RollbackError    string
+	CommitError      string
+	AfterCommit      func() error
+	AfterCommitError string
+}
+
+// MaybeRunDeckHashMigration applies the shared deck-hash migration once per database.
+func MaybeRunDeckHashMigration(db *sql.DB, config DeckHashMigrationConfig) error {
+	applied, err := IsMigrationApplied(db, config.MigrationName)
+	if err != nil {
+		return err
+	}
+	if applied {
+		return nil
+	}
+
+	if err := runDeckHashMigration(db, config); err != nil {
+		return err
+	}
+	if err := RecordMigration(db, config.MigrationName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func runDeckHashMigration(db *sql.DB, config DeckHashMigrationConfig) error {
+	records, winners, err := config.LoadRows()
+	if err != nil {
+		return err
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("%s: %w", config.BeginTxError, err)
+	}
+	if err := ApplyDeckHashMigration(tx, config.TableName, records, winners); err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("%s after error %v: %w", config.RollbackError, err, rollbackErr)
+		}
+		return err
+	}
+
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("%s: %w", config.CommitError, err)
+	}
+	if config.AfterCommit != nil {
+		if err := config.AfterCommit(); err != nil {
+			return fmt.Errorf("%s: %w", config.AfterCommitError, err)
+		}
+	}
+
+	return nil
+}
+
 // ParseDeckHashMigrationRow scans migration fields and computes the canonical deck hash.
 func ParseDeckHashMigrationRow(rows *sql.Rows) (DeckHashMigrationRow, error) {
 	var row DeckHashMigrationRow

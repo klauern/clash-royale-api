@@ -117,50 +117,17 @@ func (s *Storage) initSchema() error {
 }
 
 func (s *Storage) maybeMigrateDeckHashes() error {
-	applied, err := storageutil.IsMigrationApplied(s.db, deckHashMigrationName)
-	if err != nil {
-		return err
-	}
-	if applied {
-		return nil
-	}
-
-	if err := s.migrateDeckHashes(); err != nil {
-		return err
-	}
-
-	if err := storageutil.RecordMigration(s.db, deckHashMigrationName); err != nil {
-		return err
-	}
-
-	return nil
+	return storageutil.MaybeRunDeckHashMigration(s.db, storageutil.DeckHashMigrationConfig{
+		MigrationName: deckHashMigrationName,
+		TableName:     "top_decks",
+		LoadRows:      s.loadDeckHashMigrationRows,
+		BeginTxError:  "failed to start top deck hash migration transaction",
+		RollbackError: "failed to rollback top_decks hash migration",
+		CommitError:   "failed to commit top deck hash migration",
+	})
 }
 
 type deckHashMigrationRow = storageutil.DeckHashMigrationRow
-
-func (s *Storage) migrateDeckHashes() error {
-	records, winners, err := s.loadDeckHashMigrationRows()
-	if err != nil {
-		return err
-	}
-
-	tx, err := s.db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to start top deck hash migration transaction: %w", err)
-	}
-	if err := s.applyDeckHashMigration(tx, records, winners); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("failed to rollback top_decks hash migration after error %v: %w", err, rollbackErr)
-		}
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit top deck hash migration: %w", err)
-	}
-
-	return nil
-}
 
 func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[string]deckHashMigrationRow, error) {
 	rows, err := s.db.Query("SELECT id, deck_hash, cards, overall_score FROM top_decks")
@@ -183,9 +150,6 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 	}
 
 	return records, storageutil.SelectDeckHashMigrationWinners(records), nil
-}
-func (s *Storage) applyDeckHashMigration(tx *sql.Tx, records []deckHashMigrationRow, winners map[string]deckHashMigrationRow) error {
-	return storageutil.ApplyDeckHashMigration(tx, "top_decks", records, winners)
 }
 
 // DeckEntry represents a stored deck from fuzzing

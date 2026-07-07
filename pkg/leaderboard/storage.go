@@ -145,53 +145,22 @@ func (s *Storage) initSchema() error {
 }
 
 func (s *Storage) maybeMigrateDeckHashes() error {
-	applied, err := storageutil.IsMigrationApplied(s.db, deckHashMigrationName)
-	if err != nil {
-		return err
-	}
-	if applied {
-		return nil
-	}
-
-	if err := s.migrateDeckHashes(); err != nil {
-		return err
-	}
-	if err := storageutil.RecordMigration(s.db, deckHashMigrationName); err != nil {
-		return err
-	}
-
-	return nil
+	return storageutil.MaybeRunDeckHashMigration(s.db, storageutil.DeckHashMigrationConfig{
+		MigrationName: deckHashMigrationName,
+		TableName:     "decks",
+		LoadRows:      s.loadDeckHashMigrationRows,
+		BeginTxError:  "failed to start deck hash migration transaction",
+		RollbackError: "failed to rollback deck hash migration",
+		CommitError:   "failed to commit deck hash migration",
+		AfterCommit: func() error {
+			_, err := s.RecalculateStats()
+			return err
+		},
+		AfterCommitError: "failed to recalculate leaderboard stats after deck hash migration",
+	})
 }
 
 type deckHashMigrationRow = storageutil.DeckHashMigrationRow
-
-func (s *Storage) migrateDeckHashes() error {
-	records, winners, err := s.loadDeckHashMigrationRows()
-	if err != nil {
-		return err
-	}
-
-	tx, err := s.db.Begin()
-	if err != nil {
-		return fmt.Errorf("failed to start deck hash migration transaction: %w", err)
-	}
-	if err := s.applyDeckHashMigration(tx, records, winners); err != nil {
-		if rollbackErr := tx.Rollback(); rollbackErr != nil {
-			return fmt.Errorf("failed to rollback deck hash migration after error %v: %w", err, rollbackErr)
-		}
-		return err
-	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit deck hash migration: %w", err)
-	}
-
-	if _, err := s.RecalculateStats(); err != nil {
-		return fmt.Errorf("failed to recalculate leaderboard stats after deck hash migration: %w", err)
-	}
-
-	return nil
-}
 
 func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[string]deckHashMigrationRow, error) {
 	rows, err := s.db.Query("SELECT id, deck_hash, cards, overall_score FROM decks")
@@ -225,10 +194,6 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 	}
 
 	return records, storageutil.SelectDeckHashMigrationWinners(records), nil
-}
-
-func (s *Storage) applyDeckHashMigration(tx *sql.Tx, records []deckHashMigrationRow, winners map[string]deckHashMigrationRow) error {
-	return storageutil.ApplyDeckHashMigration(tx, "decks", records, winners)
 }
 
 // InsertDeck inserts or updates a deck entry in the leaderboard
