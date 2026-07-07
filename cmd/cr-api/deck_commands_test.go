@@ -101,3 +101,28 @@ func TestConvertToCardCandidates_UsesRarityLookup(t *testing.T) {
 		}
 	}
 }
+
+func TestParseDeckStringWithLabel_ExactCardCount(t *testing.T) {
+	cardNames, err := parseDeckStringWithLabel(
+		"Ice Golem-The Log-Golem-Musketeer-Fireball-Cannon-Skeletons-Ice Spirit",
+		"deck",
+	)
+	if err != nil {
+		t.Fatalf("parseDeckStringWithLabel returned error: %v", err)
+	}
+	if len(cardNames) != deckCardCount {
+		t.Fatalf("len(cardNames) = %d, want %d", len(cardNames), deckCardCount)
+	}
+}
+
+func TestParseDeckStringWithLabel_InvalidCardCount(t *testing.T) {
+	_, err := parseDeckStringWithLabel("Ice Golem-The Log-Golem", "deck #2")
+	if err == nil {
+		t.Fatal("expected parseDeckStringWithLabel to return an error")
+	}
+
+	want := "deck #2 must contain exactly 8 cards, got 3"
+	if err.Error() != want {
+		t.Fatalf("error = %q, want %q", err.Error(), want)
+	}
+}

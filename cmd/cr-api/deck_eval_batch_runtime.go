@@ -693,7 +693,3 @@ func deckEvaluateBatchCommand(ctx context.Context, cmd *cli.Command) error {
 
 	return writeEvalBatchOutput(output, flags.OutputDir, flags.Format, setup.PlayerTag, flags.SaveAggregated)
 }
-
-// runPhase0CardConstraints runs the optional card constraint suggestion phase
-//
-//nolint:unused // Reserved for phased suite refactor tracked in beads.

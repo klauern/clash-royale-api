@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
 	"github.com/klauer/clash-royale-api/go/pkg/events"
@@ -85,7 +84,7 @@ func runPhase0CardConstraints(tag, dataDir string, suggestConstraints bool, cons
 
 // runPhase1BuildDeckVariations builds deck variations for the analysis suite
 //
-//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization.
+//nolint:funlen,gocognit,gocyclo // Large orchestration retained pending modularization.
 func runPhase1BuildDeckVariations(ctx context.Context, cmd *cli.Command, tag, strategiesStr, outputDir string, variations, topN int, includeCards, excludeCards []string, verbose bool, apiToken, dataDir string, fromAnalysis bool, minElixir, maxElixir float64, timestamp string, boostedLevelOverrides map[string]int) ([]suiteDeckInfo, *suitePlayerData, int, int, string, error) {
 	decksDir := filepath.Join(outputDir, "decks")
 	if err := os.MkdirAll(decksDir, 0o755); err != nil {
@@ -209,7 +208,7 @@ func toSuiteDeckSummaries(builtDecks []suiteDeckInfo) []deck.SuiteDeckSummary {
 
 // runPhase2EvaluateAllDecks evaluates all built decks for the analysis suite
 //
-//nolint:unused,funlen,gocognit,gocyclo // Large orchestration retained pending modularization.
+//nolint:funlen,gocognit,gocyclo // Large orchestration retained pending modularization.
 func runPhase2EvaluateAllDecks(ctx context.Context, builtDecks []suiteDeckInfo, playerData *suitePlayerData, outputDir, tag, apiToken string, fromAnalysis, verbose bool, timestamp string, boostedLevelOverrides map[string]int) ([]suiteEvalResult, string, error) {
 	evaluationsDir := filepath.Join(outputDir, "evaluations")
 	if err := os.MkdirAll(evaluationsDir, 0o755); err != nil {
@@ -271,14 +270,7 @@ func runPhase2EvaluateAllDecks(ctx context.Context, builtDecks []suiteDeckInfo, 
 		}
 		if len(deckCards) == 0 {
 			for _, cardName := range deckInf.Cards {
-				deckCards = append(deckCards, deck.CardCandidate{
-					Name: cardName,
-					// Use defaults for evaluation
-					Rarity: inferRarity(cardName),
-					Elixir: config.GetCardElixir(cardName, 0),
-					Role:   inferRole(cardName),
-					Stats:  inferStats(cardName),
-				})
+				deckCards = append(deckCards, newDefaultDeckCandidate(cardName))
 			}
 		}
 		applyBoostedLevelsToDeckCandidates(deckCards, boostedLevelOverrides)
@@ -397,7 +389,7 @@ func calculateCompareCount(resultCount, topN int) (int, error) {
 
 // runPhase3CompareTopPerformers compares top decks and generates final report
 //
-//nolint:unused,funlen // Reserved for phased suite refactor tracked in beads.
+//nolint:funlen // Reserved for phased suite refactor tracked in beads.
 func runPhase3CompareTopPerformers(results []suiteEvalResult, topN int, outputDir, timestamp string, playerData *suitePlayerData, successCount int, suiteSummaryPath, evalFilePath string) (string, error) {
 	// Select top N decks
 	compareCount, err := calculateCompareCount(len(results), topN)

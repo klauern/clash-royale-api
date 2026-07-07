@@ -285,21 +285,7 @@ func applyExcludeFilter(cardAnalysis *deck.CardAnalysis, excludeCards []string) 
 		return
 	}
 
-	excludeMap := make(map[string]bool)
-	for _, card := range excludeCards {
-		trimmed := strings.TrimSpace(card)
-		if trimmed != "" {
-			excludeMap[strings.ToLower(trimmed)] = true
-		}
-	}
-
-	filteredLevels := make(map[string]deck.CardLevelData)
-	for cardName, cardInfo := range cardAnalysis.CardLevels {
-		if !excludeMap[strings.ToLower(cardName)] {
-			filteredLevels[cardName] = cardInfo
-		}
-	}
-	cardAnalysis.CardLevels = filteredLevels
+	cardAnalysis.CardLevels = filterExcludedCardLevels(cardAnalysis.CardLevels, buildCardExclusionMap(excludeCards))
 }
 
 // displayIdealDeck shows the deck with recommended upgrades applied
@@ -610,23 +596,25 @@ func buildCardExclusionMap(excludeCards []string) map[string]bool {
 	return excludeMap
 }
 
+func filterExcludedCardLevels(cardLevels map[string]deck.CardLevelData, excludeMap map[string]bool) map[string]deck.CardLevelData {
+	filteredLevels := make(map[string]deck.CardLevelData)
+	for cardName, cardInfo := range cardLevels {
+		if !excludeMap[strings.ToLower(cardName)] {
+			filteredLevels[cardName] = cardInfo
+		}
+	}
+
+	return filteredLevels
+}
+
 // applyCardExclusions filters out excluded cards from card analysis
 func applyCardExclusions(cardAnalysis deck.CardAnalysis, excludeCards []string) deck.CardAnalysis {
 	if len(excludeCards) == 0 {
 		return cardAnalysis
 	}
 
-	excludeMap := buildCardExclusionMap(excludeCards)
-	filteredLevels := make(map[string]deck.CardLevelData)
-
-	for cardName, cardInfo := range cardAnalysis.CardLevels {
-		if !excludeMap[strings.ToLower(cardName)] {
-			filteredLevels[cardName] = cardInfo
-		}
-	}
-
 	filteredAnalysis := cardAnalysis
-	filteredAnalysis.CardLevels = filteredLevels
+	filteredAnalysis.CardLevels = filterExcludedCardLevels(cardAnalysis.CardLevels, buildCardExclusionMap(excludeCards))
 	return filteredAnalysis
 }
 

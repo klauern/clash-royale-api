@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 	"text/tabwriter"
 
@@ -58,17 +57,9 @@ func deckPossibleCountCommand(ctx context.Context, cmd *cli.Command) error {
 	}
 
 	// Output to file or stdout
-	if outputFile != "" {
-		err = os.WriteFile(outputFile, []byte(output), 0o644)
-		if err != nil {
-			return fmt.Errorf("failed to write output file: %w", err)
-		}
-		printf("Results saved to: %s\n", outputFile)
-	} else {
-		fmt.Print(output)
-	}
-
-	return nil
+	return writeTextOutput(output, outputFile, textOutputOptions{
+		saveMessage: "Results saved to",
+	})
 }
 
 //nolint:funlen // Structured output writer retained as a single routine until formatter extraction.

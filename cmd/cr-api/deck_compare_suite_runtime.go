@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -94,7 +93,6 @@ func parseStrategies(strategiesStr string) ([]deck.Strategy, error) {
 // suitePlayerData holds player data loaded for suite operations.
 type suitePlayerData = offlineDeckPlayerData
 
-//nolint:unused // Reserved for phased suite refactor tracked in beads.
 type suiteDeckInfo struct {
 	Strategy  string   `json:"strategy"`
 	Variation int      `json:"variation"`
@@ -103,7 +101,6 @@ type suiteDeckInfo struct {
 	FilePath  string   `json:"file_path"`
 }
 
-//nolint:unused // Reserved for phased suite refactor tracked in beads.
 type suiteEvalResult struct {
 	Name      string                      `json:"name"`
 	Strategy  string                      `json:"strategy"`
@@ -191,16 +188,9 @@ func formatAndOutputComparison(result *comparison.AlgorithmComparisonResult, for
 		return err
 	}
 
-	if outputFile != "" {
-		if err := os.WriteFile(outputFile, []byte(output), 0o644); err != nil {
-			return fmt.Errorf("failed to write output file: %w", err)
-		}
-		printf("Comparison report saved to: %s\n", outputFile)
-	} else {
-		fmt.Print(output)
-	}
-
-	return nil
+	return writeTextOutput(output, outputFile, textOutputOptions{
+		saveMessage: "Comparison report saved to",
+	})
 }
 
 // formatComparisonOutput formats the comparison result based on the specified format
