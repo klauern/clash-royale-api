@@ -23,6 +23,8 @@ var (
 	buildTime = "unknown"
 )
 
+const playstyleArtifactName = "playstyle"
+
 func main() {
 	// Get default paths
 	defaultDataDir := datapath.AppDirOrFallback()
@@ -658,7 +660,7 @@ func savePlaystyleData(dataDir string, p *analysis.PlaystyleAnalysis, r *analysi
 
 	_, err := saveTaggedJSONArtifact(dataDir, p.PlayerTag, saveData, taggedJSONArtifactOptions{
 		subdir:   storage.AnalysisDir,
-		fileStem: "playstyle",
+		fileStem: playstyleArtifactName,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to write playstyle file: %w", err)

@@ -4,13 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/klauer/clash-royale-api/go/pkg/budget"
-	"github.com/klauer/clash-royale-api/go/pkg/deck"
-	"github.com/urfave/cli/v3"
 	"os"
 	"strings"
 	"text/tabwriter"
+
+	"github.com/klauer/clash-royale-api/go/pkg/budget"
+	"github.com/klauer/clash-royale-api/go/pkg/deck"
+	"github.com/urfave/cli/v3"
 )
+
+const budgetArtifactName = "budget"
 
 //nolint:gocyclo,funlen // CLI orchestration path retained pending modular decomposition.
 func deckBudgetCommand(ctx context.Context, cmd *cli.Command) error {
@@ -254,8 +257,8 @@ func outputBudgetResultJSON(result *budget.BudgetFinderResult) error {
 func saveBudgetResult(dataDir string, result *budget.BudgetFinderResult) error {
 	// Create budget directory if it doesn't exist
 	filename, err := saveTaggedJSONArtifact(dataDir, result.PlayerTag, result, taggedJSONArtifactOptions{
-		subdir:      "budget",
-		fileStem:    "budget",
+		subdir:      budgetArtifactName,
+		fileStem:    budgetArtifactName,
 		timestamped: true,
 	})
 	if err != nil {
