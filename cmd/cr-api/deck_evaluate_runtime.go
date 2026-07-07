@@ -47,26 +47,6 @@ func validateEvaluateFlags(deckString, fromAnalysis, playerTag, apiToken string,
 	return nil
 }
 
-// loadDeckCardsFromInput loads deck cards from either deck string or analysis file
-func loadDeckCardsFromInput(deckString, fromAnalysis string) ([]string, error) {
-	var deckCardNames []string
-	if deckString != "" {
-		// Parse deck string (cards separated by dashes)
-		deckCardNames = parseDeckString(deckString)
-		if len(deckCardNames) != 8 {
-			return nil, fmt.Errorf("deck must contain exactly 8 cards, got %d", len(deckCardNames))
-		}
-	} else {
-		// Load deck from analysis file
-		loadedCards, err := loadDeckFromAnalysis(fromAnalysis)
-		if err != nil {
-			return nil, fmt.Errorf("failed to load deck from analysis: %w", err)
-		}
-		deckCardNames = loadedCards
-	}
-	return deckCardNames, nil
-}
-
 // fetchPlayerContextIfNeeded fetches player context from API when available and applies arena overrides.
 func fetchPlayerContextIfNeeded(ctx context.Context, playerTag, apiToken string, arena int, verbose bool) *evaluation.PlayerContext {
 	var playerContext *evaluation.PlayerContext
@@ -211,17 +191,11 @@ func formatEvaluationResult(result *evaluation.EvaluationResult, format string) 
 
 // writeEvaluationOutput writes formatted output to file or stdout
 func writeEvaluationOutput(formattedOutput, outputFile string, verbose bool) error {
-	if outputFile != "" {
-		if err := os.WriteFile(outputFile, []byte(formattedOutput), 0o644); err != nil {
-			return fmt.Errorf("failed to write output file: %w", err)
-		}
-		if verbose {
-			printf("Evaluation saved to: %s\n", outputFile)
-		}
-	} else {
-		fmt.Print(formattedOutput)
-	}
-	return nil
+	return writeTextOutput(formattedOutput, outputFile, textOutputOptions{
+		saveMessage: "Evaluation saved to",
+		verboseOnly: true,
+		verbose:     verbose,
+	})
 }
 
 // performUpgradeAnalysisIfRequested performs optional upgrade impact analysis

@@ -68,10 +68,34 @@ func writeCSVDocument(w io.Writer, header []string, rows [][]string) error {
 	return nil
 }
 
+type textOutputOptions struct {
+	saveMessage string
+	verboseOnly bool
+	verbose     bool
+}
+
+func writeTextOutput(content, outputFile string, opts textOutputOptions) error {
+	if outputFile == "" {
+		fmt.Print(content)
+		return nil
+	}
+
+	if err := os.WriteFile(outputFile, []byte(content), 0o644); err != nil {
+		return fmt.Errorf("failed to write output file: %w", err)
+	}
+
+	if opts.saveMessage != "" && (!opts.verboseOnly || opts.verbose) {
+		printf("%s: %s\n", opts.saveMessage, outputFile)
+	}
+
+	return nil
+}
+
 // formatGoldCompact renders large gold values in "k" notation for table output.
 func formatGoldCompact(gold int) string {
 	if gold >= 1000 {
 		return fmt.Sprintf("%dk", gold/1000)
 	}
+
 	return fmt.Sprintf("%d", gold)
 }

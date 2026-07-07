@@ -26,10 +26,9 @@ func deckAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 	_ = ctx
 	deckString := cmd.String("deck")
 	format := strings.ToLower(strings.TrimSpace(cmd.String("format")))
-	cardNames := parseDeckString(deckString)
-
-	if len(cardNames) != 8 {
-		return fmt.Errorf("exactly 8 cards are required for deck analysis")
+	cardNames, err := parseDeckStringWithLabel(deckString, optimizeDefaultTag)
+	if err != nil {
+		return err
 	}
 
 	deckCards := convertToCardCandidates(cardNames)
@@ -55,17 +54,16 @@ func deckAnalyzeCommand(ctx context.Context, cmd *cli.Command) error {
 func deckOptimizeCommand(ctx context.Context, cmd *cli.Command) error {
 	deckString := cmd.String("deck")
 	tag := cmd.String("tag")
-	cardNames := parseDeckString(deckString)
+	cardNames, err := parseDeckStringWithLabel(deckString, optimizeDefaultTag)
+	if err != nil {
+		return err
+	}
 	apiToken := cmd.String("api-token")
 	dataDir := cmd.String("data-dir")
 	verbose := cmd.Bool("verbose")
 	suggestions := cmd.Int("suggestions")
 	focus := strings.ToLower(strings.TrimSpace(cmd.String("focus")))
 	exportCSV := cmd.Bool("export-csv")
-
-	if len(cardNames) != 8 {
-		return fmt.Errorf("exactly 8 cards are required for optimization")
-	}
 
 	if suggestions <= 0 {
 		return fmt.Errorf("--suggestions must be >= 1")

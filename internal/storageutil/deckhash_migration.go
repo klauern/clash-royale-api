@@ -33,6 +33,21 @@ func RecordMigration(db *sql.DB, name string) error {
 	return nil
 }
 
+// EnsureMigration runs the migration once and records it on success.
+func EnsureMigration(db *sql.DB, name string, run func() error) error {
+	applied, err := IsMigrationApplied(db, name)
+	if err != nil {
+		return err
+	}
+	if applied {
+		return nil
+	}
+	if err := run(); err != nil {
+		return err
+	}
+	return RecordMigration(db, name)
+}
+
 // DeckHashMigrationRow is the shared row shape used during deck hash canonicalization.
 type DeckHashMigrationRow struct {
 	ID           int
@@ -149,6 +164,27 @@ func isDeckHashMigrationJSONError(err error) bool {
 	return errors.As(err, &unmarshalTypeErr)
 }
 
+// LoadDeckHashMigrationRows parses migration rows and selects canonical winners.
+func LoadDeckHashMigrationRows(rows *sql.Rows, rowLabel string, onInvalidJSON func(DeckHashMigrationRow, error)) ([]DeckHashMigrationRow, map[string]DeckHashMigrationRow, error) {
+	records := make([]DeckHashMigrationRow, 0)
+	for rows.Next() {
+		row, err := ParseNamedDeckHashMigrationRow(rows, rowLabel)
+		if err != nil {
+			if onInvalidJSON != nil && isDeckHashMigrationJSONError(err) {
+				onInvalidJSON(row, err)
+				records = append(records, row)
+				continue
+			}
+			return nil, nil, err
+		}
+		records = append(records, row)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, nil, fmt.Errorf("failed to iterate deck hash migration rows: %w", err)
+	}
+	return records, SelectDeckHashMigrationWinners(records), nil
+}
+
 // PreferDeckHashMigrationWinner determines which row should be kept for a canonical hash.
 func PreferDeckHashMigrationWinner(candidate, current DeckHashMigrationRow) bool {
 	if candidate.OverallScore != current.OverallScore {
@@ -195,6 +231,29 @@ func ApplyDeckHashMigration(tx *sql.Tx, tableName string, records []DeckHashMigr
 		query := fmt.Sprintf("UPDATE %s SET deck_hash = ? WHERE id = ?", tableName)
 		if _, err := tx.Exec(query, winner.Canonical, winner.ID); err != nil {
 			return fmt.Errorf("failed to update %s hash for row %d: %w", tableName, winner.ID, err)
+		}
+	}
+	return nil
+}
+
+// ApplyDeckHashMigrationInTx runs canonical deck-hash updates in one transaction.
+func ApplyDeckHashMigrationInTx(db *sql.DB, migrationLabel, tableName string, records []DeckHashMigrationRow, winners map[string]DeckHashMigrationRow, afterCommit func() error) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("failed to start %s deck hash migration transaction: %w", migrationLabel, err)
+	}
+	if err := ApplyDeckHashMigration(tx, tableName, records, winners); err != nil {
+		if rollbackErr := tx.Rollback(); rollbackErr != nil {
+			return fmt.Errorf("failed rollback %s deck hash migration after error %v: %w", migrationLabel, err, rollbackErr)
+		}
+		return err
+	}
+	if err := tx.Commit(); err != nil {
+		return fmt.Errorf("failed commit %s deck hash migration: %w", migrationLabel, err)
+	}
+	if afterCommit != nil {
+		if err := afterCommit(); err != nil {
+			return err
 		}
 	}
 	return nil
