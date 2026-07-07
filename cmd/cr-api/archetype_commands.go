@@ -14,7 +14,6 @@ import (
 	"golang.org/x/text/language"
 
 	"github.com/klauer/clash-royale-api/go/internal/exporter/csv"
-	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/archetypes"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
@@ -300,18 +299,13 @@ func formatNumber(n int) string {
 
 // saveArchetypeAnalysis saves analysis to JSON file
 func saveArchetypeAnalysis(result *archetypes.ArchetypeAnalysisResult, dataDir string) error {
-	dir := filepath.Join(dataDir, "archetypes")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("failed to create archetypes directory: %w", err)
-	}
-
-	timestamp := time.Now().Format("20060102_150405")
-	cleanTag := strings.TrimPrefix(result.PlayerTag, "#")
-	filename := fmt.Sprintf("%s_archetype_analysis_%s.json", timestamp, cleanTag)
-	path := filepath.Join(dir, filename)
-
-	if err := storage.WriteJSON(path, result); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+	_, err := saveTaggedJSONArtifact(dataDir, result.PlayerTag, result, taggedJSONArtifactOptions{
+		subdir:      "archetypes",
+		fileStem:    "archetype_analysis",
+		timestamped: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to save archetype analysis: %w", err)
 	}
 
 	return nil
@@ -658,18 +652,13 @@ func formatStrategies(strategies []analysis.StrategyRecommendation) string {
 
 // saveDynamicArchetypeAnalysis saves analysis to JSON file
 func saveDynamicArchetypeAnalysis(result *analysis.DynamicArchetypeAnalysis, dataDir string) error {
-	dir := filepath.Join(dataDir, "archetype_analysis")
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
-
-	timestamp := time.Now().Format("20060102_150405")
-	cleanTag := strings.TrimPrefix(result.PlayerTag, "#")
-	filename := fmt.Sprintf("%s_dynamic_archetype_analysis_%s.json", timestamp, cleanTag)
-	path := filepath.Join(dir, filename)
-
-	if err := storage.WriteJSON(path, result); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+	_, err := saveTaggedJSONArtifact(dataDir, result.PlayerTag, result, taggedJSONArtifactOptions{
+		subdir:      "archetype_analysis",
+		fileStem:    "dynamic_archetype_analysis",
+		timestamped: true,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to save dynamic archetype analysis: %w", err)
 	}
 
 	return nil
