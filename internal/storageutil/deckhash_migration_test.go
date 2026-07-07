@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -49,7 +50,6 @@ func TestParseNamedDeckHashMigrationRow(t *testing.T) {
 		if !strings.Contains(err.Error(), "invalid cards JSON for deck row 1") {
 			t.Fatalf("unexpected error text: %v", err)
 		}
-
 		var typeErr *json.UnmarshalTypeError
 		if !errors.As(err, &typeErr) {
 			t.Fatalf("expected wrapped json unmarshal type error, got: %T", err)
@@ -57,7 +57,99 @@ func TestParseNamedDeckHashMigrationRow(t *testing.T) {
 	})
 }
 
+func TestEnsureMigration(t *testing.T) {
+	db := openMigrationTestDB(t)
+	if _, err := db.Exec("CREATE TABLE migrations (name TEXT PRIMARY KEY, applied_at DATETIME NOT NULL)"); err != nil {
+		t.Fatalf("failed to create migrations table: %v", err)
+	}
+
+	runs := 0
+	run := func() error {
+		runs++
+		return nil
+	}
+
+	if err := EnsureMigration(db, "deck_hash_v1", run); err != nil {
+		t.Fatalf("EnsureMigration returned error: %v", err)
+	}
+	if err := EnsureMigration(db, "deck_hash_v1", run); err != nil {
+		t.Fatalf("EnsureMigration second run returned error: %v", err)
+	}
+	if runs != 1 {
+		t.Fatalf("expected migration to run once, ran %d times", runs)
+	}
+}
+
+func TestLoadDeckHashMigrationRows(t *testing.T) {
+	rows := queryMigrationRowsFromValues(
+		t,
+		`["archers","giant"]`,
+		`{"invalid":true}`,
+		`["giant","archers"]`,
+	)
+	defer rows.Close()
+
+	var warned []string
+	records, winners, err := LoadDeckHashMigrationRows(rows, "deck row", func(row DeckHashMigrationRow, err error) {
+		warned = append(warned, fmt.Sprintf("%d:%v", row.ID, err))
+	})
+	if err != nil {
+		t.Fatalf("LoadDeckHashMigrationRows returned error: %v", err)
+	}
+	if len(records) != 3 {
+		t.Fatalf("expected 3 records, got %d", len(records))
+	}
+	if len(warned) != 1 {
+		t.Fatalf("expected 1 invalid-JSON warning, got %d", len(warned))
+	}
+	if records[1].Valid {
+		t.Fatal("expected invalid JSON row to remain invalid")
+	}
+	if len(winners) != 1 {
+		t.Fatalf("expected 1 canonical winner, got %d", len(winners))
+	}
+}
+
 func queryMigrationRows(t *testing.T, cardsJSON string) *sql.Rows {
+	t.Helper()
+	return queryMigrationRowsFromValues(t, cardsJSON)
+}
+
+func queryMigrationRowsFromValues(t *testing.T, cardsJSON ...string) *sql.Rows {
+	t.Helper()
+
+	db := openMigrationTestDB(t)
+	_, err := db.Exec(`CREATE TABLE decks (
+		id INTEGER PRIMARY KEY,
+		deck_hash TEXT NOT NULL,
+		cards TEXT NOT NULL,
+		overall_score REAL NOT NULL
+	)`)
+	if err != nil {
+		t.Fatalf("failed to create decks table: %v", err)
+	}
+
+	for i, value := range cardsJSON {
+		_, err = db.Exec(
+			"INSERT INTO decks (id, deck_hash, cards, overall_score) VALUES (?, 'legacy', ?, ?)",
+			i+1,
+			value,
+			42-i,
+		)
+		if err != nil {
+			t.Fatalf("failed to insert deck row %d: %v", i+1, err)
+		}
+	}
+
+	rows, err := db.Query("SELECT id, deck_hash, cards, overall_score FROM decks ORDER BY id ASC")
+	if err != nil {
+		t.Fatalf("failed to query deck rows: %v", err)
+	}
+
+	return rows
+}
+
+func openMigrationTestDB(t *testing.T) *sql.DB {
 	t.Helper()
 
 	db, err := sql.Open("sqlite3", ":memory:")
@@ -69,17 +161,5 @@ func queryMigrationRows(t *testing.T, cardsJSON string) *sql.Rows {
 			t.Fatalf("failed to close sqlite database: %v", err)
 		}
 	})
-
-	if _, err := db.Exec(`CREATE TABLE migration_rows (id INTEGER, deck_hash TEXT, cards TEXT, overall_score REAL)`); err != nil {
-		t.Fatalf("failed to create table: %v", err)
-	}
-	if _, err := db.Exec(`INSERT INTO migration_rows (id, deck_hash, cards, overall_score) VALUES (1, 'legacy', ?, 9.5)`, cardsJSON); err != nil {
-		t.Fatalf("failed to insert row: %v", err)
-	}
-
-	rows, err := db.Query(`SELECT id, deck_hash, cards, overall_score FROM migration_rows`)
-	if err != nil {
-		t.Fatalf("failed to query migration rows: %v", err)
-	}
-	return rows
+	return db
 }
