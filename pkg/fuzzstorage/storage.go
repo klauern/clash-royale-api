@@ -117,25 +117,17 @@ func (s *Storage) initSchema() error {
 }
 
 func (s *Storage) maybeMigrateDeckHashes() error {
-	return storageutil.EnsureMigration(s.db, deckHashMigrationName, s.migrateDeckHashes)
+	return storageutil.MaybeRunDeckHashMigration(s.db, storageutil.DeckHashMigrationConfig{
+		MigrationName: deckHashMigrationName,
+		TableName:     "top_decks",
+		LoadRows:      s.loadDeckHashMigrationRows,
+		BeginTxError:  "failed to start top deck hash migration transaction",
+		RollbackError: "failed to rollback top_decks hash migration",
+		CommitError:   "failed to commit top deck hash migration",
+	})
 }
 
 type deckHashMigrationRow = storageutil.DeckHashMigrationRow
-
-func (s *Storage) migrateDeckHashes() error {
-	rows, err := s.db.Query("SELECT id, deck_hash, cards, overall_score FROM top_decks")
-	if err != nil {
-		return fmt.Errorf("failed to load deck hash migration rows: %w", err)
-	}
-	defer closeutil.WithLog("fuzzstorage", rows, "top deck hash migration rows")
-
-	records, winners, err := storageutil.LoadDeckHashMigrationRows(rows, "top_decks row", nil)
-	if err != nil {
-		return err
-	}
-
-	return storageutil.ApplyDeckHashMigrationInTx(s.db, "top deck", "top_decks", records, winners, nil)
-}
 
 func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[string]deckHashMigrationRow, error) {
 	rows, err := s.db.Query("SELECT id, deck_hash, cards, overall_score FROM top_decks")
@@ -158,9 +150,6 @@ func (s *Storage) loadDeckHashMigrationRows() ([]deckHashMigrationRow, map[strin
 	}
 
 	return records, storageutil.SelectDeckHashMigrationWinners(records), nil
-}
-func (s *Storage) applyDeckHashMigration(tx *sql.Tx, records []deckHashMigrationRow, winners map[string]deckHashMigrationRow) error {
-	return storageutil.ApplyDeckHashMigration(tx, "top_decks", records, winners)
 }
 
 // DeckEntry represents a stored deck from fuzzing
