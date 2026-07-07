@@ -191,17 +191,11 @@ func formatEvaluationResult(result *evaluation.EvaluationResult, format string) 
 
 // writeEvaluationOutput writes formatted output to file or stdout
 func writeEvaluationOutput(formattedOutput, outputFile string, verbose bool) error {
-	if outputFile != "" {
-		if err := os.WriteFile(outputFile, []byte(formattedOutput), 0o644); err != nil {
-			return fmt.Errorf("failed to write output file: %w", err)
-		}
-		if verbose {
-			printf("Evaluation saved to: %s\n", outputFile)
-		}
-	} else {
-		fmt.Print(formattedOutput)
-	}
-	return nil
+	return writeTextOutput(formattedOutput, outputFile, textOutputOptions{
+		saveMessage: "Evaluation saved to",
+		verboseOnly: true,
+		verbose:     verbose,
+	})
 }
 
 // performUpgradeAnalysisIfRequested performs optional upgrade impact analysis
