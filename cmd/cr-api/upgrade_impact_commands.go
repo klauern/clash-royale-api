@@ -354,9 +354,14 @@ func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) err
 }
 
 func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) (string, error) {
+	playerTag, err := storage.SanitizePlayerTag(impactAnalysis.PlayerTag)
+	if err != nil {
+		return "", fmt.Errorf("failed to sanitize player tag %q: %w", impactAnalysis.PlayerTag, err)
+	}
+
 	filename, err := saveTimestampedJSONArtifact(dataDir, impactAnalysis, timestampedJSONArtifactOptions{
 		subdir:   storage.AnalysisDir,
-		fileStem: fmt.Sprintf("upgrade_impact_%s", impactAnalysis.PlayerTag),
+		fileStem: fmt.Sprintf("upgrade_impact_%s", playerTag),
 	})
 	if err != nil {
 		return "", fmt.Errorf("failed to save upgrade impact analysis: %w", err)
