@@ -10,7 +10,6 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/mulligan"
@@ -475,12 +474,13 @@ func bestTrophiesBracketLabel(bestTrophies int) string {
 
 // saveMulliganGuide saves the mulligan guide to a JSON file
 func saveMulliganGuide(dataDir string, guide *mulligan.MulliganGuide) error {
-	// Generate filename with timestamp
-	timestamp := guide.GeneratedAt.Format("20060102_150405")
 	safeDeckName := sanitizePathComponent(guide.DeckName)
-	filename := filepath.Join(dataDir, "mulligan", fmt.Sprintf("%s_%s.json", safeDeckName, timestamp))
-
-	if err := storage.WriteJSON(filename, guide); err != nil {
+	_, err := saveTimestampedJSONArtifact(dataDir, guide, timestampedJSONArtifactOptions{
+		subdir:    "mulligan",
+		fileStem:  safeDeckName,
+		timestamp: guide.GeneratedAt,
+	})
+	if err != nil {
 		return fmt.Errorf("failed to save mulligan guide: %w", err)
 	}
 

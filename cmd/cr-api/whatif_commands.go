@@ -5,17 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"text/tabwriter"
-	"time"
 
-	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/whatif"
 	"github.com/urfave/cli/v3"
 )
+
+const whatIfScenarioArtifactStem = "scenario"
 
 // addWhatIfCommands adds what-if analysis commands to the CLI
 func addWhatIfCommands() *cli.Command {
@@ -326,11 +325,11 @@ func outputWhatIfJSON(scenario *whatif.WhatIfScenario) error {
 }
 
 func saveWhatIfScenario(dataDir string, scenario *whatif.WhatIfScenario) (string, error) {
-	// Generate filename with timestamp
-	timestamp := time.Now().Format("20060102_150405")
-	filename := filepath.Join(dataDir, "whatif", fmt.Sprintf("scenario_%s.json", timestamp))
-
-	if err := storage.WriteJSON(filename, scenario); err != nil {
+	filename, err := saveTimestampedJSONArtifact(dataDir, scenario, timestampedJSONArtifactOptions{
+		subdir:   "whatif",
+		fileStem: whatIfScenarioArtifactStem,
+	})
+	if err != nil {
 		return "", fmt.Errorf("failed to save what-if scenario: %w", err)
 	}
 
