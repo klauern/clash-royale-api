@@ -4,8 +4,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"testing"
+	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
+	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 )
 
 func TestSaveTaggedJSONArtifactTimestamped(t *testing.T) {
@@ -62,5 +64,60 @@ func TestSaveTaggedJSONArtifactStableName(t *testing.T) {
 	}
 	if got["mode"] != "playstyle" {
 		t.Fatalf("saved payload mode = %q, want playstyle", got["mode"])
+	}
+}
+
+func TestSaveTimestampedJSONArtifactUsesProvidedTimestamp(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	payload := map[string]string{"scenario": "demo"}
+	path, err := saveTimestampedJSONArtifact(dir, payload, timestampedJSONArtifactOptions{
+		subdir:    "whatif",
+		fileStem:  "scenario",
+		timestamp: time.Date(2026, time.July, 8, 5, 4, 3, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatalf("saveTimestampedJSONArtifact() error = %v", err)
+	}
+
+	want := filepath.Join(dir, "whatif", "scenario_20260708_050403.json")
+	if path != want {
+		t.Fatalf("saveTimestampedJSONArtifact() path = %q, want %q", path, want)
+	}
+
+	var got map[string]string
+	if err := storage.ReadJSON(path, &got); err != nil {
+		t.Fatalf("storage.ReadJSON() error = %v", err)
+	}
+	if got["scenario"] != "demo" {
+		t.Fatalf("saved payload scenario = %q, want demo", got["scenario"])
+	}
+}
+
+func TestSaveUpgradeImpactAnalysisSanitizesPlayerTag(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	impactAnalysis := &analysis.UpgradeImpactAnalysis{
+		PlayerTag: "#ABC123",
+	}
+
+	path, err := saveUpgradeImpactAnalysis(dir, impactAnalysis)
+	if err != nil {
+		t.Fatalf("saveUpgradeImpactAnalysis() error = %v", err)
+	}
+
+	pattern := regexp.MustCompile(`analysis/upgrade_impact_ABC123_\d{8}_\d{6}\.json$`)
+	if !pattern.MatchString(filepath.ToSlash(path)) {
+		t.Fatalf("saveUpgradeImpactAnalysis() path = %q, want sanitized timestamped analysis path", path)
+	}
+
+	var got analysis.UpgradeImpactAnalysis
+	if err := storage.ReadJSON(path, &got); err != nil {
+		t.Fatalf("storage.ReadJSON() error = %v", err)
+	}
+	if got.PlayerTag != impactAnalysis.PlayerTag {
+		t.Fatalf("saved PlayerTag = %q, want %q", got.PlayerTag, impactAnalysis.PlayerTag)
 	}
 }

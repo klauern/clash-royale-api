@@ -5,9 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"text/tabwriter"
-	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
@@ -356,11 +354,16 @@ func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) err
 }
 
 func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) (string, error) {
-	// Generate filename with timestamp
-	timestamp := time.Now().Format("20060102_150405")
-	filename := filepath.Join(dataDir, "analysis", fmt.Sprintf("upgrade_impact_%s_%s.json", impactAnalysis.PlayerTag, timestamp))
+	playerTag, err := storage.SanitizePlayerTag(impactAnalysis.PlayerTag)
+	if err != nil {
+		return "", fmt.Errorf("failed to sanitize player tag %q: %w", impactAnalysis.PlayerTag, err)
+	}
 
-	if err := storage.WriteJSON(filename, impactAnalysis); err != nil {
+	filename, err := saveTimestampedJSONArtifact(dataDir, impactAnalysis, timestampedJSONArtifactOptions{
+		subdir:   storage.AnalysisDir,
+		fileStem: fmt.Sprintf("upgrade_impact_%s", playerTag),
+	})
+	if err != nil {
 		return "", fmt.Errorf("failed to save upgrade impact analysis: %w", err)
 	}
 

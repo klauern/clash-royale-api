@@ -16,6 +16,12 @@ type taggedJSONArtifactOptions struct {
 	timestamped bool
 }
 
+type timestampedJSONArtifactOptions struct {
+	subdir    string
+	fileStem  string
+	timestamp time.Time
+}
+
 func saveTaggedJSONArtifact(dataDir, playerTag string, payload any, opts taggedJSONArtifactOptions) (string, error) {
 	sanitizedTag, err := storage.SanitizePlayerTag(playerTag)
 	if err != nil {
@@ -27,6 +33,21 @@ func saveTaggedJSONArtifact(dataDir, playerTag string, payload any, opts taggedJ
 		filename = fmt.Sprintf("%s_%s_%s.json", time.Now().Format(artifactTimestampLayout), opts.fileStem, sanitizedTag)
 	}
 
+	path := filepath.Join(dataDir, opts.subdir, filename)
+	if err := storage.WriteJSON(path, payload); err != nil {
+		return "", err
+	}
+
+	return path, nil
+}
+
+func saveTimestampedJSONArtifact(dataDir string, payload any, opts timestampedJSONArtifactOptions) (string, error) {
+	timestamp := opts.timestamp
+	if timestamp.IsZero() {
+		timestamp = time.Now()
+	}
+
+	filename := fmt.Sprintf("%s_%s.json", opts.fileStem, timestamp.Format(artifactTimestampLayout))
 	path := filepath.Join(dataDir, opts.subdir, filename)
 	if err := storage.WriteJSON(path, payload); err != nil {
 		return "", err
