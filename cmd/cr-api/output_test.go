@@ -82,6 +82,23 @@ func TestWriteTextOutputFileWithSaveMessage(t *testing.T) {
 	}
 }
 
+func TestWriteTextOutputCreatesParentDirectories(t *testing.T) {
+	t.Parallel()
+
+	outputPath := filepath.Join(t.TempDir(), "nested", "dir", "out.txt")
+	if err := writeTextOutput("saved content", outputPath, textOutputOptions{}); err != nil {
+		t.Fatalf("writeTextOutput returned error: %v", err)
+	}
+
+	data, err := os.ReadFile(outputPath)
+	if err != nil {
+		t.Fatalf("ReadFile failed: %v", err)
+	}
+	if string(data) != "saved content" {
+		t.Fatalf("file content = %q, want %q", string(data), "saved content")
+	}
+}
+
 func TestWriteTextOutputVerboseOnlySuppressesSaveMessage(t *testing.T) {
 	outputPath := filepath.Join(t.TempDir(), "out.txt")
 	output, err := captureStdout(t, func() error {

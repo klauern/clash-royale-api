@@ -16,6 +16,14 @@ type taggedJSONArtifactOptions struct {
 	timestamped bool
 }
 
+type taggedTextArtifactOptions struct {
+	subdir      string
+	fileStem    string
+	extension   string
+	timestamped bool
+	saveMessage string
+}
+
 type timestampedJSONArtifactOptions struct {
 	subdir    string
 	fileStem  string
@@ -23,22 +31,39 @@ type timestampedJSONArtifactOptions struct {
 }
 
 func saveTaggedJSONArtifact(dataDir, playerTag string, payload any, opts taggedJSONArtifactOptions) (string, error) {
+	path, err := buildTaggedArtifactPath(dataDir, playerTag, opts.subdir, opts.fileStem, "json", opts.timestamped)
+	if err != nil {
+		return "", err
+	}
+	if err := storage.WriteJSON(path, payload); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+func saveTaggedTextArtifact(dataDir, playerTag, content string, opts taggedTextArtifactOptions) (string, error) {
+	path, err := buildTaggedArtifactPath(dataDir, playerTag, opts.subdir, opts.fileStem, opts.extension, opts.timestamped)
+	if err != nil {
+		return "", err
+	}
+	if err := writeTextOutput(content, path, textOutputOptions{saveMessage: opts.saveMessage}); err != nil {
+		return "", err
+	}
+	return path, nil
+}
+
+func buildTaggedArtifactPath(dataDir, playerTag, subdir, fileStem, extension string, timestamped bool) (string, error) {
 	sanitizedTag, err := storage.SanitizePlayerTag(playerTag)
 	if err != nil {
 		return "", fmt.Errorf("failed to sanitize player tag %q: %w", playerTag, err)
 	}
 
-	filename := fmt.Sprintf("%s_%s.json", opts.fileStem, sanitizedTag)
-	if opts.timestamped {
-		filename = fmt.Sprintf("%s_%s_%s.json", time.Now().Format(artifactTimestampLayout), opts.fileStem, sanitizedTag)
+	filename := fmt.Sprintf("%s_%s.%s", fileStem, sanitizedTag, extension)
+	if timestamped {
+		filename = fmt.Sprintf("%s_%s_%s.%s", time.Now().Format(artifactTimestampLayout), fileStem, sanitizedTag, extension)
 	}
 
-	path := filepath.Join(dataDir, opts.subdir, filename)
-	if err := storage.WriteJSON(path, payload); err != nil {
-		return "", err
-	}
-
-	return path, nil
+	return filepath.Join(dataDir, subdir, filename), nil
 }
 
 func saveTimestampedJSONArtifact(dataDir string, payload any, opts timestampedJSONArtifactOptions) (string, error) {
@@ -52,6 +77,5 @@ func saveTimestampedJSONArtifact(dataDir string, payload any, opts timestampedJS
 	if err := storage.WriteJSON(path, payload); err != nil {
 		return "", err
 	}
-
 	return path, nil
 }

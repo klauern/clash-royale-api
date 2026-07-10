@@ -1,8 +1,10 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
 
@@ -119,5 +121,44 @@ func TestSaveUpgradeImpactAnalysisSanitizesPlayerTag(t *testing.T) {
 	}
 	if got.PlayerTag != impactAnalysis.PlayerTag {
 		t.Fatalf("saved PlayerTag = %q, want %q", got.PlayerTag, impactAnalysis.PlayerTag)
+	}
+}
+
+func TestSaveTaggedTextArtifactTimestamped(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	output, err := captureStdout(t, func() error {
+		path, err := saveTaggedTextArtifact(dir, "#TAG123", "report body", taggedTextArtifactOptions{
+			subdir:      "reports",
+			fileStem:    "deck_evaluations",
+			extension:   "md",
+			timestamped: true,
+			saveMessage: "Saved report",
+		})
+		if err != nil {
+			return err
+		}
+
+		pattern := regexp.MustCompile(`reports/\d{8}_\d{6}_deck_evaluations_TAG123\.md$`)
+		if !pattern.MatchString(filepath.ToSlash(path)) {
+			t.Fatalf("saveTaggedTextArtifact() path = %q, want timestamped markdown path", path)
+		}
+
+		data, readErr := os.ReadFile(path)
+		if readErr != nil {
+			t.Fatalf("ReadFile() error = %v", readErr)
+		}
+		if string(data) != "report body" {
+			t.Fatalf("saved content = %q, want report body", string(data))
+		}
+
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("saveTaggedTextArtifact() error = %v", err)
+	}
+	if !strings.Contains(output, "Saved report: ") {
+		t.Fatalf("stdout output = %q, want save message", output)
 	}
 }
