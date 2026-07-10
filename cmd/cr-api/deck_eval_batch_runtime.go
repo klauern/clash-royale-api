@@ -567,32 +567,24 @@ func writeEvalBatchOutput(output, outputDir, format, playerTag string, saveAggre
 		return nil
 	}
 
-	timestamp := time.Now().Format("20060102_150405")
-	filename := buildEvalOutputFilename(timestamp, format, playerTag)
-	outputPath := filepath.Join(outputDir, filename)
-
-	if err := os.MkdirAll(outputDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create output directory: %w", err)
-	}
-
-	if err := os.WriteFile(outputPath, []byte(output), 0o644); err != nil {
-		return fmt.Errorf("failed to write output file: %w", err)
-	}
-
-	printf("\nEvaluation results saved to: %s\n", outputPath)
-	return nil
+	_, err := saveTaggedTextArtifact(outputDir, playerTag, output, taggedTextArtifactOptions{
+		fileStem:    "deck_evaluations",
+		extension:   evalBatchOutputExtension(format),
+		timestamped: true,
+		saveMessage: "\nEvaluation results saved to",
+	})
+	return err
 }
 
-// buildEvalOutputFilename constructs the output filename based on format
-func buildEvalOutputFilename(timestamp, format, playerTag string) string {
-	extension := "txt"
+func evalBatchOutputExtension(format string) string {
 	switch format {
 	case batchFormatJSON:
-		extension = batchFormatJSON
+		return batchFormatJSON
 	case batchFormatCSV:
-		extension = batchFormatCSV
+		return batchFormatCSV
+	default:
+		return "txt"
 	}
-	return fmt.Sprintf("%s_deck_evaluations_%s.%s", timestamp, playerTag, extension)
 }
 
 // evalBatchSetup holds the initialized resources for batch evaluation

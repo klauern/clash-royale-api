@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 )
 
 func printf(format string, args ...any) {
@@ -78,6 +79,10 @@ func writeTextOutput(content, outputFile string, opts textOutputOptions) error {
 	if outputFile == "" {
 		fmt.Print(content)
 		return nil
+	}
+
+	if err := os.MkdirAll(filepath.Dir(outputFile), 0o755); err != nil {
+		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
 	if err := os.WriteFile(outputFile, []byte(content), 0o644); err != nil {

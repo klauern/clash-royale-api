@@ -123,10 +123,11 @@ func deckCompareCommand(ctx context.Context, cmd *cli.Command) error {
 
 	if reportOutput != "" {
 		report := generateComparisonReport(deckNames, results)
-		if err := os.WriteFile(reportOutput, []byte(report), 0o644); err != nil {
-			return fmt.Errorf("failed to write report: %w", err)
+		if err := writeTextOutput(report, reportOutput, textOutputOptions{
+			saveMessage: "Comprehensive report saved to",
+		}); err != nil {
+			return err
 		}
-		printf("Comprehensive report saved to: %s\n", reportOutput)
 	}
 
 	return nil
