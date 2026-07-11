@@ -8,26 +8,32 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
+type offlineAnalysisLoader interface {
+	LoadLatestAnalysis(tag, analysisDir string) (*deck.CardAnalysis, error)
+	LoadAnalysis(path string) (*deck.CardAnalysis, error)
+}
+
 type offlineAnalysisLoadResult struct {
 	CardAnalysis deck.CardAnalysis
 	PlayerName   string
 	PlayerTag    string
+	Source       string
 }
 
 func loadOfflineAnalysisFromFlags(
-	builder *deck.Builder,
+	loader offlineAnalysisLoader,
 	playerTag string,
 	dataDir string,
 	analysisDir string,
 	analysisFile string,
 	verbose bool,
 ) (*offlineAnalysisLoadResult, error) {
-	if builder == nil {
-		return nil, fmt.Errorf("deck builder is required")
+	if loader == nil {
+		return nil, fmt.Errorf("offline analysis loader is required")
 	}
 
 	resolvedAnalysisDir := resolveAnalysisDir(dataDir, analysisDir)
-	loadedAnalysis, err := loadDeckCardAnalysis(builder, playerTag, resolvedAnalysisDir, analysisFile, verbose)
+	loadedAnalysis, err := loadDeckCardAnalysis(loader, playerTag, resolvedAnalysisDir, analysisFile, verbose)
 	if err != nil {
 		return nil, err
 	}
@@ -46,6 +52,7 @@ func loadOfflineAnalysisFromFlags(
 		CardAnalysis: *loadedAnalysis,
 		PlayerName:   playerName,
 		PlayerTag:    resolvedTag,
+		Source:       offlineAnalysisSource(analysisFile, resolvedAnalysisDir),
 	}, nil
 }
 
@@ -58,14 +65,14 @@ func resolveAnalysisDir(dataDir, analysisDir string) string {
 }
 
 func loadDeckCardAnalysis(
-	builder *deck.Builder,
+	loader offlineAnalysisLoader,
 	playerTag string,
 	analysisDir string,
 	analysisFile string,
 	verbose bool,
 ) (*deck.CardAnalysis, error) {
 	if analysisFile != "" {
-		loadedAnalysis, err := builder.LoadAnalysis(analysisFile)
+		loadedAnalysis, err := loader.LoadAnalysis(analysisFile)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load analysis from --analysis-file %q: %w", analysisFile, err)
 		}
@@ -80,7 +87,7 @@ func loadDeckCardAnalysis(
 		return nil, fmt.Errorf("--tag is required when using --analysis-dir without --analysis-file")
 	}
 
-	loadedAnalysis, err := builder.LoadLatestAnalysis(normalizedTag, analysisDir)
+	loadedAnalysis, err := loader.LoadLatestAnalysis(normalizedTag, analysisDir)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"failed to load latest analysis for player %s from --analysis-dir %q: %w",
@@ -93,4 +100,12 @@ func loadDeckCardAnalysis(
 		printf("Loaded latest analysis from: %s\n", analysisDir)
 	}
 	return loadedAnalysis, nil
+}
+
+func offlineAnalysisSource(analysisFile, analysisDir string) string {
+	if analysisFile != "" {
+		return analysisFile
+	}
+
+	return analysisDir
 }
