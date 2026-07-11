@@ -125,8 +125,6 @@ func TestSaveUpgradeImpactAnalysisSanitizesPlayerTag(t *testing.T) {
 }
 
 func TestSaveTaggedTextArtifactTimestamped(t *testing.T) {
-	t.Parallel()
-
 	dir := t.TempDir()
 	output, err := captureStdout(t, func() error {
 		path, err := saveTaggedTextArtifact(dir, "#TAG123", "report body", taggedTextArtifactOptions{
