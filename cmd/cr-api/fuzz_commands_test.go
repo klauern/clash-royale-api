@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,8 +15,13 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/fuzzstorage"
 )
 
+var captureStdoutMu sync.Mutex
+
 func captureStdout(t *testing.T, fn func() error) (string, error) {
 	t.Helper()
+
+	captureStdoutMu.Lock()
+	defer captureStdoutMu.Unlock()
 
 	original := os.Stdout
 	r, w, err := os.Pipe()
