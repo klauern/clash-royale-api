@@ -14,7 +14,6 @@ import (
 	"github.com/klauer/clash-royale-api/go/internal/closeutil"
 	"github.com/klauer/clash-royale-api/go/internal/datapath"
 	"github.com/klauer/clash-royale-api/go/internal/storageutil"
-	"github.com/klauer/clash-royale-api/go/pkg/deckhash"
 	_ "github.com/mattn/go-sqlite3" // SQLite driver
 )
 
@@ -190,73 +189,71 @@ func (s *Storage) SaveTopDecks(decks []DeckEntry) (int, error) {
 // If a deck with the same cards exists (same hash), it updates if the new score is better
 // Returns the deck ID and whether it was a new insert (true) or update (false)
 func (s *Storage) InsertDeck(entry *DeckEntry) (int, bool, error) {
-	// Compute deck hash for deduplication
-	deckHash := deckhash.DeckHash(entry.Cards)
+	result, err := storageutil.UpsertDeck(entry.Cards, storageutil.DeckUpsertHooks{
+		LookupExisting: func(deckHash string) (*storageutil.ExistingDeckRecord, error) {
+			var existingID int
+			var existingScore float64
+			err := s.db.QueryRow("SELECT id, overall_score FROM top_decks WHERE deck_hash = ?", deckHash).Scan(&existingID, &existingScore)
+			if err == sql.ErrNoRows {
+				return nil, nil
+			}
+			if err != nil {
+				return nil, fmt.Errorf("failed to check for existing deck: %w", err)
+			}
+			return &storageutil.ExistingDeckRecord{ID: existingID, Score: existingScore}, nil
+		},
+		Insert: func(deckHash, cardsJSON string) (int, error) {
+			insertResult, err := s.db.Exec(`
+				INSERT INTO top_decks (
+					deck_hash, cards, overall_score, attack_score, defense_score,
+					synergy_score, versatility_score, avg_elixir,
+					archetype, archetype_conf, evaluated_at, run_id
+				) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`,
+				deckHash, cardsJSON, entry.OverallScore, entry.AttackScore,
+				entry.DefenseScore, entry.SynergyScore, entry.VersatilityScore,
+				entry.AvgElixir, entry.Archetype, entry.ArchetypeConf,
+				entry.EvaluatedAt, entry.RunID,
+			)
+			if err != nil {
+				return 0, fmt.Errorf("failed to insert deck: %w", err)
+			}
 
-	// Serialize cards to JSON
-	cardsJSON, err := json.Marshal(entry.Cards)
+			id, err := insertResult.LastInsertId()
+			if err != nil {
+				return 0, fmt.Errorf("failed to get insert id: %w", err)
+			}
+			return int(id), nil
+		},
+		UpdateExisting: func(existing storageutil.ExistingDeckRecord, _, _ string) error {
+			if entry.OverallScore <= existing.Score {
+				return nil
+			}
+
+			_, err := s.db.Exec(`
+				UPDATE top_decks SET
+					overall_score = ?, attack_score = ?, defense_score = ?,
+					synergy_score = ?, versatility_score = ?, avg_elixir = ?,
+					archetype = ?, archetype_conf = ?, evaluated_at = ?, run_id = ?
+				WHERE id = ?
+			`,
+				entry.OverallScore, entry.AttackScore, entry.DefenseScore,
+				entry.SynergyScore, entry.VersatilityScore, entry.AvgElixir,
+				entry.Archetype, entry.ArchetypeConf, entry.EvaluatedAt,
+				entry.RunID, existing.ID,
+			)
+			if err != nil {
+				return fmt.Errorf("failed to update deck: %w", err)
+			}
+			return nil
+		},
+	})
 	if err != nil {
-		return 0, false, fmt.Errorf("failed to marshal cards: %w", err)
+		return 0, false, err
 	}
 
-	// Check if deck already exists
-	var existingID int
-	var existingScore float64
-	err = s.db.QueryRow("SELECT id, overall_score FROM top_decks WHERE deck_hash = ?", deckHash).Scan(&existingID, &existingScore)
-
-	if err == sql.ErrNoRows {
-		// Insert new deck
-		result, err := s.db.Exec(`
-			INSERT INTO top_decks (
-				deck_hash, cards, overall_score, attack_score, defense_score,
-				synergy_score, versatility_score, avg_elixir,
-				archetype, archetype_conf, evaluated_at, run_id
-			) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-		`,
-			deckHash, string(cardsJSON), entry.OverallScore, entry.AttackScore,
-			entry.DefenseScore, entry.SynergyScore, entry.VersatilityScore,
-			entry.AvgElixir, entry.Archetype, entry.ArchetypeConf,
-			entry.EvaluatedAt, entry.RunID,
-		)
-		if err != nil {
-			return 0, false, fmt.Errorf("failed to insert deck: %w", err)
-		}
-
-		id, err := result.LastInsertId()
-		if err != nil {
-			return 0, false, fmt.Errorf("failed to get insert id: %w", err)
-		}
-
-		entry.ID = int(id)
-		return int(id), true, nil
-	} else if err != nil {
-		return 0, false, fmt.Errorf("failed to check for existing deck: %w", err)
-	}
-
-	// Deck exists - update only if new score is better
-	if entry.OverallScore > existingScore {
-		_, err = s.db.Exec(`
-			UPDATE top_decks SET
-				overall_score = ?, attack_score = ?, defense_score = ?,
-				synergy_score = ?, versatility_score = ?, avg_elixir = ?,
-				archetype = ?, archetype_conf = ?, evaluated_at = ?, run_id = ?
-			WHERE id = ?
-		`,
-			entry.OverallScore, entry.AttackScore, entry.DefenseScore,
-			entry.SynergyScore, entry.VersatilityScore, entry.AvgElixir,
-			entry.Archetype, entry.ArchetypeConf, entry.EvaluatedAt,
-			entry.RunID, existingID,
-		)
-		if err != nil {
-			return 0, false, fmt.Errorf("failed to update deck: %w", err)
-		}
-
-		entry.ID = existingID
-		return existingID, false, nil
-	}
-
-	// Score not better, no update
-	return existingID, false, nil
+	entry.ID = result.ID
+	return result.ID, result.IsNew, nil
 }
 
 // UpdateDeck updates an existing deck entry by ID with new evaluation data.
