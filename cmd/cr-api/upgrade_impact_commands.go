@@ -7,6 +7,7 @@ import (
 	"os"
 	"text/tabwriter"
 
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 	"github.com/klauer/clash-royale-api/go/pkg/analysis"
 	"github.com/urfave/cli/v3"
@@ -354,7 +355,7 @@ func outputUpgradeImpactJSON(impactAnalysis *analysis.UpgradeImpactAnalysis) err
 }
 
 func saveUpgradeImpactAnalysis(dataDir string, impactAnalysis *analysis.UpgradeImpactAnalysis) (string, error) {
-	playerTag, err := storage.SanitizePlayerTag(impactAnalysis.PlayerTag)
+	playerTag, err := playertag.Sanitize(impactAnalysis.PlayerTag)
 	if err != nil {
 		return "", fmt.Errorf("failed to sanitize player tag %q: %w", impactAnalysis.PlayerTag, err)
 	}

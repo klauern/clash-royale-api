@@ -13,6 +13,7 @@ import (
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
 	"github.com/klauer/clash-royale-api/go/internal/datapath"
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/klauer/clash-royale-api/go/pkg/deck/evaluation"
@@ -26,10 +27,6 @@ type simpleEvaluator struct {
 	cardRegistry *clashroyale.CardStatsRegistry
 	playerCtx    *evaluation.PlayerContext
 	playerTag    string
-}
-
-func sanitizeDiscoverTag(playerTag string) (string, error) {
-	return deck.SanitizePlayerTag(playerTag)
 }
 
 func discoverCheckpointPath(sanitizedTag string) string {
@@ -373,7 +370,7 @@ type discoveryResources struct {
 
 // initializeDiscoveryResources sets up all required resources for discovery
 func initializeDiscoveryResources(ctx context.Context, playerTag string, verbose bool) (*discoveryResources, error) {
-	sanitizedTag, err := deck.SanitizePlayerTag(playerTag)
+	sanitizedTag, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return nil, err
 	}
@@ -549,7 +546,7 @@ func attemptResume(runner *deck.DiscoveryRunner, resume, verbose bool) {
 
 // warnExistingCheckpoint checks for and warns about existing checkpoints when starting fresh
 func warnExistingCheckpoint(playerTag string) {
-	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
+	sanitizedTag, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return
 	}
