@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 	"github.com/urfave/cli/v3"
 )
@@ -15,7 +16,7 @@ type discoverPlayerTag struct {
 }
 
 func discoverPlayerTagFromValue(playerTag string) (discoverPlayerTag, error) {
-	sanitizedTag, err := sanitizeDiscoverTag(playerTag)
+	sanitizedTag, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return discoverPlayerTag{}, err
 	}

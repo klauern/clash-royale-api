@@ -103,7 +103,7 @@ func (pb *PathBuilder) GetCSVAnalysisDir() string {
 // GetPlayerFilePath returns the file path for a player profile JSON
 // Format: data/players/{playerTag}.json
 func (pb *PathBuilder) GetPlayerFilePath(playerTag string) (string, error) {
-	sanitized, err := SanitizePlayerTag(playerTag)
+	sanitized, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return "", err
 	}
@@ -113,7 +113,7 @@ func (pb *PathBuilder) GetPlayerFilePath(playerTag string) (string, error) {
 // GetAnalysisFilePath returns the timestamped file path for an analysis result
 // Format: data/analysis/YYYYMMDD_HHMMSS_analysis_{playerTag}.json
 func (pb *PathBuilder) GetAnalysisFilePath(playerTag string) (string, error) {
-	sanitized, err := SanitizePlayerTag(playerTag)
+	sanitized, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return "", err
 	}
@@ -125,7 +125,7 @@ func (pb *PathBuilder) GetAnalysisFilePath(playerTag string) (string, error) {
 // GetDeckFilePath returns the timestamped file path for a deck recommendation
 // Format: data/decks/YYYYMMDD_HHMMSS_deck_{playerTag}.json
 func (pb *PathBuilder) GetDeckFilePath(playerTag string) (string, error) {
-	sanitized, err := SanitizePlayerTag(playerTag)
+	sanitized, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return "", err
 	}
@@ -137,7 +137,7 @@ func (pb *PathBuilder) GetDeckFilePath(playerTag string) (string, error) {
 // GetEventDeckPlayerDir returns the player-specific event deck directory
 // Format: data/event_decks/{playerTag}/
 func (pb *PathBuilder) GetEventDeckPlayerDir(playerTag string) (string, error) {
-	sanitized, err := SanitizePlayerTag(playerTag)
+	sanitized, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return "", err
 	}
@@ -157,7 +157,7 @@ func (pb *PathBuilder) GetEventDeckCollectionPath(playerTag string) (string, err
 // GetEventDeckTypeDir returns the directory for a specific event type
 // Format: data/event_decks/{playerTag}/{eventType}/
 func (pb *PathBuilder) GetEventDeckTypeDir(playerTag, eventType string) (string, error) {
-	sanitized, err := SanitizePlayerTag(playerTag)
+	sanitized, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return "", err
 	}
@@ -167,7 +167,7 @@ func (pb *PathBuilder) GetEventDeckTypeDir(playerTag, eventType string) (string,
 // GetCSVPlayerExportPath returns the path for a player CSV export
 // Format: data/csv/players/{playerTag}_player.csv
 func (pb *PathBuilder) GetCSVPlayerExportPath(playerTag string) (string, error) {
-	sanitized, err := SanitizePlayerTag(playerTag)
+	sanitized, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return "", err
 	}
@@ -178,7 +178,7 @@ func (pb *PathBuilder) GetCSVPlayerExportPath(playerTag string) (string, error) 
 // GetCSVCardsExportPath returns the path for a cards CSV export
 // Format: data/csv/players/{playerTag}_cards.csv
 func (pb *PathBuilder) GetCSVCardsExportPath(playerTag string) (string, error) {
-	sanitized, err := SanitizePlayerTag(playerTag)
+	sanitized, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return "", err
 	}
@@ -189,7 +189,7 @@ func (pb *PathBuilder) GetCSVCardsExportPath(playerTag string) (string, error) {
 // GetCSVEventsExportPath returns the path for an events CSV export
 // Format: data/csv/events/{playerTag}_events.csv
 func (pb *PathBuilder) GetCSVEventsExportPath(playerTag string) (string, error) {
-	sanitized, err := SanitizePlayerTag(playerTag)
+	sanitized, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return "", err
 	}
@@ -200,18 +200,12 @@ func (pb *PathBuilder) GetCSVEventsExportPath(playerTag string) (string, error) 
 // GetCSVAnalysisExportPath returns the path for an analysis CSV export
 // Format: data/csv/analysis/{playerTag}_analysis.csv
 func (pb *PathBuilder) GetCSVAnalysisExportPath(playerTag string) (string, error) {
-	sanitized, err := SanitizePlayerTag(playerTag)
+	sanitized, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return "", err
 	}
 	filename := fmt.Sprintf("%s_analysis.csv", sanitized)
 	return filepath.Join(pb.GetCSVAnalysisDir(), filename), nil
-}
-
-// SanitizePlayerTag removes # prefix and converts to safe filename
-// Example: #PLAYERTAG -> R8QGUQRCV
-func SanitizePlayerTag(playerTag string) (string, error) {
-	return playertag.Sanitize(playerTag)
 }
 
 // EnsureDataDirectories creates all standard data directories if they don't exist

@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/klauer/clash-royale-api/go/internal/playertag"
 	"github.com/klauer/clash-royale-api/go/internal/storage"
 )
 
@@ -53,7 +54,7 @@ func saveTaggedTextArtifact(dataDir, playerTag, content string, opts taggedTextA
 }
 
 func buildTaggedArtifactPath(dataDir, playerTag, subdir, fileStem, extension string, timestamped bool) (string, error) {
-	sanitizedTag, err := storage.SanitizePlayerTag(playerTag)
+	sanitizedTag, err := playertag.Sanitize(playerTag)
 	if err != nil {
 		return "", fmt.Errorf("failed to sanitize player tag %q: %w", playerTag, err)
 	}
