@@ -313,38 +313,32 @@ func saveArchetypeAnalysis(result *archetypes.ArchetypeAnalysisResult, dataDir s
 
 // convertPlayerToAnalysis converts player data to CardAnalysis format (for deck package)
 func convertPlayerToAnalysis(player *clashroyale.Player) *deck.CardAnalysis {
-	analysis := &deck.CardAnalysis{
-		CardLevels:   make(map[string]deck.CardLevelData),
+	cardLevels := buildAnalysisCardLevelsFromPlayer(player)
+	deckAnalysis := &deck.CardAnalysis{
+		CardLevels:   make(map[string]deck.CardLevelData, len(cardLevels)),
 		AnalysisTime: time.Now().Format("2006-01-02 15:04:05"),
 		PlayerName:   player.Name,
 		PlayerTag:    player.Tag,
 	}
 
-	for _, card := range player.Cards {
-		analysis.CardLevels[card.Name] = deck.CardLevelData{
-			Level:             card.Level,
-			MaxLevel:          card.MaxLevel,
-			Rarity:            card.Rarity,
-			Elixir:            card.ElixirCost,
-			MaxEvolutionLevel: card.MaxEvolutionLevel,
+	for name, info := range cardLevels {
+		deckAnalysis.CardLevels[name] = deck.CardLevelData{
+			Level:             info.Level,
+			MaxLevel:          info.MaxLevel,
+			Rarity:            info.Rarity,
+			Elixir:            info.Elixir,
+			EvolutionLevel:    info.EvolutionLevel,
+			MaxEvolutionLevel: info.MaxEvolutionLevel,
 		}
 	}
 
-	return analysis
+	return deckAnalysis
 }
 
-// convertPlayerToAnalysisPackage converts player data to analysis.CardAnalysis format
-func convertPlayerToAnalysisPackage(player *clashroyale.Player) *analysis.CardAnalysis {
-	cardAnalysis := &analysis.CardAnalysis{
-		PlayerTag:    player.Tag,
-		PlayerName:   player.Name,
-		AnalysisTime: time.Now(),
-		TotalCards:   len(player.Cards),
-		CardLevels:   make(map[string]analysis.CardLevelInfo),
-	}
-
+func buildAnalysisCardLevelsFromPlayer(player *clashroyale.Player) map[string]analysis.CardLevelInfo {
+	cardLevels := make(map[string]analysis.CardLevelInfo, len(player.Cards))
 	for _, card := range player.Cards {
-		cardAnalysis.CardLevels[card.Name] = analysis.CardLevelInfo{
+		cardLevels[card.Name] = analysis.CardLevelInfo{
 			Name:              card.Name,
 			ID:                card.ID,
 			Level:             card.Level,
@@ -359,7 +353,18 @@ func convertPlayerToAnalysisPackage(player *clashroyale.Player) *analysis.CardAn
 		}
 	}
 
-	return cardAnalysis
+	return cardLevels
+}
+
+// convertPlayerToAnalysisPackage converts player data to analysis.CardAnalysis format
+func convertPlayerToAnalysisPackage(player *clashroyale.Player) *analysis.CardAnalysis {
+	return &analysis.CardAnalysis{
+		PlayerTag:    player.Tag,
+		PlayerName:   player.Name,
+		AnalysisTime: time.Now(),
+		TotalCards:   len(player.Cards),
+		CardLevels:   buildAnalysisCardLevelsFromPlayer(player),
+	}
 }
 
 // addArchetypeDetectCommand adds the dynamic archetype detection command
