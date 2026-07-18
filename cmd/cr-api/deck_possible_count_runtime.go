@@ -23,6 +23,14 @@ type possibleCountCountRow struct {
 	Count string `json:"count"`
 }
 
+const (
+	possibleCountLabelBait    = "Bait"
+	possibleCountLabelControl = "Control"
+	possibleCountLabelCycle   = "Cycle"
+	possibleCountPlayerKey    = "player"
+	possibleCountPlayerName   = "name"
+)
+
 var possibleCountRoleOrder = []struct {
 	role  deck.CardRole
 	label string
@@ -32,16 +40,16 @@ var possibleCountRoleOrder = []struct {
 	{role: deck.RoleSpellBig, label: "Big Spell"},
 	{role: deck.RoleSpellSmall, label: "Small Spell"},
 	{role: deck.RoleSupport, label: "Support"},
-	{role: deck.RoleCycle, label: "Cycle"},
+	{role: deck.RoleCycle, label: possibleCountLabelCycle},
 }
 
 var possibleCountArchetypeOrder = []string{
 	"Beatdown",
-	"Control",
-	"Cycle",
+	possibleCountLabelControl,
+	possibleCountLabelCycle,
 	"Siege",
 	"Bridge Spam",
-	"Bait",
+	possibleCountLabelBait,
 }
 
 func orderedPossibleCountRoleRows(stats *deck.DeckSpaceStats) []possibleCountRoleRow {
@@ -222,12 +230,12 @@ func formatPossibleCountHuman(player *clashroyale.Player, stats *deck.DeckSpaceS
 	buf.WriteString(fmt.Sprintf("Total Cards: %d\n\n", stats.TotalCards))
 
 	buf.WriteString("═══ POSSIBLE DECK COMBINATIONS ═══\n\n")
-	buf.WriteString(fmt.Sprintf("Total Unconstrained: %s (%s)\n",
+	fmt.Fprintf(&buf, "Total Unconstrained: %s (%s)\n",
 		stats.TotalCombinations.String(),
-		deck.FormatLargeNumber(stats.TotalCombinations)))
-	buf.WriteString(fmt.Sprintf("Valid (With Roles): %s (%s)\n\n",
+		deck.FormatLargeNumber(stats.TotalCombinations))
+	fmt.Fprintf(&buf, "Valid (With Roles): %s (%s)\n\n",
 		stats.ValidCombinations.String(),
-		deck.FormatLargeNumber(stats.ValidCombinations)))
+		deck.FormatLargeNumber(stats.ValidCombinations))
 
 	writePossibleCountElixirSection(&buf, stats)
 	writePossibleCountArchetypeSection(&buf, stats)
@@ -249,7 +257,7 @@ func formatPossibleCountJSON(player *clashroyale.Player, stats *deck.DeckSpaceSt
 	archetypeRows := orderedPossibleCountArchetypeRows(stats)
 
 	output := map[string]any{
-		"player":                   map[string]string{"tag": player.Tag, "name": player.Name},
+		possibleCountPlayerKey:     map[string]string{discoverFlagTag: player.Tag, possibleCountPlayerName: player.Name},
 		"total_cards":              stats.TotalCards,
 		"total_combinations":       stats.TotalCombinations.String(),
 		"valid_combinations":       stats.ValidCombinations.String(),
@@ -286,7 +294,7 @@ func formatPossibleCountCSV(player *clashroyale.Player, stats *deck.DeckSpaceSta
 	if verbose {
 		buf.WriteString("Role,Card Count\n")
 		for _, row := range orderedPossibleCountRoleRows(stats) {
-			buf.WriteString(fmt.Sprintf("%s,%d\n", row.Role, row.Count))
+			fmt.Fprintf(&buf, "%s,%d\n", row.Role, row.Count)
 		}
 	}
 
