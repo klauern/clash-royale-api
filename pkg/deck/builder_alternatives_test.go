@@ -1,10 +1,45 @@
 package deck
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
+
+func TestCandidatePoolIndexesAndSelectsCandidates(t *testing.T) {
+	candidates := []*CardCandidate{
+		{Name: "first", Level: 10, MaxLevel: 10},
+		{Name: "second", Level: 10, MaxLevel: 10},
+		{Name: "third", Level: 9, MaxLevel: 10},
+	}
+	pool := newCandidatePool(candidates)
+
+	if got := pool.byName["second"]; got != candidates[1] {
+		t.Fatalf("indexed candidate = %p, want %p", got, candidates[1])
+	}
+
+	used := map[string]bool{"first": true}
+	if got := pool.firstUnused(used); got != "second" {
+		t.Fatalf("firstUnused() = %q, want second", got)
+	}
+
+	// Equal scores retain candidate input order while excluding used cards.
+	if got := pool.bestUnused(used, nil, func(*CardCandidate) float64 { return 1 }); got != "second" {
+		t.Fatalf("bestUnused() = %q, want stable second candidate", got)
+	}
+}
+
+func TestCandidatePoolValidate(t *testing.T) {
+	candidates := make([]*CardCandidate, 7)
+	for i := range candidates {
+		candidates[i] = &CardCandidate{}
+	}
+	pool := newCandidatePool(candidates)
+	if err := pool.validate(); err == nil || !strings.Contains(err.Error(), "got 7") {
+		t.Fatalf("validate() error = %v, want insufficient candidate count", err)
+	}
+}
 
 // createBuilderTestCandidates creates a set of test candidates for builder tests.
 func createBuilderTestCandidates() []*CardCandidate {
