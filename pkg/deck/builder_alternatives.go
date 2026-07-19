@@ -56,6 +56,51 @@ type BuilderConfig struct {
 	RequireAirDefense bool
 }
 
+type candidatePool struct {
+	candidates []*CardCandidate
+	byName     map[string]*CardCandidate
+}
+
+func newCandidatePool(candidates []*CardCandidate) candidatePool {
+	pool := candidatePool{candidates: candidates, byName: make(map[string]*CardCandidate, len(candidates))}
+	for _, candidate := range candidates {
+		pool.byName[candidate.Name] = candidate
+	}
+	return pool
+}
+
+func (p candidatePool) validate() error {
+	if len(p.candidates) < 8 {
+		return fmt.Errorf("insufficient candidates: need at least 8, got %d", len(p.candidates))
+	}
+	return nil
+}
+
+func (p candidatePool) firstUnused(used map[string]bool) string {
+	for _, candidate := range p.candidates {
+		if !used[candidate.Name] {
+			return candidate.Name
+		}
+	}
+	return ""
+}
+
+func (p candidatePool) bestUnused(used map[string]bool, matches func(*CardCandidate) bool, score func(*CardCandidate) float64) string {
+	bestName := ""
+	bestScore := math.Inf(-1)
+	for _, candidate := range p.candidates {
+		if used[candidate.Name] || (matches != nil && !matches(candidate)) {
+			continue
+		}
+		candidateScore := score(candidate)
+		if candidateScore > bestScore {
+			bestName = candidate.Name
+			bestScore = candidateScore
+		}
+	}
+	return bestName
+}
+
 // DefaultBuilderConfig returns sensible defaults for deck building.
 func DefaultBuilderConfig(candidates []*CardCandidate, synergyDB *SynergyDatabase) BuilderConfig {
 	return BuilderConfig{
@@ -79,11 +124,12 @@ func DefaultBuilderConfig(candidates []*CardCandidate, synergyDB *SynergyDatabas
 // with maximum total synergy weight.
 type SynergyGraphBuilder struct {
 	config BuilderConfig
+	pool   candidatePool
 }
 
 // NewSynergyGraphBuilder creates a new synergy graph builder.
 func NewSynergyGraphBuilder(config BuilderConfig) *SynergyGraphBuilder {
-	return &SynergyGraphBuilder{config: config}
+	return &SynergyGraphBuilder{config: config, pool: newCandidatePool(config.Candidates)}
 }
 
 func (b *SynergyGraphBuilder) Name() string {
@@ -95,8 +141,8 @@ func (b *SynergyGraphBuilder) Name() string {
 //
 //nolint:funlen,gocognit,gocyclo // Greedy selection flow intentionally keeps scoring/constraint checks in one pass.
 func (b *SynergyGraphBuilder) Build() ([]string, error) {
-	if len(b.config.Candidates) < 8 {
-		return nil, fmt.Errorf("insufficient candidates: need at least 8, got %d", len(b.config.Candidates))
+	if err := b.pool.validate(); err != nil {
+		return nil, err
 	}
 
 	if b.config.SynergyDB == nil {
@@ -245,7 +291,7 @@ func (b *SynergyGraphBuilder) constraintBonus(candidate *CardCandidate, deck []s
 	if b.config.RequireWinCondition {
 		hasWinCon := false
 		for _, name := range deck {
-			if c := b.findCandidate(name); c != nil && c.Role != nil && *c.Role == RoleWinCondition {
+			if c := b.pool.byName[name]; c != nil && c.Role != nil && *c.Role == RoleWinCondition {
 				hasWinCon = true
 				break
 			}
@@ -259,7 +305,7 @@ func (b *SynergyGraphBuilder) constraintBonus(candidate *CardCandidate, deck []s
 	if b.config.RequireSpell {
 		hasSpell := false
 		for _, name := range deck {
-			if c := b.findCandidate(name); c != nil && c.Role != nil && (*c.Role == RoleSpellBig || *c.Role == RoleSpellSmall) {
+			if c := b.pool.byName[name]; c != nil && c.Role != nil && (*c.Role == RoleSpellBig || *c.Role == RoleSpellSmall) {
 				hasSpell = true
 				break
 			}
@@ -273,7 +319,7 @@ func (b *SynergyGraphBuilder) constraintBonus(candidate *CardCandidate, deck []s
 	if b.config.RequireAirDefense {
 		hasAir := false
 		for _, name := range deck {
-			if c := b.findCandidate(name); c != nil && c.Stats != nil && (c.Stats.Targets == targetsAir || c.Stats.Targets == targetsAirAndGround) {
+			if c := b.pool.byName[name]; c != nil && c.Stats != nil && (c.Stats.Targets == targetsAir || c.Stats.Targets == targetsAirAndGround) {
 				hasAir = true
 				break
 			}
@@ -296,7 +342,7 @@ func (b *SynergyGraphBuilder) meetsConstraints(deck []string) bool {
 	totalElixir := 0
 
 	for _, name := range deck {
-		c := b.findCandidate(name)
+		c := b.pool.byName[name]
 		if c == nil {
 			continue
 		}
@@ -325,16 +371,6 @@ func (b *SynergyGraphBuilder) meetsConstraints(deck []string) bool {
 	return hasWinCon && hasSpell && hasAirDef
 }
 
-// findCandidate looks up a candidate by name.
-func (b *SynergyGraphBuilder) findCandidate(name string) *CardCandidate {
-	for _, c := range b.config.Candidates {
-		if c.Name == name {
-			return c
-		}
-	}
-	return nil
-}
-
 // findConstraintFiller finds a card that helps meet unmet constraints.
 func (b *SynergyGraphBuilder) findConstraintFiller(deck []string, inDeck map[string]bool) string {
 	for _, c := range b.config.Candidates {
@@ -358,11 +394,12 @@ func (b *SynergyGraphBuilder) findConstraintFiller(deck []string, inDeck map[str
 // Soft constraints are optimized (synergy, elixir curve, counter coverage).
 type ConstraintSatisfactionBuilder struct {
 	config BuilderConfig
+	pool   candidatePool
 }
 
 // NewConstraintSatisfactionBuilder creates a new CSP-style builder.
 func NewConstraintSatisfactionBuilder(config BuilderConfig) *ConstraintSatisfactionBuilder {
-	return &ConstraintSatisfactionBuilder{config: config}
+	return &ConstraintSatisfactionBuilder{config: config, pool: newCandidatePool(config.Candidates)}
 }
 
 func (b *ConstraintSatisfactionBuilder) Name() string {
@@ -381,8 +418,8 @@ type SlotConstraint struct {
 //
 //nolint:gocyclo // Slot-constraint orchestration is inherently branchy.
 func (b *ConstraintSatisfactionBuilder) Build() ([]string, error) {
-	if len(b.config.Candidates) < 8 {
-		return nil, fmt.Errorf("insufficient candidates: need at least 8, got %d", len(b.config.Candidates))
+	if err := b.pool.validate(); err != nil {
+		return nil, err
 	}
 
 	// Define slot constraints
@@ -735,11 +772,12 @@ func (s *ArchetypeFreeScorer) calculateElixirFit(cards []CardCandidate) float64 
 // Order: WinCon -> AirDefense -> Splash -> TankKiller -> Spells -> Support -> Cycle
 type RoleFirstBuilder struct {
 	config BuilderConfig
+	pool   candidatePool
 }
 
 // NewRoleFirstBuilder creates a role-priority builder.
 func NewRoleFirstBuilder(config BuilderConfig) *RoleFirstBuilder {
-	return &RoleFirstBuilder{config: config}
+	return &RoleFirstBuilder{config: config, pool: newCandidatePool(config.Candidates)}
 }
 
 func (b *RoleFirstBuilder) Name() string {
@@ -758,8 +796,8 @@ type roleSlot struct {
 //
 //nolint:gocyclo // Slot fallback logic is intentionally explicit.
 func (b *RoleFirstBuilder) Build() ([]string, error) {
-	if len(b.config.Candidates) < 8 {
-		return nil, fmt.Errorf("insufficient candidates: need at least 8, got %d", len(b.config.Candidates))
+	if err := b.pool.validate(); err != nil {
+		return nil, err
 	}
 
 	// Define slot priorities
@@ -868,18 +906,7 @@ func (b *RoleFirstBuilder) selectForSlot(slot roleSlot, deck []string, used map[
 
 // selectBestRemaining picks the best unused card.
 func (b *RoleFirstBuilder) selectBestRemaining(deck []string, used map[string]bool) string {
-	type scored struct {
-		name  string
-		score float64
-	}
-
-	var candidates []scored
-
-	for _, c := range b.config.Candidates {
-		if used[c.Name] {
-			continue
-		}
-
+	return b.pool.bestUnused(used, nil, func(c *CardCandidate) float64 {
 		score := c.LevelRatio()
 		if b.config.SynergyDB != nil {
 			for _, deckCard := range deck {
@@ -887,18 +914,8 @@ func (b *RoleFirstBuilder) selectBestRemaining(deck []string, used map[string]bo
 			}
 		}
 
-		candidates = append(candidates, scored{name: c.Name, score: score})
-	}
-
-	if len(candidates) == 0 {
-		return ""
-	}
-
-	sort.Slice(candidates, func(i, j int) bool {
-		return candidates[i].score > candidates[j].score
+		return score
 	})
-
-	return candidates[0].name
 }
 
 // =============================================================================
@@ -909,11 +926,12 @@ func (b *RoleFirstBuilder) selectBestRemaining(deck []string, used map[string]bo
 // Prioritizes defensive coverage while ensuring a viable offense.
 type CounterCentricBuilder struct {
 	config BuilderConfig
+	pool   candidatePool
 }
 
 // NewCounterCentricBuilder creates a counter-focused builder.
 func NewCounterCentricBuilder(config BuilderConfig) *CounterCentricBuilder {
-	return &CounterCentricBuilder{config: config}
+	return &CounterCentricBuilder{config: config, pool: newCandidatePool(config.Candidates)}
 }
 
 func (b *CounterCentricBuilder) Name() string {
@@ -922,8 +940,8 @@ func (b *CounterCentricBuilder) Name() string {
 
 // Build constructs a deck maximizing threat coverage.
 func (b *CounterCentricBuilder) Build() ([]string, error) {
-	if len(b.config.Candidates) < 8 {
-		return nil, fmt.Errorf("insufficient candidates: need at least 8, got %d", len(b.config.Candidates))
+	if err := b.pool.validate(); err != nil {
+		return nil, err
 	}
 
 	if b.config.CounterMatrix == nil {
@@ -1046,7 +1064,7 @@ func (b *CounterCentricBuilder) selectBestCoverage(deck []string, used map[strin
 		if c.Role != nil && (*c.Role == RoleSpellBig || *c.Role == RoleSpellSmall) {
 			hasSpell := false
 			for _, d := range deck {
-				dc := b.findCandidate(d)
+				dc := b.pool.byName[d]
 				if dc != nil && dc.Role != nil && (*dc.Role == RoleSpellBig || *dc.Role == RoleSpellSmall) {
 					hasSpell = true
 					break
@@ -1093,22 +1111,7 @@ func (b *CounterCentricBuilder) updateCoverage(cardName string, covered map[Coun
 
 // selectAnyAvailable returns any unused card.
 func (b *CounterCentricBuilder) selectAnyAvailable(used map[string]bool) string {
-	for _, c := range b.config.Candidates {
-		if !used[c.Name] {
-			return c.Name
-		}
-	}
-	return ""
-}
-
-// findCandidate looks up a candidate by name.
-func (b *CounterCentricBuilder) findCandidate(name string) *CardCandidate {
-	for _, c := range b.config.Candidates {
-		if c.Name == name {
-			return c
-		}
-	}
-	return nil
+	return b.pool.firstUnused(used)
 }
 
 // =============================================================================
@@ -1174,6 +1177,7 @@ func (m *CoOccurrenceMatrix) GetProbability(cardA, cardB string) float64 {
 // MetaLearningBuilder uses co-occurrence data to build decks.
 type MetaLearningBuilder struct {
 	config           BuilderConfig
+	pool             candidatePool
 	coOccurrenceData *CoOccurrenceMatrix
 }
 
@@ -1181,6 +1185,7 @@ type MetaLearningBuilder struct {
 func NewMetaLearningBuilder(config BuilderConfig, coOccurrence *CoOccurrenceMatrix) *MetaLearningBuilder {
 	return &MetaLearningBuilder{
 		config:           config,
+		pool:             newCandidatePool(config.Candidates),
 		coOccurrenceData: coOccurrence,
 	}
 }
@@ -1191,8 +1196,8 @@ func (b *MetaLearningBuilder) Name() string {
 
 // Build constructs a deck using co-occurrence probabilities.
 func (b *MetaLearningBuilder) Build() ([]string, error) {
-	if len(b.config.Candidates) < 8 {
-		return nil, fmt.Errorf("insufficient candidates: need at least 8, got %d", len(b.config.Candidates))
+	if err := b.pool.validate(); err != nil {
+		return nil, err
 	}
 
 	deck := make([]string, 0, 8)
@@ -1288,12 +1293,7 @@ func (b *MetaLearningBuilder) selectBestCoOccurrence(deck []string, used map[str
 
 // selectAnyValid returns any unused card.
 func (b *MetaLearningBuilder) selectAnyValid(used map[string]bool) string {
-	for _, c := range b.config.Candidates {
-		if !used[c.Name] {
-			return c.Name
-		}
-	}
-	return ""
+	return b.pool.firstUnused(used)
 }
 
 // =============================================================================
