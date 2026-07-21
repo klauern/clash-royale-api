@@ -2,6 +2,9 @@ package deck
 
 import (
 	"fmt"
+	"math/rand"
+	"strings"
+	"sync"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/internal/config"
@@ -39,6 +42,113 @@ func TestNewDeckFuzzer(t *testing.T) {
 
 	if len(fuzzer.GetAllCards()) != 12 {
 		t.Errorf("Expected 12 cards, got %d", len(fuzzer.GetAllCards()))
+	}
+	if !fuzzer.isCardAvailable("Hog Rider") || fuzzer.isCardAvailable("Missing Card") {
+		t.Fatal("card availability index does not match the player collection")
+	}
+	if got := fuzzer.calculateAvgElixir([]string{"Hog Rider", "Skeletons"}); got != 2.5 {
+		t.Fatalf("calculateAvgElixir() = %v, want 2.5", got)
+	}
+}
+
+func TestDeckFuzzerValidationStatsAreConcurrentSafe(t *testing.T) {
+	df := &DeckFuzzer{
+		cardsByName: map[string]CardCandidate{
+			"Required": {Name: "Required", Elixir: 4},
+			"Other":    {Name: "Other", Elixir: 2},
+		},
+		config:     &FuzzingConfig{MinAvgElixir: 0, MaxAvgElixir: 10},
+		includeMap: map[string]bool{"Required": true},
+		stats:      &FuzzingStats{},
+	}
+	deck := []string{"Other", "Other", "Other", "Other", "Other", "Other", "Other", "Other"}
+	used := map[string]bool{"Other": true}
+
+	const attempts = 100
+	var wg sync.WaitGroup
+	for range attempts {
+		wg.Go(func() {
+			_ = df.validateDeck(deck, used)
+		})
+	}
+	wg.Wait()
+
+	if stats := df.GetStats(); stats.SkippedInclude != attempts {
+		t.Fatalf("SkippedInclude = %d, want %d", stats.SkippedInclude, attempts)
+	}
+}
+
+func TestDeckFuzzerCountsEachFailedAttemptOnce(t *testing.T) {
+	cards := make([]CardCandidate, 8)
+	cardsByName := make(map[string]CardCandidate, len(cards))
+	for i := range cards {
+		cards[i] = CardCandidate{Name: fmt.Sprintf("Card %d", i), Elixir: 1}
+		cardsByName[cards[i].Name] = cards[i]
+	}
+	df := &DeckFuzzer{
+		allCards:    cards,
+		cardsByName: cardsByName,
+		composition: &RoleComposition{},
+		config:      &FuzzingConfig{MinAvgElixir: 0, MaxAvgElixir: -1},
+		stats:       &FuzzingStats{},
+	}
+
+	if _, err := df.GenerateRandomDeckWithRng(rand.New(rand.NewSource(1))); err == nil {
+		t.Fatal("GenerateRandomDeckWithRng() error = nil, want exhausted retries")
+	}
+	if stats := df.GetStats(); stats.Failed != 100 || stats.Generated != 100 {
+		t.Fatalf("failure stats = failed:%d generated:%d, want 100 each", stats.Failed, stats.Generated)
+	}
+}
+
+func TestDeckFuzzerSharedInitializationAndValidation(t *testing.T) {
+	df := &DeckFuzzer{
+		cardsByName: map[string]CardCandidate{
+			"Required": {Name: "Required", Elixir: 4},
+			"Other":    {Name: "Other", Elixir: 2},
+		},
+		config:     &FuzzingConfig{MinAvgElixir: 0, MaxAvgElixir: 10},
+		includeMap: map[string]bool{"Required": true},
+		excludeMap: map[string]bool{},
+		stats:      &FuzzingStats{},
+	}
+
+	deck, used, err := df.initializeDeck()
+	if err != nil {
+		t.Fatalf("initializeDeck() error = %v", err)
+	}
+	if len(deck) != 1 || deck[0] != "Required" || !used["Required"] {
+		t.Fatalf("initializeDeck() = %v, %v; want required card initialized", deck, used)
+	}
+
+	df.includeMap["Unavailable"] = true
+	if _, _, err := df.initializeDeck(); err == nil || !strings.Contains(err.Error(), "included card not available") {
+		t.Fatalf("initializeDeck() error = %v, want unavailable include error", err)
+	}
+	delete(df.includeMap, "Unavailable")
+
+	tests := []struct {
+		name string
+		deck []string
+		used map[string]bool
+		want string
+	}{
+		{name: "size", deck: []string{"Required"}, used: map[string]bool{"Required": true}, want: "invalid deck size"},
+		{name: "include", deck: []string{"Other", "Other", "Other", "Other", "Other", "Other", "Other", "Other"}, used: map[string]bool{"Other": true}, want: "missing include card"},
+		{name: "exclude", deck: []string{"Required", "Other", "Other", "Other", "Other", "Other", "Other", "Other"}, used: map[string]bool{"Required": true, "Other": true}, want: "excluded card present"},
+	}
+	df.excludeMap["Other"] = true
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := df.validateDeck(tt.deck, tt.used)
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("validateDeck() error = %v, want %q", err, tt.want)
+			}
+		})
+	}
+	stats := df.GetStats()
+	if stats.SkippedInclude != 1 || stats.SkippedExclude != 1 {
+		t.Fatalf("validation stats = include:%d exclude:%d, want 1 each", stats.SkippedInclude, stats.SkippedExclude)
 	}
 }
 
