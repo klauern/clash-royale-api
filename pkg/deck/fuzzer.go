@@ -111,6 +111,7 @@ func DefaultRoleComposition() *RoleComposition {
 type DeckFuzzer struct {
 	cardsByRole      map[config.CardRole][]CardCandidate
 	allCards         []CardCandidate
+	cardsByName      map[string]CardCandidate
 	config           *FuzzingConfig
 	composition      *RoleComposition
 	rng              *rand.Rand
@@ -202,6 +203,7 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 	// Convert player cards to candidates and categorize by role
 	cardsByRole := make(map[config.CardRole][]CardCandidate)
 	allCards := make([]CardCandidate, 0, len(player.Cards))
+	cardsByName := make(map[string]CardCandidate, len(player.Cards))
 
 	for _, card := range player.Cards {
 		cardName := strings.TrimSpace(card.Name)
@@ -232,6 +234,7 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 		}
 
 		allCards = append(allCards, candidate)
+		cardsByName[cardName] = candidate
 
 		// Categorize by role (only if role is defined)
 		if role != "" {
@@ -254,6 +257,7 @@ func NewDeckFuzzer(player *clashroyale.Player, cfg *FuzzingConfig) (*DeckFuzzer,
 	fuzzer := &DeckFuzzer{
 		cardsByRole: cardsByRole,
 		allCards:    allCards,
+		cardsByName: cardsByName,
 		config:      cfg,
 		composition: DefaultRoleComposition(),
 		rng:         rng,
@@ -280,43 +284,18 @@ func (df *DeckFuzzer) GenerateRandomDeck() ([]string, error) {
 func (df *DeckFuzzer) GenerateRandomDeckWithRng(rng *rand.Rand) ([]string, error) {
 	const maxRetries = 100
 
-	// Use synergy-first generation if enabled
+	attempt := df.generateRandomDeckAttemptWithRng
+	strategy := ""
 	if df.config.SynergyFirst {
-		for range maxRetries {
-			deck, err := df.generateSynergyDeckAttemptWithRng(rng)
-			if err != nil {
-				df.recordFailure()
-				continue
-			}
-
-			df.recordSuccess()
-			return deck, nil
-		}
-
-		df.recordFailure()
-		return nil, fmt.Errorf("failed to generate valid synergy deck after %d attempts", maxRetries)
+		attempt = df.generateSynergyDeckAttemptWithRng
+		strategy = "synergy "
+	} else if df.config.EvolutionCentric {
+		attempt = df.generateEvolutionCentricDeckAttemptWithRng
+		strategy = "evolution "
 	}
 
-	// Use evolution-centric generation if enabled
-	if df.config.EvolutionCentric {
-		for range maxRetries {
-			deck, err := df.generateEvolutionCentricDeckAttemptWithRng(rng)
-			if err != nil {
-				df.recordFailure()
-				continue
-			}
-
-			df.recordSuccess()
-			return deck, nil
-		}
-
-		df.recordFailure()
-		return nil, fmt.Errorf("failed to generate valid evolution deck after %d attempts", maxRetries)
-	}
-
-	// Standard role-based generation
 	for range maxRetries {
-		deck, err := df.generateRandomDeckAttemptWithRng(rng)
+		deck, err := attempt(rng)
 		if err != nil {
 			df.recordFailure()
 			continue
@@ -327,21 +306,51 @@ func (df *DeckFuzzer) GenerateRandomDeckWithRng(rng *rand.Rand) ([]string, error
 	}
 
 	df.recordFailure()
-	return nil, fmt.Errorf("failed to generate valid deck after %d attempts", maxRetries)
+	return nil, fmt.Errorf("failed to generate valid %sdeck after %d attempts", strategy, maxRetries)
+}
+
+func (df *DeckFuzzer) initializeDeck() ([]string, map[string]bool, error) {
+	deck := make([]string, 0, 8)
+	used := make(map[string]bool, 8)
+	for cardName := range df.includeMap {
+		if !df.isCardAvailable(cardName) {
+			return nil, nil, fmt.Errorf("included card not available: %s", cardName)
+		}
+		deck = append(deck, cardName)
+		used[cardName] = true
+	}
+	return deck, used, nil
+}
+
+func (df *DeckFuzzer) validateDeck(deck []string, used map[string]bool) error {
+	if len(deck) != 8 {
+		return fmt.Errorf("invalid deck size: %d", len(deck))
+	}
+	avgElixir := df.calculateAvgElixir(deck)
+	if avgElixir < df.config.MinAvgElixir || avgElixir > df.config.MaxAvgElixir {
+		df.stats.SkippedElixir++
+		return fmt.Errorf("elixir out of range: %.2f", avgElixir)
+	}
+	for cardName := range df.includeMap {
+		if !used[cardName] {
+			df.stats.SkippedInclude++
+			return fmt.Errorf("missing include card: %s", cardName)
+		}
+	}
+	for _, cardName := range deck {
+		if df.excludeMap[cardName] {
+			df.stats.SkippedExclude++
+			return fmt.Errorf("excluded card present: %s", cardName)
+		}
+	}
+	return nil
 }
 
 // generateRandomDeckAttemptWithRng attempts to generate a single random valid deck using the provided RNG
 func (df *DeckFuzzer) generateRandomDeckAttemptWithRng(rng *rand.Rand) ([]string, error) {
-	deck := make([]string, 0, 8)
-	used := make(map[string]bool)
-
-	// 1. Add include cards first (force-add any --include-cards)
-	for cardName := range df.includeMap {
-		if !df.isCardAvailable(cardName) {
-			return nil, fmt.Errorf("included card not available: %s", cardName)
-		}
-		deck = append(deck, cardName)
-		used[cardName] = true
+	deck, used, err := df.initializeDeck()
+	if err != nil {
+		return nil, err
 	}
 
 	// 2. Select cards by role using weighted random sampling
@@ -386,35 +395,7 @@ func (df *DeckFuzzer) generateRandomDeckAttemptWithRng(rng *rand.Rand) ([]string
 		}
 	}
 
-	// 4. Validate deck
-	if len(deck) != 8 {
-		return nil, fmt.Errorf("invalid deck size: %d", len(deck))
-	}
-
-	// 5. Validate average elixir
-	avgElixir := df.calculateAvgElixir(deck)
-	if avgElixir < df.config.MinAvgElixir || avgElixir > df.config.MaxAvgElixir {
-		df.stats.SkippedElixir++
-		return nil, fmt.Errorf("elixir out of range: %.2f", avgElixir)
-	}
-
-	// 6. Validate all include cards are present
-	for cardName := range df.includeMap {
-		if !used[cardName] {
-			df.stats.SkippedInclude++
-			return nil, fmt.Errorf("missing include card: %s", cardName)
-		}
-	}
-
-	// 7. Validate no excluded cards are present
-	for _, cardName := range deck {
-		if df.excludeMap[cardName] {
-			df.stats.SkippedExclude++
-			return nil, fmt.Errorf("excluded card present: %s", cardName)
-		}
-	}
-
-	return deck, nil
+	return deck, df.validateDeck(deck, used)
 }
 
 // selectRandomCardsWithRng selects random cards from a role using weighted sampling with the provided RNG
@@ -530,11 +511,8 @@ func (df *DeckFuzzer) calculateAvgElixir(deck []string) float64 {
 
 	total := 0
 	for _, cardName := range deck {
-		for _, card := range df.allCards {
-			if card.Name == cardName {
-				total += card.Elixir
-				break
-			}
+		if card, ok := df.cardsByName[cardName]; ok {
+			total += card.Elixir
 		}
 	}
 
@@ -543,22 +521,12 @@ func (df *DeckFuzzer) calculateAvgElixir(deck []string) float64 {
 
 // isCardAvailable checks if a card is in the available card pool
 func (df *DeckFuzzer) isCardAvailable(cardName string) bool {
-	for _, card := range df.allCards {
-		if card.Name == cardName {
-			return true
-		}
-	}
-	return false
+	_, ok := df.cardsByName[cardName]
+	return ok
 }
 
 // generateSynergyDeckAttemptWithRng attempts to generate a deck from 4 synergy pairs using the provided RNG
 func (df *DeckFuzzer) generateSynergyDeckAttemptWithRng(rng *rand.Rand) ([]string, error) {
-	// Build a map of available cards for quick lookup
-	availableCards := make(map[string]bool)
-	for _, card := range df.allCards {
-		availableCards[card.Name] = true
-	}
-
 	// Get all valid synergy pairs (both cards must be available)
 	validPairs := make([]SynergyPair, 0)
 	for _, pair := range df.synergyDB.Pairs {
@@ -567,7 +535,7 @@ func (df *DeckFuzzer) generateSynergyDeckAttemptWithRng(rng *rand.Rand) ([]strin
 			continue
 		}
 		// Both cards must be available
-		if availableCards[pair.Card1] && availableCards[pair.Card2] {
+		if df.isCardAvailable(pair.Card1) && df.isCardAvailable(pair.Card2) {
 			validPairs = append(validPairs, pair)
 		}
 	}
@@ -577,16 +545,9 @@ func (df *DeckFuzzer) generateSynergyDeckAttemptWithRng(rng *rand.Rand) ([]strin
 	}
 
 	// Select 4 complementary pairs avoiding duplicate cards
-	deck := make([]string, 0, 8)
-	used := make(map[string]bool)
-
-	// Add include cards first
-	for cardName := range df.includeMap {
-		if !availableCards[cardName] {
-			return nil, fmt.Errorf("included card not available: %s", cardName)
-		}
-		deck = append(deck, cardName)
-		used[cardName] = true
+	deck, used, err := df.initializeDeck()
+	if err != nil {
+		return nil, err
 	}
 
 	// Fisher-Yates shuffle using the provided RNG (safe for concurrent use)
@@ -627,49 +588,14 @@ func (df *DeckFuzzer) generateSynergyDeckAttemptWithRng(rng *rand.Rand) ([]strin
 		}
 	}
 
-	// Validate deck size
-	if len(deck) != 8 {
-		return nil, fmt.Errorf("invalid deck size: %d", len(deck))
-	}
-
-	// Validate average elixir
-	avgElixir := df.calculateAvgElixir(deck)
-	if avgElixir < df.config.MinAvgElixir || avgElixir > df.config.MaxAvgElixir {
-		df.stats.SkippedElixir++
-		return nil, fmt.Errorf("elixir out of range: %.2f", avgElixir)
-	}
-
-	// Validate all include cards are present
-	for cardName := range df.includeMap {
-		if !used[cardName] {
-			df.stats.SkippedInclude++
-			return nil, fmt.Errorf("missing include card: %s", cardName)
-		}
-	}
-
-	// Validate no excluded cards are present
-	for _, cardName := range deck {
-		if df.excludeMap[cardName] {
-			df.stats.SkippedExclude++
-			return nil, fmt.Errorf("excluded card present: %s", cardName)
-		}
-	}
-
-	return deck, nil
+	return deck, df.validateDeck(deck, used)
 }
 
 // generateEvolutionCentricDeckAttemptWithRng attempts to generate an evolution-centric deck using the provided RNG
 func (df *DeckFuzzer) generateEvolutionCentricDeckAttemptWithRng(rng *rand.Rand) ([]string, error) {
-	deck := make([]string, 0, 8)
-	used := make(map[string]bool)
-
-	// 1. Add include cards first
-	for cardName := range df.includeMap {
-		if !df.isCardAvailable(cardName) {
-			return nil, fmt.Errorf("included card not available: %s", cardName)
-		}
-		deck = append(deck, cardName)
-		used[cardName] = true
+	deck, used, err := df.initializeDeck()
+	if err != nil {
+		return nil, err
 	}
 
 	// 2. Score cards by evolution potential
@@ -689,40 +615,12 @@ func (df *DeckFuzzer) generateEvolutionCentricDeckAttemptWithRng(rng *rand.Rand)
 	// 4. Fill remaining slots with role-based selection considering evolution synergy
 	deck = df.buildDeckAroundEvolution(rng, deck, used)
 
-	// 5. Validate deck size
-	if len(deck) != 8 {
-		return nil, fmt.Errorf("invalid deck size: %d", len(deck))
-	}
-
-	// 6. Validate evolution requirements
+	// 5. Validate evolution requirements
 	if !df.validateEvolutionDeck(deck) {
 		return nil, fmt.Errorf("deck does not meet evolution requirements")
 	}
 
-	// 7. Validate average elixir
-	avgElixir := df.calculateAvgElixir(deck)
-	if avgElixir < df.config.MinAvgElixir || avgElixir > df.config.MaxAvgElixir {
-		df.stats.SkippedElixir++
-		return nil, fmt.Errorf("elixir out of range: %.2f", avgElixir)
-	}
-
-	// 8. Validate all include cards are present
-	for cardName := range df.includeMap {
-		if !used[cardName] {
-			df.stats.SkippedInclude++
-			return nil, fmt.Errorf("missing include card: %s", cardName)
-		}
-	}
-
-	// 9. Validate no excluded cards are present
-	for _, cardName := range deck {
-		if df.excludeMap[cardName] {
-			df.stats.SkippedExclude++
-			return nil, fmt.Errorf("excluded card present: %s", cardName)
-		}
-	}
-
-	return deck, nil
+	return deck, df.validateDeck(deck, used)
 }
 
 // scoreCardsByEvolution calculates evolution score for each card
@@ -850,15 +748,10 @@ func (df *DeckFuzzer) validateEvolutionDeck(deck []string) bool {
 	evoCardCount := 0
 
 	for _, cardName := range deck {
-		for _, card := range df.allCards {
-			if card.Name == cardName {
-				// Count evolution-eligible cards
-				if card.EvolutionLevel >= df.config.MinEvoLevel ||
-					(card.MaxEvolutionLevel > 0 && card.EvolutionLevel < card.MaxEvolutionLevel) {
-					evoCardCount++
-				}
-				break
-			}
+		if card, ok := df.cardsByName[cardName]; ok &&
+			(card.EvolutionLevel >= df.config.MinEvoLevel ||
+				(card.MaxEvolutionLevel > 0 && card.EvolutionLevel < card.MaxEvolutionLevel)) {
+			evoCardCount++
 		}
 	}
 
