@@ -305,7 +305,6 @@ func (df *DeckFuzzer) GenerateRandomDeckWithRng(rng *rand.Rand) ([]string, error
 		return deck, nil
 	}
 
-	df.recordFailure()
 	return nil, fmt.Errorf("failed to generate valid %sdeck after %d attempts", strategy, maxRetries)
 }
 
@@ -328,18 +327,24 @@ func (df *DeckFuzzer) validateDeck(deck []string, used map[string]bool) error {
 	}
 	avgElixir := df.calculateAvgElixir(deck)
 	if avgElixir < df.config.MinAvgElixir || avgElixir > df.config.MaxAvgElixir {
+		df.stats.mu.Lock()
 		df.stats.SkippedElixir++
+		df.stats.mu.Unlock()
 		return fmt.Errorf("elixir out of range: %.2f", avgElixir)
 	}
 	for cardName := range df.includeMap {
 		if !used[cardName] {
+			df.stats.mu.Lock()
 			df.stats.SkippedInclude++
+			df.stats.mu.Unlock()
 			return fmt.Errorf("missing include card: %s", cardName)
 		}
 	}
 	for _, cardName := range deck {
 		if df.excludeMap[cardName] {
+			df.stats.mu.Lock()
 			df.stats.SkippedExclude++
+			df.stats.mu.Unlock()
 			return fmt.Errorf("excluded card present: %s", cardName)
 		}
 	}
@@ -353,7 +358,27 @@ func (df *DeckFuzzer) generateRandomDeckAttemptWithRng(rng *rand.Rand) ([]string
 		return nil, err
 	}
 
-	// 2. Select cards by role using weighted random sampling
+	df.addRoleSelections(rng, deck, used)
+
+	// 3. Fill remaining slots with highest-score available cards
+	for len(deck) < 8 {
+		remaining := df.getHighestScoreAvailableCards(used, 8-len(deck))
+		if len(remaining) == 0 {
+			break
+		}
+		for _, card := range remaining {
+			if !used[card] && len(deck) < 8 {
+				deck = append(deck, card)
+				used[card] = true
+			}
+		}
+	}
+
+	return deck, df.validateDeck(deck, used)
+}
+
+// addRoleSelections fills the deck using the configured role composition.
+func (df *DeckFuzzer) addRoleSelections(rng *rand.Rand, deck []string, used map[string]bool) {
 	roleSelections := []struct {
 		role  config.CardRole
 		count int
@@ -381,21 +406,6 @@ func (df *DeckFuzzer) generateRandomDeckAttemptWithRng(rng *rand.Rand) ([]string
 		}
 	}
 
-	// 3. Fill remaining slots with highest-score available cards
-	for len(deck) < 8 {
-		remaining := df.getHighestScoreAvailableCards(used, 8-len(deck))
-		if len(remaining) == 0 {
-			break
-		}
-		for _, card := range remaining {
-			if !used[card] && len(deck) < 8 {
-				deck = append(deck, card)
-				used[card] = true
-			}
-		}
-	}
-
-	return deck, df.validateDeck(deck, used)
 }
 
 // selectRandomCardsWithRng selects random cards from a role using weighted sampling with the provided RNG
