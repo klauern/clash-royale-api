@@ -43,7 +43,7 @@ func calculateLadderScore(rarityScore, levelIndepScore, upgradeProgress float64)
 	// Upgrade progress (20%)
 	// Upgrade clarity bonus (10%) - implicit in other factors
 
-	score := (rarityScore * 0.4) + (levelIndepScore * 0.3) + (upgradeProgress * 0.2) + (rarityScore * 0.1)
+	score := (rarityScore * 0.4) + (levelIndepScore * 0.3) + (upgradeProgress * 0.2)
 
 	return score
 }
@@ -321,7 +321,7 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerCo
 	if hasPlayerContext {
 		// Use competitive viability as primary score when player context available
 		score = competitiveViability
-		rating = Rating(viabilityRating)
+		rating = ScoreToRating(score)
 	} else {
 		// Fall back to F2P-based scoring
 		levelIndepScore := float64(len(levelIndepCards)) / float64(len(deckCards)) * 10.0
@@ -368,7 +368,7 @@ func BuildLadderAnalysis(deckCards []deck.CardCandidate, playerContext *PlayerCo
 				}
 			}
 		}
-		details = append(details, fmt.Sprintf("Cards ready for ladder: %d/8 (level 11+)", readyCount))
+		details = append(details, fmt.Sprintf("Cards ready for ladder: %d/%d (level 11+)", readyCount, len(deckCards)))
 	}
 
 	// Level-independent cards (always shown if present)
