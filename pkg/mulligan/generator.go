@@ -25,7 +25,7 @@ type CardInfo struct {
 // NewGenerator creates a new mulligan guide generator
 func NewGenerator() *Generator {
 	return &Generator{
-		cardDatabase: initializeCardDatabase(),
+		cardDatabase: LoadCardDatabase(),
 	}
 }
 
