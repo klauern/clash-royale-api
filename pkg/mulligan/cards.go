@@ -45,9 +45,3 @@ func LoadCardDatabase() map[string]CardInfo {
 	}
 	return cards
 }
-
-// Deprecated: initializeCardDatabase creates a database of cards with their mulligan properties
-// Use LoadCardDatabase instead. This function is kept for backward compatibility.
-func initializeCardDatabase() map[string]CardInfo {
-	return LoadCardDatabase()
-}
