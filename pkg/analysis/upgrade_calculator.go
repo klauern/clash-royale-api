@@ -2,9 +2,7 @@
 // Based on official Clash Royale card progression system.
 package analysis
 
-import (
-	"github.com/klauer/clash-royale-api/go/internal/config"
-)
+import "github.com/klauer/clash-royale-api/go/internal/config"
 
 // CardInfo interface for card data
 // This allows the package to work without importing the clashroyale package directly
@@ -387,6 +385,16 @@ type CardCountConfig struct {
 	cardCounts map[string]int
 }
 
+func defaultCardCounts() map[string]int {
+	return map[string]int{
+		rarityCommon:    19,
+		rarityRare:      20,
+		rarityEpic:      12,
+		rarityLegendary: 10,
+		rarityChampion:  6,
+	}
+}
+
 // NewCardCountConfig creates a config from actual card data
 // Counts cards by rarity and applies defaults for rarities with zero cards
 func NewCardCountConfig(cards []CardInfo) *CardCountConfig {
@@ -401,15 +409,7 @@ func NewCardCountConfig(cards []CardInfo) *CardCountConfig {
 	}
 
 	// Apply defaults for missing rarities (fallback to game defaults)
-	defaults := map[string]int{
-		"Common":    19,
-		"Rare":      20,
-		"Epic":      12,
-		"Legendary": 10,
-		"Champion":  6,
-	}
-
-	for rarity, defaultVal := range defaults {
+	for rarity, defaultVal := range defaultCardCounts() {
 		if counts[rarity] == 0 {
 			counts[rarity] = defaultVal
 		}
@@ -421,15 +421,7 @@ func NewCardCountConfig(cards []CardInfo) *CardCountConfig {
 // DefaultCardCountConfig returns a config with game default card counts
 // Use this when actual card data is not available
 func DefaultCardCountConfig() *CardCountConfig {
-	return &CardCountConfig{
-		cardCounts: map[string]int{
-			"Common":    19,
-			"Rare":      20,
-			"Epic":      12,
-			"Legendary": 10,
-			"Champion":  6,
-		},
-	}
+	return &CardCountConfig{cardCounts: defaultCardCounts()}
 }
 
 // GetTotalCards returns the total number of cards for a given rarity
