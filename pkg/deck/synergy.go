@@ -269,6 +269,13 @@ func (db *SynergyDatabase) GetSynergyPair(card1, card2 string) *SynergyPair {
 	return nil
 }
 
+// CalculateDeckSynergy is deprecated; use AnalyzeDeckSynergy.
+//
+// It remains as a compatibility shim for callers of the public package.
+func (db *SynergyDatabase) CalculateDeckSynergy(deck []string) *DeckSynergyAnalysis {
+	return db.AnalyzeDeckSynergy(deck)
+}
+
 // AnalyzeDeckSynergy scores overall deck synergy
 func (db *SynergyDatabase) AnalyzeDeckSynergy(deck []string) *DeckSynergyAnalysis {
 	if len(deck) == 0 {

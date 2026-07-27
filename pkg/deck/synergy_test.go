@@ -1,6 +1,7 @@
 package deck
 
 import (
+	"reflect"
 	"testing"
 )
 
@@ -142,6 +143,18 @@ func TestAnalyzeDeckSynergy(t *testing.T) {
 				t.Error("Expected category scores to be populated")
 			}
 		})
+	}
+}
+
+func TestCalculateDeckSynergyCompatibility(t *testing.T) {
+	db := NewSynergyDatabase()
+	deck := []string{"Giant", "Witch"}
+
+	legacy := db.CalculateDeckSynergy(deck)
+	current := db.AnalyzeDeckSynergy(deck)
+
+	if !reflect.DeepEqual(legacy, current) {
+		t.Error("CalculateDeckSynergy must remain compatible with AnalyzeDeckSynergy")
 	}
 }
 
