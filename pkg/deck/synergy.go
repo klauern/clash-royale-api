@@ -417,10 +417,3 @@ func GetCategoryDescription(category SynergyCategory) string {
 	}
 	return string(category)
 }
-
-// CalculateDeckSynergy calculates the synergy score for a deck.
-// This is a convenience wrapper for AnalyzeDeckSynergy that matches
-// the naming convention specified in the improved scoring design.
-func (db *SynergyDatabase) CalculateDeckSynergy(deck []string) *DeckSynergyAnalysis {
-	return db.AnalyzeDeckSynergy(deck)
-}

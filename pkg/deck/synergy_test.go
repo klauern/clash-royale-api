@@ -358,33 +358,3 @@ func TestLoadSynergyDatabaseFallback(t *testing.T) {
 		t.Error("Fallback database should have pairs")
 	}
 }
-
-func TestCalculateDeckSynergy(t *testing.T) {
-	db := NewSynergyDatabase()
-
-	// Test the CalculateDeckSynergy wrapper function
-	deck := []string{"Giant", "Witch", "Musketeer", "Fireball", "Zap", "Cannon", "Ice Spirit", "Skeletons"}
-
-	analysis := db.CalculateDeckSynergy(deck)
-
-	if analysis == nil {
-		t.Fatal("CalculateDeckSynergy returned nil")
-	}
-
-	// Should have synergies (Giant + Witch at minimum)
-	if len(analysis.TopSynergies) == 0 {
-		t.Error("Expected top synergies to be populated")
-	}
-
-	// Total score should be positive
-	if analysis.TotalScore <= 0 {
-		t.Errorf("Expected positive total score, got %f", analysis.TotalScore)
-	}
-
-	// Verify results match AnalyzeDeckSynergy
-	altAnalysis := db.AnalyzeDeckSynergy(deck)
-	if analysis.TotalScore != altAnalysis.TotalScore {
-		t.Errorf("CalculateDeckSynergy should match AnalyzeDeckSynergy: %f != %f",
-			analysis.TotalScore, altAnalysis.TotalScore)
-	}
-}
