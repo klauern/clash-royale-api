@@ -180,8 +180,8 @@ func (w *WhatIfAnalyzer) calculateImpact(
 	upgrades []CardUpgrade,
 ) *SimulationImpact {
 	// Calculate deck score delta
-	originalScore := calculateDeckScore(original)
-	simulatedScore := calculateDeckScore(simulated)
+	originalScore := DeckScore(original)
+	simulatedScore := DeckScore(simulated)
 	scoreDelta := simulatedScore - originalScore
 
 	impact := &SimulationImpact{
@@ -245,8 +245,8 @@ func (w *WhatIfAnalyzer) generateRecommendation(impact *SimulationImpact, upgrad
 	return fmt.Sprintf("Minor improvement. These upgrades (%d gold) slightly improve your deck by %.1f%%. Consider prioritizing other upgrades.", totalGold, impact.ViabilityImprovement)
 }
 
-// calculateDeckScore computes an overall score for a deck recommendation
-func calculateDeckScore(deck *deck.DeckRecommendation) float64 {
+// DeckScore computes the total card score for a deck recommendation.
+func DeckScore(deck *deck.DeckRecommendation) float64 {
 	if deck == nil || len(deck.DeckDetail) == 0 {
 		return 0
 	}
