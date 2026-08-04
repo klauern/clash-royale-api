@@ -9,16 +9,6 @@ import (
 
 // Scoring weights for overall score calculation have been moved to internal/config/constants.go
 
-// Rarity weights for compatibility scoring
-// Common cards are easier to max than rarer cards
-var rarityWeights = map[string]float64{
-	"Common":    config.GetRarityWeight("Common"),
-	"Rare":      config.GetRarityWeight("Rare"),
-	"Epic":      config.GetRarityWeight("Epic"),
-	"Legendary": config.GetRarityWeight("Legendary"),
-	"Champion":  config.GetRarityWeight("Champion"),
-}
-
 // Scorer handles scoring of deck recommendations
 type Scorer struct {
 	synergyDB *deck.SynergyDatabase
@@ -58,10 +48,7 @@ func (s *Scorer) CalculateCompatibility(deckDetail []deck.CardDetail, playerCard
 		levelRatio := float64(playerCard.Level) / float64(playerCard.MaxLevel)
 
 		// Get rarity weight
-		rarityWeight := rarityWeights[card.Rarity]
-		if rarityWeight == 0 {
-			rarityWeight = 1.0 // Default weight
-		}
+		rarityWeight := config.GetRarityWeight(card.Rarity)
 
 		// Card score = level ratio * rarity weight
 		cardScore := levelRatio * rarityWeight
