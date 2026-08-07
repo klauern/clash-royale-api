@@ -4,13 +4,6 @@ import (
 	"testing"
 )
 
-// Helper function to create pointer to CardRole
-//
-//go:fix inline
-func rolePtr(r CardRole) *CardRole {
-	return new(r)
-}
-
 // TestClassifyCard tests role classification for known cards
 func TestClassifyCard(t *testing.T) {
 	tests := []struct {

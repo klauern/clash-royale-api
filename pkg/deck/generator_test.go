@@ -539,11 +539,6 @@ func createTestCandidates(count int) []*CardCandidate {
 	return candidates
 }
 
-//go:fix inline
-func ptrCardRole(role CardRole) *CardRole {
-	return new(role)
-}
-
 func TestGeneticIterator(t *testing.T) {
 	tests := []struct {
 		name        string
