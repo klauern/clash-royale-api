@@ -354,21 +354,5 @@ func formatCounterNames(counters []Counter) string {
 	for i, counter := range counters {
 		names[i] = counter.Card
 	}
-	return joinString(names, ", ")
-}
-
-// joinString joins a slice of strings with a separator
-func joinString(strs []string, sep string) string {
-	if len(strs) == 0 {
-		return ""
-	}
-	if len(strs) == 1 {
-		return strs[0]
-	}
-	var result strings.Builder
-	result.WriteString(strs[0])
-	for i := 1; i < len(strs); i++ {
-		result.WriteString(sep + strs[i])
-	}
-	return result.String()
+	return strings.Join(names, ", ")
 }
