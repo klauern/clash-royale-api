@@ -2,6 +2,7 @@ package evaluation
 
 import (
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -460,32 +461,18 @@ func TestFormatMissingCardsReport(t *testing.T) {
 			}
 
 			for _, expected := range tt.expectContains {
-				if !contains(result, expected) {
+				if !strings.Contains(result, expected) {
 					t.Errorf("FormatMissingCardsReport() missing expected string %q", expected)
 				}
 			}
 
 			for _, notExpected := range tt.expectNotContains {
-				if contains(result, notExpected) {
+				if strings.Contains(result, notExpected) {
 					t.Errorf("FormatMissingCardsReport() contains unexpected string %q", notExpected)
 				}
 			}
 		})
 	}
-}
-
-// Helper function
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && findInString(s, substr))
-}
-
-func findInString(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 func TestMissingCardStruct(t *testing.T) {

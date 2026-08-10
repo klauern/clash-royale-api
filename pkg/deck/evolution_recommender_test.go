@@ -1,6 +1,7 @@
 package deck
 
 import (
+	"strings"
 	"testing"
 )
 
@@ -184,16 +185,16 @@ func TestFormatRecommendations(t *testing.T) {
 	}
 
 	// Check that key info is included
-	if !contains(output, "Knight") {
+	if !strings.Contains(output, "Knight") {
 		t.Error("Output should contain card name")
 	}
-	if !contains(output, "5/10") {
+	if !strings.Contains(output, "5/10") {
 		t.Error("Output should contain shard progress")
 	}
-	if !contains(output, "Support") {
+	if !strings.Contains(output, "Support") {
 		t.Error("Output should contain role")
 	}
-	if !contains(output, "75.0") {
+	if !strings.Contains(output, "75.0") {
 		t.Error("Output should contain score")
 	}
 }
@@ -201,7 +202,7 @@ func TestFormatRecommendations(t *testing.T) {
 // TestFormatRecommendations_NoRecs tests formatting with no recommendations.
 func TestFormatRecommendations_NoRecs(t *testing.T) {
 	output := FormatRecommendations([]EvolutionRecommendation{}, true)
-	if !contains(output, "No evolution recommendations") {
+	if !strings.Contains(output, "No evolution recommendations") {
 		t.Errorf("Expected 'no recommendations' message, got: %s", output)
 	}
 }
@@ -340,14 +341,4 @@ func TestMapShardSource(t *testing.T) {
 			}
 		})
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr ||
-		len(s) > len(substr) && findSubstring(s, substr))
-}
-
-func findSubstring(s, substr string) bool {
-	return len(s) >= len(substr) && (s[:len(substr)] == substr ||
-		(len(s) > len(substr) && findSubstring(s[1:], substr)))
 }
