@@ -427,7 +427,7 @@ func TestGenerateRecommendation(t *testing.T) {
 			}
 
 			// Check that the recommendation contains the expected substring (case-insensitive)
-			if !strings.Contains(recommendation, tt.wantSubstring) {
+			if !strings.Contains(strings.ToLower(recommendation), strings.ToLower(tt.wantSubstring)) {
 				t.Errorf("Expected recommendation to contain '%s', got: %s", tt.wantSubstring, recommendation)
 			}
 		})

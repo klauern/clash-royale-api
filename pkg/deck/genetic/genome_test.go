@@ -196,7 +196,7 @@ func TestDeckGenomeCrossover(t *testing.T) {
 	t.Run("rejects wrong type", func(t *testing.T) {
 		_, err := parent1.Crossover("not a genome")
 		if err == nil {
-			t.Error("Crossover() should error with wrong type")
+			t.Fatal("Crossover() should error with wrong type")
 		}
 		if !strings.Contains(err.Error(), "DeckGenome") {
 			t.Errorf("Crossover() error should mention DeckGenome, got: %v", err)
@@ -300,7 +300,7 @@ func TestDeckGenomeEvaluate(t *testing.T) {
 
 		_, err := genome3.Evaluate()
 		if err == nil {
-			t.Error("Evaluate() should error when cards cannot be resolved")
+			t.Fatal("Evaluate() should error when cards cannot be resolved")
 		}
 		if !strings.Contains(err.Error(), "failed to resolve all cards") {
 			t.Errorf("Evaluate() error should mention resolution failure, got: %v", err)

@@ -83,7 +83,7 @@ func TestCrossoverInvalidType(t *testing.T) {
 	// Try crossover with wrong type
 	_, err = parent1.Crossover("not a genome")
 	if err == nil {
-		t.Error("Crossover() with invalid type should error")
+		t.Fatal("Crossover() with invalid type should error")
 	}
 	if !strings.Contains(err.Error(), "DeckGenome") {
 		t.Errorf("Crossover() error should mention DeckGenome, got: %v", err)

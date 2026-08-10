@@ -258,7 +258,7 @@ func TestGeneticOptimizerOptimize(t *testing.T) {
 		var optimizer *GeneticOptimizer
 		_, err := optimizer.Optimize()
 		if err == nil {
-			t.Error("Optimize() with nil optimizer should error")
+			t.Fatal("Optimize() with nil optimizer should error")
 		}
 		if !strings.Contains(err.Error(), "nil") {
 			t.Errorf("Optimize() error should mention nil, got: %v", err)
@@ -291,7 +291,7 @@ func TestGeneticOptimizerOptimize(t *testing.T) {
 
 		_, err := optimizer.Optimize()
 		if err == nil {
-			t.Error("Optimize() with insufficient candidates should error")
+			t.Fatal("Optimize() with insufficient candidates should error")
 		}
 		if !strings.Contains(err.Error(), "insufficient candidates") {
 			t.Errorf("Optimize() error should mention insufficient candidates, got: %v", err)
