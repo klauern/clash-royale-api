@@ -9,18 +9,18 @@ import (
 
 func testPool() []deck.CardCandidate {
 	cards := []deck.CardCandidate{
-		{Name: "Hog Rider", Level: 14, MaxLevel: 15, Elixir: 4, Role: testRolePtr(deck.RoleWinCondition), Stats: &clashroyale.CombatStats{DamagePerSecond: 150, Targets: "Buildings"}},
-		{Name: "Royal Giant", Level: 14, MaxLevel: 15, Elixir: 6, Role: testRolePtr(deck.RoleWinCondition), Stats: &clashroyale.CombatStats{DamagePerSecond: 180, Targets: "Buildings"}},
-		{Name: "Mini P.E.K.K.A", Level: 13, MaxLevel: 15, Elixir: 4, Role: testRolePtr(deck.RoleSupport), Stats: &clashroyale.CombatStats{DamagePerSecond: 330, Targets: "Ground"}},
-		{Name: "Musketeer", Level: 13, MaxLevel: 15, Elixir: 4, Role: testRolePtr(deck.RoleSupport), Stats: &clashroyale.CombatStats{DamagePerSecond: 181, Targets: "Air & Ground"}},
-		{Name: "Baby Dragon", Level: 13, MaxLevel: 15, Elixir: 4, Role: testRolePtr(deck.RoleSupport), Stats: &clashroyale.CombatStats{Radius: 1.0, Targets: "Air & Ground"}},
-		{Name: "Fireball", Level: 13, MaxLevel: 15, Elixir: 4, Role: testRolePtr(deck.RoleSpellBig), Stats: &clashroyale.CombatStats{Radius: 2.5}},
-		{Name: "Poison", Level: 13, MaxLevel: 15, Elixir: 4, Role: testRolePtr(deck.RoleSpellBig), Stats: &clashroyale.CombatStats{Radius: 3.0}},
-		{Name: "The Log", Level: 13, MaxLevel: 15, Elixir: 2, Role: testRolePtr(deck.RoleSpellSmall), Stats: &clashroyale.CombatStats{Radius: 1.8}},
-		{Name: "Zap", Level: 13, MaxLevel: 15, Elixir: 2, Role: testRolePtr(deck.RoleSpellSmall), Stats: &clashroyale.CombatStats{Targets: "Air & Ground"}},
-		{Name: "Cannon", Level: 13, MaxLevel: 15, Elixir: 3, Role: testRolePtr(deck.RoleBuilding), Stats: &clashroyale.CombatStats{DamagePerSecond: 140, Targets: "Ground"}},
-		{Name: "Skeletons", Level: 14, MaxLevel: 15, Elixir: 1, Role: testRolePtr(deck.RoleCycle), Stats: &clashroyale.CombatStats{Targets: "Ground"}},
-		{Name: "Ice Spirit", Level: 14, MaxLevel: 15, Elixir: 1, Role: testRolePtr(deck.RoleCycle), Stats: &clashroyale.CombatStats{Targets: "Ground"}},
+		{Name: "Hog Rider", Level: 14, MaxLevel: 15, Elixir: 4, Role: new(deck.RoleWinCondition), Stats: &clashroyale.CombatStats{DamagePerSecond: 150, Targets: "Buildings"}},
+		{Name: "Royal Giant", Level: 14, MaxLevel: 15, Elixir: 6, Role: new(deck.RoleWinCondition), Stats: &clashroyale.CombatStats{DamagePerSecond: 180, Targets: "Buildings"}},
+		{Name: "Mini P.E.K.K.A", Level: 13, MaxLevel: 15, Elixir: 4, Role: new(deck.RoleSupport), Stats: &clashroyale.CombatStats{DamagePerSecond: 330, Targets: "Ground"}},
+		{Name: "Musketeer", Level: 13, MaxLevel: 15, Elixir: 4, Role: new(deck.RoleSupport), Stats: &clashroyale.CombatStats{DamagePerSecond: 181, Targets: "Air & Ground"}},
+		{Name: "Baby Dragon", Level: 13, MaxLevel: 15, Elixir: 4, Role: new(deck.RoleSupport), Stats: &clashroyale.CombatStats{Radius: 1.0, Targets: "Air & Ground"}},
+		{Name: "Fireball", Level: 13, MaxLevel: 15, Elixir: 4, Role: new(deck.RoleSpellBig), Stats: &clashroyale.CombatStats{Radius: 2.5}},
+		{Name: "Poison", Level: 13, MaxLevel: 15, Elixir: 4, Role: new(deck.RoleSpellBig), Stats: &clashroyale.CombatStats{Radius: 3.0}},
+		{Name: "The Log", Level: 13, MaxLevel: 15, Elixir: 2, Role: new(deck.RoleSpellSmall), Stats: &clashroyale.CombatStats{Radius: 1.8}},
+		{Name: "Zap", Level: 13, MaxLevel: 15, Elixir: 2, Role: new(deck.RoleSpellSmall), Stats: &clashroyale.CombatStats{Targets: "Air & Ground"}},
+		{Name: "Cannon", Level: 13, MaxLevel: 15, Elixir: 3, Role: new(deck.RoleBuilding), Stats: &clashroyale.CombatStats{DamagePerSecond: 140, Targets: "Ground"}},
+		{Name: "Skeletons", Level: 14, MaxLevel: 15, Elixir: 1, Role: new(deck.RoleCycle), Stats: &clashroyale.CombatStats{Targets: "Ground"}},
+		{Name: "Ice Spirit", Level: 14, MaxLevel: 15, Elixir: 1, Role: new(deck.RoleCycle), Stats: &clashroyale.CombatStats{Targets: "Ground"}},
 	}
 	return cards
 }
