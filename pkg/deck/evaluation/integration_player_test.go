@@ -16,14 +16,14 @@ func TestEvaluateWithNilPlayerContext(t *testing.T) {
 	synergyDB := deck.NewSynergyDatabase()
 
 	deckCards := []deck.CardCandidate{
-		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition)},
-		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport)},
-		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSpellBig)},
-		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: ptrRole(deck.RoleSpellSmall)},
-		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},
-		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},
-		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleBuilding)},
-		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleCycle)},
+		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleWinCondition)},
+		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSupport)},
+		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSpellBig)},
+		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: new(deck.RoleSpellSmall)},
+		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},
+		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},
+		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleBuilding)},
+		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleCycle)},
 	}
 
 	start := time.Now()
@@ -86,14 +86,14 @@ func TestEvaluateWithFullPlayerContext(t *testing.T) {
 	)
 
 	deckCards := []deck.CardCandidate{
-		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition)},
-		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport)},
-		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSpellBig)},
-		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: ptrRole(deck.RoleSpellSmall)},
-		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},
-		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},
-		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleBuilding)},
-		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleCycle)},
+		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleWinCondition)},
+		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSupport)},
+		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSpellBig)},
+		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: new(deck.RoleSpellSmall)},
+		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},
+		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},
+		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleBuilding)},
+		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleCycle)},
 	}
 
 	start := time.Now()
@@ -159,14 +159,14 @@ func TestEvaluateWithPartialCollection(t *testing.T) {
 	)
 
 	deckCards := []deck.CardCandidate{
-		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition)},
-		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport)},
-		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSpellBig)},
-		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: ptrRole(deck.RoleSpellSmall)},
-		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},
-		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},
-		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleBuilding)},
-		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleCycle)},
+		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleWinCondition)},
+		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSupport)},
+		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSpellBig)},
+		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: new(deck.RoleSpellSmall)},
+		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},
+		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},
+		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleBuilding)},
+		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleCycle)},
 	}
 
 	result := Evaluate(deckCards, synergyDB, playerContext)
@@ -239,14 +239,14 @@ func TestEvaluateWithArenaLockedCards(t *testing.T) {
 
 	// Try to use a high-level deck with locked cards
 	deckCards := []deck.CardCandidate{
-		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition)},  // Unlocks Arena 2
-		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport)},       // Unlocks Arena 0
-		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSpellBig)},       // Unlocks Arena 0
-		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: ptrRole(deck.RoleSpellSmall)}, // Unlocks Arena 6 - LOCKED
-		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},      // Unlocks Arena 6 - LOCKED
-		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},       // Unlocks Arena 0
-		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleBuilding)},       // Unlocks Arena 0
-		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleCycle)},         // Unlocks Arena 8 - LOCKED
+		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleWinCondition)},  // Unlocks Arena 2
+		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSupport)},       // Unlocks Arena 0
+		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSpellBig)},       // Unlocks Arena 0
+		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: new(deck.RoleSpellSmall)}, // Unlocks Arena 6 - LOCKED
+		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},      // Unlocks Arena 6 - LOCKED
+		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},       // Unlocks Arena 0
+		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleBuilding)},       // Unlocks Arena 0
+		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleCycle)},         // Unlocks Arena 8 - LOCKED
 	}
 
 	result := Evaluate(deckCards, synergyDB, playerContext)
@@ -316,14 +316,14 @@ func TestEvaluateWithEvolutions(t *testing.T) {
 	)
 
 	deckCards := []deck.CardCandidate{
-		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition), EvolutionLevel: 1},
-		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport), EvolutionLevel: 2},
-		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSpellBig), EvolutionLevel: 0},
-		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: ptrRole(deck.RoleSpellSmall), EvolutionLevel: 1},
-		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle), EvolutionLevel: 0},
-		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle), EvolutionLevel: 0},
-		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleBuilding), EvolutionLevel: 0},
-		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleCycle), EvolutionLevel: 0},
+		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleWinCondition), EvolutionLevel: 1},
+		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSupport), EvolutionLevel: 2},
+		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSpellBig), EvolutionLevel: 0},
+		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: new(deck.RoleSpellSmall), EvolutionLevel: 1},
+		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle), EvolutionLevel: 0},
+		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle), EvolutionLevel: 0},
+		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleBuilding), EvolutionLevel: 0},
+		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleCycle), EvolutionLevel: 0},
 	}
 
 	result := Evaluate(deckCards, synergyDB, playerContext)
@@ -411,14 +411,14 @@ func TestEvaluatePlayabilityScoring(t *testing.T) {
 			)
 
 			deckCards := []deck.CardCandidate{
-				{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition)},
-				{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport)},
-				{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSpellBig)},
-				{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: ptrRole(deck.RoleSpellSmall)},
-				{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},
-				{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},
-				{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleBuilding)},
-				{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleCycle)},
+				{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleWinCondition)},
+				{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSupport)},
+				{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSpellBig)},
+				{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: new(deck.RoleSpellSmall)},
+				{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},
+				{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},
+				{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleBuilding)},
+				{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleCycle)},
 			}
 
 			result := Evaluate(deckCards, synergyDB, playerContext)
@@ -453,14 +453,14 @@ func BenchmarkEvaluateWithPlayerContext(b *testing.B) {
 	)
 
 	deckCards := []deck.CardCandidate{
-		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition), EvolutionLevel: 1},
-		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport), EvolutionLevel: 2},
-		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSpellBig), EvolutionLevel: 0},
-		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: ptrRole(deck.RoleSpellSmall), EvolutionLevel: 1},
-		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle), EvolutionLevel: 0},
-		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle), EvolutionLevel: 0},
-		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleBuilding), EvolutionLevel: 0},
-		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleCycle), EvolutionLevel: 0},
+		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleWinCondition), EvolutionLevel: 1},
+		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSupport), EvolutionLevel: 2},
+		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSpellBig), EvolutionLevel: 0},
+		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: new(deck.RoleSpellSmall), EvolutionLevel: 1},
+		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle), EvolutionLevel: 0},
+		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle), EvolutionLevel: 0},
+		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleBuilding), EvolutionLevel: 0},
+		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleCycle), EvolutionLevel: 0},
 	}
 
 	b.ResetTimer()
@@ -474,14 +474,14 @@ func BenchmarkEvaluateWithoutPlayerContext(b *testing.B) {
 	synergyDB := deck.NewSynergyDatabase()
 
 	deckCards := []deck.CardCandidate{
-		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleWinCondition)},
-		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSupport)},
-		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleSpellBig)},
-		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: ptrRole(deck.RoleSpellSmall)},
-		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},
-		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleCycle)},
-		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: ptrRole(deck.RoleBuilding)},
-		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: ptrRole(deck.RoleCycle)},
+		{Name: "Hog Rider", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleWinCondition)},
+		{Name: "Musketeer", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSupport)},
+		{Name: "Fireball", Elixir: 4, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleSpellBig)},
+		{Name: "The Log", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Legendary", Role: new(deck.RoleSpellSmall)},
+		{Name: "Ice Spirit", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},
+		{Name: "Skeletons", Elixir: 1, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleCycle)},
+		{Name: "Cannon", Elixir: 3, Level: 11, MaxLevel: 14, Rarity: "Common", Role: new(deck.RoleBuilding)},
+		{Name: "Ice Golem", Elixir: 2, Level: 11, MaxLevel: 14, Rarity: "Rare", Role: new(deck.RoleCycle)},
 	}
 
 	b.ResetTimer()
