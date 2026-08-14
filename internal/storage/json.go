@@ -81,28 +81,6 @@ func EnsureDirectory(dirPath string) error {
 	return nil
 }
 
-// ListJSONFiles returns a list of all .json files in a directory
-// Returns empty slice if directory doesn't exist
-func ListJSONFiles(dirPath string) ([]string, error) {
-	if !DirectoryExists(dirPath) {
-		return []string{}, nil
-	}
-
-	entries, err := os.ReadDir(dirPath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read directory %s: %w", dirPath, err)
-	}
-
-	jsonFiles := make([]string, 0)
-	for _, entry := range entries {
-		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".json" {
-			jsonFiles = append(jsonFiles, filepath.Join(dirPath, entry.Name()))
-		}
-	}
-
-	return jsonFiles, nil
-}
-
 // DeleteFile removes a file if it exists
 // Returns nil if file doesn't exist (idempotent)
 func DeleteFile(filePath string) error {
@@ -161,14 +139,4 @@ func MoveFile(src, dst string) error {
 	}
 
 	return nil
-}
-
-// GetFileSize returns the size of a file in bytes
-func GetFileSize(filePath string) (int64, error) {
-	info, err := os.Stat(filePath)
-	if err != nil {
-		return 0, fmt.Errorf("failed to stat file %s: %w", filePath, err)
-	}
-
-	return info.Size(), nil
 }
