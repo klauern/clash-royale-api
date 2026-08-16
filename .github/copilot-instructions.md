@@ -24,7 +24,7 @@ bd stale --days 30 --json          # Forgotten issues
 bd create "Title" -t bug|feature|task -p 0-4 --json
 bd create "Subtask" --parent <epic-id> --json  # Hierarchical subtask
 bd update <id> --status in_progress --json
-bd close <id> --reason "Done" --json
+bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>
 
 # Search
 bd list --status open --priority 1 --json
@@ -40,8 +40,17 @@ bd sync  # Force immediate export/commit/push
 2. **Claim task**: `bd update <id> --status in_progress`
 3. **Work on it**: Implement, test, document
 4. **Discover new work?** `bd create "Found bug" -p 1 --deps discovered-from:<parent-id> --json`
-5. **Complete**: `bd close <id> --reason "Done" --json`
-6. **Sync**: `bd sync` (flushes changes to git immediately)
+5. **Merge**: Merge the associated PR and verify its live `mergedAt`
+6. **Complete**: `bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>`
+7. **Sync**: `bd sync` (flushes changes to git immediately)
+
+### PR-backed completion policy
+
+Never close a PR-backed Bead because implementation, commit, PR creation, or
+CI passed. Keep it `open` or `in_progress` until the linked PR is merged.
+After GitHub reports a non-null `mergedAt`, use the guard script above; do not
+call `bd close` directly. Abandoned or superseded PRs keep their Beads
+non-closed and receive an explicit blocked/deferred reason.
 
 ### Priorities
 

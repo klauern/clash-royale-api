@@ -40,14 +40,17 @@ Before stopping, confirm:
 
 ## If You Forgot Something
 
-**Forgot to close a task:**
+**A linked PR has merged and the Bead still needs completion:**
 ```bash
-bd close <task-id> --reason "Completed X"
+bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>
 bd sync
 git add .beads/
-git commit -m "chore(beads): close task <id>"
+git commit -m "chore(beads): complete merged task <id>"
 git push
 ```
+
+Do not close a PR-backed task before GitHub reports a non-null `mergedAt`.
+Passing tests, committing code, opening a PR, or green CI is not completion.
 
 **Forgot to commit a file:**
 ```bash

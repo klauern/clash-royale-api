@@ -23,7 +23,8 @@ task lint         # Run linters
 1. Find work: `bd ready`
 2. Claim: `bd update <id> --status=in_progress`
 3. Implement: Edit code, run `task test` and `task lint`
-4. Complete: `bd close <id>` and commit with `.beads/issues.jsonl`
+4. Merge the associated PR and verify its live `mergedAt` value
+5. Complete: `bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>` and commit with `.beads/issues.jsonl`
 
 See [.cursor/rules/beads.mdc](.cursor/rules/beads.mdc) for detailed beads workflow.
 
@@ -96,6 +97,23 @@ This project uses [beads_viewer](https://github.com/Dicklesworthstone/beads_view
 
 ### Essential Commands
 
+### PR-backed completion policy
+
+An implementation Bead linked to a pull request MUST remain `open` or
+`in_progress` until that pull request is merged. Passing tests, committing
+code, opening a PR, or receiving green checks does not complete the task.
+
+After GitHub reports a non-null `mergedAt`, close the Bead only through:
+
+```bash
+bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>
+```
+
+The guard validates the live merge and the PR/Bead link before calling `bd
+close`. Do not call `bd close` directly for PR-backed work. If a PR is
+abandoned or superseded, leave its Bead non-closed and mark it appropriately
+as blocked or deferred with the reason recorded.
+
 ```bash
 # View issues (launches TUI - avoid in automated sessions)
 bv
@@ -106,8 +124,7 @@ bd list --status=open # All open issues
 bd show <id>          # Full issue details with dependencies
 bd create --title="..." --type=task --priority=2
 bd update <id> --status=in_progress
-bd close <id> --reason="Completed"
-bd close <id1> <id2>  # Close multiple issues at once
+bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>  # Requires mergedAt
 bd sync               # Commit and push changes
 ```
 
@@ -116,8 +133,9 @@ bd sync               # Commit and push changes
 1. **Start**: Run `bd ready` to find actionable work
 2. **Claim**: Use `bd update <id> --status=in_progress`
 3. **Work**: Implement the task
-4. **Complete**: Use `bd close <id>`
-5. **Sync**: Always run `bd sync` at session end
+4. **Merge**: Push and merge the associated PR; verify `mergedAt`
+5. **Complete**: Use `bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>`
+6. **Sync**: Always run `bd sync` at session end
 
 ### Key Concepts
 
@@ -186,7 +204,7 @@ bd update bd-42 --priority 1 --json
 **Complete work:**
 
 ```bash
-bd close bd-42 --reason "Completed" --json
+bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>
 ```
 
 ### Issue Types
@@ -212,7 +230,8 @@ bd close bd-42 --reason "Completed" --json
 3. **Work on it**: Implement, test, document
 4. **Discover new work?** Create linked issue:
    - `bd create "Found bug" --description="Details about what was found" -p 1 --deps discovered-from:<parent-id>`
-5. **Complete**: `bd close <id> --reason "Done"`
+5. **Merge**: Merge the associated PR and confirm its live `mergedAt`
+6. **Complete**: `bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>`
 
 ### Auto-Sync
 

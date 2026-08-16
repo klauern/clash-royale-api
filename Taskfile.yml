@@ -1032,6 +1032,19 @@ tasks:
     cmds:
       - bash scripts/check-stale-beads-refs.sh {{.CLI_ARGS}}
 
+  audit-open-pr-beads:
+    desc: Verify open PRs are linked to non-closed Beads
+    summary: |
+      Audit every open pull request and fail if it has no Bead link,
+      multiple Bead links, a missing Bead, or a prematurely closed Bead.
+    cmds:
+      - bash scripts/audit-open-pr-beads.sh
+
+  test-pr-bead-gates:
+    desc: Test merge-gated Bead closure and open PR auditing
+    cmds:
+      - bash scripts/test-pr-bead-gates.sh
+
   lint-quality:
     desc: Run quality linting (CI hard-fail for new violations)
     summary: |
