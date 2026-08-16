@@ -10,11 +10,3 @@ type CodedError struct {
 func (e *CodedError) Error() string {
 	return e.Message
 }
-
-// New creates a new CodedError with the given code and message.
-func New(code, message string) *CodedError {
-	return &CodedError{
-		Code:    code,
-		Message: message,
-	}
-}
