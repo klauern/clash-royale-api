@@ -4,6 +4,7 @@ package genetic
 
 import (
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -489,13 +490,8 @@ func TestGeneticConfigString(t *testing.T) {
 	}
 
 	for _, substr := range expectedSubstrings {
-		if !contains(s, substr) {
+		if !strings.Contains(s, substr) {
 			t.Errorf("GeneticConfig.String() = %v, should contain %v", s, substr)
 		}
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(substr) == 0 ||
-		(len(s) > 0 && (s[0:len(substr)] == substr || contains(s[1:], substr))))
 }

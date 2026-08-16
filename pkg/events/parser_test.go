@@ -1,6 +1,7 @@
 package events
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -593,12 +594,12 @@ func TestParser_GenerateEventID(t *testing.T) {
 	}
 
 	// Should contain event name (normalized)
-	if !contains(eventID, "grand_challenge") && !contains(eventID, "challenge") {
+	if !strings.Contains(eventID, "grand_challenge") && !strings.Contains(eventID, "challenge") {
 		t.Errorf("Event ID should contain normalized event name, got: %s", eventID)
 	}
 
 	// Should contain date
-	if !contains(eventID, "20241211") {
+	if !strings.Contains(eventID, "20241211") {
 		t.Errorf("Event ID should contain date 20241211, got: %s", eventID)
 	}
 
@@ -615,19 +616,6 @@ func TestParser_GenerateEventID(t *testing.T) {
 	if eventID == eventID3 {
 		t.Error("Different decks should produce different event IDs")
 	}
-}
-
-func contains(s, substr string) bool {
-	return len(s) > 0 && len(substr) > 0 && (s == substr || len(s) >= len(substr) && (s[:len(substr)] == substr || s[len(s)-len(substr):] == substr || containsMiddle(s, substr)))
-}
-
-func containsMiddle(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }
 
 func TestParser_GroupBattlesByEvent(t *testing.T) {

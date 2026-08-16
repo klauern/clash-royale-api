@@ -1,6 +1,7 @@
 package whatif
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -426,7 +427,7 @@ func TestGenerateRecommendation(t *testing.T) {
 			}
 
 			// Check that the recommendation contains the expected substring (case-insensitive)
-			if !contains(recommendation, tt.wantSubstring) {
+			if !strings.Contains(strings.ToLower(recommendation), strings.ToLower(tt.wantSubstring)) {
 				t.Errorf("Expected recommendation to contain '%s', got: %s", tt.wantSubstring, recommendation)
 			}
 		})
@@ -464,18 +465,4 @@ func TestGenerateScenarioName(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper function
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsAt(s, substr))
-}
-
-func containsAt(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

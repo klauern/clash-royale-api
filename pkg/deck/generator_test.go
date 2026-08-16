@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 	"testing"
 	"time"
 )
@@ -68,7 +69,7 @@ func TestNewDeckGenerator(t *testing.T) {
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("expected error containing '%s', got nil", tt.errContains)
-				} else if tt.errContains != "" && !contains(err.Error(), tt.errContains) {
+				} else if tt.errContains != "" && !strings.Contains(err.Error(), tt.errContains) {
 					t.Errorf("error message '%s' does not contain '%s'", err.Error(), tt.errContains)
 				}
 			} else {

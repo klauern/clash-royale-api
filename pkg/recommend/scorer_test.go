@@ -1,6 +1,7 @@
 package recommend
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -449,7 +450,7 @@ func TestGenerateReasons(t *testing.T) {
 			for _, expected := range tt.expectedContains {
 				found := false
 				for _, reason := range reasons {
-					if contains(reason, expected) {
+					if strings.Contains(reason, expected) {
 						found = true
 						break
 					}
@@ -462,7 +463,7 @@ func TestGenerateReasons(t *testing.T) {
 			// Check that certain strings are NOT present
 			for _, notExpected := range tt.expectedNotContain {
 				for _, reason := range reasons {
-					if contains(reason, notExpected) {
+					if strings.Contains(reason, notExpected) {
 						t.Errorf("Did not expect reason containing '%s', but found: %s", notExpected, reason)
 					}
 				}
@@ -512,11 +513,4 @@ func TestGenerateReasons_AllArchetypes(t *testing.T) {
 			}
 		})
 	}
-}
-
-// Helper function to check if a string contains a substring (case-insensitive)
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr ||
-		len(substr) > 0 && (s[:len(substr)] == substr ||
-			(len(s) > len(substr) && contains(s[1:], substr))))
 }

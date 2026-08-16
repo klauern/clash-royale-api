@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -130,7 +131,7 @@ func TestWriteJSON_PrettyFormatting(t *testing.T) {
 
 	// Check for 2-space indentation
 	contentStr := string(content)
-	if !contains(contentStr, "  \"key1\"") {
+	if !strings.Contains(contentStr, "  \"key1\"") {
 		t.Error("WriteJSON() should use 2-space indentation")
 	}
 }
@@ -545,29 +546,6 @@ func TestWriteReadRoundTrip(t *testing.T) {
 	if loaded.ExpLevel != original.ExpLevel {
 		t.Errorf("Round trip expLevel mismatch: got %v, want %v", loaded.ExpLevel, original.ExpLevel)
 	}
-}
-
-// Helper function
-func contains(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) &&
-		(hasPrefix(s, substr) || hasSuffix(s, substr) || indexOf(s, substr) >= 0))
-}
-
-func hasPrefix(s, prefix string) bool {
-	return len(s) >= len(prefix) && s[0:len(prefix)] == prefix
-}
-
-func hasSuffix(s, suffix string) bool {
-	return len(s) >= len(suffix) && s[len(s)-len(suffix):] == suffix
-}
-
-func indexOf(s, substr string) int {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return i
-		}
-	}
-	return -1
 }
 
 // Benchmark tests

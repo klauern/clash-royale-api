@@ -1,6 +1,7 @@
 package evaluation
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -37,7 +38,7 @@ func TestFormatCSV(t *testing.T) {
 	}
 
 	for _, section := range expectedSections {
-		if !contains(csv, section) {
+		if !strings.Contains(csv, section) {
 			t.Errorf("FormatCSV() missing section %q", section)
 		}
 	}
@@ -50,7 +51,7 @@ func TestFormatCSV(t *testing.T) {
 	}
 
 	for _, field := range expectedFields {
-		if !contains(csv, field) {
+		if !strings.Contains(csv, field) {
 			t.Errorf("FormatCSV() missing field %q", field)
 		}
 	}
@@ -73,7 +74,7 @@ func TestFormatCategoryScoreCSV(t *testing.T) {
 	// Check format
 	expectedFields := []string{"Attack", "7.50", "Good", "3", "Solid performance"}
 	for _, field := range expectedFields {
-		if !contains(result, field) {
+		if !strings.Contains(result, field) {
 			t.Errorf("formatCategoryScoreCSV() missing expected field %q", field)
 		}
 	}
@@ -97,7 +98,7 @@ func TestFormatAnalysisSectionCSV(t *testing.T) {
 	// Check format
 	expectedFields := []string{"Defense Analysis", "8.00", "Strong", "Good defensive capabilities"}
 	for _, field := range expectedFields {
-		if !contains(result, field) {
+		if !strings.Contains(result, field) {
 			t.Errorf("formatAnalysisSectionCSV() missing expected field %q", field)
 		}
 	}

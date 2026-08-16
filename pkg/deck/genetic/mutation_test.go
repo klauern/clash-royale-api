@@ -3,6 +3,7 @@
 package genetic
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
@@ -222,9 +223,9 @@ func TestDeckGenomeMutateNilConfig(t *testing.T) {
 
 	err := genome.Mutate()
 	if err == nil {
-		t.Error("Mutate() with nil config should error")
+		t.Fatal("Mutate() with nil config should error")
 	}
-	if !contains(err.Error(), "config") {
+	if !strings.Contains(err.Error(), "config") {
 		t.Errorf("Mutate() error should mention config, got: %v", err)
 	}
 }
