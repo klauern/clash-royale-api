@@ -40,10 +40,9 @@ func isLevelIndependent(card deck.CardCandidate) bool {
 func calculateLadderScore(rarityScore, levelIndepScore, upgradeProgress float64) float64 {
 	// Rarity distribution (40%)
 	// Level-independence (30%)
-	// Upgrade progress (20%)
-	// Upgrade clarity bonus (10%) - implicit in other factors
+	// Upgrade progress and clarity (30%)
 
-	score := (rarityScore * 0.4) + (levelIndepScore * 0.3) + (upgradeProgress * 0.2)
+	score := (rarityScore * 0.4) + (levelIndepScore * 0.3) + (upgradeProgress * 0.3)
 
 	return score
 }
