@@ -21,10 +21,3 @@ var (
 		Usage: disableCombatStatsUsage,
 	}
 )
-
-func combatStatsFlags() []cli.Flag {
-	return []cli.Flag{
-		combatStatsWeightFlag,
-		disableCombatStatsFlag,
-	}
-}
