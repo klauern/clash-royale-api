@@ -301,7 +301,7 @@ func (a *UpgradeImpactAnalyzer) scoreCard(cardName string, level, maxLevel int, 
 	baseScore := a.fallbackScore(level, maxLevel, rarity, elixir)
 
 	// Add evolution bonus if applicable
-	evolutionBonus := a.calculateEvolutionBonus(evolutionLevel, maxEvolutionLevel)
+	evolutionBonus := config.EvolutionProgressBonus(evolutionLevel, maxEvolutionLevel, config.EvolutionBonusWeight)
 
 	return baseScore + evolutionBonus
 }
@@ -332,29 +332,6 @@ func (a *UpgradeImpactAnalyzer) fallbackScore(level, maxLevel int, rarity string
 	elixirWeight := 1.0 - float64(max(elixir-3, 0))/9.0
 
 	return (levelRatio * 1.2 * rarityBoost) + (elixirWeight * 0.15)
-}
-
-// calculateEvolutionBonus calculates the evolution level bonus for a card.
-// The bonus is proportional to the evolution progress (evolutionLevel/maxEvolutionLevel).
-// This matches the deck builder's evolution bonus calculation for consistency.
-func (a *UpgradeImpactAnalyzer) calculateEvolutionBonus(evolutionLevel, maxEvolutionLevel int) float64 {
-	if maxEvolutionLevel <= 0 || evolutionLevel <= 0 {
-		return 0.0
-	}
-
-	// Calculate evolution ratio (0.0 to 1.0)
-	evolutionRatio := float64(evolutionLevel) / float64(maxEvolutionLevel)
-
-	// Clamp ratio to valid range
-	if evolutionRatio > 1.0 {
-		evolutionRatio = 1.0
-	}
-
-	// Evolution bonus weight (matches deck builder: 0.15 max bonus)
-	const evolutionBonusWeight = 0.15
-
-	// Apply evolution bonus weight
-	return evolutionBonusWeight * evolutionRatio
 }
 
 // analyzeAffectedDecks analyzes how upgrading a card affects various deck archetypes

@@ -255,20 +255,7 @@ func (s *BaseScorer) calculateElixirWeight(elixir int) float64 {
 //
 // Returns 0 if card has no evolution capability (maxEvolutionLevel == 0) or no evolution progress.
 func (s *BaseScorer) calculateEvolutionBonus(evolutionLevel, maxEvolutionLevel int) float64 {
-	if maxEvolutionLevel <= 0 || evolutionLevel <= 0 {
-		return 0.0
-	}
-
-	// Calculate evolution ratio (0.0 to 1.0)
-	evolutionRatio := float64(evolutionLevel) / float64(maxEvolutionLevel)
-
-	// Clamp ratio to valid range
-	if evolutionRatio > 1.0 {
-		evolutionRatio = 1.0
-	}
-
-	// Apply evolution bonus weight
-	return s.evolutionBonusWeight * evolutionRatio
+	return config.EvolutionProgressBonus(evolutionLevel, maxEvolutionLevel, s.evolutionBonusWeight)
 }
 
 // SetLevelCurve updates the level curve used for scoring.
