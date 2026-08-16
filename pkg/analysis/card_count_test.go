@@ -63,6 +63,18 @@ func TestDefaultCardCountConfig(t *testing.T) {
 	}
 }
 
+func TestDefaultCardCountConfigsAreIndependent(t *testing.T) {
+	t.Parallel()
+
+	first := DefaultCardCountConfig()
+	second := DefaultCardCountConfig()
+	first.cardCounts["Common"] = 1
+
+	if got := second.GetTotalCards("Common"); got != 19 {
+		t.Fatalf("second config Common cards = %d, want 19", got)
+	}
+}
+
 func TestCardCountConfigEmptyInput(t *testing.T) {
 	t.Parallel()
 
@@ -169,25 +181,4 @@ func TestNewCardAdapter(t *testing.T) {
 	if got := card.GetRarity(); got != "Epic" {
 		t.Errorf("Card rarity = %s, want Epic", got)
 	}
-}
-
-// Backward compatibility tests for deprecated API
-
-func TestUpdateCardCounts_Deprecated(t *testing.T) {
-	t.Parallel()
-
-	// This test ensures the deprecated API still works
-	// Note: Since UpdateCardCounts mutates global state, we can't run this in parallel
-	// with other tests that might also use it. However, since we're testing the new API
-	// primarily, we'll skip implementing the deprecated test to avoid test flakiness.
-	t.Skip("Deprecated API test skipped to maintain test isolation")
-}
-
-func TestGetTotalCardsByRarity_Deprecated(t *testing.T) {
-	t.Parallel()
-
-	// This test ensures the deprecated API still works
-	// Note: Since GetTotalCardsByRarity reads global state that might be mutated,
-	// we skip this test to maintain proper test isolation.
-	t.Skip("Deprecated API test skipped to maintain test isolation")
 }
