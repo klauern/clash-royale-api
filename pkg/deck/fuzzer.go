@@ -358,7 +358,7 @@ func (df *DeckFuzzer) generateRandomDeckAttemptWithRng(rng *rand.Rand) ([]string
 		return nil, err
 	}
 
-	df.addRoleSelections(rng, deck, used)
+	deck = df.addRoleSelections(rng, deck, used)
 
 	// 3. Fill remaining slots with highest-score available cards
 	for len(deck) < 8 {
@@ -378,7 +378,7 @@ func (df *DeckFuzzer) generateRandomDeckAttemptWithRng(rng *rand.Rand) ([]string
 }
 
 // addRoleSelections fills the deck using the configured role composition.
-func (df *DeckFuzzer) addRoleSelections(rng *rand.Rand, deck []string, used map[string]bool) {
+func (df *DeckFuzzer) addRoleSelections(rng *rand.Rand, deck []string, used map[string]bool) []string {
 	roleSelections := []struct {
 		role  config.CardRole
 		count int
@@ -392,20 +392,25 @@ func (df *DeckFuzzer) addRoleSelections(rng *rand.Rand, deck []string, used map[
 	}
 
 	for _, selection := range roleSelections {
-		cards := df.selectRandomCardsWithRng(rng, selection.role, selection.count, used)
-		if len(cards) < selection.count {
+		if len(deck) >= 8 {
+			break
+		}
+		count := min(selection.count, 8-len(deck))
+		cards := df.selectRandomCardsWithRng(rng, selection.role, count, used)
+		if len(cards) < count {
 			// Not enough cards of this role, fill with remaining available cards
-			remaining := df.fillRemainingSlotsWithRng(rng, 8-len(deck), used)
+			remaining := df.fillRemainingSlotsWithRng(rng, count-len(cards), used)
 			cards = append(cards, remaining...)
 		}
 		for _, card := range cards {
-			if !used[card] {
+			if !used[card] && len(deck) < 8 {
 				deck = append(deck, card)
 				used[card] = true
 			}
 		}
 	}
 
+	return deck
 }
 
 // selectRandomCardsWithRng selects random cards from a role using weighted sampling with the provided RNG
@@ -454,7 +459,6 @@ func (df *DeckFuzzer) selectRandomCardsWithRng(rng *rand.Rand, role config.CardR
 		}
 
 		selected = append(selected, available[selectedIdx].Name)
-		used[available[selectedIdx].Name] = true
 
 		// Remove selected card from available
 		available = append(available[:selectedIdx], available[selectedIdx+1:]...)

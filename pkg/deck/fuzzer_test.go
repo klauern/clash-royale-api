@@ -152,6 +152,50 @@ func TestDeckFuzzerSharedInitializationAndValidation(t *testing.T) {
 	}
 }
 
+func TestGenerateRandomDeckRetainsRoleSelections(t *testing.T) {
+	const roleCard = "Role Card"
+
+	cards := make([]CardCandidate, 8)
+	cardsByName := make(map[string]CardCandidate, len(cards))
+	for i := range cards {
+		name := fmt.Sprintf("Filler %d", i)
+		if i == 0 {
+			name = roleCard
+		}
+		cards[i] = CardCandidate{Name: name, Elixir: 1, Score: 1}
+		cardsByName[name] = cards[i]
+	}
+
+	df := &DeckFuzzer{
+		cardsByRole: map[config.CardRole][]CardCandidate{
+			config.RoleWinCondition: {cards[0]},
+		},
+		allCards:    cards,
+		cardsByName: cardsByName,
+		config:      &FuzzingConfig{MinAvgElixir: 0, MaxAvgElixir: 10},
+		composition: &RoleComposition{WinConditions: 1},
+		stats:       &FuzzingStats{},
+	}
+
+	deck, err := df.generateRandomDeckAttemptWithRng(rand.New(rand.NewSource(1)))
+	if err != nil {
+		t.Fatalf("generateRandomDeckAttemptWithRng() error = %v", err)
+	}
+	if len(deck) != 8 {
+		t.Fatalf("generated deck has %d cards, want 8", len(deck))
+	}
+	foundRoleCard := false
+	for _, card := range deck {
+		if card == roleCard {
+			foundRoleCard = true
+			break
+		}
+	}
+	if !foundRoleCard {
+		t.Fatalf("generated deck %v does not retain role-selected card %q", deck, roleCard)
+	}
+}
+
 func TestNewDeckFuzzerNilPlayer(t *testing.T) {
 	_, err := NewDeckFuzzer(nil, &FuzzingConfig{})
 	if err == nil {
