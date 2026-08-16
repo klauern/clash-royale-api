@@ -4,6 +4,8 @@ package scoring
 
 import (
 	"math"
+
+	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
 // EvolutionScorer implements the Scorer interface for evolution-aware scoring.
@@ -254,6 +256,16 @@ func (s *EvolutionScorer) SetLevelScalingExponent(exponent float64) {
 // GetLevelScalingExponent returns the current level scaling exponent.
 func (s *EvolutionScorer) GetLevelScalingExponent() float64 {
 	return s.levelScalingExponent
+}
+
+// HasEvolutionOverride checks if a card has an evolution-specific role override.
+// These cards have their strategic role changed by evolution, making them
+// more valuable in deck building.
+//
+// This is determined by checking against known evolution overrides in the
+// deck package.
+func HasEvolutionOverride(cardName string, evolutionLevel int) bool {
+	return deck.HasEvolutionOverride(cardName, evolutionLevel)
 }
 
 // CalculateEvolutionBonusForCard is a convenience function for calculating
