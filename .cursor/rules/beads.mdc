@@ -10,6 +10,8 @@ This project uses [Beads (bd)](https://github.com/steveyegge/beads) for ALL task
 - Track ALL work in bd (never use markdown TODOs)
 - Always commit `.beads/issues.jsonl` with code changes
 - Git hooks auto-sync on commit/merge
+- PR-backed Beads stay `open` or `in_progress` until their linked PR is merged
+- Close PR-backed Beads only with `scripts/close-bead-after-merge.sh`
 
 ## Essential Commands
 
@@ -17,7 +19,7 @@ This project uses [Beads (bd)](https://github.com/steveyegge/beads) for ALL task
 bd ready                              # Find unblocked work
 bd create --title="..." --type=task --priority=2  # Create issue
 bd update <id> --status=in_progress   # Claim work
-bd close <id>                         # Mark complete
+bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>  # After mergedAt
 bd dep add <issue> <depends-on>       # Add dependency (issue depends on depends-on)
 bd sync                               # Sync with git remote
 ```
@@ -30,7 +32,8 @@ bd sync                               # Sync with git remote
 1. Find work: `bd ready`
 2. Claim: `bd update <id> --status=in_progress`
 3. Implement: Edit code, run `task test` and `task lint`
-4. Complete: `bd close <id>` and commit with `.beads/issues.jsonl`
+4. Merge the associated PR and verify its live `mergedAt`
+5. Complete: `bash scripts/close-bead-after-merge.sh <bead-id> <pr-number>` and commit with `.beads/issues.jsonl`
 
 ## See Also
 
