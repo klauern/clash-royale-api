@@ -6,6 +6,34 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
+func TestDeckScore(t *testing.T) {
+	tests := []struct {
+		name string
+		deck *deck.DeckRecommendation
+		want float64
+	}{
+		{name: "nil deck"},
+		{name: "empty deck", deck: &deck.DeckRecommendation{}},
+		{
+			name: "sums card scores",
+			deck: &deck.DeckRecommendation{DeckDetail: []deck.CardDetail{
+				{Score: 1.25},
+				{Score: -0.5},
+				{Score: 2.0},
+			}},
+			want: 2.75,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := DeckScore(tt.deck); got != tt.want {
+				t.Fatalf("DeckScore() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestParseCardUpgrade(t *testing.T) {
 	tests := []struct {
 		name    string

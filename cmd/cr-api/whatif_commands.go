@@ -253,11 +253,11 @@ func displayWhatIfScenario(scenario *whatif.WhatIfScenario, showDecks bool) {
 		printf("===============\n")
 
 		printf("\nOriginal Deck (Score: %.3f, Avg Elixir: %.1f)\n",
-			calculateDeckScore(scenario.OriginalDeck), scenario.OriginalDeck.AvgElixir)
+			whatif.DeckScore(scenario.OriginalDeck), scenario.OriginalDeck.AvgElixir)
 		displayDeck(scenario.OriginalDeck)
 
 		printf("\nSimulated Deck (Score: %.3f, Avg Elixir: %.1f)\n",
-			calculateDeckScore(scenario.SimulatedDeck), scenario.SimulatedDeck.AvgElixir)
+			whatif.DeckScore(scenario.SimulatedDeck), scenario.SimulatedDeck.AvgElixir)
 		displayDeck(scenario.SimulatedDeck)
 	}
 }
@@ -284,17 +284,6 @@ func displayDeck(deck *deck.DeckRecommendation) {
 			printf("  • %s\n", note)
 		}
 	}
-}
-
-func calculateDeckScore(deck *deck.DeckRecommendation) float64 {
-	if deck == nil || len(deck.DeckDetail) == 0 {
-		return 0
-	}
-	total := 0.0
-	for _, card := range deck.DeckDetail {
-		total += card.Score
-	}
-	return total
 }
 
 func formatCardList(cards []string) string {
