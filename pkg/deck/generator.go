@@ -407,29 +407,6 @@ func (g *DeckGenerator) selectRandomCardsFromRole(role CardRole, count int, used
 	return selected
 }
 
-// selectBestCardsFromRole selects top N cards from a role by score
-func (g *DeckGenerator) selectBestCardsFromRole(role CardRole, count int, used map[string]bool) []string {
-	candidates := g.candidatesByRole[role]
-	if len(candidates) == 0 {
-		return nil
-	}
-
-	// Candidates are already sorted by score
-	selected := make([]string, 0, count)
-	for _, card := range candidates {
-		if used[card.Name] {
-			continue
-		}
-		selected = append(selected, card.Name)
-		used[card.Name] = true
-		if len(selected) >= count {
-			break
-		}
-	}
-
-	return selected
-}
-
 // fillRemainingSlots fills remaining deck slots with highest-scoring available cards
 func (g *DeckGenerator) fillRemainingSlots(deckSize int, used map[string]bool) []string {
 	remaining := make([]string, 0, 8-deckSize)
