@@ -36,10 +36,6 @@ func AppPathOrFallback(parts ...string) string {
 	return filepath.Join(append([]string{AppDirOrFallback()}, parts...)...)
 }
 
-func DiscoveryDir() (string, error) {
-	return AppPath("discover")
-}
-
 func DiscoveryDirOrFallback() string {
 	return AppPathOrFallback("discover")
 }
