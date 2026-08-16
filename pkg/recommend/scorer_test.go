@@ -188,6 +188,22 @@ func TestCalculateCompatibility_RarityWeights(t *testing.T) {
 	}
 }
 
+func TestCalculateCompatibility_UnknownRarityUsesNeutralWeight(t *testing.T) {
+	t.Parallel()
+
+	scorer := NewScorer()
+	deckDetail := []deck.CardDetail{
+		{Name: "Future Card", Rarity: "Future"},
+	}
+	playerCards := map[string]deck.CardLevelData{
+		"Future Card": {Level: 7, MaxLevel: 14, Rarity: "Future"},
+	}
+
+	if got := scorer.CalculateCompatibility(deckDetail, playerCards); got != 50.0 {
+		t.Errorf("CalculateCompatibility() = %.2f, want 50.00 for neutral rarity weight", got)
+	}
+}
+
 // TestCalculateSynergy tests basic synergy calculation
 func TestCalculateSynergy(t *testing.T) {
 	scorer := NewScorer()
