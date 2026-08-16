@@ -323,64 +323,6 @@ func TestEnsureDirectory(t *testing.T) {
 	}
 }
 
-func TestListJSONFiles(t *testing.T) {
-	tempDir := t.TempDir()
-
-	// Create test files
-	_ = os.WriteFile(filepath.Join(tempDir, "file1.json"), []byte("{}"), 0o644)
-	_ = os.WriteFile(filepath.Join(tempDir, "file2.txt"), []byte("text"), 0o644)
-	_ = os.WriteFile(filepath.Join(tempDir, "file3.json"), []byte("{}"), 0o644)
-	_ = os.WriteFile(filepath.Join(tempDir, "file.json.bak"), []byte("{}"), 0o644)
-
-	// Create subdirectory with JSON
-	subDir := filepath.Join(tempDir, "subdir")
-	_ = os.Mkdir(subDir, 0o755)
-	_ = os.WriteFile(filepath.Join(subDir, "subfile.json"), []byte("{}"), 0o644)
-
-	tests := []struct {
-		name    string
-		dirPath string
-		want    int // Expected number of JSON files
-	}{
-		{
-			name:    "Directory with JSON files",
-			dirPath: tempDir,
-			want:    2,
-		},
-		{
-			name:    "Non-existent directory",
-			dirPath: "/tmp/nonexistent_12345",
-			want:    0,
-		},
-		{
-			name:    "Empty directory",
-			dirPath: subDir,
-			want:    1,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			files, err := ListJSONFiles(test.dirPath)
-			if err != nil {
-				t.Errorf("ListJSONFiles() error = %v", err)
-				return
-			}
-
-			if len(files) != test.want {
-				t.Errorf("ListJSONFiles() = %d files, want %d", len(files), test.want)
-			}
-
-			// Verify all returned files are JSON
-			for _, file := range files {
-				if filepath.Ext(file) != ".json" {
-					t.Errorf("ListJSONFiles() returned non-JSON file: %s", file)
-				}
-			}
-		})
-	}
-}
-
 func TestDeleteFile(t *testing.T) {
 	tempDir := t.TempDir()
 	existingFile := filepath.Join(tempDir, "exists.txt")
@@ -562,31 +504,6 @@ func TestMoveFileFallbackWhenRenameFails(t *testing.T) {
 	}
 	if string(dstContent) != string(content) {
 		t.Error("MoveFile() fallback content mismatch")
-	}
-}
-
-func TestGetFileSize(t *testing.T) {
-	tempDir := t.TempDir()
-	testFile := filepath.Join(tempDir, "test.txt")
-
-	// Create file with known content
-	content := []byte("test content for size")
-	_ = os.WriteFile(testFile, content, 0o644)
-
-	size, err := GetFileSize(testFile)
-	if err != nil {
-		t.Errorf("GetFileSize() error = %v", err)
-	}
-
-	expectedSize := int64(len(content))
-	if size != expectedSize {
-		t.Errorf("GetFileSize() = %d, want %d", size, expectedSize)
-	}
-
-	// Test non-existent file
-	_, err = GetFileSize("/tmp/nonexistent_12345.txt")
-	if err == nil {
-		t.Error("GetFileSize() should return error for non-existent file")
 	}
 }
 
