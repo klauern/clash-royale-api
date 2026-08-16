@@ -38,11 +38,11 @@ func captureLog(t *testing.T) *bytes.Buffer {
 }
 
 // This test captures global log state, so it must not run in parallel.
-func TestCloseWithLogSuccess(t *testing.T) {
+func TestWithLogSuccess(t *testing.T) {
 	buf := captureLog(t)
 
 	closer := &testCloser{}
-	CloseWithLog("closeutil", closer, "resource")
+	WithLog("closeutil", closer, "resource")
 
 	if !closer.closed {
 		t.Fatal("expected closer to be closed")
@@ -53,11 +53,11 @@ func TestCloseWithLogSuccess(t *testing.T) {
 }
 
 // This test captures global log state, so it must not run in parallel.
-func TestCloseWithLogError(t *testing.T) {
+func TestWithLogError(t *testing.T) {
 	buf := captureLog(t)
 
 	closer := &testCloser{err: errors.New("close failed")}
-	CloseWithLog("closeutil", closer, "resource")
+	WithLog("closeutil", closer, "resource")
 
 	if !closer.closed {
 		t.Fatal("expected closer to be closed")
@@ -69,8 +69,8 @@ func TestCloseWithLogError(t *testing.T) {
 	}
 }
 
-func TestCloseWithLogNilCloser(t *testing.T) {
+func TestWithLogNilCloser(t *testing.T) {
 	_ = captureLog(t)
 
-	CloseWithLog("closeutil", nil, "resource")
+	WithLog("closeutil", nil, "resource")
 }

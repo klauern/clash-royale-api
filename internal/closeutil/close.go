@@ -14,8 +14,3 @@ func WithLog(packageName string, closer io.Closer, resource string) {
 		log.Printf("%s: failed to close %s: %v", packageName, resource, err)
 	}
 }
-
-// CloseWithLog is a backward-compatible alias for WithLog.
-func CloseWithLog(packageName string, closer io.Closer, resource string) {
-	WithLog(packageName, closer, resource)
-}
