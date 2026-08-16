@@ -7,19 +7,16 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
-//go:fix inline
-func testRolePtr(r deck.CardRole) *deck.CardRole { return new(r) }
-
 func testDeck() []deck.CardCandidate {
 	return []deck.CardCandidate{
-		{Name: "Hog Rider", Level: 14, MaxLevel: 15, Elixir: 4, Role: testRolePtr(deck.RoleWinCondition), Stats: &clashroyale.CombatStats{DamagePerSecond: 150, Targets: "Buildings"}},
-		{Name: "Musketeer", Level: 13, MaxLevel: 15, Elixir: 4, Role: testRolePtr(deck.RoleSupport), Stats: &clashroyale.CombatStats{DamagePerSecond: 181, Targets: "Air & Ground"}},
-		{Name: "Fireball", Level: 13, MaxLevel: 15, Elixir: 4, Role: testRolePtr(deck.RoleSpellBig), Stats: &clashroyale.CombatStats{Radius: 2.5}},
-		{Name: "The Log", Level: 13, MaxLevel: 15, Elixir: 2, Role: testRolePtr(deck.RoleSpellSmall), Stats: &clashroyale.CombatStats{Radius: 1.8}},
-		{Name: "Cannon", Level: 13, MaxLevel: 15, Elixir: 3, Role: testRolePtr(deck.RoleBuilding), Stats: &clashroyale.CombatStats{DamagePerSecond: 140, Targets: "Ground"}},
-		{Name: "Knight", Level: 13, MaxLevel: 15, Elixir: 3, Role: testRolePtr(deck.RoleSupport), Stats: &clashroyale.CombatStats{DamagePerSecond: 160, Targets: "Ground"}},
-		{Name: "Skeletons", Level: 14, MaxLevel: 15, Elixir: 1, Role: testRolePtr(deck.RoleCycle), Stats: &clashroyale.CombatStats{Targets: "Ground"}},
-		{Name: "Ice Spirit", Level: 14, MaxLevel: 15, Elixir: 1, Role: testRolePtr(deck.RoleCycle), Stats: &clashroyale.CombatStats{Targets: "Air & Ground"}},
+		{Name: "Hog Rider", Level: 14, MaxLevel: 15, Elixir: 4, Role: new(deck.RoleWinCondition), Stats: &clashroyale.CombatStats{DamagePerSecond: 150, Targets: "Buildings"}},
+		{Name: "Musketeer", Level: 13, MaxLevel: 15, Elixir: 4, Role: new(deck.RoleSupport), Stats: &clashroyale.CombatStats{DamagePerSecond: 181, Targets: "Air & Ground"}},
+		{Name: "Fireball", Level: 13, MaxLevel: 15, Elixir: 4, Role: new(deck.RoleSpellBig), Stats: &clashroyale.CombatStats{Radius: 2.5}},
+		{Name: "The Log", Level: 13, MaxLevel: 15, Elixir: 2, Role: new(deck.RoleSpellSmall), Stats: &clashroyale.CombatStats{Radius: 1.8}},
+		{Name: "Cannon", Level: 13, MaxLevel: 15, Elixir: 3, Role: new(deck.RoleBuilding), Stats: &clashroyale.CombatStats{DamagePerSecond: 140, Targets: "Ground"}},
+		{Name: "Knight", Level: 13, MaxLevel: 15, Elixir: 3, Role: new(deck.RoleSupport), Stats: &clashroyale.CombatStats{DamagePerSecond: 160, Targets: "Ground"}},
+		{Name: "Skeletons", Level: 14, MaxLevel: 15, Elixir: 1, Role: new(deck.RoleCycle), Stats: &clashroyale.CombatStats{Targets: "Ground"}},
+		{Name: "Ice Spirit", Level: 14, MaxLevel: 15, Elixir: 1, Role: new(deck.RoleCycle), Stats: &clashroyale.CombatStats{Targets: "Air & Ground"}},
 	}
 }
 
