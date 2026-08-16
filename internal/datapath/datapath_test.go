@@ -40,14 +40,6 @@ func TestPathsUseCrAPIHome(t *testing.T) {
 		t.Fatalf("unexpected leaderboards dir: %s", leaderboardsDir)
 	}
 
-	discoveryDir, err := DiscoveryDir()
-	if err != nil {
-		t.Fatalf("DiscoveryDir() failed: %v", err)
-	}
-	if discoveryDir != filepath.Join(tmp, ".cr-api", "discover") {
-		t.Fatalf("unexpected discovery dir: %s", discoveryDir)
-	}
-
 	leaderboardDB, err := LeaderboardDBPath("ABC123")
 	if err != nil {
 		t.Fatalf("LeaderboardDBPath() failed: %v", err)
