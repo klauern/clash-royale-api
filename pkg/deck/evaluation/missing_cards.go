@@ -385,7 +385,7 @@ func FormatMissingCardsReport(analysis *MissingCardsAnalysis) string {
 		}
 
 		if len(missing.AlternativeCards) > 0 {
-			report.WriteString(fmt.Sprintf("   Alternatives: %s\n", joinCardNames(missing.AlternativeCards)))
+			fmt.Fprintf(&report, "   Alternatives: %s\n", strings.Join(missing.AlternativeCards, ", "))
 		} else {
 			report.WriteString("   Alternatives: None found in your collection\n")
 		}
@@ -403,27 +403,4 @@ func extractCardNames(deckCards []deck.CardCandidate) []string {
 		names[i] = card.Name
 	}
 	return names
-}
-
-// joinCardNames joins card names with commas
-func joinCardNames(cards []string) string {
-	if len(cards) == 0 {
-		return ""
-	}
-	if len(cards) == 1 {
-		return cards[0]
-	}
-	if len(cards) == 2 {
-		return cards[0] + ", " + cards[1]
-	}
-
-	var result strings.Builder
-	for i, card := range cards {
-		if i == len(cards)-1 {
-			result.WriteString(card)
-		} else {
-			result.WriteString(card + ", ")
-		}
-	}
-	return result.String()
 }

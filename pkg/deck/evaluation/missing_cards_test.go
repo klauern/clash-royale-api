@@ -317,49 +317,6 @@ func TestGetArenaName(t *testing.T) {
 	}
 }
 
-func TestJoinCardNames(t *testing.T) {
-	tests := []struct {
-		name     string
-		cards    []string
-		expected string
-	}{
-		{
-			name:     "Empty",
-			cards:    []string{},
-			expected: "",
-		},
-		{
-			name:     "Single card",
-			cards:    []string{"Knight"},
-			expected: "Knight",
-		},
-		{
-			name:     "Two cards",
-			cards:    []string{"Knight", "Valkyrie"},
-			expected: "Knight, Valkyrie",
-		},
-		{
-			name:     "Three cards",
-			cards:    []string{"Knight", "Valkyrie", "Ice Golem"},
-			expected: "Knight, Valkyrie, Ice Golem",
-		},
-		{
-			name:     "Many cards",
-			cards:    []string{"A", "B", "C", "D"},
-			expected: "A, B, C, D",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := joinCardNames(tt.cards)
-			if result != tt.expected {
-				t.Errorf("joinCardNames() = %q, want %q", result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestFormatMissingCardsReport(t *testing.T) {
 	tests := []struct {
 		name              string
