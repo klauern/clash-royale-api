@@ -2,8 +2,6 @@
 // Based on official Clash Royale card progression system.
 package deck
 
-import "fmt"
-
 // Gold upgrade costs define how much gold is needed to upgrade from each level
 // Maps: rarity -> currentLevel -> goldNeeded
 // Note: Level 14 is max, so there are no upgrade costs for level 14
@@ -83,21 +81,6 @@ func CalculateTotalGoldToMax(currentLevel int, rarity string) int {
 	return CalculateGoldNeeded(currentLevel, maxLevel, rarity)
 }
 
-// GetGoldForSingleUpgrade returns gold needed for just the next upgrade
-func GetGoldForSingleUpgrade(currentLevel int, rarity string) int {
-	costs, exists := goldCosts[rarity]
-	if !exists {
-		return 0
-	}
-
-	goldNeeded, exists := costs[currentLevel]
-	if !exists {
-		return 0 // Either max level or invalid level for this rarity
-	}
-
-	return goldNeeded
-}
-
 // CalculateGemsNeeded returns how many gems are needed to cover gold costs
 // Based on typical Clash Royale shop conversion: 1 gem = ~15 gold (varies by purchase amount)
 func CalculateGemsNeeded(goldNeeded int) int {
@@ -118,12 +101,4 @@ func CalculateGemsNeeded(goldNeeded int) int {
 	}
 
 	return gemsNeeded
-}
-
-// FormatGemCost formats gem cost in a readable way
-func FormatGemCost(gemsNeeded int) string {
-	if gemsNeeded == 0 {
-		return "0"
-	}
-	return fmt.Sprintf("%d", gemsNeeded)
 }
