@@ -94,17 +94,6 @@ type UpgradeImpactOptions struct {
 	UseCombatStats     bool     `json:"use_combat_stats"`    // Enable combat stats integration (DPS/HP scoring)
 }
 
-// DefaultUpgradeImpactOptions returns sensible defaults for upgrade impact analysis
-func DefaultUpgradeImpactOptions() UpgradeImpactOptions {
-	return UpgradeImpactOptions{
-		ViabilityThreshold: 0.75, // 75% of max possible score is "viable"
-		TopN:               10,
-		IncludeMaxLevel:    false,
-		FocusRarities:      []string{},
-		ExcludeCards:       []string{},
-	}
-}
-
 // UpgradeImpactAnalyzer performs upgrade impact analysis
 type UpgradeImpactAnalyzer struct {
 	archetypes         []DeckArchetypeTemplate

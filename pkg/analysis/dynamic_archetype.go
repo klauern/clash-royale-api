@@ -151,18 +151,6 @@ type DetectionOptions struct {
 	ExcludeCards         []string `json:"exclude_cards"`           // Cards to exclude from recommendations
 }
 
-// DefaultDetectionOptions returns sensible defaults for archetype detection
-func DefaultDetectionOptions() DetectionOptions {
-	return DetectionOptions{
-		MinViability:         0, // Show all archetypes
-		IncludeStrategies:    true,
-		IncludeUpgrades:      true,
-		TopUpgradesPerArch:   3,
-		TopCrossArchUpgrades: 10,
-		ExcludeCards:         []string{},
-	}
-}
-
 // DynamicArchetypeDetector performs dynamic archetype detection
 type DynamicArchetypeDetector struct {
 	archetypes         []DeckArchetypeTemplate
