@@ -4,27 +4,6 @@ package analysis
 
 import "github.com/klauer/clash-royale-api/go/internal/config"
 
-// CardInfo interface for card data
-// This allows the package to work without importing the clashroyale package directly
-type CardInfo interface {
-	GetRarity() string
-}
-
-// cardAdapter adapts different card types to CardInfo interface
-type cardAdapter struct {
-	rarity string
-}
-
-func (c cardAdapter) GetRarity() string {
-	return c.rarity
-}
-
-// NewCardAdapter creates a CardInfo from a rarity string
-// This can be used when converting from external card types
-func NewCardAdapter(rarity string) CardInfo {
-	return cardAdapter{rarity: rarity}
-}
-
 // CalculateCardsNeeded returns how many cards are needed to upgrade from currentLevel
 
 // Returns 0 if already at max level, below starting level, or invalid rarity
@@ -393,29 +372,6 @@ func defaultCardCounts() map[string]int {
 		rarityLegendary: 10,
 		rarityChampion:  6,
 	}
-}
-
-// NewCardCountConfig creates a config from actual card data
-// Counts cards by rarity and applies defaults for rarities with zero cards
-func NewCardCountConfig(cards []CardInfo) *CardCountConfig {
-	counts := make(map[string]int)
-
-	// Count cards by rarity
-	for _, card := range cards {
-		rarity := config.NormalizeRarity(card.GetRarity())
-		if rarity != "" {
-			counts[rarity]++
-		}
-	}
-
-	// Apply defaults for missing rarities (fallback to game defaults)
-	for rarity, defaultVal := range defaultCardCounts() {
-		if counts[rarity] == 0 {
-			counts[rarity] = defaultVal
-		}
-	}
-
-	return &CardCountConfig{cardCounts: counts}
 }
 
 // DefaultCardCountConfig returns a config with game default card counts
