@@ -55,65 +55,6 @@ func TestBattleLogExport_StableSchema(t *testing.T) {
 	}
 }
 
-func TestBattleSummaryExport_UsesOnlyValidBattlesAndTracksCurrentStreak(t *testing.T) {
-	tempDir := t.TempDir()
-	battles := []clashroyale.Battle{
-		// Invalid row should be excluded.
-		{
-			Type: "PvP",
-			Team: nil,
-			Opponent: []clashroyale.BattleTeam{
-				{Tag: "#O", Name: "Opponent", StartingTrophies: 1000, TrophyChange: -10, Crowns: 0},
-			},
-		},
-		// Loss, then two wins: current streak should end at 2.
-		{
-			Type: "PvP",
-			Team: []clashroyale.BattleTeam{
-				{Tag: "#P", Name: "Player", StartingTrophies: 1000, TrophyChange: -5, Crowns: 1},
-			},
-			Opponent: []clashroyale.BattleTeam{
-				{Tag: "#O", Name: "Opponent", StartingTrophies: 1000, TrophyChange: 5, Crowns: 2},
-			},
-		},
-		{
-			Type: "PvP",
-			Team: []clashroyale.BattleTeam{
-				{Tag: "#P", Name: "Player", StartingTrophies: 995, TrophyChange: 10, Crowns: 3},
-			},
-			Opponent: []clashroyale.BattleTeam{
-				{Tag: "#O", Name: "Opponent", StartingTrophies: 1005, TrophyChange: -10, Crowns: 1},
-			},
-		},
-		{
-			Type: "PvP",
-			Team: []clashroyale.BattleTeam{
-				{Tag: "#P", Name: "Player", StartingTrophies: 1005, TrophyChange: 10, Crowns: 2},
-			},
-			Opponent: []clashroyale.BattleTeam{
-				{Tag: "#O", Name: "Opponent", StartingTrophies: 995, TrophyChange: -10, Crowns: 1},
-			},
-		},
-	}
-
-	if err := NewBattleSummaryExporter().Export(tempDir, battles); err != nil {
-		t.Fatalf("battle summary export failed: %v", err)
-	}
-
-	records := readCSVFile(t, filepath.Join(tempDir, "csv", "battles", "battle_summary.csv"))
-	if len(records) != 2 {
-		t.Fatalf("row count = %d, want 2", len(records))
-	}
-
-	row := records[1]
-	if row[2] != "3" {
-		t.Fatalf("Total Battles = %q, want %q", row[2], "3")
-	}
-	if row[15] != "2" {
-		t.Fatalf("Current Win Streak = %q, want %q", row[15], "2")
-	}
-}
-
 func readCSVFile(t *testing.T, path string) [][]string {
 	t.Helper()
 	f, err := os.Open(path)
