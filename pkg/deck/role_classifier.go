@@ -58,12 +58,6 @@ func IsSpell(cardName string, elixirCost int) bool {
 	return role == RoleSpellBig || role == RoleSpellSmall
 }
 
-// IsCycleCard returns true if the card is a cheap cycle card (1-2 elixir)
-func IsCycleCard(cardName string, elixirCost int) bool {
-	role := config.GetCardRole(cardName)
-	return role == RoleCycle || elixirCost <= 2
-}
-
 // HasEvolutionOverride returns true if the card has a special role override when evolved
 func HasEvolutionOverride(cardName string, evolutionLevel int) bool {
 	if evolutionLevel <= 0 {
