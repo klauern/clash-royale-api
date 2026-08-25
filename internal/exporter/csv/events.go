@@ -1,7 +1,6 @@
 package csv
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/klauer/clash-royale-api/go/internal/storage"
@@ -37,74 +36,4 @@ func eventDeckExport(dataDir string, data any) error {
 	}
 
 	return writeCSVRows(dataDir, storage.CSVEventsSubdir, "event_decks.csv", eventDeckHeaders(), rows)
-}
-
-// NewEventBattlesExporter creates a new event battles CSV exporter
-func NewEventBattlesExporter() *CSVExporter {
-	return NewCSVExporter(
-		"event_battles.csv",
-		eventBattlesHeaders,
-		eventBattlesExport,
-	)
-}
-
-// eventBattlesHeaders returns the CSV headers for event battle data
-func eventBattlesHeaders() []string {
-	return []string{
-		"Event ID",
-		"Player Tag",
-		"Battle Timestamp",
-		"Opponent Tag",
-		"Opponent Name",
-		"Result",
-		"Player Crowns",
-		"Opponent Crowns",
-		"Trophy Change",
-		"Battle Mode",
-		"Player Deck Hash",
-		"Opponent Deck Hash",
-		"Player Deck",
-		"Opponent Deck",
-	}
-}
-
-// eventBattlesExport exports event battle data to CSV
-func eventBattlesExport(dataDir string, data any) error {
-	collection, ok := data.(*events.EventDeckCollection)
-	if !ok {
-		return csvTypeMismatchError(reflect.TypeOf((*events.EventDeckCollection)(nil)), data)
-	}
-
-	// Prepare CSV rows
-	var rows [][]string
-
-	for _, deck := range collection.Decks {
-		for _, battle := range deck.Battles {
-			// Format trophy change
-			trophyChange := ""
-			if battle.TrophyChange != nil {
-				trophyChange = fmt.Sprintf("%d", *battle.TrophyChange)
-			}
-
-			row := []string{
-				deck.EventID,
-				deck.PlayerTag,
-				battle.Timestamp.Format("2006-01-02 15:04:05"),
-				battle.OpponentTag,
-				battle.OpponentName,
-				battle.Result,
-				fmt.Sprintf("%d", battle.Crowns),
-				fmt.Sprintf("%d", battle.OpponentCrowns),
-				trophyChange,
-				battle.BattleMode,
-				battle.PlayerDeckHash,
-				battle.OpponentDeckHash,
-				fmt.Sprintf("%v", battle.PlayerDeck),
-				fmt.Sprintf("%v", battle.OpponentDeck),
-			}
-			rows = append(rows, row)
-		}
-	}
-
-	return writeCSVRows(dataDir, storage.CSVEventsSubdir, "event_battles.csv", eventBattlesHeaders(), rows)
 }
