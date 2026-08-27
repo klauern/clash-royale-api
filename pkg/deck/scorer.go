@@ -122,13 +122,6 @@ func ScoreCardCandidate(candidate *CardCandidate) float64 {
 	return score
 }
 
-// ScoreAllCandidates scores a slice of CardCandidates in place
-func ScoreAllCandidates(candidates []CardCandidate) {
-	for i := range candidates {
-		ScoreCardCandidate(&candidates[i])
-	}
-}
-
 // SortByScore sorts candidates by score in descending order (highest score first)
 func SortByScore(candidates []CardCandidate) {
 	sort.Slice(candidates, func(i, j int) bool {
@@ -181,17 +174,6 @@ func FilterByElixirRange(candidates []CardCandidate, minElixir, maxElixir int) [
 	return filtered
 }
 
-// FilterByRarity returns candidates of specified rarity
-func FilterByRarity(candidates []CardCandidate, rarity string) []CardCandidate {
-	filtered := make([]CardCandidate, 0)
-	for _, candidate := range candidates {
-		if candidate.Rarity == rarity {
-			filtered = append(filtered, candidate)
-		}
-	}
-	return filtered
-}
-
 // ExcludeCards removes cards with specified names from candidates
 func ExcludeCards(candidates []CardCandidate, excludeNames []string) []CardCandidate {
 	excludeMap := make(map[string]bool)
@@ -213,24 +195,6 @@ func CalculateAvgElixir(candidates []CardCandidate) float64 {
 	return util.CalcAvgElixir(candidates, func(candidate CardCandidate) int {
 		return candidate.Elixir
 	})
-}
-
-// GetLevelDistribution returns count of cards at each level
-func GetLevelDistribution(candidates []CardCandidate) map[int]int {
-	distribution := make(map[int]int)
-	for _, candidate := range candidates {
-		distribution[candidate.Level]++
-	}
-	return distribution
-}
-
-// GetRarityDistribution returns count of cards by rarity
-func GetRarityDistribution(candidates []CardCandidate) map[string]int {
-	distribution := make(map[string]int)
-	for _, candidate := range candidates {
-		distribution[candidate.Rarity]++
-	}
-	return distribution
 }
 
 // getCombatWeight returns the combat stats weight from environment or default
