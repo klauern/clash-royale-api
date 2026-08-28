@@ -74,11 +74,6 @@ type DeckAnalysis struct {
 	Buildings      []string      `json:"buildings"`
 }
 
-// GetRole returns the string representation of the card role
-func (cr CardRole) String() string {
-	return string(cr)
-}
-
 // GetArchetype returns the string representation of the archetype
 func (a Archetype) String() string {
 	return string(a)
