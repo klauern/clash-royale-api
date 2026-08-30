@@ -162,7 +162,7 @@ func TestCalculateTotalCardsToMax(t *testing.T) {
 
 func TestUpgradeCostConsistency(t *testing.T) {
 	// Verify that upgrade costs exist for all rarities from their starting level to max-1
-	rarities := GetAllRarities()
+	rarities := allRarities
 
 	for _, rarity := range rarities {
 		t.Run(rarity, func(t *testing.T) {

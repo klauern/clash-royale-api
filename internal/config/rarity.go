@@ -288,12 +288,6 @@ func GetStartingLevel(rarity string) int {
 	return 0 // Return 0 to signal invalid/unknown rarity
 }
 
-// GetAllRarities returns all valid rarity strings in a consistent order.
-// Useful for iteration or validation purposes.
-func GetAllRarities() []string {
-	return []string{"Common", "Rare", "Epic", "Legendary", "Champion"}
-}
-
 // LookupCardRarity resolves a card's rarity from its name.
 // Returns (rarity, true) when known and ("", false) when unknown.
 func LookupCardRarity(cardName string) (string, bool) {
