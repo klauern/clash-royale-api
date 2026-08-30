@@ -4,6 +4,8 @@ import (
 	"testing"
 )
 
+var allRarities = []string{"Common", "Rare", "Epic", "Legendary", "Champion"}
+
 func TestNormalizeRarity(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -254,7 +256,7 @@ func TestGetStartingLevel(t *testing.T) {
 
 func TestStartingLevelProgression(t *testing.T) {
 	// Verify that starting levels are in ascending order by rarity
-	rarities := GetAllRarities()
+	rarities := allRarities
 	previousLevel := 0
 
 	for _, rarity := range rarities {
@@ -266,41 +268,8 @@ func TestStartingLevelProgression(t *testing.T) {
 	}
 }
 
-func TestGetAllRarities(t *testing.T) {
-	rarities := GetAllRarities()
-
-	// Should have exactly 5 rarities
-	if len(rarities) != 5 {
-		t.Errorf("GetAllRarities() returned %d rarities, want 5", len(rarities))
-	}
-
-	// Should contain all expected rarities in order
-	expected := []string{"Common", "Rare", "Epic", "Legendary", "Champion"}
-	for i, exp := range expected {
-		if i >= len(rarities) {
-			t.Errorf("Missing rarity at index %d: %s", i, exp)
-			continue
-		}
-		if rarities[i] != exp {
-			t.Errorf("GetAllRarities()[%d] = %q, want %q", i, rarities[i], exp)
-		}
-	}
-
-	// Verify no duplicates
-	seen := make(map[string]bool)
-	for _, rarity := range rarities {
-		if seen[rarity] {
-			t.Errorf("Duplicate rarity found: %s", rarity)
-		}
-		seen[rarity] = true
-	}
-}
-
 func TestAllRaritiesHaveCompleteData(t *testing.T) {
-	// Verify that all rarities returned by GetAllRarities() have complete data
-	rarities := GetAllRarities()
-
-	for _, rarity := range rarities {
+	for _, rarity := range allRarities {
 		// Check weight
 		weight := GetRarityWeight(rarity)
 		if weight == 0 {
