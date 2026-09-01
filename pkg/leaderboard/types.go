@@ -57,18 +57,6 @@ type QueryOptions struct {
 	ExcludeCards    []string // Filter out decks containing ANY of these cards (optional)
 }
 
-// DefaultQueryOptions returns sensible defaults for leaderboard queries
-func DefaultQueryOptions() QueryOptions {
-	return QueryOptions{
-		Limit:     10,
-		Offset:    0,
-		MinScore:  0,
-		MaxScore:  0, // 0 means no max filter
-		SortBy:    "overall_score",
-		SortOrder: "desc",
-	}
-}
-
 // TopNQueryOptions creates options for retrieving top N decks by overall score
 func TopNQueryOptions(n int) QueryOptions {
 	return QueryOptions{
