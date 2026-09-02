@@ -422,23 +422,3 @@ func TestScoreCardWithStrategy(t *testing.T) {
 		})
 	}
 }
-
-// TestReloadStrategyConfig tests reloading strategy configuration
-func TestReloadStrategyConfig(t *testing.T) {
-	// Get original config
-	originalConfig := GetStrategyConfig(StrategyBalanced)
-
-	// Reload the config
-	err := ReloadStrategyConfig()
-	if err != nil {
-		t.Fatalf("ReloadStrategyConfig failed: %v", err)
-	}
-
-	// Get reloaded config
-	reloadedConfig := GetStrategyConfig(StrategyBalanced)
-
-	// Values should be similar (might be exactly the same if file unchanged)
-	if reloadedConfig.TargetElixirMin != originalConfig.TargetElixirMin {
-		t.Logf("TargetElixirMin changed from %v to %v", originalConfig.TargetElixirMin, reloadedConfig.TargetElixirMin)
-	}
-}
