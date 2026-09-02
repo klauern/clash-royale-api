@@ -235,19 +235,6 @@ func loadStrategyCache() map[string]StrategyConfig {
 	return strategyCache
 }
 
-// ReloadStrategyConfig reloads the strategy configuration from disk
-// This enables hot-reloading for development without restarting the application
-func ReloadStrategyConfig() error {
-	cache, err := loadStrategyConfigFile()
-	if err != nil {
-		return err
-	}
-	strategyCacheMu.Lock()
-	strategyCache = cache
-	strategyCacheMu.Unlock()
-	return nil
-}
-
 // GetStrategyConfig returns the configuration for a given strategy
 func GetStrategyConfig(strategy Strategy) StrategyConfig {
 	cache := loadStrategyCache()
