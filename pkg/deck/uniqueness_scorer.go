@@ -304,14 +304,6 @@ func NewUniquenessScorer(config UniquenessConfig) *UniquenessScorer {
 	}
 }
 
-// NewUniquenessScorerWithPopularity creates a scorer with custom popularity data
-func NewUniquenessScorerWithPopularity(popularity *CardPopularity, config UniquenessConfig) *UniquenessScorer {
-	return &UniquenessScorer{
-		popularity: popularity,
-		config:     config,
-	}
-}
-
 // ScoreDeck calculates the uniqueness score for a deck
 // Returns 0.0-1.0 where higher means more unique/anti-meta
 func (us *UniquenessScorer) ScoreDeck(cardNames []string) float64 {
