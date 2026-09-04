@@ -6,8 +6,3 @@ import "github.com/klauer/clash-royale-api/go/pkg/deckhash"
 func CanonicalDeckKey(cards []string) string {
 	return deckhash.CanonicalDeckKey(cards)
 }
-
-// DeckHash returns a SHA256 hash of the canonical deck key for deduplication.
-func DeckHash(cards []string) string {
-	return deckhash.DeckHash(cards)
-}
