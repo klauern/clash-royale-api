@@ -3,7 +3,7 @@ package recommend
 import (
 	"testing"
 
-	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
+	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
 func card(name string, st SlotType) CardWithSlotType {
@@ -13,11 +13,13 @@ func card(name string, st SlotType) CardWithSlotType {
 // --- SlotType metadata tests ---
 
 func TestCardSlotTyper_Champion(t *testing.T) {
-	typeer := NewCardSlotTyper([]clashroyale.Card{
-		{Name: "Archer Queen", Rarity: "Champion"},
-		{Name: "Skeleton Army", Rarity: "Common", MaxEvolutionLevel: 1},
-		{Name: "Balloon", Rarity: "Epic", MaxEvolutionLevel: 2},
-		{Name: "Bowler", Rarity: "Epic", MaxEvolutionLevel: 2},
+	typeer := NewCardSlotTyperFromDeckAnalysis(deck.CardAnalysis{
+		CardLevels: map[string]deck.CardLevelData{
+			"Archer Queen":  {Rarity: "Champion"},
+			"Skeleton Army": {Rarity: "Common", MaxEvolutionLevel: 1},
+			"Balloon":       {Rarity: "Epic", MaxEvolutionLevel: 2},
+			"Bowler":        {Rarity: "Epic", MaxEvolutionLevel: 2},
+		},
 	})
 
 	cases := []struct {
