@@ -1,7 +1,6 @@
 package recommend
 
 import (
-	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
@@ -21,15 +20,6 @@ var championSlotOnlyEvos = map[string]bool{
 // Populate it from the /cards API response or from a CardAnalysis.
 type CardSlotTyper struct {
 	cardRarity map[string]string
-}
-
-// NewCardSlotTyper builds a typeer from the full card catalog (GetCards response).
-func NewCardSlotTyper(cards []clashroyale.Card) *CardSlotTyper {
-	rarities := make(map[string]string, len(cards))
-	for _, c := range cards {
-		rarities[c.Name] = c.Rarity
-	}
-	return &CardSlotTyper{cardRarity: rarities}
 }
 
 // NewCardSlotTyperFromDeckAnalysis builds a typeer from deck.CardAnalysis.CardLevels,
