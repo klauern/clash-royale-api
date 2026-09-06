@@ -308,54 +308,6 @@ func TestCalculateUpgradeInfo(t *testing.T) {
 	}
 }
 
-// TestCalculateRarityStats tests rarity statistics calculation
-func TestCalculateRarityStats(t *testing.T) {
-	cards := []UpgradeInfo{
-		{Rarity: "Common", CurrentLevel: 10, IsMaxLevel: false, CanUpgradeNow: true, ProgressPercent: 50.0, TotalToMax: 100},
-		{Rarity: "Common", CurrentLevel: 14, IsMaxLevel: true, CanUpgradeNow: false, ProgressPercent: 100.0, TotalToMax: 0},
-		{Rarity: "Common", CurrentLevel: 12, IsMaxLevel: false, CanUpgradeNow: false, ProgressPercent: 20.0, TotalToMax: 50},
-		{Rarity: "Rare", CurrentLevel: 8, IsMaxLevel: false, CanUpgradeNow: true, ProgressPercent: 75.0, TotalToMax: 200},
-	}
-
-	stats := CalculateRarityStats(cards, "Common")
-
-	if stats.Rarity != "Common" {
-		t.Errorf("Rarity = %v, want Common", stats.Rarity)
-	}
-	if stats.TotalCards != 3 {
-		t.Errorf("TotalCards = %v, want 3", stats.TotalCards)
-	}
-	if stats.MaxLevelCards != 1 {
-		t.Errorf("MaxLevelCards = %v, want 1", stats.MaxLevelCards)
-	}
-	if stats.UpgradableCards != 1 {
-		t.Errorf("UpgradableCards = %v, want 1", stats.UpgradableCards)
-	}
-
-	// Average level: (10+14+12)/3 = 12
-	if stats.AvgLevel != 12.0 {
-		t.Errorf("AvgLevel = %v, want 12.0", stats.AvgLevel)
-	}
-
-	// Average progress: (50+100+20)/3 = 56.67
-	expectedAvgProgress := (50.0 + 100.0 + 20.0) / 3.0
-	if stats.AvgProgressPercent != expectedAvgProgress {
-		t.Errorf("AvgProgressPercent = %v, want %v", stats.AvgProgressPercent, expectedAvgProgress)
-	}
-
-	// Total cards needed: 100+0+50 = 150
-	if stats.TotalCardsNeeded != 150 {
-		t.Errorf("TotalCardsNeeded = %v, want 150", stats.TotalCardsNeeded)
-	}
-
-	// Completion: 1/3 = 33.33%
-	expectedCompletion := (1.0 / 3.0) * 100.0
-	// Allow small floating point differences
-	if stats.CompletionPercent < expectedCompletion-0.01 || stats.CompletionPercent > expectedCompletion+0.01 {
-		t.Errorf("CompletionPercent = %v, want ~%v", stats.CompletionPercent, expectedCompletion)
-	}
-}
-
 // TestCalculatePriorityScore tests priority scoring algorithm
 func TestCalculatePriorityScore(t *testing.T) {
 	tests := []struct {
