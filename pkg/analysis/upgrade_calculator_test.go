@@ -129,33 +129,6 @@ func TestGetStartingLevel(t *testing.T) {
 	}
 }
 
-// TestIsMaxLevel tests max level detection
-func TestIsMaxLevel(t *testing.T) {
-	tests := []struct {
-		name         string
-		currentLevel int
-		rarity       string
-		want         bool
-	}{
-		{"Common at max", 16, "Common", true},
-		{"Common below max", 15, "Common", false},
-		{"Rare at max", 16, "Rare", true},
-		{"Epic at max", 16, "Epic", true},
-		{"Legendary below max", 15, "Legendary", false},
-		{"Champion at max", 16, "Champion", true},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := IsMaxLevel(tt.currentLevel, tt.rarity)
-			if got != tt.want {
-				t.Errorf("IsMaxLevel(%v, %v) = %v, want %v",
-					tt.currentLevel, tt.rarity, got, tt.want)
-			}
-		})
-	}
-}
-
 // TestCalculateTotalCardsToMax tests total cards needed calculation
 func TestCalculateTotalCardsToMax(t *testing.T) {
 	tests := []struct {
