@@ -52,14 +52,6 @@ func CalculateCardsNeeded(currentLevel int, rarity string) int {
 	return config.GetUpgradeCost(currentLevel, rarity)
 }
 
-// IsMaxLevel checks if a card is at maximum level for its rarity
-
-func IsMaxLevel(currentLevel int, rarity string) bool {
-	rarity = config.NormalizeRarity(rarity)
-
-	return currentLevel >= config.GetMaxLevel(rarity)
-}
-
 // CalculateTotalCardsToMax calculates total cards needed from current level to max
 
 func CalculateTotalCardsToMax(currentLevel int, rarity string) int {
