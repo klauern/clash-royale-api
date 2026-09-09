@@ -1,5 +1,4 @@
-// Package scoring provides implementations of the Scorer interface for
-// various card scoring algorithms.
+// Package scoring provides card scoring algorithms.
 package scoring
 
 import (
@@ -12,7 +11,7 @@ import (
 // CardRole is an alias for deck.CardRole for convenience
 type CardRole = deck.CardRole
 
-// CombatScorer implements the Scorer interface using combat statistics.
+// CombatScorer uses combat statistics.
 // It evaluates card effectiveness based on DPS per elixir, HP per elixir,
 // and role-specific effectiveness. This scorer provides stat-based evaluation
 // that complements traditional level-based scoring.

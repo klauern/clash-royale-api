@@ -1,5 +1,4 @@
-// Package scoring provides implementations of the Scorer interface for
-// various card scoring algorithms.
+// Package scoring provides card scoring algorithms.
 package scoring
 
 import (
@@ -8,7 +7,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
-// SynergyScorer implements the Scorer interface for card synergy scoring.
+// SynergyScorer provides card synergy scoring.
 // It evaluates how well a card synergizes with cards already selected
 // for the deck. The synergy bonus is the average of all pairwise synergy
 // scores between the candidate and cards currently in the deck.
