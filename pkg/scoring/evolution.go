@@ -1,5 +1,4 @@
-// Package scoring provides implementations of the Scorer interface for
-// various card scoring algorithms.
+// Package scoring provides card scoring algorithms.
 package scoring
 
 import (
@@ -8,7 +7,7 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
-// EvolutionScorer implements the Scorer interface for evolution-aware scoring.
+// EvolutionScorer provides evolution-aware scoring.
 // It provides bonus scores for cards based on their evolution level and the
 // player's unlocked evolutions. This scorer supports both flat (linear) and
 // level-scaled bonus calculations.

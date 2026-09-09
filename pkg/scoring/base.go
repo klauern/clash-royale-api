@@ -1,5 +1,4 @@
-// Package scoring provides implementations of the Scorer interface for
-// various card scoring algorithms.
+// Package scoring provides card scoring algorithms.
 package scoring
 
 import (
@@ -8,10 +7,10 @@ import (
 	"github.com/klauer/clash-royale-api/go/internal/config"
 )
 
-// BaseScorer implements the Scorer interface with traditional card scoring.
+// BaseScorer provides traditional card scoring.
 // It considers level ratio, rarity boost, elixir cost, role bonus, and
 // evolution level. This scorer provides a solid baseline for deck building
-// and can be combined with other scorers via CompositeScorer.
+// for deck building.
 //
 // # Scoring Formula
 //
