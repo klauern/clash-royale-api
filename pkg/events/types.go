@@ -4,7 +4,6 @@ package events
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/klauer/clash-royale-api/go/internal/errors"
@@ -259,75 +258,6 @@ func (edc *EventDeckCollection) GetBestDecksByWinRate(minBattles, limit int) []E
 	}
 
 	return qualified
-}
-
-// EventMetadata represents metadata about an event type, independent of player participation
-type EventMetadata struct {
-	EventType     EventType      `json:"event_type"`
-	Name          string         `json:"name"`
-	Description   string         `json:"description,omitempty"`
-	MaxWins       *int           `json:"max_wins,omitempty"`
-	MaxLosses     *int           `json:"max_losses,omitempty"`
-	EntryFee      *int           `json:"entry_fee,omitempty"`
-	Rewards       []string       `json:"rewards,omitempty"`
-	Rules         map[string]any `json:"rules,omitempty"`
-	AvailableFrom *time.Time     `json:"available_from,omitempty"`
-	AvailableTo   *time.Time     `json:"available_to,omitempty"`
-	IsActive      bool           `json:"is_active"`
-}
-
-// Validate checks if event metadata is valid
-func (em *EventMetadata) Validate() error {
-	if em.EventType == "" {
-		return fmt.Errorf("event type is required")
-	}
-	if em.Name == "" {
-		return fmt.Errorf("event name is required")
-	}
-	if em.AvailableFrom != nil && em.AvailableTo != nil && em.AvailableFrom.After(*em.AvailableTo) {
-		return fmt.Errorf("available_from cannot be after available_to")
-	}
-	return nil
-}
-
-// BattleLog represents a collection of battle records with helper methods
-type BattleLog []BattleRecord
-
-// FilterByResult filters battle log by result (win/loss)
-func (bl BattleLog) FilterByResult(result string) BattleLog {
-	return util.FilterSlice(bl, func(battle BattleRecord) bool {
-		return battle.Result == result
-	})
-}
-
-// FilterByTimeRange filters battle log by time range
-func (bl BattleLog) FilterByTimeRange(start, end time.Time) BattleLog {
-	return util.FilterSlice(bl, func(battle BattleRecord) bool {
-		return !battle.Timestamp.Before(start) && !battle.Timestamp.After(end)
-	})
-}
-
-// TotalCrowns returns total crowns earned across all battles
-func (bl BattleLog) TotalCrowns() int {
-	total := 0
-	for _, battle := range bl {
-		total += battle.Crowns
-	}
-	return total
-}
-
-// WinRate calculates win rate across the battle log
-func (bl BattleLog) WinRate() float64 {
-	if len(bl) == 0 {
-		return 0
-	}
-	wins := 0
-	for _, battle := range bl {
-		if battle.IsWin() {
-			wins++
-		}
-	}
-	return float64(wins) / float64(len(bl))
 }
 
 // MarshalJSON implements custom JSON marshaling for time handling
