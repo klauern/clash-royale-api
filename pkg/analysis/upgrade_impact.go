@@ -159,12 +159,12 @@ func (a *UpgradeImpactAnalyzer) AnalyzeUpgradeImpact(cardAnalysis *CardAnalysis)
 		}
 
 		// Skip if in exclude list
-		if a.containsCard(a.options.ExcludeCards, cardName) {
+		if slices.Contains(a.options.ExcludeCards, cardName) {
 			continue
 		}
 
 		// Skip if filtering by rarity and this card doesn't match
-		if len(a.options.FocusRarities) > 0 && !a.containsRarity(a.options.FocusRarities, cardInfo.Rarity) {
+		if len(a.options.FocusRarities) > 0 && !slices.Contains(a.options.FocusRarities, cardInfo.Rarity) {
 			continue
 		}
 
@@ -245,7 +245,7 @@ func (a *UpgradeImpactAnalyzer) calculateCardImpact(
 	}
 
 	// Calculate gold cost for upgrade
-	goldCost := a.getGoldForSingleUpgrade(cardInfo.Level, cardInfo.Rarity)
+	goldCost := config.GetGoldCost(cardInfo.Level, cardInfo.Rarity)
 
 	// Calculate impact score
 	// Formula: weighted combination of:
@@ -561,7 +561,7 @@ func (a *UpgradeImpactAnalyzer) buildUnlockTree(
 			}
 			if delta > 0.01 {
 				upgradesNeeded = append(upgradesNeeded, archetype.WinCondition)
-				totalGold += a.getGoldForSingleUpgrade(cardInfo.Level, cardInfo.Rarity)
+				totalGold += config.GetGoldCost(cardInfo.Level, cardInfo.Rarity)
 			}
 		}
 
@@ -576,7 +576,7 @@ func (a *UpgradeImpactAnalyzer) buildUnlockTree(
 				}
 				if delta > 0.01 {
 					upgradesNeeded = append(upgradesNeeded, supportCard)
-					totalGold += a.getGoldForSingleUpgrade(supportInfo.Level, supportInfo.Rarity)
+					totalGold += config.GetGoldCost(supportInfo.Level, supportInfo.Rarity)
 				}
 			}
 		}
@@ -682,17 +682,4 @@ func (a *UpgradeImpactAnalyzer) getRoleImportance(cardName string) float64 {
 	default:
 		return 0.4
 	}
-}
-
-func (a *UpgradeImpactAnalyzer) containsCard(cards []string, cardName string) bool {
-	return slices.Contains(cards, cardName)
-}
-
-func (a *UpgradeImpactAnalyzer) containsRarity(rarities []string, rarity string) bool {
-	return slices.Contains(rarities, rarity)
-}
-
-// getGoldForSingleUpgrade returns gold needed for a single level upgrade
-func (a *UpgradeImpactAnalyzer) getGoldForSingleUpgrade(currentLevel int, rarity string) int {
-	return config.GetGoldCost(currentLevel, rarity)
 }
