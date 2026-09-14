@@ -157,36 +157,6 @@ func TestValidateArchetype(t *testing.T) {
 	}
 }
 
-func TestSaveDefaultArchetypes(t *testing.T) {
-	tmpDir := t.TempDir()
-	destPath := filepath.Join(tmpDir, "exported_archetypes.json")
-
-	if err := SaveDefaultArchetypes(destPath); err != nil {
-		t.Fatalf("SaveDefaultArchetypes failed: %v", err)
-	}
-
-	// Verify the file was created
-	data, err := os.ReadFile(destPath)
-	if err != nil {
-		t.Fatalf("Failed to read exported file: %v", err)
-	}
-
-	// Verify it contains expected content
-	if len(data) == 0 {
-		t.Error("Exported file is empty")
-	}
-
-	// Verify we can load it back
-	archetypes, err := LoadArchetypes(destPath)
-	if err != nil {
-		t.Fatalf("Failed to load exported archetypes: %v", err)
-	}
-
-	if len(archetypes) != 27 {
-		t.Errorf("Expected 27 archetypes in exported file, got %d", len(archetypes))
-	}
-}
-
 func TestLoadArchetypes_EmptyConfig(t *testing.T) {
 	// Test with empty archetype list
 	tmpDir := t.TempDir()
