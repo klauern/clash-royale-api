@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 )
 
 //go:embed config/archetypes.json
@@ -101,22 +100,5 @@ func validateArchetype(archetype *DeckArchetypeTemplate) error {
 		return fmt.Errorf("min_elixir (%.1f) cannot be greater than max_elixir (%.1f)",
 			archetype.MinElixir, archetype.MaxElixir)
 	}
-	return nil
-}
-
-// SaveDefaultArchetypes saves the default embedded archetypes to a file
-// This allows users to extract the default configuration as a starting point for customization
-func SaveDefaultArchetypes(destPath string) error {
-	// Ensure directory exists
-	dir := filepath.Dir(destPath)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
-	}
-
-	// Write the embedded JSON data directly
-	if err := os.WriteFile(destPath, defaultArchetypesJSON, 0o644); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
-	}
-
 	return nil
 }
