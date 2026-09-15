@@ -215,35 +215,7 @@ func IdentifyMissingCardsWithContext(
 	return identifyMissingCardsInternal(deckCards, playerCollection, playerContext)
 }
 
-// IdentifyMissingCards analyzes which cards in a deck are missing from player's collection
-// Parameters:
-//   - deckCards: The deck to analyze
-//   - playerCollection: Map of card name -> owned (true if player has it)
-//   - playerArena: Current arena level of the player (0 = all cards unlocked)
-//
-// Deprecated: Use IdentifyMissingCardsWithContext for arena-aware validation
-func IdentifyMissingCards(
-	deckCards []deck.CardCandidate,
-	playerCollection map[string]bool,
-	playerArena int,
-) *MissingCardsAnalysis {
-	// Create minimal PlayerContext for backward compatibility
-	ctx := &PlayerContext{
-		ArenaID:    playerArena,
-		Collection: make(map[string]CardLevelInfo),
-	}
-
-	// Populate collection from the map
-	if playerCollection != nil {
-		for cardName := range playerCollection {
-			ctx.Collection[cardName] = CardLevelInfo{}
-		}
-	}
-
-	return identifyMissingCardsInternal(deckCards, playerCollection, ctx)
-}
-
-// identifyMissingCardsInternal is the core implementation used by both methods
+// identifyMissingCardsInternal contains the missing-card analysis logic.
 func identifyMissingCardsInternal(
 	deckCards []deck.CardCandidate,
 	playerCollection map[string]bool,

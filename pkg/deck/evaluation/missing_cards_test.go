@@ -8,11 +8,11 @@ import (
 	"github.com/klauer/clash-royale-api/go/pkg/deck"
 )
 
-func TestIdentifyMissingCards(t *testing.T) {
+func TestIdentifyMissingCardsWithContext(t *testing.T) {
 	tests := []struct {
 		name              string
 		deckCards         []deck.CardCandidate
-		playerCollection  map[string]bool
+		playerCollection  map[string]CardLevelInfo
 		playerArena       int
 		expectPlayable    bool
 		expectedMissing   int
@@ -25,10 +25,10 @@ func TestIdentifyMissingCards(t *testing.T) {
 				makeCard("Hog Rider", deck.RoleWinCondition, 11, 11, "Rare", 4),
 				makeCard("Fireball", deck.RoleSpellBig, 11, 11, "Rare", 4),
 			},
-			playerCollection: map[string]bool{
-				"Knight":    true,
-				"Hog Rider": true,
-				"Fireball":  true,
+			playerCollection: map[string]CardLevelInfo{
+				"Knight":    {},
+				"Hog Rider": {},
+				"Fireball":  {},
 			},
 			playerArena:       10,
 			expectPlayable:    true,
@@ -42,9 +42,9 @@ func TestIdentifyMissingCards(t *testing.T) {
 				makeCard("Mega Knight", deck.RoleWinCondition, 11, 14, "Legendary", 7),
 				makeCard("Fireball", deck.RoleSpellBig, 11, 11, "Rare", 4),
 			},
-			playerCollection: map[string]bool{
-				"Knight":   true,
-				"Fireball": true,
+			playerCollection: map[string]CardLevelInfo{
+				"Knight":   {},
+				"Fireball": {},
 				// Mega Knight not owned
 			},
 			playerArena:       10,
@@ -59,8 +59,8 @@ func TestIdentifyMissingCards(t *testing.T) {
 				makeCard("Mega Knight", deck.RoleWinCondition, 11, 14, "Legendary", 7),
 				makeCard("Fireball", deck.RoleSpellBig, 11, 11, "Rare", 4),
 			},
-			playerCollection: map[string]bool{
-				"Knight": true,
+			playerCollection: map[string]CardLevelInfo{
+				"Knight": {},
 				// Mega Knight and Fireball not owned (Mega Knight also not unlocked)
 			},
 			playerArena:       5,
@@ -83,7 +83,7 @@ func TestIdentifyMissingCards(t *testing.T) {
 		{
 			name:              "Empty deck",
 			deckCards:         []deck.CardCandidate{},
-			playerCollection:  map[string]bool{},
+			playerCollection:  map[string]CardLevelInfo{},
 			playerArena:       0,
 			expectPlayable:    true, // Empty deck has no missing cards
 			expectedMissing:   0,
@@ -96,10 +96,10 @@ func TestIdentifyMissingCards(t *testing.T) {
 				makeCard("Valkyrie", deck.RoleSupport, 11, 11, "Rare", 4),
 				makeCard("Mega Knight", deck.RoleWinCondition, 11, 14, "Legendary", 7),
 			},
-			playerCollection: map[string]bool{
+			playerCollection: map[string]CardLevelInfo{
 				// Player owns Ice Golem, Dark Prince (alternatives to Knight/Valkyrie)
-				"Ice Golem":   true,
-				"Dark Prince": true,
+				"Ice Golem":   {},
+				"Dark Prince": {},
 			},
 			playerArena:       10,
 			expectPlayable:    false,
@@ -110,59 +110,62 @@ func TestIdentifyMissingCards(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := IdentifyMissingCards(tt.deckCards, tt.playerCollection, tt.playerArena)
+			result := IdentifyMissingCardsWithContext(tt.deckCards, &PlayerContext{
+				ArenaID:    tt.playerArena,
+				Collection: tt.playerCollection,
+			})
 
 			if result == nil {
-				t.Fatal("IdentifyMissingCards() returned nil")
+				t.Fatal("IdentifyMissingCardsWithContext() returned nil")
 			}
 
 			// Check playable status
 			if result.IsPlayable != tt.expectPlayable {
-				t.Errorf("IdentifyMissingCards() IsPlayable = %v, want %v",
+				t.Errorf("IdentifyMissingCardsWithContext() IsPlayable = %v, want %v",
 					result.IsPlayable, tt.expectPlayable)
 			}
 
 			// Check missing count
 			if result.MissingCount != tt.expectedMissing {
-				t.Errorf("IdentifyMissingCards() MissingCount = %d, want %d",
+				t.Errorf("IdentifyMissingCardsWithContext() MissingCount = %d, want %d",
 					result.MissingCount, tt.expectedMissing)
 			}
 
 			// Check available count
 			if result.AvailableCount != tt.expectedAvailable {
-				t.Errorf("IdentifyMissingCards() AvailableCount = %d, want %d",
+				t.Errorf("IdentifyMissingCardsWithContext() AvailableCount = %d, want %d",
 					result.AvailableCount, tt.expectedAvailable)
 			}
 
 			// Check deck length
 			if len(result.Deck) != len(tt.deckCards) {
-				t.Errorf("IdentifyMissingCards() Deck length = %d, want %d",
+				t.Errorf("IdentifyMissingCardsWithContext() Deck length = %d, want %d",
 					len(result.Deck), len(tt.deckCards))
 			}
 
 			// Check missing cards length
 			if len(result.MissingCards) != tt.expectedMissing {
-				t.Errorf("IdentifyMissingCards() MissingCards length = %d, want %d",
+				t.Errorf("IdentifyMissingCardsWithContext() MissingCards length = %d, want %d",
 					len(result.MissingCards), tt.expectedMissing)
 			}
 
 			// Verify structure of missing cards
 			for i, missing := range result.MissingCards {
 				if missing.Name == "" {
-					t.Errorf("IdentifyMissingCards() MissingCards[%d].Name is empty", i)
+					t.Errorf("IdentifyMissingCardsWithContext() MissingCards[%d].Name is empty", i)
 				}
 				if missing.Rarity == "" {
-					t.Errorf("IdentifyMissingCards() MissingCards[%d].Rarity is empty", i)
+					t.Errorf("IdentifyMissingCardsWithContext() MissingCards[%d].Rarity is empty", i)
 				}
 				if missing.UnlockArenaName == "" {
-					t.Errorf("IdentifyMissingCards() MissingCards[%d].UnlockArenaName is empty", i)
+					t.Errorf("IdentifyMissingCardsWithContext() MissingCards[%d].UnlockArenaName is empty", i)
 				}
 			}
 
 			// Check that cards are sorted by unlock arena
 			for i := 1; i < len(result.MissingCards); i++ {
 				if result.MissingCards[i-1].UnlockArena > result.MissingCards[i].UnlockArena {
-					t.Errorf("IdentifyMissingCards() MissingCards not sorted by unlock arena: "+
+					t.Errorf("IdentifyMissingCardsWithContext() MissingCards not sorted by unlock arena: "+
 						"[%d].UnlockArena=%d > [%d].UnlockArena=%d",
 						i-1, result.MissingCards[i-1].UnlockArena,
 						i, result.MissingCards[i].UnlockArena)
