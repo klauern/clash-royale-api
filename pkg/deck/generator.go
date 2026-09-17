@@ -9,8 +9,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-
-	"github.com/klauer/clash-royale-api/go/pkg/clashroyale"
 )
 
 // GeneratorStrategy defines the approach for generating decks
@@ -421,35 +419,4 @@ func (g *DeckGenerator) fillRemainingSlots(deckSize int, used map[string]bool) [
 		}
 	}
 	return remaining
-}
-
-// NewGeneratorConfigFromPlayer creates a generator config from player data
-func NewGeneratorConfigFromPlayer(player *clashroyale.Player, strategy GeneratorStrategy) (*GeneratorConfig, error) {
-	// Convert player cards to candidates (using existing scoring logic)
-	candidates := make([]*CardCandidate, 0, len(player.Cards))
-	for i := range player.Cards {
-		card := player.Cards[i]
-		candidate := &CardCandidate{
-			Name:              card.Name,
-			Level:             card.Level,
-			MaxLevel:          card.MaxLevel,
-			Elixir:            0, // Would need card metadata
-			HasEvolution:      card.MaxEvolutionLevel > 0,
-			EvolutionLevel:    card.EvolutionLevel,
-			MaxEvolutionLevel: card.MaxEvolutionLevel,
-		}
-		candidates = append(candidates, candidate)
-	}
-
-	return &GeneratorConfig{
-		Strategy:   strategy,
-		Candidates: candidates,
-		Constraints: &GeneratorConstraints{
-			MinAvgElixir:        2.0,
-			MaxAvgElixir:        5.0,
-			RequireWinCondition: true,
-		},
-		SampleSize: 1000,
-		Workers:    1,
-	}, nil
 }
