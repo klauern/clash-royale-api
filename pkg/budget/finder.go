@@ -62,7 +62,7 @@ func (f *Finder) AnalyzeDeck(deckRec *deck.DeckRecommendation, cardLevels map[st
 			// Calculate cards needed for this upgrade
 			cardsNeeded := 0
 			for level := currentLevel; level < targetLevel; level++ {
-				cardsNeeded += calculateCardsNeededForLevel(level, card.Rarity)
+				cardsNeeded += config.GetUpgradeCost(level, card.Rarity)
 			}
 
 			// Calculate gold needed
@@ -473,10 +473,4 @@ func filterByRarity(original deck.CardAnalysis, rarities []string) deck.CardAnal
 	}
 
 	return filtered
-}
-
-// calculateCardsNeededForLevel returns how many cards are needed to upgrade from currentLevel
-// This is a local implementation to avoid circular import with pkg/analysis
-func calculateCardsNeededForLevel(currentLevel int, rarity string) int {
-	return config.GetUpgradeCost(currentLevel, rarity)
 }
