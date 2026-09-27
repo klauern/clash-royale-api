@@ -77,12 +77,6 @@ func CalculateGoldNeeded(currentLevel, targetLevel int, rarity string) int {
 	return totalGold
 }
 
-// CalculateTotalGoldToMax returns total gold needed from current level to max level
-func CalculateTotalGoldToMax(currentLevel int, rarity string) int {
-	maxLevel := 14 // Max level for all rarities
-	return CalculateGoldNeeded(currentLevel, maxLevel, rarity)
-}
-
 // GetGoldForSingleUpgrade returns gold needed for just the next upgrade
 func GetGoldForSingleUpgrade(currentLevel int, rarity string) int {
 	costs, exists := goldCosts[rarity]
