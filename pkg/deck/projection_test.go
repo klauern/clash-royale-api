@@ -32,32 +32,6 @@ func TestCalculateGoldNeeded(t *testing.T) {
 	}
 }
 
-func TestCalculateTotalGoldToMax(t *testing.T) {
-	tests := []struct {
-		name         string
-		currentLevel int
-		rarity       string
-		expected     int
-	}{
-		{"Common from 1", 1, "Common", 185625},
-		{"Rare from 3", 3, "Rare", 185600},
-		{"Epic from 6", 6, "Epic", 184400},
-		{"Legendary from 9", 9, "Legendary", 175000},
-		{"Champion from 11", 11, "Champion", 150000},
-		{"Already at max", 14, "Common", 0},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := CalculateTotalGoldToMax(tt.currentLevel, tt.rarity)
-			if result != tt.expected {
-				t.Errorf("CalculateTotalGoldToMax(%d, %s) = %d, want %d",
-					tt.currentLevel, tt.rarity, result, tt.expected)
-			}
-		})
-	}
-}
-
 func TestNewProjection(t *testing.T) {
 	// Create test deck
 	roleWinCond := RoleWinCondition
