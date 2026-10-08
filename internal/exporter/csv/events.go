@@ -12,14 +12,9 @@ import (
 func NewEventDeckExporter() *CSVExporter {
 	return NewCSVExporter(
 		"event_decks.csv",
-		eventDeckHeaders,
+		events.EventDeckCSVHeaders,
 		eventDeckExport,
 	)
-}
-
-// eventDeckHeaders returns the CSV headers for event deck data
-func eventDeckHeaders() []string {
-	return events.EventDeckCSVHeaders()
 }
 
 // eventDeckExport exports event deck data to CSV
@@ -36,7 +31,7 @@ func eventDeckExport(dataDir string, data any) error {
 		rows = append(rows, events.EventDeckCSVRow(deck))
 	}
 
-	return writeCSVRows(dataDir, storage.CSVEventsSubdir, "event_decks.csv", eventDeckHeaders(), rows)
+	return writeCSVRows(dataDir, storage.CSVEventsSubdir, "event_decks.csv", events.EventDeckCSVHeaders(), rows)
 }
 
 // NewEventBattlesExporter creates a new event battles CSV exporter
