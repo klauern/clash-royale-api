@@ -976,7 +976,7 @@ func (b *CounterCentricBuilder) Build() ([]string, error) {
 		best := b.selectBestCoverage(deck, used, coveredCategories, priorityCategories)
 		if best == "" {
 			// Fallback to any available card
-			best = b.selectAnyAvailable(used)
+			best = b.pool.firstUnused(used)
 			if best == "" {
 				return nil, fmt.Errorf("cannot complete deck: stuck at %d cards", len(deck))
 			}
@@ -1109,11 +1109,6 @@ func (b *CounterCentricBuilder) updateCoverage(cardName string, covered map[Coun
 	}
 }
 
-// selectAnyAvailable returns any unused card.
-func (b *CounterCentricBuilder) selectAnyAvailable(used map[string]bool) string {
-	return b.pool.firstUnused(used)
-}
-
 // =============================================================================
 // 6. Meta-Learning Co-occurrence Builder
 // =============================================================================
@@ -1216,7 +1211,7 @@ func (b *MetaLearningBuilder) Build() ([]string, error) {
 		best := b.selectBestCoOccurrence(deck, used)
 		if best == "" {
 			// Fallback
-			best = b.selectAnyValid(used)
+			best = b.pool.firstUnused(used)
 			if best == "" {
 				return nil, fmt.Errorf("cannot complete deck")
 			}
@@ -1289,11 +1284,6 @@ func (b *MetaLearningBuilder) selectBestCoOccurrence(deck []string, used map[str
 	})
 
 	return candidates[0].name
-}
-
-// selectAnyValid returns any unused card.
-func (b *MetaLearningBuilder) selectAnyValid(used map[string]bool) string {
-	return b.pool.firstUnused(used)
 }
 
 // =============================================================================
