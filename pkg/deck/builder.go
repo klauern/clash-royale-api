@@ -844,7 +844,7 @@ func (b *Builder) pickBest(role CardRole, candidates []*CardCandidate, used map[
 
 	var pool []*CardCandidate
 	for _, candidate := range candidates {
-		if !used[candidate.Name] && b.contains(roleCards, candidate.Name) {
+		if !used[candidate.Name] && slices.Contains(roleCards, candidate.Name) {
 			pool = append(pool, cloneCardCandidate(candidate))
 		}
 	}
@@ -872,7 +872,7 @@ func (b *Builder) pickMany(role CardRole, candidates []*CardCandidate, used map[
 
 	var pool []*CardCandidate
 	for _, candidate := range candidates {
-		if !used[candidate.Name] && b.contains(roleCards, candidate.Name) {
+		if !used[candidate.Name] && slices.Contains(roleCards, candidate.Name) {
 			pool = append(pool, cloneCardCandidate(candidate))
 		}
 	}
@@ -988,12 +988,6 @@ func (b *Builder) addStrategicNotes(recommendation *DeckRecommendation) {
 	} else if recommendation.AvgElixir < 2.8 {
 		recommendation.AddNote("Low average elixir; pressure often and out-cycle counters.")
 	}
-}
-
-// Utility functions
-
-func (b *Builder) contains(slice []string, item string) bool {
-	return slices.Contains(slice, item)
 }
 
 func roundToTwo(value float64) float64 {
@@ -1215,7 +1209,7 @@ func (b *Builder) getUpgradeCandidates(deck *DeckRecommendation, cardLevels map[
 		scoreDelta := upgradedScore - currentScore
 
 		// Calculate gold cost for this upgrade
-		goldCost := b.getGoldCost(card.Level, card.Rarity)
+		goldCost := config.GetGoldCost(card.Level, card.Rarity)
 
 		// Calculate impact score:
 		// - Score delta contribution (70%)
@@ -1260,11 +1254,6 @@ func (b *Builder) getStatsForCard(cardName string) *clashroyale.CombatStats {
 		return b.statsRegistry.GetStats(cardName)
 	}
 	return nil
-}
-
-// getGoldCost returns the gold needed to upgrade a card from its current level
-func (b *Builder) getGoldCost(currentLevel int, rarity string) int {
-	return config.GetGoldCost(currentLevel, rarity)
 }
 
 // getRoleImportance returns a score representing how important a card role is
