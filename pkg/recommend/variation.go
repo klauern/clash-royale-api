@@ -175,7 +175,7 @@ func (vg *VariationGenerator) findBetterAlternatives(
 		score := levelRatio
 
 		// Bonus for preferred cards
-		if vg.isPreferred(cardName, constraints.PreferredCards) {
+		if slices.Contains(constraints.PreferredCards, cardName) {
 			score += 0.2
 		}
 
@@ -225,11 +225,6 @@ func (vg *VariationGenerator) calculateNewAvgElixir(
 		}
 	}
 	return float64(totalElixir) / 8.0
-}
-
-// isPreferred checks if a card is in the preferred list
-func (vg *VariationGenerator) isPreferred(cardName string, preferredCards []string) bool {
-	return slices.Contains(preferredCards, cardName)
 }
 
 // createVariation creates a new deck recommendation with the card swap
